@@ -55,49 +55,29 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Install ADK CLI
+      - name: Verify agent YAMLs exist
         run: |
-          pip install google-agent-sdk
-          adk --version
+          echo "✅ Verifying agent YAML files..."
+          ls -la agents/*.yaml
+          echo ""
+          echo "Found $(ls agents/*.yaml | wc -l) agent YAML files"
 
-      - name: Deploy Orchestrator Agent
-        run: |
-          adk deploy agent_engine \
-            --project="${{ secrets.GCP_PROJECT }}" \
-            --region="${{ secrets.GCP_REGION }}" \
-            --staging_bucket="vertex-${{ secrets.GCP_PROJECT }}-staging" \
-            agents/agent_0_orchestrator.yaml
-        env:
-          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
-          GCP_REGION: ${{ secrets.GCP_REGION }}
-
-      - name: Deploy Research Agent
-        run: |
-          adk deploy agent_engine \
-            --project="${{ secrets.GCP_PROJECT }}" \
-            --region="${{ secrets.GCP_REGION }}" \
-            --staging_bucket="vertex-${{ secrets.GCP_PROJECT }}-staging" \
-            agents/agent_1_research.yaml
-
-      - name: Deploy Enrich Agent
-        run: |
-          adk deploy agent_engine \
-            --project="${{ secrets.GCP_PROJECT }}" \
-            --region="${{ secrets.GCP_REGION }}" \
-            --staging_bucket="vertex-${{ secrets.GCP_PROJECT }}-staging" \
-            agents/agent_2_enrich.yaml
-
-      - name: Deploy Outreach Agent
-        run: |
-          adk deploy agent_engine \
-            --project="${{ secrets.GCP_PROJECT }}" \
-            --region="${{ secrets.GCP_REGION }}" \
-            --staging_bucket="vertex-${{ secrets.GCP_PROJECT }}-staging" \
-            agents/agent_3_outreach.yaml
+      - name: Upload agents as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-yamls
+          path: agents/*.yaml
 
       - name: Deployment summary
         run: |
-          echo "✅ Deployment complete!"
+          echo "✅ Validation complete!"
           echo "Project: ${{ secrets.GCP_PROJECT }}"
           echo "Region: ${{ secrets.GCP_REGION }}"
-          echo "Agents deployed: 4 (orchestrator, research, enrich, outreach)"
+          echo "Agents ready for deployment: 4 (orchestrator, research, enrich, outreach)"
+          echo ""
+          echo "📝 To deploy agents to Vertex AI:"
+          echo "1. Install ADK locally: pip install google-adk"
+          echo "2. Deploy each agent:"
+          echo "   adk deploy agent_engine --project=${{ secrets.GCP_PROJECT }} --region=${{ secrets.GCP_REGION }} agents/agent_0_orchestrator.yaml"
+          echo ""
+          echo "Or deploy via gcloud CLI - see GCP_SETUP.md for instructions"
