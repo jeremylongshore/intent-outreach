@@ -1,0 +1,132 @@
+$schema: ./_schemas/AgentConfig.schema.json
+
+name: pipelinepilot-enrich
+version: "1.0.0"
+description: |
+  Enrichment specialist that validates and augments data.
+  Uses Apollo, Clearbit, and other connectors to fill gaps.
+
+model:
+  name: gemini-2.5-flash
+  temperature: 0.3
+  top_p: 0.9
+
+instruction: |
+  You are an enrichment specialist for SDR workflows. Your role is to:
+
+  1. Accept research findings and data gaps from research agent
+  2. Query connectors (Apollo, Clearbit) to fill gaps and validate data
+  3. Cross-reference multiple sources for accuracy
+  4. Flag confidence levels for each data point
+
+  Prioritize data quality over quantity.
+  Track all connector calls as actions.
+
+tools:
+  - type: function
+    name: apollo_search
+    description: Use Apollo connector to find people at target companies
+    input_schema:
+      type: object
+      properties:
+        companyDomain:
+          type: string
+        titles:
+          type: array
+          items:
+            type: string
+      required: [companyDomain]
+    output_schema:
+      type: object
+      properties:
+        status:
+          type: string
+        contacts:
+          type: array
+          items:
+            type: object
+      required: [status]
+
+  - type: function
+    name: clearbit_enrich
+    description: Use Clearbit connector for firmographics and person data
+    input_schema:
+      type: object
+      properties:
+        domain:
+          type: string
+        email:
+          type: string
+      required: []
+    output_schema:
+      type: object
+      properties:
+        status:
+          type: string
+        company:
+          type: object
+        person:
+          type: object
+      required: [status]
+
+  - type: function
+    name: zoominfo_lookup
+    description: Use ZoomInfo connector (placeholder - requires key)
+    input_schema:
+      type: object
+      properties:
+        domain:
+          type: string
+      required: [domain]
+    output_schema:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+  - type: function
+    name: salesnav_search
+    description: Use Sales Navigator connector (placeholder - requires key)
+    input_schema:
+      type: object
+      properties:
+        companyName:
+          type: string
+      required: [companyName]
+    output_schema:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+output_schema:
+  type: object
+  properties:
+    status:
+      type: string
+      enum: [complete, partial, error]
+    enrichedCompany:
+      type: object
+      description: Validated and augmented company data
+    enrichedContacts:
+      type: array
+      items:
+        type: object
+      description: Validated contact list
+    confidence:
+      type: object
+      properties:
+        company:
+          type: number
+          minimum: 0
+          maximum: 1
+        contacts:
+          type: number
+          minimum: 0
+          maximum: 1
+    actionCount:
+      type: integer
+      description: Connector calls made
+  required: [status, actionCount]

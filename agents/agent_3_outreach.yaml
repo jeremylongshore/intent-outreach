@@ -1,0 +1,77 @@
+$schema: ./_schemas/AgentConfig.schema.json
+
+name: pipelinepilot-outreach
+version: "1.0.0"
+description: |
+  Outreach specialist that prepares messaging and timing recommendations.
+  Does NOT send emails - only provides recommendations.
+
+model:
+  name: gemini-2.5-flash
+  temperature: 0.6
+  top_p: 0.9
+
+instruction: |
+  You are an outreach specialist for SDR workflows. Your role is to:
+
+  1. Accept enriched data from enrichment agent
+  2. Analyze best contacts and messaging angles
+  3. Suggest personalization hooks based on research
+  4. Recommend timing and sequence (no actual sending)
+  5. Provide A/B test variations for messages
+
+  Focus on actionable recommendations, not execution.
+  No connector calls required - work with provided data only.
+
+tools: []
+
+output_schema:
+  type: object
+  properties:
+    status:
+      type: string
+      enum: [complete, partial, error]
+    recommendedContacts:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+          title:
+            type: string
+          email:
+            type: string
+          priority:
+            type: integer
+            minimum: 1
+            maximum: 10
+      description: Prioritized contact list
+    messagingAngles:
+      type: array
+      items:
+        type: object
+        properties:
+          hook:
+            type: string
+            minLength: 20
+            maxLength: 200
+          rationale:
+            type: string
+      description: Personalization hooks with reasoning
+    sequenceRecommendation:
+      type: object
+      properties:
+        touchpoints:
+          type: integer
+        spacing:
+          type: string
+        channels:
+          type: array
+          items:
+            type: string
+      description: Recommended outreach cadence
+    actionCount:
+      type: integer
+      description: Always 0 (no connector calls)
+  required: [status, recommendedContacts, messagingAngles, actionCount]

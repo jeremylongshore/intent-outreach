@@ -1,0 +1,96 @@
+$schema: ./_schemas/AgentConfig.schema.json
+
+name: pipelinepilot-orchestrator
+version: "1.0.0"
+description: |
+  Orchestrator agent that routes SDR workflows through specialist sub-agents.
+  Sequential: Research → Enrich → Outreach
+  Optional parallel: NewsFeed exports
+
+model:
+  name: gemini-2.5-flash
+  temperature: 0.7
+  top_p: 0.95
+
+instruction: |
+  You are the PipelinePilot orchestrator. Your role is to:
+
+  1. Accept SDR tasks (domain research, enrichment, outreach preparation)
+  2. Route tasks to specialist agents sequentially:
+     - Research agent: gather intelligence
+     - Enrich agent: validate and augment data
+     - Outreach agent: prepare messaging
+  3. Optionally invoke NewsFeed demo for article processing
+  4. Aggregate results and provide actionable recommendations
+
+  Always route through sub-agents in the correct order.
+  Track action counts and report them in output.
+
+tools:
+  - type: agent
+    name: research-agent
+    description: |
+      Research specialist that gathers company/person intelligence.
+      Use this first to collect baseline data.
+
+  - type: agent
+    name: enrich-agent
+    description: |
+      Enrichment specialist that validates and augments data via connectors.
+      Use after research to enhance data quality.
+
+  - type: agent
+    name: outreach-agent
+    description: |
+      Outreach specialist that prepares messaging and timing.
+      Use last to generate outreach recommendations.
+
+  - type: function
+    name: newsfeed_demo
+    description: |
+      Demo function that processes a news article and generates exports.
+      Optional - use when testing NewsFeed capabilities.
+    input_schema:
+      type: object
+      properties:
+        article:
+          type: object
+          description: News article to process
+      required: [article]
+    output_schema:
+      type: object
+      properties:
+        rationale:
+          type: string
+        exports:
+          type: object
+          properties:
+            markdown:
+              type: string
+            html:
+              type: string
+            pdf:
+              type: string
+      required: [rationale, exports]
+
+output_schema:
+  type: object
+  properties:
+    status:
+      type: string
+      enum: [success, partial, error]
+    workflow:
+      type: string
+      description: Workflow type executed
+    results:
+      type: object
+      description: Aggregated results from sub-agents
+    actionCount:
+      type: integer
+      description: Total actions executed
+    recommendations:
+      type: array
+      items:
+        type: string
+      description: Next steps for user
+  required: [status, workflow, actionCount]

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/google-gemini/agentkit/schemas/AgentConfig.json",
+  "title": "AgentConfig",
+  "description": "Schema for Vertex AI Agent Engine configuration",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Agent identifier (lowercase, hyphens only)"
+    },
+    "version": {
+      "type": "string",
+      "description": "Agent version"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable agent description"
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "enum": ["gemini-2.5-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+          "description": "Gemini model to use"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Sampling temperature"
+        },
+        "top_p": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Nucleus sampling threshold"
+        }
+      },
+      "required": ["name"]
+    },
+    "instruction": {
+      "type": "string",
+      "description": "System instruction for the agent"
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["function", "agent"],
+            "description": "Tool type"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tool or sub-agent name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Tool purpose"
+          },
+          "input_schema": {
+            "type": "object",
+            "description": "JSON Schema for inputs"
+          },
+          "output_schema": {
+            "type": "object",
+            "description": "JSON Schema for outputs"
+          }
+        },
+        "required": ["type", "name"]
+      }
+    },
+    "output_schema": {
+      "type": "object",
+      "description": "JSON Schema for agent output"
+    }
+  },
+  "required": ["$schema", "name", "model", "instruction"]
+}

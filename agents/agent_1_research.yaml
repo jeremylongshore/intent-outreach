@@ -1,0 +1,90 @@
+$schema: ./_schemas/AgentConfig.schema.json
+
+name: pipelinepilot-research
+version: "1.0.0"
+description: |
+  Research specialist that gathers company and person intelligence.
+  Uses connectors to pull baseline data from Clay, Crunchbase, etc.
+
+model:
+  name: gemini-2.5-flash
+  temperature: 0.5
+  top_p: 0.9
+
+instruction: |
+  You are a research specialist for SDR workflows. Your role is to:
+
+  1. Accept research requests (domain, company name, or person details)
+  2. Query available connectors (Clay, Crunchbase) for baseline intelligence
+  3. Aggregate findings into structured output
+  4. Flag data gaps for enrichment phase
+
+  Prioritize accuracy. If connectors are not configured, return clear errors.
+  Track connector calls as actions.
+
+tools:
+  - type: function
+    name: clay_research
+    description: Use Clay connector to gather company/person data
+    input_schema:
+      type: object
+      properties:
+        domain:
+          type: string
+        companyName:
+          type: string
+        personEmail:
+          type: string
+      required: []
+    output_schema:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+      required: [status]
+
+  - type: function
+    name: crunchbase_lookup
+    description: Use Crunchbase connector for company funding/investor data
+    input_schema:
+      type: object
+      properties:
+        companyName:
+          type: string
+        domain:
+          type: string
+      required: [companyName]
+    output_schema:
+      type: object
+      properties:
+        status:
+          type: string
+        funding:
+          type: object
+        investors:
+          type: array
+      required: [status]
+
+output_schema:
+  type: object
+  properties:
+    status:
+      type: string
+      enum: [complete, partial, error]
+    company:
+      type: object
+      description: Company research findings
+    person:
+      type: object
+      description: Person research findings
+    dataGaps:
+      type: array
+      items:
+        type: string
+      description: Missing data for enrichment
+    actionCount:
+      type: integer
+      description: Connector calls made
+  required: [status, actionCount]

@@ -1,24 +1,81 @@
 # PipelinePilot
 
-**Vertex AI-Native SDR Orchestration Platform for Agencies**
+**ADK-Based SDR Orchestration with Vertex AI Agent Engine**
 
-[![CI/CD](https://github.com/YOUR_USERNAME/pipelinepilot/workflows/CI%20&%20Deploy/badge.svg)](https://github.com/YOUR_USERNAME/pipelinepilot/actions)
-[![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
+Phase 1: Foundation with Research → Enrich → Outreach workflow
 
 ---
 
 ## Overview
 
-**PipelinePilot** is a leaseable SaaS platform that enables agencies to offer white-label SDR automation to their clients. Built entirely on Google Cloud Platform with Vertex AI, it orchestrates data from premium providers (Clay, Apollo, Clearbit, HubSpot, Hunter) through specialized AI agents.
+**PipelinePilot** is an agentic SDR orchestrator built on **Vertex AI Agent Engine**. It routes tasks through specialist agents (Research, Enrich, Outreach) and connects to paid data providers via **Bring-Your-Own-Keys (BYO)**.
 
-### Key Features
+### Key Principles
 
-- ✅ **Vertex-Only Architecture** - No OpenAI/Anthropic vendor lock-in
-- ✅ **Multi-Tenant by Design** - Strict data isolation, per-tenant billing
-- ✅ **Leaseable SaaS Model** - Flat fee + seats + performance commission
-- ✅ **Provider-Agnostic** - Pluggable integrations with top SDR tools
-- ✅ **AI Orchestration** - Gemini-powered agents for enrichment, scoring, list building
-- ✅ **Export-Ready** - CSV/JSON exports, HubSpot direct sync
+1. **Action-First Architecture** - Every connector call or agent invocation is counted as an action
+2. **BYO Keys** - Users supply their own API keys for Clay, Apollo, Clearbit, Crunchbase, etc.
+3. **ADK Compliance** - All agents use proper YAML schemas, FunctionTool wrappers, and output schemas
+4. **Firestore + Vertex Storage Only** - No external databases or storage
+5. **Safety by Design** - No crawling, no unofficial scraping, no ToS violations
+
+---
+
+## Architecture
+
+```
+Orchestrator Agent
+├── Research Agent → [Clay, Crunchbase]
+├── Enrich Agent → [Apollo, Clearbit, ZoomInfo*, Sales Nav*]
+└── Outreach Agent → [No connectors - recommendations only]
+
+* = Phase 1 placeholders
+```
+
+**Storage:**
+- **Firestore** - Workspace state, task history, results
+- **Vertex AI Storage** - Exports, artifacts
+
+**Not Included:**
+- No dedicated Cloud Run API (agents are the API)
+- No billing/metering system (Phase 1)
+- No multi-tenant auth (Phase 1)
+
+---
+
+## Project Structure
+
+```
+pipelinepilot/
+├── 000-docs/                    # All documentation
+│   ├── 000-INDEX.md
+│   └── 034-AA-REPT-phase-1-after-action-report.md
+│
+├── agents/                      # ADK agent YAMLs
+│   ├── _schemas/AgentConfig.schema.json
+│   ├── agent_0_orchestrator.yaml
+│   ├── agent_1_research.yaml
+│   ├── agent_2_enrich.yaml
+│   └── agent_3_outreach.yaml
+│
+├── connectors/                  # FunctionTool wrappers (BYO keys)
+│   ├── clay.tool.ts
+│   ├── apollo.tool.ts
+│   ├── clearbit.tool.ts
+│   ├── crunchbase.tool.ts
+│   ├── zoominfo.tool.ts        # Placeholder
+│   └── salesnav.tool.ts        # Placeholder
+│
+├── newsfeed-demo/               # Standalone demo
+│   ├── news_story.schema.json
+│   ├── why_picked.ts
+│   ├── exports.ts
+│   └── demo_runner.ts
+│
+└── scripts/
+    ├── enable_firestore.sh      # Setup GCP services
+    ├── deploy_agents.sh         # Deploy to Vertex AI
+    └── validate_arv.mjs         # ARV validation
+```
 
 ---
 
@@ -27,276 +84,246 @@
 ### Prerequisites
 
 - Node.js 20+
-- Google Cloud Platform account (billing enabled)
-- Stripe account
+- GCP account with billing enabled
+- `gcloud` CLI authenticated
+- ADK CLI: `pip install google-agent-sdk`
 - Provider API keys (Clay, Apollo, etc.)
 
-### Local Development
+### 1. Setup GCP
 
 ```bash
-# Clone repository
-git clone https://github.com/YOUR_USERNAME/pipelinepilot.git
-cd pipelinepilot
+export GCP_PROJECT="pipelinepilot-prod"
+export GCP_REGION="us-central1"
+export FIRESTORE_LOCATION="us-central"
 
-# Install dependencies
+# Enable APIs and create Firestore
+./scripts/enable_firestore.sh
+```
+
+### 2. Validate ARV Compliance
+
+```bash
 npm install
-
-# Setup environment
-cp .env.example .env
-# Edit .env with your credentials
-
-# Run development server
-npm run dev
-
-# Server starts at http://localhost:8080
+npm run validate
 ```
 
-### Deploy to Production
+Expected output:
+```
+✅ PASSED (5):
+   ✓ schema_reference: All 4 agents have $schema
+   ✓ function_tool_wrappers: All 6 connectors use FunctionTool
+   ✓ sub_agent_routing: Orchestrator routes to 3 sub-agents
+   ✓ json_schema_validity: All 2 schemas are valid
+   ✓ connector_not_configured: All 6 connectors handle missing keys
+```
 
-See [000-docs/006-OD-CICD-deployment-guide.md](000-docs/006-OD-CICD-deployment-guide.md) for complete deployment instructions.
+### 3. Run NewsFeed Demo
 
-**Quick Deploy:**
 ```bash
-# Push to main branch
-git push origin main
+npm run demo
+```
 
-# GitHub Actions will:
-# 1. Build TypeScript
-# 2. Deploy Cloud Run
-# 3. Deploy Vertex AI agents
+Generates:
+- `newsfeed-demo/output/demo_001.md` (Markdown export)
+- `newsfeed-demo/output/demo_001.html` (HTML export)
+- PDF message (disabled in Phase 1)
+
+### 4. Deploy Agents
+
+```bash
+./scripts/deploy_agents.sh
+```
+
+Deploys all 4 agents to Vertex AI Agent Engine.
+
+### 5. Configure Provider Keys
+
+```bash
+# Store in Secret Manager (per-workspace)
+echo -n "sk_clay_..." | gcloud secrets create workspace-123-clay-key --data-file=-
+echo -n "..." | gcloud secrets create workspace-123-apollo-key --data-file=-
+# Repeat for clearbit, crunchbase, etc.
+```
+
+### 6. Invoke Orchestrator
+
+```bash
+adk invoke agent_engine pipelinepilot-orchestrator \
+  --project="$GCP_PROJECT" \
+  --region="$GCP_REGION" \
+  --input='{"task":"research","domain":"example.com"}'
 ```
 
 ---
 
-## Architecture
+## Action Counting
 
+Every operation is tracked as an **action** for billing/metering:
+
+| Operation | Actions |
+|-----------|---------|
+| Clay API call | 1 |
+| Apollo search | 1 |
+| Clearbit lookup | 1 |
+| Crunchbase query | 1 |
+| Agent invocation (research, enrich, outreach) | 0 (routing only) |
+| NewsFeed export generation | 0 (local processing) |
+
+**Formula:**
 ```
-Cloud Run (Tools API) → Firestore + Vertex AI Storage
-         ↓
-Vertex AI Agents (Orchestrator, ICP Scorer, List Builder)
-         ↓
-Provider APIs (Clay, Apollo, Clearbit, HubSpot, Hunter)
-         ↓
-Stripe (Billing)
+Total Actions = Sum of all connector API calls
 ```
 
-**Tech Stack:**
-- **Compute:** Cloud Run (Node.js 20, TypeScript, Express)
-- **Database:** Firestore (multi-tenant collections)
-- **Storage:** Vertex AI Storage (exports)
-- **AI:** Vertex AI Agent Engine (Gemini 2.5 Flash)
-- **Secrets:** Google Secret Manager
-- **Billing:** Stripe
-
-See [000-docs/002-AT-ARCH-system-architecture.md](000-docs/002-AT-ARCH-system-architecture.md) for detailed architecture.
+**Example Workflow:**
+- Research agent: Clay (1) + Crunchbase (1) = 2 actions
+- Enrich agent: Apollo (1) + Clearbit (1) = 2 actions
+- Outreach agent: 0 actions (analysis only)
+- **Total: 4 actions**
 
 ---
 
-## API Endpoints
+## BYO Keys Policy
 
-### Tenant Management
-- `POST /tenants` - Create tenant lease contract
-- `GET /tenants/:id` - Get tenant details
-- `PATCH /tenants/:id` - Update tenant settings
-- `POST /tenants/:id/seats` - Add user seats
-- `POST /tenants/:id/provider-keys` - Store provider credentials (GSM refs)
+**Why BYO?**
+1. **Cost Control** - Users pay providers directly
+2. **Rate Limits** - Users manage their own quotas
+3. **Compliance** - Users own their data relationships
+4. **Liability** - No PipelinePilot liability for ToS violations
 
-### Usage Tracking
-- `POST /usage` - Record usage event
-- `GET /usage/:tenantId` - Get usage summary
-- `POST /usage/:tenantId/meeting` - Record qualified meeting
-- `POST /usage/:tenantId/sourced-mrr` - Record sourced MRR
+**Supported Providers:**
+- ✅ Clay (requires API key)
+- ✅ Apollo (requires API key)
+- ✅ Clearbit (requires API key)
+- ✅ Crunchbase (requires API key)
+- ⚠️ ZoomInfo (requires enterprise license - placeholder)
+- ⚠️ Sales Navigator (no official API - placeholder)
 
-### Billing
-- `POST /billing/run-monthly` - Generate monthly invoices
-- `POST /billing/stripe-webhook` - Handle Stripe events
-- `GET /billing/:tenantId/invoices` - Get tenant invoices
-
-### Provider Proxies
-- `POST /providers/:tenant/clay/enrich` - Clay enrichment
-- `POST /providers/:tenant/apollo/search` - Apollo search
-- `POST /providers/:tenant/clearbit/enrich` - Clearbit enrichment
-- `POST /providers/:tenant/hubspot/upsert` - HubSpot CRM sync
-- `POST /providers/:tenant/hunter/verify` - Hunter email verification
-
-### Exports
-- `GET /exports/:tenant/leads.csv` - Get signed URL for CSV export
-- `POST /exports/:tenant/generate` - Generate export from Firestore data
-
-See [000-docs/003-DR-APIM-api-reference.md](000-docs/003-DR-APIM-api-reference.md) for complete API reference.
+**Not Supported:**
+- ❌ Web scraping
+- ❌ Unofficial APIs
+- ❌ ToS-violating methods
+- ❌ Automated browser tools (PhantomBuster, etc.)
 
 ---
 
-## Pricing Model
+## Safety Model
 
-### Tiers
+### What PipelinePilot Does
 
-| Plan | Flat Fee | Per Seat | Commission |
-|------|----------|----------|------------|
-| **Starter** | $499/mo | $49/seat | 5% |
-| **Growth** | $999/mo | $49/seat | 7% |
-| **Scale** | $1,999/mo | $49/seat | 10% |
+✅ **Orchestrates paid API calls**
+✅ **Routes tasks through specialist agents**
+✅ **Generates recommendations (not executions)**
+✅ **Tracks actions for transparency**
 
-### Commission Models
-- **Meetings:** % of qualified meeting value
-- **Sourced MRR:** % of first 6 months' MRR for closed-won deals
+### What PipelinePilot Does NOT Do
 
-All pricing adjustable per-tenant in LeaseContract.
+❌ **Send emails or make calls**
+❌ **Scrape websites or social media**
+❌ **Violate provider Terms of Service**
+❌ **Store API keys in plaintext**
+❌ **Share data across workspaces**
 
-See [000-docs/007-PP-LEAS-leasing-model.md](000-docs/007-PP-LEAS-leasing-model.md) for details.
+### Connector Behavior Without Keys
 
----
+All connectors return `NOT_CONFIGURED` status until API keys are provided:
 
-## Documentation
-
-### Core Docs
-- [001-PP-PROD-pipelinepilot-prd.md](000-docs/001-PP-PROD-pipelinepilot-prd.md) - Product requirements
-- [002-AT-ARCH-system-architecture.md](000-docs/002-AT-ARCH-system-architecture.md) - Architecture
-- [006-OD-CICD-deployment-guide.md](000-docs/006-OD-CICD-deployment-guide.md) - Deployment
-- [007-PP-LEAS-leasing-model.md](000-docs/007-PP-LEAS-leasing-model.md) - Pricing & billing
-
-### Full Index
-See [000-docs/000-INDEX.md](000-docs/000-INDEX.md)
+```json
+{
+  "status": "not_configured",
+  "error": "CLAY_API_KEY not found in Secret Manager. Configure per-workspace credentials.",
+  "actionCount": 0
+}
+```
 
 ---
 
-## JSON Schemas
+## Phase 1 Limitations
 
-All data structures validated with JSON Schema:
-- [lease_contract.schema.json](schemas/lease_contract.schema.json) - Tenant lease contracts
-- [usage_event.schema.json](schemas/usage_event.schema.json) - Usage metering events
-- [billing_invoice.schema.json](schemas/billing_invoice.schema.json) - Monthly invoices
+**What's Included:**
+- ✅ 4 ADK-compliant agents
+- ✅ 6 connector tool shims (4 active, 2 placeholders)
+- ✅ NewsFeed demo
+- ✅ ARV validation
+- ✅ GCP deployment scripts
 
-See [000-docs/004-DR-SCHM-json-schemas.md](000-docs/004-DR-SCHM-json-schemas.md) for details.
-
----
-
-## Vertex AI Agents
-
-### Orchestrator
-Routes SDR tasks to provider endpoints, aggregates results, provides recommendations.
-
-**Model:** Gemini 2.5 Flash
-**Config:** [agents/orchestrator.yaml](agents/orchestrator.yaml)
-
-### ICP Scorer
-Scores leads 0-100 against Ideal Customer Profile criteria, categorizes as hot/warm/cold.
-
-**Model:** Gemini 2.5 Flash
-**Config:** [agents/icp_scorer.yaml](agents/icp_scorer.yaml)
-
-### List Builder
-Deduplicates, prioritizes, and structures prospecting lists for export.
-
-**Model:** Gemini 2.5 Flash
-**Config:** [agents/list_builder.yaml](agents/list_builder.yaml)
-
-See [000-docs/005-AT-AGEN-agent-system.md](000-docs/005-AT-AGEN-agent-system.md) for details.
+**What's Not Included (Future Phases):**
+- ⏳ Billing/metering system
+- ⏳ Multi-tenant auth
+- ⏳ Web UI
+- ⏳ CRM integrations (HubSpot, Salesforce)
+- ⏳ Email sending (Sendgrid, Mailgun)
+- ⏳ Advanced agents (ICP scorer, list builder)
 
 ---
 
-## Security
+## Troubleshooting
 
-### Tenant Isolation
-- Firestore collections partitioned by `tenantId`
-- GSM secret references stored per-tenant
-- Bearer tokens identify tenant in requests
+### ARV Validation Fails
 
-### Secrets Management
-- **NEVER** store plaintext API keys in Firestore
-- **ALWAYS** use GSM references
-- Rotate secrets via GSM versioning
+```bash
+# Check YAML syntax
+yamllint agents/*.yaml
 
-### Authentication
-- Cloud Run: IAM-based auth for internal services
-- Vertex Agents: Bearer token auth
-- Stripe Webhooks: Signature verification
+# Check JSON schemas
+jq . newsfeed-demo/news_story.schema.json
+jq . agents/_schemas/AgentConfig.schema.json
+```
+
+### Agent Deployment Fails
+
+```bash
+# Verify ADK installation
+adk --version
+
+# Check GCP auth
+gcloud auth list
+
+# Verify staging bucket exists
+gsutil ls gs://vertex-$GCP_PROJECT-staging/
+```
+
+### Connector Returns NOT_CONFIGURED
+
+```bash
+# Verify secret exists
+gcloud secrets list | grep workspace-123-clay-key
+
+# Test secret access
+gcloud secrets versions access latest --secret="workspace-123-clay-key"
+```
 
 ---
 
 ## Development
 
-### Scripts
+### Run Tests
 
 ```bash
-npm run dev         # Local development server
-npm run build       # Build TypeScript
-npm run typecheck   # Type checking
-npm run lint        # Lint code
-npm start           # Production server
+npm run validate  # ARV compliance check
 ```
 
-### Testing Locally
+### Type Check
 
 ```bash
-# Start dev server
-npm run dev
-
-# In another terminal, test endpoints
-curl http://localhost:8080/health
-
-# Create test tenant
-curl -X POST http://localhost:8080/tenants \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test Agency","plan":"starter","email":"test@example.com"}'
+npm run typecheck
 ```
 
----
+### Local Demo
 
-## Monitoring
-
-### Cloud Run
-- **Logs:** Cloud Logging (auto-enabled)
-- **Metrics:** Request latency, error rate, instance count
-- **Alerts:** >5% error rate, >2s p99 latency
-
-### Firestore
-- **Metrics:** Read/write counts, index usage
-- **Alerts:** >90% quota usage
-
-### Vertex AI
-- **Metrics:** Invocation count, latency, errors
-- **Alerts:** >10% error rate, >10s p99 latency
-
----
-
-## Roadmap
-
-### Phase 0 (MVP) ✅
-- Core API endpoints
-- Multi-tenant Firestore
-- Provider proxies
-- Basic Vertex agents
-- CI/CD pipeline
-
-### Phase 1 (Weeks 5-8) 🔵
-- Advanced ICP scoring
-- List builder optimization
-- Export format expansion
-- Usage dashboard
-
-### Phase 2 (Weeks 9-12) ⚪
-- Outreach coach agent
-- A/B testing for messaging
-- Advanced analytics
-- White-label branding
-
-### Phase 3 (Months 4-6) ⚪
-- Multi-region deployment
-- Self-service agency portal
-- Marketplace (agency directory)
+```bash
+npm run demo
+```
 
 ---
 
 ## Support
 
 ### Documentation
-- **Full Docs:** [000-docs/000-INDEX.md](000-docs/000-INDEX.md)
-- **Deployment:** [000-docs/006-OD-CICD-deployment-guide.md](000-docs/006-OD-CICD-deployment-guide.md)
-- **Architecture:** [000-docs/002-AT-ARCH-system-architecture.md](000-docs/002-AT-ARCH-system-architecture.md)
+- **Full Index:** [000-docs/000-INDEX.md](000-docs/000-INDEX.md)
+- **After-Action Report:** [000-docs/034-AA-REPT-phase-1-after-action-report.md](000-docs/034-AA-REPT-phase-1-after-action-report.md)
 
 ### Issues
-For bugs or feature requests, open a GitHub issue.
+Open GitHub issue for bugs or feature requests.
 
 ---
 
@@ -306,52 +333,6 @@ Proprietary. All rights reserved.
 
 ---
 
-## Project Structure
-
-```
-pipelinepilot/
-├── 000-docs/                    # Documentation (filing system v2.0)
-│   ├── 000-INDEX.md
-│   ├── 001-PP-PROD-pipelinepilot-prd.md
-│   ├── 002-AT-ARCH-system-architecture.md
-│   ├── 006-OD-CICD-deployment-guide.md
-│   └── 007-PP-LEAS-leasing-model.md
-│
-├── agents/                      # Vertex AI agent configs
-│   ├── orchestrator.yaml
-│   ├── icp_scorer.yaml
-│   └── list_builder.yaml
-│
-├── schemas/                     # JSON Schemas
-│   ├── lease_contract.schema.json
-│   ├── usage_event.schema.json
-│   └── billing_invoice.schema.json
-│
-├── src/                         # Source code (TypeScript)
-│   ├── server.ts               # Express server
-│   ├── tenants.ts              # Tenant management
-│   ├── usage.ts                # Usage tracking
-│   ├── billing.ts              # Billing engine
-│   ├── providers.ts            # Provider proxies
-│   ├── exports.ts              # Export generation
-│   └── utils/
-│       ├── firestore.ts
-│       ├── storage.ts
-│       └── gsm.ts
-│
-├── .github/workflows/           # CI/CD
-│   └── ci-deploy.yml
-│
-├── package.json
-├── tsconfig.json
-├── Dockerfile
-├── .env.example
-├── CLAUDE.md
-└── README.md
-```
-
----
-
 **Last Updated:** 2025-10-31
-**Version:** 0.2.0
-**Status:** MVP Ready
+**Version:** 1.0.0-phase1
+**Status:** Phase 1 Foundation Complete

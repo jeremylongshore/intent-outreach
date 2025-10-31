@@ -1,32 +1,25 @@
 {
   "name": "pipelinepilot",
-  "version": "0.2.0",
+  "version": "1.0.0-phase1",
   "private": true,
   "type": "module",
-  "description": "Vertex-native SDR orchestration platform for agencies (leaseable SaaS)",
+  "description": "ADK-based SDR orchestration with Vertex AI Agent Engine and BYO connector keys",
   "scripts": {
-    "dev": "tsx src/server.ts",
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
-    "adk:deploy": "adk deploy agent_engine --project=${GCP_PROJECT_ID} --region=${GCP_REGION} --staging_bucket=${VERTEX_STORAGE_BUCKET} agents/orchestrator.yaml",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint src providers tools agents schemas --ext .ts,.js"
+    "demo": "tsx newsfeed-demo/demo_runner.ts",
+    "validate": "node scripts/validate_arv.mjs",
+    "deploy:firestore": "./scripts/enable_firestore.sh",
+    "deploy:agents": "./scripts/deploy_agents.sh",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@google-cloud/vertexai": "^1.9.0",
     "@google-cloud/firestore": "^7.10.0",
-    "@google-cloud/storage": "^7.13.0",
     "@google-cloud/secret-manager": "^5.6.0",
-    "axios": "^1.7.7",
-    "express": "^4.21.1",
-    "zod": "^3.23.8",
-    "yaml": "^2.5.1",
-    "stripe": "^16.0.0"
+    "yaml": "^2.5.1"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
     "@types/node": "^22.9.0",
     "tsx": "^4.19.1",
-    "typescript": "^5.6.3",
-    "eslint": "^9.14.0"
+    "typescript": "^5.6.3"
   }
 }
