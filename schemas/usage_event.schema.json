@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pipelinepilot.io/schemas/usage_event.schema.json",
+  "title": "UsageEvent",
+  "description": "Usage event schema for PipelinePilot metering and billing",
+  "type": "object",
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "pattern": "^evt_[0-9]{10,}_[a-z0-9]{9}$",
+      "description": "Unique event identifier"
+    },
+    "tenantId": {
+      "type": "string",
+      "pattern": "^t_",
+      "description": "Tenant identifier"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of event"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["provider_call", "agent_task", "export"],
+      "description": "Event category for billing classification"
+    },
+    "provider": {
+      "type": ["string", "null"],
+      "enum": ["clay", "apollo", "clearbit", "hubspot", "hunter", null],
+      "description": "Provider name if category is provider_call"
+    },
+    "agent": {
+      "type": ["string", "null"],
+      "description": "Agent name if category is agent_task"
+    },
+    "units": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Billable units consumed (e.g., API calls, records processed)"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Event-specific metadata",
+      "properties": {
+        "meetingId": {
+          "type": "string",
+          "description": "Meeting identifier (for commission tracking)"
+        },
+        "qualified": {
+          "type": "boolean",
+          "description": "Whether meeting is qualified (for commission)"
+        },
+        "dealId": {
+          "type": "string",
+          "description": "Deal identifier (for sourced MRR tracking)"
+        },
+        "dealAmountUSD": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Deal amount in USD (for commission calculation)"
+        },
+        "stage": {
+          "type": "string",
+          "description": "Deal stage (e.g., 'closed_won' for commission)"
+        }
+      }
+    }
+  },
+  "required": ["eventId", "tenantId", "ts", "category", "units"],
+  "additionalProperties": false
+}

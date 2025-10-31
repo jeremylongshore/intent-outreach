@@ -1,0 +1,132 @@
+name: CI & Deploy (Cloud Run + Vertex Agents)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  VERTEX_STORAGE_BUCKET: ${{ secrets.VERTEX_STORAGE_BUCKET }}
+  SERVICE_NAME: pipelinepilot-tools
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run type checking
+        run: npm run typecheck
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        if: github.ref == 'refs/heads/main'
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --project="${{ env.GCP_PROJECT_ID }}" \
+            --region="${{ env.GCP_REGION }}" \
+            --source . \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 512Mi \
+            --cpu 1 \
+            --timeout 300 \
+            --max-instances 100 \
+            --min-instances 0 \
+            --concurrency 80 \
+            --set-env-vars="NODE_ENV=production" \
+            --set-secrets="STRIPE_SECRET_KEY=stripe-secret-key:latest" \
+            --set-secrets="CLAY_API_KEY=clay-api-key:latest" \
+            --set-secrets="APOLLO_API_KEY=apollo-api-key:latest" \
+            --set-secrets="CLEARBIT_API_KEY=clearbit-api-key:latest" \
+            --set-secrets="HUBSPOT_PRIVATE_APP_TOKEN=hubspot-token:latest" \
+            --set-secrets="HUNTER_API_KEY=hunter-api-key:latest"
+
+      - name: Setup Python for ADK
+        if: github.ref == 'refs/heads/main'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Google ADK
+        if: github.ref == 'refs/heads/main'
+        run: |
+          pip install google-agent-sdk
+
+      - name: Deploy Vertex AI Agents
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Deploy orchestrator agent
+          adk deploy agent_engine \
+            --project="${{ env.GCP_PROJECT_ID }}" \
+            --region="${{ env.GCP_REGION }}" \
+            --staging_bucket="${{ env.VERTEX_STORAGE_BUCKET }}" \
+            agents/orchestrator.yaml
+
+          # Deploy ICP scorer agent
+          adk deploy agent_engine \
+            --project="${{ env.GCP_PROJECT_ID }}" \
+            --region="${{ env.GCP_REGION }}" \
+            --staging_bucket="${{ env.VERTEX_STORAGE_BUCKET }}" \
+            agents/icp_scorer.yaml
+
+          # Deploy list builder agent
+          adk deploy agent_engine \
+            --project="${{ env.GCP_PROJECT_ID }}" \
+            --region="${{ env.GCP_REGION }}" \
+            --staging_bucket="${{ env.VERTEX_STORAGE_BUCKET }}" \
+            agents/list_builder.yaml
+
+      - name: Output service URL
+        if: github.ref == 'refs/heads/main'
+        run: |
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --project="${{ env.GCP_PROJECT_ID }}" \
+            --region="${{ env.GCP_REGION }}" \
+            --format='value(status.url)')
+          echo "Service deployed to: $SERVICE_URL"
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
+
+  vertex-purity-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for non-Vertex AI dependencies
+        run: |
+          if git grep -Ei 'openai|anthropic|ollama|bedrock|azure.*openai|cohere' src/ providers/ agents/ schemas/ || true; then
+            echo "❌ Non-Vertex AI dependencies found!"
+            echo "PipelinePilot must use Vertex AI only."
+            exit 1
+          else
+            echo "✅ Vertex-only check passed"
+          fi

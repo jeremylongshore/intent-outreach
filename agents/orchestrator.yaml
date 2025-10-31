@@ -1,0 +1,200 @@
+# Vertex AI Agent Engine Configuration
+# PipelinePilot Orchestrator Agent
+# Deployed via: adk deploy agent_engine
+
+$schema: https://github.com/google-gemini/agentkit/raw/main/schemas/AgentConfig.json
+
+name: pipelinepilot-orchestrator
+version: "0.2.0"
+description: |
+  Vertex AI Agent that routes SDR tasks to specialist tools and providers.
+  Routes enrichment, research, list-building, and outreach assistance tasks
+  to appropriate provider APIs (Clay, Apollo, Clearbit, HubSpot, Hunter).
+
+model:
+  name: gemini-2.5-flash
+  temperature: 0.7
+  top_p: 0.95
+
+instruction: |
+  You are PipelinePilot, an SDR orchestration agent. Your role is to:
+
+  1. Accept SDR tasks from agencies (domain enrichment, person search, list building)
+  2. Route tasks to appropriate provider APIs
+  3. Aggregate and structure results
+  4. Provide recommendations for outreach
+
+  Available providers:
+  - Clay: Company and person enrichment, list expansion
+  - Apollo: People and company search
+  - Clearbit: Firmographics enrichment
+  - HubSpot: CRM upsert for handoff
+  - Hunter: Email verification
+
+  Always:
+  - Validate tenant access before routing
+  - Record usage events for billing
+  - Structure output for easy export
+  - Suggest next steps for human review
+
+tools:
+  - type: function
+    name: clayEnrich
+    description: |
+      Call PipelinePilot provider endpoint for Clay enrichment.
+      Use for company/person data enrichment and list expansion.
+    openapi:
+      url: https://PLACEHOLDER-TOOLS-URL/providers/{tenant}/clay/enrich
+      method: POST
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: domain
+          in: body
+          description: Company domain to enrich
+          schema:
+            type: string
+        - name: email
+          in: body
+          description: Email address to enrich
+          schema:
+            type: string
+        - name: companyName
+          in: body
+          description: Company name
+          schema:
+            type: string
+
+  - type: function
+    name: apolloSearch
+    description: |
+      Search for people and companies using Apollo.
+      Use for building prospecting lists based on ICP criteria.
+    openapi:
+      url: https://PLACEHOLDER-TOOLS-URL/providers/{tenant}/apollo/search
+      method: POST
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: query
+          in: body
+          description: Search query keywords
+          schema:
+            type: string
+        - name: personTitles
+          in: body
+          description: Target job titles
+          schema:
+            type: array
+            items:
+              type: string
+        - name: companyDomain
+          in: body
+          description: Target company domain
+          schema:
+            type: string
+
+  - type: function
+    name: clearbitEnrich
+    description: |
+      Enrich company data using Clearbit.
+      Use for firmographics and company intelligence.
+    openapi:
+      url: https://PLACEHOLDER-TOOLS-URL/providers/{tenant}/clearbit/enrich
+      method: POST
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: domain
+          in: body
+          required: true
+          description: Company domain to enrich
+          schema:
+            type: string
+
+  - type: function
+    name: hubspotUpsert
+    description: |
+      Create or update contacts in HubSpot CRM.
+      Use for handoff to CRM after list building.
+    openapi:
+      url: https://PLACEHOLDER-TOOLS-URL/providers/{tenant}/hubspot/upsert
+      method: POST
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: contacts
+          in: body
+          required: true
+          description: Array of contacts to upsert
+          schema:
+            type: array
+            items:
+              type: object
+
+  - type: function
+    name: hunterVerify
+    description: |
+      Verify email deliverability using Hunter.
+      Use before outreach to ensure valid email addresses.
+    openapi:
+      url: https://PLACEHOLDER-TOOLS-URL/providers/{tenant}/hunter/verify
+      method: POST
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: email
+          in: body
+          required: true
+          description: Email address to verify
+          schema:
+            type: string
+
+output_schema:
+  type: object
+  properties:
+    status:
+      type: string
+      enum: ["success", "partial_success", "error"]
+      description: Overall task status
+    message:
+      type: string
+      description: Human-readable status message
+    results:
+      type: array
+      description: Array of enriched/processed records
+      items:
+        type: object
+    nextSteps:
+      type: array
+      description: Recommended next actions for user
+      items:
+        type: string
+    errors:
+      type: array
+      description: Any errors encountered during processing
+      items:
+        type: object
+  required: ["status", "message"]
+
+security:
+  authentication:
+    type: bearer
+    description: |
+      Requests to this agent must include a valid bearer token
+      identifying the tenant making the request.
