@@ -1,78 +1,22 @@
-/**
- * Crunchbase Connector Tool
- * Requires: CRUNCHBASE_API_KEY in Secret Manager
- * Actions: Funding data, investor info, company intelligence
- */
-
-import { FunctionTool } from "@google-cloud/vertexai";
-
-export const crunchbaseLookup = new FunctionTool({
-  name: "crunchbase_lookup",
-  description: "Get company funding and investor data from Crunchbase",
-
-  inputSchema: {
+// Crunchbase FunctionTool shim (no network). BYO key required.
+export const tool = {
+  name: "crunchbase.company_info",
+  description: "Fetch company info from Crunchbase by permalink or name. Returns NOT_CONFIGURED without CRUNCHBASE_API_KEY.",
+  input_schema: {
     type: "object",
-    properties: {
-      companyName: {
-        type: "string",
-        description: "Company name to lookup"
-      },
-      domain: {
-        type: "string",
-        description: "Company domain (alternative identifier)"
-      }
-    },
-    required: ["companyName"]
+    additionalProperties: false,
+    properties: { query: { type: "string", minLength: 2 } },
+    required: ["query"]
   },
-
-  outputSchema: {
+  output_schema: {
     type: "object",
-    properties: {
-      status: {
-        type: "string",
-        enum: ["success", "error", "not_configured"]
-      },
-      funding: {
-        type: "object",
-        properties: {
-          totalRaised: { type: "number" },
-          lastRound: { type: "string" },
-          lastRoundDate: { type: "string" },
-          lastRoundAmount: { type: "number" }
-        }
-      },
-      investors: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            name: { type: "string" },
-            type: { type: "string" }
-          }
-        }
-      },
-      actionCount: {
-        type: "integer",
-        description: "API calls made"
-      }
-    },
-    required: ["status", "actionCount"]
+    additionalProperties: false,
+    properties: { ok: { type: "boolean" }, company: { type: "object" }, error: { type: "string" } },
+    required: ["ok"]
   },
-
-  async handler(input: any) {
-    const apiKey = process.env.CRUNCHBASE_API_KEY;
-
-    if (!apiKey) {
-      return {
-        status: "not_configured",
-        error: "CRUNCHBASE_API_KEY not found. Configure per-workspace credentials.",
-        actionCount: 0
-      };
-    }
-
-    // TODO: Actual Crunchbase API implementation
-    throw new Error("Crunchbase API integration not yet implemented. Phase 1 stub only.");
+  async run(_input: {query:string}) {
+    if (!process.env.CRUNCHBASE_API_KEY) throw new Error("NOT_CONFIGURED");
+    throw new Error("NOT_CONFIGURED");
   }
-});
-
-export default crunchbaseLookup;
+};
+export default tool;

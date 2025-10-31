@@ -1,88 +1,81 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/google-gemini/agentkit/schemas/AgentConfig.json",
-  "title": "AgentConfig",
-  "description": "Schema for Vertex AI Agent Engine configuration",
+  "$id": "https://pipelinepilot.io/schemas/AgentConfig.schema.json",
+  "title": "ADK Agent Configuration",
+  "description": "Validates agent YAML files for PipelinePilot",
   "type": "object",
+  "required": ["$schema", "id", "name", "role", "model"],
+  "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string",
-      "description": "Reference to this schema"
+      "format": "uri",
+      "description": "JSON Schema URI for validation"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^agent_[0-9]+_[a-z_]+$",
+      "description": "Unique agent identifier (e.g., agent_0_orchestrator)"
     },
     "name": {
       "type": "string",
-      "pattern": "^[a-z0-9-]+$",
-      "description": "Agent identifier (lowercase, hyphens only)"
+      "minLength": 3,
+      "maxLength": 100,
+      "description": "Human-readable agent name"
     },
-    "version": {
+    "role": {
       "type": "string",
-      "description": "Agent version"
-    },
-    "description": {
-      "type": "string",
-      "description": "Human-readable agent description"
+      "minLength": 10,
+      "maxLength": 500,
+      "description": "Agent's purpose and responsibilities"
     },
     "model": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "enum": ["gemini-2.5-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
-          "description": "Gemini model to use"
-        },
-        "temperature": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 2,
-          "description": "Sampling temperature"
-        },
-        "top_p": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1,
-          "description": "Nucleus sampling threshold"
-        }
-      },
-      "required": ["name"]
-    },
-    "instruction": {
       "type": "string",
-      "description": "System instruction for the agent"
+      "enum": ["gemini-2.5-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
+      "description": "Vertex AI model to use"
     },
     "tools": {
       "type": "array",
       "items": {
         "type": "object",
+        "required": ["type", "path"],
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["function", "agent"],
-            "description": "Tool type"
+            "enum": ["function_tool"]
           },
-          "name": {
+          "path": {
             "type": "string",
-            "description": "Tool or sub-agent name"
-          },
-          "description": {
-            "type": "string",
-            "description": "Tool purpose"
-          },
-          "input_schema": {
-            "type": "object",
-            "description": "JSON Schema for inputs"
-          },
-          "output_schema": {
-            "type": "object",
-            "description": "JSON Schema for outputs"
+            "pattern": "^connectors/.+\\.tool\\.(ts|js)$"
           }
-        },
-        "required": ["type", "name"]
-      }
+        }
+      },
+      "description": "List of FunctionTools this agent can use"
+    },
+    "routing": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["agent", "mode"],
+        "properties": {
+          "agent": {
+            "type": "string",
+            "pattern": "^agent_[0-9]+_[a-z_]+$"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["sequential", "parallel"]
+          },
+          "condition": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Routing to other agents (orchestrator only)"
     },
     "output_schema": {
       "type": "object",
       "description": "JSON Schema for agent output"
     }
-  },
-  "required": ["$schema", "name", "model", "instruction"]
+  }
 }

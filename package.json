@@ -1,25 +1,26 @@
 {
   "name": "pipelinepilot",
-  "version": "1.0.0-phase1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "ADK-based SDR orchestration with Vertex AI Agent Engine and BYO connector keys",
+  "description": "ADK-based SDR orchestration with Vertex AI Agent Engine + Firestore",
   "scripts": {
-    "demo": "tsx newsfeed-demo/demo_runner.ts",
-    "validate": "node scripts/validate_arv.mjs",
-    "deploy:firestore": "./scripts/enable_firestore.sh",
-    "deploy:agents": "./scripts/deploy_agents.sh",
-    "typecheck": "tsc --noEmit"
+    "arv": "node scripts/validate_arv.mjs",
+    "enable:firestore": "bash scripts/enable_firestore.sh",
+    "deploy:agents": "bash scripts/deploy_agents.sh",
+    "demo": "tsx newsfeed-demo/demo_runner.ts"
   },
   "dependencies": {
-    "@google-cloud/vertexai": "^1.9.0",
-    "@google-cloud/firestore": "^7.10.0",
-    "@google-cloud/secret-manager": "^5.6.0",
-    "yaml": "^2.5.1"
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.6.1"
   },
   "devDependencies": {
-    "@types/node": "^22.9.0",
-    "tsx": "^4.19.1",
-    "typescript": "^5.6.3"
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

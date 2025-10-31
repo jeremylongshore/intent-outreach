@@ -1,82 +1,25 @@
-/**
- * Apollo Connector Tool
- * Requires: APOLLO_API_KEY in Secret Manager
- * Actions: People/company search, contact discovery
- */
-
-import { FunctionTool } from "@google-cloud/vertexai";
-
-export const apolloSearch = new FunctionTool({
-  name: "apollo_search",
-  description: "Search for people at target companies using Apollo",
-
-  inputSchema: {
+// Apollo.io FunctionTool shim (no network). BYO key required.
+export const tool = {
+  name: "apollo.person_search",
+  description: "Search people by name and company in Apollo. Returns NOT_CONFIGURED without APOLLO_API_KEY.",
+  input_schema: {
     type: "object",
+    additionalProperties: false,
     properties: {
-      companyDomain: {
-        type: "string",
-        description: "Target company domain"
-      },
-      titles: {
-        type: "array",
-        items: {
-          type: "string"
-        },
-        description: "Target job titles"
-      },
-      seniority: {
-        type: "array",
-        items: {
-          type: "string",
-          enum: ["c-level", "vp", "director", "manager", "individual"]
-        },
-        description: "Seniority levels to target"
-      }
+      full_name: { type: "string", minLength: 3 },
+      company: { type: "string", minLength: 2 }
     },
-    required: ["companyDomain"]
+    required: ["full_name","company"]
   },
-
-  outputSchema: {
+  output_schema: {
     type: "object",
-    properties: {
-      status: {
-        type: "string",
-        enum: ["success", "error", "not_configured"]
-      },
-      contacts: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            name: { type: "string" },
-            title: { type: "string" },
-            email: { type: "string" },
-            linkedinUrl: { type: "string" }
-          }
-        }
-      },
-      actionCount: {
-        type: "integer",
-        description: "API calls made"
-      }
-    },
-    required: ["status", "actionCount"]
+    additionalProperties: false,
+    properties: { ok: { type: "boolean" }, people: { type: "array", items: { type: "object" } }, error: { type: "string" } },
+    required: ["ok"]
   },
-
-  async handler(input: any) {
-    const apiKey = process.env.APOLLO_API_KEY;
-
-    if (!apiKey) {
-      return {
-        status: "not_configured",
-        error: "APOLLO_API_KEY not found. Configure per-workspace credentials.",
-        actionCount: 0
-      };
-    }
-
-    // TODO: Actual Apollo API implementation
-    throw new Error("Apollo API integration not yet implemented. Phase 1 stub only.");
+  async run(_input: {full_name:string; company:string}) {
+    if (!process.env.APOLLO_API_KEY) throw new Error("NOT_CONFIGURED");
+    throw new Error("NOT_CONFIGURED");
   }
-});
-
-export default apolloSearch;
+};
+export default tool;

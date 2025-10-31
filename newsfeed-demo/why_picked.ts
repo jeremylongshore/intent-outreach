@@ -1,75 +1,21 @@
-/**
- * NewsFeed Demo: Selection Rationale Generator
- * Pure function that explains why an article was selected
- */
+export type WhyPicked = {
+  metrics_line: string;   // e.g., "impact 8 • relevance 7 • specificity 6 • total 21"
+  category: "funding" | "partnership" | "product" | "regulatory" | "macro" | "other";
+  reason: string;         // 30–300 chars
+};
 
-export interface NewsStory {
-  id: string;
-  title: string;
-  summary: string;
-  body: string;
-  source: {
-    name: string;
-    url: string;
-  };
-  scoring: {
-    impact: number;
-    relevance: number;
-    specificity: number;
-    total: number;
-    selectionReason: string;
-  };
+export function whyPicked(input: {
+  impact: number; relevance: number; specificity: number; total: number;
+  title: string; body?: string;
+}): WhyPicked {
+  const { impact, relevance, specificity, total, title } = input;
+  const metrics_line = `impact ${impact} • relevance ${relevance} • specificity ${specificity} • total ${total}`;
+  const category =
+    /raises|funding|seed|series|acquire|merger/i.test(title) ? "funding" :
+    /partner|integrat|alliance/i.test(title) ? "partnership" :
+    /launch|ship|feature|product/i.test(title) ? "product" :
+    /rule|law|ban|regulat|compliance/i.test(title) ? "regulatory" :
+    /market|macro|economy|rates|inflation/i.test(title) ? "macro" : "other";
+  const reason = `Selected for SDR context because it scores ${total}/30 and directly informs targeting or messaging for prospects likely affected by: ${title}`.slice(0, 300);
+  return { metrics_line, category, reason };
 }
-
-export interface SelectionRationale {
-  metricsLine: string;
-  category: string;
-  reason: string;
-  fullRationale: string;
-}
-
-/**
- * Generate selection rationale for a news story
- * @param story - News story object
- * @returns Rationale explaining why this article was selected
- */
-export function generateRationale(story: NewsStory): SelectionRationale {
-  const { impact, relevance, specificity, total, selectionReason } = story.scoring;
-
-  // Metrics line: compact summary
-  const metricsLine = `Impact: ${impact}/10 | Relevance: ${relevance}/10 | Specificity: ${specificity}/10 | Total: ${total}/30`;
-
-  // Category based on total score
-  let category: string;
-  if (total >= 25) {
-    category = "HIGH PRIORITY";
-  } else if (total >= 20) {
-    category = "MEDIUM PRIORITY";
-  } else if (total >= 15) {
-    category = "LOW PRIORITY";
-  } else {
-    category = "ARCHIVED";
-  }
-
-  // Full rationale combining metrics and reason
-  const fullRationale = `
-**${category}**
-
-${metricsLine}
-
-**Why This Article Matters:**
-${selectionReason}
-
-**Source:** ${story.source.name}
-**URL:** ${story.source.url}
-`.trim();
-
-  return {
-    metricsLine,
-    category,
-    reason: selectionReason,
-    fullRationale
-  };
-}
-
-export default generateRationale;

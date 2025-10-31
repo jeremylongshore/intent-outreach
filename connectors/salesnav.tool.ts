@@ -1,65 +1,22 @@
-/**
- * Sales Navigator Connector Tool (PLACEHOLDER)
- * Requires: LinkedIn Sales Navigator credentials + custom API setup
- * Actions: Advanced LinkedIn search, InMail capabilities
- *
- * NOTE: Phase 1 placeholder only. LinkedIn has no official Sales Nav API.
- * Requires either:
- *   1. PhantomBuster/Apify scraping (against ToS)
- *   2. Manual Sales Nav searches (no API)
- *   3. LinkedIn Partner API access (enterprise only)
- */
-
-import { FunctionTool } from "@google-cloud/vertexai";
-
-export const salesnavSearch = new FunctionTool({
-  name: "salesnav_search",
-  description: "Search LinkedIn Sales Navigator (placeholder - no official API)",
-
-  inputSchema: {
+// Sales Navigator placeholder tool (no network). Throws until configured.
+export const tool = {
+  name: "salesnav.search",
+  description: "Placeholder LinkedIn Sales Navigator search. Returns NOT_CONFIGURED until cookie/token present.",
+  input_schema: {
     type: "object",
-    properties: {
-      companyName: {
-        type: "string",
-        description: "Target company name"
-      },
-      titles: {
-        type: "array",
-        items: { type: "string" },
-        description: "Target job titles"
-      },
-      geography: {
-        type: "string",
-        description: "Geographic filter"
-      }
-    },
-    required: ["companyName"]
+    additionalProperties: false,
+    properties: { q: { type: "string", minLength: 1 } },
+    required: ["q"]
   },
-
-  outputSchema: {
+  output_schema: {
     type: "object",
-    properties: {
-      status: {
-        type: "string",
-        enum: ["success", "error", "not_configured", "placeholder"]
-      },
-      message: {
-        type: "string"
-      },
-      actionCount: {
-        type: "integer"
-      }
-    },
-    required: ["status", "actionCount"]
+    additionalProperties: false,
+    properties: { ok: { const: false }, error: { const: "NOT_CONFIGURED" } },
+    required: ["ok","error"]
   },
-
-  async handler(input: any) {
-    return {
-      status: "placeholder",
-      message: "Sales Navigator connector is a Phase 1 placeholder. LinkedIn has no official Sales Nav API. Options: 1) Manual searches, 2) LinkedIn Partner API (enterprise), 3) Third-party tools (PhantomBuster - against ToS).",
-      actionCount: 0
-    };
+  async run(_input: {q:string}) {
+    if (!process.env.SALESNAV_TOKEN && !process.env.SALESNAV_COOKIE) throw new Error("NOT_CONFIGURED");
+    throw new Error("NOT_CONFIGURED");
   }
-});
-
-export default salesnavSearch;
+};
+export default tool;
