@@ -46,7 +46,7 @@
           },
           "path": {
             "type": "string",
-            "pattern": "^connectors/.+\\.tool\\.(ts|js)$"
+            "pattern": "^(connectors/.+\\.tool\\.(ts|js)|newsfeed-demo/.+\\.(ts|js))$"
           }
         }
       },

@@ -29,7 +29,14 @@ async function runDemo() {
   console.log("=== NewsFeed Demo Runner ===\n");
 
   // Generate selection rationale
-  const rationale = whyPicked(sampleStory.scoring);
+  const rationale = whyPicked({
+    impact: sampleStory.scoring.impact,
+    relevance: sampleStory.scoring.relevance,
+    specificity: sampleStory.scoring.specificity,
+    total: sampleStory.scoring.total,
+    title: sampleStory.title,
+    body: sampleStory.body
+  });
   sampleStory.scoring.selectionReason = rationale.reason;
 
   console.log(`Story: ${sampleStory.title}`);
