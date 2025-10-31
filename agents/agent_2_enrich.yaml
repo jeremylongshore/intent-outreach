@@ -1,56 +1,75 @@
-$schema: "https://pipelinepilot.io/schemas/AgentConfig.schema.json"
-id: agent_2_enrich
-name: Enrichment Agent
-role: >
-  You enrich leads from the Research Agent by calling clearbit.enrich_domain
-  and crunchbase.company_info. Add firmographic data (employees, funding, tech stack)
-  and tech_signals that SDRs can use for personalization. Return enriched_leads
-  with the original data plus new fields.
-model: gemini-2.5-flash
-
-tools:
-  - type: function_tool
-    path: connectors/clearbit.tool.ts
-  - type: function_tool
-    path: connectors/crunchbase.tool.ts
-
+$schema: ./_schemas/AgentConfig.schema.json
+id: agent.enrich
+name: Enrich
+role: enrich
+model: publishers/google/models/gemini-2.0-flash
+description: Enriches leads with firmographic and technographic fields using paid APIs only.
+instructions: |
+  Input: leads[] from Research.
+  Use Clearbit for firmographics and Crunchbase for funding/size signals.
+  Behavior:
+    - If a provider is NOT_CONFIGURED, return partial results and note the missing key in internal reasoning, but do not invent values.
+    - Never exceed schema limits. Validate employees range and tech_signals length.
+examples:
+  - user: |
+      leads: [
+        {"company":"Acme Inc","website":"https://acme.io","fit_score":82,"notes":"SaaS RevOps focus"},
+        {"company":"Contoso","website":"https://contoso.com","fit_score":77,"notes":"Mid-market SaaS"}
+      ]
+    assistant: |
+      {
+        "enriched_leads": [
+          {
+            "company": "Acme Inc",
+            "website": "https://acme.io",
+            "employees": 420,
+            "tech_signals": ["Salesforce", "Outreach", "Segment"]
+          },
+          {
+            "company": "Contoso",
+            "website": "https://contoso.com",
+            "employees": 260,
+            "tech_signals": ["HubSpot", "Gong"]
+          }
+        ]
+      }
+  - user: |
+      CLEARBIT_API_KEY missing. Proceed?
+    assistant: |
+      {
+        "enriched_leads": []
+      }
 output_schema:
   type: object
   additionalProperties: false
+  required: [enriched_leads]
   properties:
     enriched_leads:
       type: array
       items:
         type: object
         additionalProperties: false
+        required: [company, website, employees, tech_signals]
         properties:
-          domain:
-            type: string
-            format: hostname
-          company_name:
-            type: string
-          contact_name:
-            type: string
-          contact_email:
-            type: string
-            format: email
-          fit_score:
-            type: integer
-            minimum: 0
-            maximum: 10
-          notes:
-            type: string
-          employees:
-            type: integer
-          funding_stage:
-            type: string
-          tech_stack:
-            type: array
-            items:
-              type: string
+          company: { type: string, maxLength: 120 }
+          website: { type: string, format: uri }
+          employees: { type: integer, minimum: 1, maximum: 1000000 }
           tech_signals:
-            type: string
-            minLength: 20
-            maxLength: 400
-        required: [domain, company_name, contact_name, contact_email, fit_score, notes, tech_signals]
-  required: [enriched_leads]
+            type: array
+            items: { type: string, maxLength: 60 }
+tools:
+  - id: clearbit_enrich
+    type: FunctionTool
+    ref: connectors/clearbit.tool.ts#tool
+    input_schema: { type: object, properties: { domain: { type: string } }, required: [domain] }
+    output_schema: { type: object }
+  - id: crunchbase_company
+    type: FunctionTool
+    ref: connectors/crunchbase.tool.ts#tool
+    input_schema: { type: object, properties: { query: { type: string } }, required: [query] }
+    output_schema: { type: object }
+routing:
+  type: sequential
+  steps: []
+policies:
+  max_output_tokens: 1024

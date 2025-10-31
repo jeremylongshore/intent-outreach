@@ -1,52 +1,71 @@
-$schema: "https://pipelinepilot.io/schemas/AgentConfig.schema.json"
-id: agent_0_orchestrator
-name: Orchestrator Agent
-role: >
-  You coordinate the SDR workflow: Research → Enrich → Outreach (sequential).
-  You also run NewsFeed exports (Markdown, HTML) in parallel for any inbound
-  article. You do NOT call connectors directly—route to specialist agents.
-  Return a structured summary of actions taken and outputs.
-model: gemini-2.5-flash
-
-tools:
-  - type: function_tool
-    path: newsfeed-demo/exports.ts
-
-routing:
-  - agent: agent_1_research
-    mode: sequential
-  - agent: agent_2_enrich
-    mode: sequential
-  - agent: agent_3_outreach
-    mode: sequential
-
+$schema: ./_schemas/AgentConfig.schema.json
+id: agent.orchestrator
+name: Orchestrator
+role: orchestrator
+model: publishers/google/models/gemini-2.0-pro-exp
+description: Routes Research → Enrich → Outreach. Optionally exports NewsFeed demo artifact in parallel.
+instructions: |
+  Objective: coordinate a 3-step SDR workflow for the current workspace.
+  Inputs: ICP summary and/or domain list; workspace action limit; optional news_story.
+  Steps:
+    1) Call agent.research with ICP/domains. Receive leads[].
+    2) Call agent.enrich with leads[]. Receive enriched_leads[].
+    3) Call agent.outreach with enriched_leads[]. Receive messages[].
+  Action policy:
+    - Count an action only when invoking a tool or export function.
+    - Never crawl the web. Use configured connectors only.
+    - Halt if any required provider returns NOT_CONFIGURED.
+  Parallel branch:
+    - If news_story is present, call exportMarkdown and exportHtml in parallel.
+  Stop conditions:
+    - actions_used >= workspace_limit
+    - downstream agent reports NOT_CONFIGURED or schema risk
+examples:
+  - user: |
+      ICP: Mid-market SaaS, 100–1,000 employees. Domains: ["https://acme.io","https://contoso.com"].
+      Workspace limit: 500 actions. Include NewsFeed export.
+    assistant: |
+      Plan:
+      1) agent.research(domains, ICP) → leads[]
+      2) agent.enrich(leads[]) → enriched_leads[]
+      3) agent.outreach(enriched_leads[]) → messages[]
+      Parallel: exportMarkdown(news_story), exportHtml(news_story)
+      Stop on NOT_CONFIGURED or limit reached.
+  - user: |
+      Missing CLEARBIT_API_KEY. Proceed?
+    assistant: |
+      Halt orchestration. Do not call agent.enrich. Return status and surface missing key.
 output_schema:
   type: object
   additionalProperties: false
+  required: [status]
   properties:
-    workflow:
-      type: string
-      enum: [research_to_outreach, newsfeed_export]
-    actions_count:
-      type: integer
-      minimum: 0
-      description: "Total API calls made (1 per connector invocation)"
-    research_output:
+    status: { type: string, enum: ["ok"] }
+tools:
+  - id: export_markdown
+    type: FunctionTool
+    ref: newsfeed-demo/exports.ts#exportMarkdown
+    input_schema: { type: object }
+    output_schema:
       type: object
-    enrich_output:
+      properties: { format: { const: "md" }, path: { type: "string" } }
+      required: ["format","path"]
+  - id: export_html
+    type: FunctionTool
+    ref: newsfeed-demo/exports.ts#exportHtml
+    input_schema: { type: object }
+    output_schema:
       type: object
-    outreach_output:
-      type: object
-    exports:
-      type: array
-      items:
-        type: object
-        additionalProperties: false
-        properties:
-          format:
-            type: string
-            enum: [md, html, pdf]
-          path:
-            type: string
-        required: [format]
-  required: [workflow, actions_count]
+      properties: { format: { const: "html" }, path: { type: "string" } }
+      required: ["format","path"]
+routing:
+  type: sequential
+  steps:
+    - call_agent: agent.research
+    - call_agent: agent.enrich
+    - call_agent: agent.outreach
+  parallel:
+    - call_function: newsfeed-demo/exports.ts#exportMarkdown
+    - call_function: newsfeed-demo/exports.ts#exportHtml
+policies:
+  max_output_tokens: 2048

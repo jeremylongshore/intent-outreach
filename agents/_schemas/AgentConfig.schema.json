@@ -1,81 +1,71 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pipelinepilot.io/schemas/AgentConfig.schema.json",
-  "title": "ADK Agent Configuration",
-  "description": "Validates agent YAML files for PipelinePilot",
+  "$id": "https://pipelinepilot.local/AgentConfig.schema.json",
   "type": "object",
-  "required": ["$schema", "id", "name", "role", "model"],
   "additionalProperties": false,
+  "required": ["$schema", "id", "name", "role", "model", "description", "instructions", "output_schema", "tools", "routing"],
   "properties": {
-    "$schema": {
-      "type": "string",
-      "format": "uri",
-      "description": "JSON Schema URI for validation"
+    "$schema": { "const": "./_schemas/AgentConfig.schema.json" },
+    "id": { "type": "string", "pattern": "^agent\\.(orchestrator|research|enrich|outreach)$" },
+    "name": { "type": "string" },
+    "role": { "type": "string", "enum": ["orchestrator","research","enrich","outreach"] },
+    "model": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 4 },
+    "instructions": { "type": "string", "minLength": 20, "maxLength": 4000 },
+    "examples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["user", "assistant"],
+        "properties": {
+          "user": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "assistant": { "type": "string", "minLength": 1, "maxLength": 4000 }
+        }
+      }
     },
-    "id": {
-      "type": "string",
-      "pattern": "^agent_[0-9]+_[a-z_]+$",
-      "description": "Unique agent identifier (e.g., agent_0_orchestrator)"
-    },
-    "name": {
-      "type": "string",
-      "minLength": 3,
-      "maxLength": 100,
-      "description": "Human-readable agent name"
-    },
-    "role": {
-      "type": "string",
-      "minLength": 10,
-      "maxLength": 500,
-      "description": "Agent's purpose and responsibilities"
-    },
-    "model": {
-      "type": "string",
-      "enum": ["gemini-2.5-flash", "gemini-1.5-pro", "gemini-1.5-flash"],
-      "description": "Vertex AI model to use"
-    },
+    "output_schema": { "$ref": "https://json-schema.org/draft/2020-12/schema" },
     "tools": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["type", "path"],
+        "additionalProperties": false,
+        "required": ["id","type","ref","input_schema","output_schema"],
         "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["function_tool"]
-          },
-          "path": {
-            "type": "string",
-            "pattern": "^(connectors/.+\\.tool\\.(ts|js)|newsfeed-demo/.+\\.(ts|js))$"
-          }
+          "id": { "type": "string", "minLength": 2 },
+          "type": { "const": "FunctionTool" },
+          "ref": { "type": "string", "pattern": "^(connectors|newsfeed-demo)/.+\\.(ts)#.+$" },
+          "input_schema": { "type": "object" },
+          "output_schema": { "type": "object" }
         }
-      },
-      "description": "List of FunctionTools this agent can use"
+      }
     },
     "routing": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["agent", "mode"],
-        "properties": {
-          "agent": {
-            "type": "string",
-            "pattern": "^agent_[0-9]+_[a-z_]+$"
-          },
-          "mode": {
-            "type": "string",
-            "enum": ["sequential", "parallel"]
-          },
-          "condition": {
-            "type": "string"
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type","steps"],
+      "properties": {
+        "type": { "type": "string", "enum": ["sequential"] },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["call_agent"],
+            "properties": { "call_agent": { "type": "string" } }
+          }
+        },
+        "parallel": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["call_function"],
+            "properties": { "call_function": { "type": "string", "pattern": "^newsfeed-demo/.+\\.ts#.+$" } }
           }
         }
-      },
-      "description": "Routing to other agents (orchestrator only)"
+      }
     },
-    "output_schema": {
-      "type": "object",
-      "description": "JSON Schema for agent output"
-    }
+    "policies": { "type": "object" }
   }
 }

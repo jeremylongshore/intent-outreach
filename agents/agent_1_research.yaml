@@ -1,46 +1,90 @@
-$schema: "https://pipelinepilot.io/schemas/AgentConfig.schema.json"
-id: agent_1_research
-name: Research Agent
-role: >
-  You discover net-new leads from Clay and Apollo. For each company domain,
-  you call clay.company_lookup and apollo.person_search to gather contact data.
-  Return a structured list of leads with fit_score and notes explaining why
-  each prospect matches the ICP.
-model: gemini-2.5-flash
-
-tools:
-  - type: function_tool
-    path: connectors/clay.tool.ts
-  - type: function_tool
-    path: connectors/apollo.tool.ts
-
+$schema: ./_schemas/AgentConfig.schema.json
+id: agent.research
+name: Research
+role: research
+model: publishers/google/models/gemini-2.0-pro-exp
+description: Collects initial company and contact hypotheses from paid providers. No crawling.
+instructions: |
+  Input: ICP description and/or a list of company domains.
+  Goal: produce up to 25 candidate leads with website, fit_score, and short notes.
+  Tools available: clay.company_lookup, apollo.person_search.
+  Rules:
+    - Use Clay for company canonicalization by domain.
+    - Use Apollo to find 1–2 likely SDR targets per company when requested.
+    - Do not invent unavailable data. Omit optional fields rather than guess.
+    - Conform exactly to output_schema. Keep notes <= 500 chars per lead.
+examples:
+  - user: |
+      ICP: Mid-market SaaS. Titles: RevOps, Sales Operations. Domains:
+      ["https://acme.io","https://contoso.com"]
+    assistant: |
+      {
+        "leads": [
+          {
+            "company": "Acme Inc",
+            "website": "https://acme.io",
+            "fit_score": 82,
+            "notes": "Mid-market SaaS. Likely uses Salesforce + Outreach. RevOps head present."
+          },
+          {
+            "company": "Contoso",
+            "website": "https://contoso.com",
+            "fit_score": 77,
+            "notes": "SaaS with 300–600 employees. SDR team active on LinkedIn."
+          }
+        ]
+      }
+  - user: |
+      Find one RevOps contact at "https://acme.io" using Apollo.
+    assistant: |
+      {
+        "leads": [
+          {
+            "company": "Acme Inc",
+            "website": "https://acme.io",
+            "fit_score": 82,
+            "notes": "Primary contact: RevOps Director identified via Apollo."
+          }
+        ]
+      }
 output_schema:
   type: object
   additionalProperties: false
+  required: [leads]
   properties:
     leads:
       type: array
+      maxItems: 25
       items:
         type: object
         additionalProperties: false
+        required: [company, website, fit_score, notes]
         properties:
-          domain:
-            type: string
-            format: hostname
-          company_name:
-            type: string
-          contact_name:
-            type: string
-          contact_email:
-            type: string
-            format: email
-          fit_score:
-            type: integer
-            minimum: 0
-            maximum: 10
-          notes:
-            type: string
-            minLength: 20
-            maxLength: 300
-        required: [domain, company_name, contact_name, contact_email, fit_score, notes]
-  required: [leads]
+          company: { type: string, minLength: 2, maxLength: 120 }
+          website: { type: string, format: uri }
+          fit_score: { type: integer, minimum: 0, maximum: 100 }
+          notes: { type: string, minLength: 0, maxLength: 500 }
+tools:
+  - id: clay_company_lookup
+    type: FunctionTool
+    ref: connectors/clay.tool.ts#tool
+    input_schema:
+      type: object
+      properties: { domain: { type: string } }
+      required: [domain]
+    output_schema:
+      type: object
+      properties: { ok: { type: boolean }, company: { type: object }, error: { type: string } }
+  - id: apollo_person_search
+    type: FunctionTool
+    ref: connectors/apollo.tool.ts#tool
+    input_schema:
+      type: object
+      properties: { full_name: { type: string }, company: { type: string } }
+      required: [full_name, company]
+    output_schema: { type: object }
+routing:
+  type: sequential
+  steps: []
+policies:
+  max_output_tokens: 1024
