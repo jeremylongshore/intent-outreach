@@ -1,0 +1,103 @@
+name: Deploy to Vertex AI
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    name: Validate Agents
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ARV validation
+        run: npm run arv
+
+      - name: Run NewsFeed demo
+        run: npm run demo
+
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Vertex AI
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+
+      - name: Install ADK CLI
+        run: |
+          pip install google-agent-sdk
+          adk --version
+
+      - name: Deploy Orchestrator Agent
+        run: |
+          adk deploy agent_engine \
+            --project="${{ secrets.GCP_PROJECT }}" \
+            --region="${{ secrets.GCP_REGION }}" \
+            --staging_bucket="vertex-${{ secrets.GCP_PROJECT }}-staging" \
+            agents/agent_0_orchestrator.yaml
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+          GCP_REGION: ${{ secrets.GCP_REGION }}
+
+      - name: Deploy Research Agent
+        run: |
+          adk deploy agent_engine \
+            --project="${{ secrets.GCP_PROJECT }}" \
+            --region="${{ secrets.GCP_REGION }}" \
+            --staging_bucket="vertex-${{ secrets.GCP_PROJECT }}-staging" \
+            agents/agent_1_research.yaml
+
+      - name: Deploy Enrich Agent
+        run: |
+          adk deploy agent_engine \
+            --project="${{ secrets.GCP_PROJECT }}" \
+            --region="${{ secrets.GCP_REGION }}" \
+            --staging_bucket="vertex-${{ secrets.GCP_PROJECT }}-staging" \
+            agents/agent_2_enrich.yaml
+
+      - name: Deploy Outreach Agent
+        run: |
+          adk deploy agent_engine \
+            --project="${{ secrets.GCP_PROJECT }}" \
+            --region="${{ secrets.GCP_REGION }}" \
+            --staging_bucket="vertex-${{ secrets.GCP_PROJECT }}-staging" \
+            agents/agent_3_outreach.yaml
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Deployment complete!"
+          echo "Project: ${{ secrets.GCP_PROJECT }}"
+          echo "Region: ${{ secrets.GCP_REGION }}"
+          echo "Agents deployed: 4 (orchestrator, research, enrich, outreach)"
