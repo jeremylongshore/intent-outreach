@@ -1,0 +1,2 @@
+rg: No files were searched, which means ripgrep probably applied a filter you didn't expect.
+Running with --debug will show why files are being skipped.
