@@ -1,0 +1,53 @@
+name: Policy Enforcement
+on: [pull_request]
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Check for stub orchestrator
+        run: |
+          if rg -n 'status.*STUB' src/agents/orchestrator.py; then
+            echo "❌ ERROR: Stub orchestrator not allowed"
+            echo "Orchestrator must execute workflow in Agent Engine, not return stub"
+            exit 1
+          fi
+          echo "✅ No stub orchestrator found"
+
+      - name: Check for YAML agent definitions
+        run: |
+          if rg -g '!.github/**' -l '\.ya?ml$' | grep -E '^(agents/|src/agents/)' ; then
+            echo "❌ ERROR: Agent YAML files banned"
+            echo "All agents must use Python ADK only"
+            exit 1
+          fi
+          echo "✅ No YAML agent definitions found"
+
+      - name: Check for forbidden frameworks
+        run: |
+          if rg -n 'from langchain|import langchain' src/; then
+            echo "❌ ERROR: LangChain imports found"
+            exit 1
+          fi
+          if rg -n 'llama_index|genkit' src/; then
+            echo "❌ ERROR: LlamaIndex or Genkit found"
+            exit 1
+          fi
+          if rg -n 'OPENAI_API_KEY' src/ .env* 2>/dev/null; then
+            echo "❌ ERROR: OpenAI API key found"
+            exit 1
+          fi
+          echo "✅ No forbidden frameworks found"
+
+      - name: Verify Agent Engine integration
+        run: |
+          if ! rg -q 'from google.adk' src/agents/orchestrator.py; then
+            echo "❌ ERROR: Orchestrator must use google.adk.agents.Agent"
+            exit 1
+          fi
+          echo "✅ Agent Engine integration verified"

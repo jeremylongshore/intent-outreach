@@ -1,98 +1,73 @@
-"""Orchestrator Agent - Coordinates Research → Enrich → Outreach workflow."""
+"""
+PipelinePilot Orchestrator Agent
 
-import os
-import json
-from typing import Any, Dict, List
-import vertexai
-from vertexai.generative_models import GenerativeModel
-from vertexai.reasoning_engines._reasoning_engines import Queryable
+Single agent that orchestrates the entire pipeline:
+Research → Enrich → Outreach
+
+Uses all 4 tools directly to avoid multi-agent complexity.
+"""
+
+from google.adk.agents import Agent
+from google.genai import types
+from .tools import clay_lookup, apollo_people, clearbit_enrich, crunchbase_company
 
 
-class OrchestratorAgent(Queryable):
-    """Queryable Orchestrator Agent that coordinates sub-agents."""
+ORCHESTRATOR_INSTRUCTION = """
+You are the PipelinePilot Orchestrator. You coordinate the entire lead generation pipeline.
 
-    def __init__(self, project_id: str = None, location: str = "us-central1"):
-        """Initialize Orchestrator Agent.
+Your workflow:
+1. **Research Phase**: Use clay_lookup to get company data and apollo_people to find contacts
+2. **Enrich Phase**: Use clearbit_enrich for contact details and crunchbase_company for funding data
+3. **Outreach Phase**: Draft personalized outreach messages based on enriched data
 
-        Args:
-            project_id: GCP project ID (defaults to env var PROJECT_ID)
-            location: GCP location (defaults to us-central1)
-        """
-        self.project_id = project_id or os.getenv("PROJECT_ID", "pipelinepilot-prod")
-        self.location = location or os.getenv("LOCATION", "us-central1")
-
-        # Initialize Vertex AI
-        vertexai.init(project=self.project_id, location=self.location)
-
-        # Create generative model for orchestration logic
-        self.model = GenerativeModel(
-            "gemini-2.0-flash-exp",
-            system_instruction="""You are the Orchestrator Agent for PipelinePilot.
-
-You coordinate a three-step SDR workflow:
-1. Research Agent: Discovers companies and contacts (Clay, Apollo)
-2. Enrich Agent: Adds firmographics and technographics (Clearbit, Crunchbase)
-3. Outreach Agent: Generates personalized messages
-
-Input: Campaign with ICP description and optional domain list.
-
-Workflow:
-1. Call Research Agent with ICP + domains → get leads[]
-2. Call Enrich Agent with leads[] → get enriched_leads[]
-3. Call Outreach Agent with enriched_leads[] → get messages[]
-
-Output: Complete campaign results with all three stages.
+Input format:
+{
+  "icp": "Target customer profile (e.g., 'B2B SaaS companies')",
+  "domains": ["company1.com", "company2.com"],
+  "email": "Primary contact email (optional)"
+}
 
 Output format (JSON):
 {
-  "campaign_id": "string",
-  "status": "COMPLETED" | "PARTIAL" | "FAILED",
-  "leads": [...],
-  "enriched_leads": [...],
-  "messages": [...]
+  "steps": ["Research: Company X", "Enrich: Contact Y", "Draft: Email Z"],
+  "leads": [{
+    "company": "Company Name",
+    "domain": "example.com",
+    "industry": "SaaS",
+    "size": "50-100",
+    "funding": "$10M Series A"
+  }],
+  "contacts": [{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "title": "VP Sales",
+    "linkedin": "https://linkedin.com/in/johndoe"
+  }],
+  "outreach": {
+    "subject": "Email subject line",
+    "body": "Personalized email body",
+    "next_steps": ["Follow up in 3 days", "Connect on LinkedIn"]
+  },
+  "next_action": "Send emails or schedule follow-ups"
 }
-"""
-        )
 
-        # Note: Sub-agents will be called via their deployed endpoints
-        # This is the correct pattern for Agent Engine - each agent deploys independently
-        self.research_engine_id = os.getenv("RESEARCH_ENGINE_ID")
-        self.enrich_engine_id = os.getenv("ENRICH_ENGINE_ID")
-        self.outreach_engine_id = os.getenv("OUTREACH_ENGINE_ID")
-
-    def query(self, **kwargs) -> Dict[str, Any]:
-        """Execute orchestrated workflow by calling deployed sub-agents.
-
-        Args:
-            **kwargs: Query parameters including:
-                - campaign_id: Campaign identifier
-                - icp: ICP description
-                - domains: List of company domains
-
-        Returns:
-            Dict with complete campaign results
-        """
-        campaign_id = kwargs.get("campaign_id", "unknown")
-        icp = kwargs.get("icp", "")
-        domains = kwargs.get("domains", [])
-
-        # For MVP: Return stub workflow structure
-        # Firebase Functions will call individual agents via their endpoints
-        # and aggregate results there (better separation of concerns)
-
-        return {
-            "campaign_id": campaign_id,
-            "status": "STUB",
-            "message": "Orchestrator deployed successfully. Firebase Functions will coordinate agent calls.",
-            "workflow": {
-                "step_1": "Research Agent (call via RESEARCH_ENGINE_ID endpoint)",
-                "step_2": "Enrich Agent (call via ENRICH_ENGINE_ID endpoint)",
-                "step_3": "Outreach Agent (call via OUTREACH_ENGINE_ID endpoint)"
-            },
-            "note": "Each agent deployed independently. Use Firebase Functions to orchestrate."
-        }
+Guidelines:
+- Research all provided domains thoroughly
+- Enrich contacts with both Clearbit and Crunchbase data
+- Personalize outreach based on company size, industry, and funding
+- Always provide actionable next steps
+""".strip()
 
 
-def create_orchestrator_agent(project_id: str = None, location: str = "us-central1") -> OrchestratorAgent:
-    """Factory function to create Orchestrator Agent instance."""
-    return OrchestratorAgent(project_id=project_id, location=location)
+# Create orchestrator agent with all 4 tools
+orchestrator_agent = Agent(
+    model="gemini-2.0-flash-exp",
+    name="pipelinepilot-orchestrator",
+    instruction=ORCHESTRATOR_INSTRUCTION,
+    generate_content_config=types.GenerateContentConfig(
+        temperature=0.2,
+        max_output_tokens=2000,
+        response_mime_type="application/json"
+    ),
+    tools=[clay_lookup, apollo_people, clearbit_enrich, crunchbase_company],
+)
