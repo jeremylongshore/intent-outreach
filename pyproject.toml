@@ -1,0 +1,39 @@
+[project]
+name = "pipelinepilot"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "google-cloud-aiplatform[agent_engines,adk]>=1.112.0",
+  "google-genai>=0.6.0",
+  "google-cloud-secret-manager>=2.20.0",
+  "google-cloud-logging>=3.10.0",
+  "httpx>=0.27.0",
+  "pydantic>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.24.0",
+  "black>=24.0.0",
+  "ruff>=0.8.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ['py310', 'py311', 'py312']
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+select = ["E", "F", "I"]
+ignore = []
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
