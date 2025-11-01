@@ -1,0 +1,79 @@
+name: ADK Guard
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Fail on YAML agent definitions
+        run: |
+          set -e
+          # Check for YAML agent files (excluding GitHub Actions workflows)
+          if rg -n "(^|/)(agent|agents)\.ya?ml$" -g '!**/.github/**' -g '!**/venv*/**' -g '!**/node_modules/**'; then
+            echo "❌ YAML agent definitions detected"
+            echo "PipelinePilot uses ADK Python agents only. No YAML agent configs allowed."
+            exit 1
+          fi
+          echo "✅ No YAML agent definitions found"
+
+      - name: Fail on banned libraries
+        run: |
+          set -e
+          # Check for banned imports
+          if rg -n "from\s+langchain|import\s+langchain|llama_index|genkit" -g '!**/venv*/**' -g '!**/node_modules/**'; then
+            echo "❌ Banned libraries detected (langchain, llama_index, genkit)"
+            echo "PipelinePilot uses Vertex AI Agent Engine with ADK only."
+            exit 1
+          fi
+          echo "✅ No banned libraries found"
+
+      - name: Check for AgentBuilder.from_yaml
+        run: |
+          set -e
+          if rg -n "AgentBuilder\.from_yaml" -g '!**/venv*/**' -g '!**/node_modules/**'; then
+            echo "❌ AgentBuilder.from_yaml detected"
+            echo "Use ADK Python agents instead of YAML-based agent builders."
+            exit 1
+          fi
+          echo "✅ No YAML agent builders found"
+
+      - name: Verify ADK usage
+        run: |
+          set -e
+          # Verify that agent files exist in src/agents/
+          if [ ! -d "src/agents" ]; then
+            echo "❌ src/agents/ directory not found"
+            echo "ADK Python agents must be in src/agents/"
+            exit 1
+          fi
+
+          # Check for required agent files
+          for agent in research enrich outreach orchestrator; do
+            if [ ! -f "src/agents/${agent}.py" ]; then
+              echo "❌ Missing required agent: src/agents/${agent}.py"
+              exit 1
+            fi
+          done
+
+          echo "✅ All required ADK agents present"
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ ADK Guard passed!"
+          echo ""
+          echo "All checks passed:"
+          echo "  - No YAML agent definitions"
+          echo "  - No banned libraries (langchain, llama_index, genkit)"
+          echo "  - No YAML agent builders"
+          echo "  - All ADK agents present"

@@ -1,0 +1,145 @@
+name: ARV Gate (Automated Review & Validation)
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  arv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+
+      - name: ADK import check
+        run: |
+          python -c "
+import importlib
+import sys
+
+required_modules = [
+    'google.cloud.aiplatform',
+    'vertexai.preview.reasoning_engines',
+    'google.cloud.secretmanager',
+]
+
+for module in required_modules:
+    try:
+        importlib.import_module(module)
+        print(f'✅ {module}')
+    except ImportError as e:
+        print(f'❌ {module}: {e}')
+        sys.exit(1)
+
+print('')
+print('✅ All required ADK modules importable')
+"
+
+      - name: Verify agent structure
+        run: |
+          python -c "
+from src.agents import (
+    create_research_agent,
+    create_enrich_agent,
+    create_outreach_agent,
+    create_orchestrator_agent,
+)
+
+print('✅ All agent creators importable')
+
+# Verify agent configs
+research = create_research_agent()
+enrich = create_enrich_agent()
+outreach = create_outreach_agent()
+orchestrator = create_orchestrator_agent()
+
+print('✅ All agent configs created successfully')
+"
+
+      - name: Verify tool implementations
+        run: |
+          python -c "
+from src.tools import get_secret, get_provider_keys
+
+print('✅ Secret Manager tools importable')
+
+# Verify async tool functions exist
+from src.tools.clay import clay_company_lookup
+from src.tools.apollo import apollo_person_search
+from src.tools.clearbit import clearbit_enrich
+from src.tools.crunchbase import crunchbase_company
+
+print('✅ All provider tools importable')
+"
+
+      - name: Code style check (black)
+        run: |
+          pip install black
+          black --check src/ || {
+            echo "❌ Code style check failed. Run 'black src/' to fix."
+            exit 1
+          }
+          echo "✅ Code style check passed"
+
+      - name: Linting (ruff)
+        run: |
+          pip install ruff
+          ruff check src/ || {
+            echo "❌ Linting failed. Run 'ruff check src/ --fix' to fix."
+            exit 1
+          }
+          echo "✅ Linting passed"
+
+      - name: Type checking (mypy) [optional]
+        continue-on-error: true
+        run: |
+          pip install mypy
+          mypy src/ || echo "⚠️  Type check warnings (non-blocking)"
+
+      - name: Unit tests [placeholder]
+        run: |
+          # TODO: Implement unit tests for agents and tools
+          echo "⚠️  Unit tests not yet implemented"
+          echo "   Create tests in tests/ directory"
+
+      - name: Tool contract tests [placeholder]
+        run: |
+          # TODO: Implement JSON schema contract tests for tool inputs/outputs
+          echo "⚠️  Tool contract tests not yet implemented"
+          echo "   Validate tool schemas with AJV or similar"
+
+      - name: Golden tests [placeholder]
+        run: |
+          # TODO: Implement golden tests for agent outputs
+          echo "⚠️  Golden tests not yet implemented"
+          echo "   Create expected output fixtures for regression testing"
+
+      - name: E2E simulation [placeholder]
+        run: |
+          # TODO: Implement end-to-end simulation with frozen fixtures
+          echo "⚠️  E2E simulation not yet implemented"
+          echo "   Test full workflow: Research → Enrich → Outreach"
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ ARV Gate passed!"
+          echo ""
+          echo "Checks completed:"
+          echo "  ✅ ADK imports validated"
+          echo "  ✅ Agent structure verified"
+          echo "  ✅ Tool implementations verified"
+          echo "  ✅ Code style (black)"
+          echo "  ✅ Linting (ruff)"
+          echo "  ⚠️  Unit tests (not implemented)"
+          echo "  ⚠️  Contract tests (not implemented)"
+          echo "  ⚠️  Golden tests (not implemented)"
+          echo "  ⚠️  E2E simulation (not implemented)"
