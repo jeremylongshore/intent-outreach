@@ -1,7 +1,6 @@
 """Research Agent - Company and contact discovery using Clay and Apollo."""
 
 from google.cloud.aiplatform_v1beta1.types import Tool, FunctionDeclaration, Schema, Type
-from vertexai.preview import agent_engines
 import os
 
 # Tool declarations for Research Agent

@@ -1,6 +1,7 @@
 {
   "name": "pipelinepilot-functions",
   "type": "module",
+  "main": "lib/index.js",
   "engines": { "node": "20" },
   "scripts": {
     "build": "tsc -p .",

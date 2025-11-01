@@ -1,6 +1,6 @@
 # Document Inventory - pipelinepilot
 
-**Generated:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+**Generated:** 2025-10-31T22:31:00Z
 **Standard:** Document Filing System v2.0
 **Structure:** Flat directory, chronological sequence
 
@@ -8,16 +8,15 @@
 
 ## Documents by Category
 
-### PP - Product & Planning (2 documents)
+### PP - Product & Planning (3 documents)
 
 - `001-PP-PROJ-project-overview.md`
 - `002-PP-PROD-pipelinepilot-prd.md`
 - `005-PP-LEAS-leasing-model.md`
 
-### AT - Architecture & Technical (2 documents)
+### AT - Architecture & Technical (1 document)
 
 - `003-AT-ARCH-system-architecture.md`
-- `004-DR-TECH-google-agent-frameworks-comparison.md`
 
 ### OD - Operations & Deployment (2 documents)
 
@@ -30,9 +29,11 @@
 - `008-AA-STAT-current-project-status.md`
 - `009-AA-REVI-production-deployment-complete.md`
 
-### DR - Documentation & Reference (1 document)
+### DR - Documentation & Reference (3 documents)
 
+- `004-DR-TECH-google-agent-frameworks-comparison.md`
 - `011-DR-REFF-quick-reference.md`
+- `012-DR-EXEC-agent-cards-executive-brief.md` ← NEW
 
 ---
 
@@ -49,6 +50,7 @@
 - `009-AA-REVI-production-deployment-complete.md`
 - `010-OD-INFR-gcp-setup.md`
 - `011-DR-REFF-quick-reference.md`
+- `012-DR-EXEC-agent-cards-executive-brief.md` ← NEW
 
 ---
 
@@ -93,5 +95,5 @@
 
 ---
 
-**Last Updated:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-**Total Documents:** 11 in root, 3 in subdirectories (adr/, reports/)
+**Last Updated:** 2025-10-31T22:31:00Z
+**Total Documents:** 12 in root, 3 in subdirectories (adr/, reports/)
