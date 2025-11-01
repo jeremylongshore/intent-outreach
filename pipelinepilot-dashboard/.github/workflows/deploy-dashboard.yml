@@ -1,0 +1,47 @@
+name: Deploy Dashboard
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'dashboard/**'
+      - 'functions/**'
+      - 'firebase.json'
+      - '.firebaserc'
+      - 'firestore.rules'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm i -g firebase-tools
+
+      - name: Auth to GCP (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: pipelinepilot-core@pipelinepilot-prod.iam.gserviceaccount.com
+
+      - name: Build Next static site
+        working-directory: dashboard
+        run: |
+          npm ci
+          cp .env.local.example .env.local
+          npm run build
+
+      - name: Build functions
+        working-directory: functions
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy hosting + functions + rules
+        run: |
+          firebase deploy --only hosting,functions,firestore:rules --project pipelinepilot-prod

@@ -1,0 +1,8 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+nav { display:flex; gap:12px; padding:12px; border-bottom:1px solid #e5e5e5; }
+button { padding:8px 12px; cursor:pointer; }
+input, textarea { width:100%; padding:8px; margin:6px 0; }
+.card { border:1px solid #e5e5e5; border-radius:8px; padding:12px; }
+.grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
