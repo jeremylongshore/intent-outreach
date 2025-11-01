@@ -6,6 +6,8 @@
   "description": "ADK-based SDR orchestration with Vertex AI Agent Engine + Firestore",
   "scripts": {
     "arv": "node scripts/validate_arv.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
     "enable:firestore": "bash scripts/enable_firestore.sh",
     "deploy:agents": "bash scripts/deploy_agents.sh",
     "demo": "tsx newsfeed-demo/demo_runner.ts"

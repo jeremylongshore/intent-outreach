@@ -12,8 +12,10 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   },
-  "include": ["src", "schemas", "agents", "tools", "providers", "scripts"],
+  "include": ["connectors/**/*.ts", "newsfeed-demo/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
