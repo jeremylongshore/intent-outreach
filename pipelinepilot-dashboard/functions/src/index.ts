@@ -1,11 +1,12 @@
-import * as admin from 'firebase-admin';
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import corsLib from 'cors';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 
-admin.initializeApp();
-const db = admin.firestore();
+initializeApp();
+const db = getFirestore();
 const cors = corsLib({ origin: [/pipelinepilot-prod\.web\.app$/, /localhost:\d+/], credentials: true });
 const secrets = new SecretManagerServiceClient();
 const PROJECT = process.env.GCLOUD_PROJECT || 'pipelinepilot-prod';
@@ -46,9 +47,9 @@ export const api = onRequest({ region: REGION }, async (req, res) => {
       if (req.method === 'POST' && req.path === '/campaigns/start') {
         const { id } = req.body || {};
         if (!id) return res.status(400).json({ ok:false, error:'missing_id' });
-        await db.collection('campaigns').doc(id).set({ status:'RUNNING', startedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
+        await db.collection('campaigns').doc(id).set({ status:'RUNNING', startedAt: FieldValue.serverTimestamp() }, { merge:true });
         // enqueue processing (function below will pick it up)
-        await db.collection('queues').doc(id).set({ campaignId:id, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+        await db.collection('queues').doc(id).set({ campaignId:id, createdAt: FieldValue.serverTimestamp() });
         return res.json({ ok:true });
       }
 
@@ -79,7 +80,7 @@ export const runQueuedCampaign = onDocumentCreated({ region: REGION, document: '
     const batch = db.batch();
     for (const l of leads) {
       const ref = campRef.collection('leads').doc();
-      batch.set(ref, { ...l, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+      batch.set(ref, { ...l, createdAt: FieldValue.serverTimestamp() });
     }
     await batch.commit();
 
@@ -87,7 +88,7 @@ export const runQueuedCampaign = onDocumentCreated({ region: REGION, document: '
     const eBatch = db.batch();
     for (const l of leads) {
       const ref = campRef.collection('enriched_leads').doc();
-      eBatch.set(ref, { ...l, employees: 200, tech: ['GCP','Firebase'], createdAt: admin.firestore.FieldValue.serverTimestamp() });
+      eBatch.set(ref, { ...l, employees: 200, tech: ['GCP','Firebase'], createdAt: FieldValue.serverTimestamp() });
     }
     await eBatch.commit();
 
@@ -95,11 +96,11 @@ export const runQueuedCampaign = onDocumentCreated({ region: REGION, document: '
     const mBatch = db.batch();
     for (const l of leads) {
       const ref = campRef.collection('messages').doc();
-      mBatch.set(ref, { to: l.contact, subject: `Quick idea for ${l.domain}`, body: `Hi, noticed ${l.domain} uses GCP. We can enrich SDR data and draft outreach in minutes.`, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+      mBatch.set(ref, { to: l.contact, subject: `Quick idea for ${l.domain}`, body: `Hi, noticed ${l.domain} uses GCP. We can enrich SDR data and draft outreach in minutes.`, createdAt: FieldValue.serverTimestamp() });
     }
     await mBatch.commit();
 
-    await campRef.set({ status:'DONE', finishedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    await campRef.set({ status:'DONE', finishedAt: FieldValue.serverTimestamp() }, { merge:true });
   } catch (e) {
     console.error(e);
     await campRef.set({ status:'ERROR' }, { merge:true });

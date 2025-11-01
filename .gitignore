@@ -11,3 +11,19 @@ coverage
 .terraform.lock.hcl
 terraform.tfstate*
 .gcloudignore
+
+# Python
+venv/
+venv-deploy/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Next.js
+.next/
+out/
+
+# Firebase
+.firebase/
