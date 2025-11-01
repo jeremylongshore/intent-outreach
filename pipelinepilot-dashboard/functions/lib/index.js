@@ -1,20 +1,17 @@
-import { initializeApp } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { onRequest } from 'firebase-functions/v2/https';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
 import corsLib from 'cors';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
-initializeApp();
-const db = getFirestore();
+admin.initializeApp();
+const db = admin.firestore();
 const cors = corsLib({ origin: [/pipelinepilot-prod\.web\.app$/, /localhost:\d+/], credentials: true });
 const secrets = new SecretManagerServiceClient();
 const PROJECT = process.env.GCLOUD_PROJECT || 'pipelinepilot-prod';
-const REGION = 'us-central1';
 const ALLOWED = new Set([
     'CLAY_API_KEY', 'APOLLO_API_KEY', 'CLEARBIT_API_KEY', 'CRUNCHBASE_API_KEY',
     'SALESNAV_COOKIE', 'SALESNAV_TOKEN', 'ZOOMINFO_API_KEY'
 ]);
-export const api = onRequest({ region: REGION }, async (req, res) => {
+export const api = functions.https.onRequest(async (req, res) => {
     cors(req, res, async () => {
         try {
             if (req.method === 'POST' && req.path === '/keys/set') {
@@ -54,9 +51,9 @@ export const api = onRequest({ region: REGION }, async (req, res) => {
                 const { id } = req.body || {};
                 if (!id)
                     return res.status(400).json({ ok: false, error: 'missing_id' });
-                await db.collection('campaigns').doc(id).set({ status: 'RUNNING', startedAt: FieldValue.serverTimestamp() }, { merge: true });
+                await db.collection('campaigns').doc(id).set({ status: 'RUNNING', startedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
                 // enqueue processing (function below will pick it up)
-                await db.collection('queues').doc(id).set({ campaignId: id, createdAt: FieldValue.serverTimestamp() });
+                await db.collection('queues').doc(id).set({ campaignId: id, createdAt: admin.firestore.FieldValue.serverTimestamp() });
                 return res.json({ ok: true });
             }
             return res.status(404).json({ ok: false, error: 'not_found' });
@@ -68,8 +65,8 @@ export const api = onRequest({ region: REGION }, async (req, res) => {
     });
 });
 // Queue processor: stub wires to Agent Engine when available
-export const runQueuedCampaign = onDocumentCreated({ region: REGION, document: 'queues/{id}' }, async (event) => {
-    const id = event.params.id;
+export const runQueuedCampaign = functions.firestore.document('queues/{id}').onCreate(async (snapshot, context) => {
+    const id = context.params.id;
     const campRef = db.collection('campaigns').doc(id);
     const campSnap = await campRef.get();
     if (!campSnap.exists)
@@ -85,24 +82,24 @@ export const runQueuedCampaign = onDocumentCreated({ region: REGION, document: '
         const batch = db.batch();
         for (const l of leads) {
             const ref = campRef.collection('leads').doc();
-            batch.set(ref, { ...l, createdAt: FieldValue.serverTimestamp() });
+            batch.set(ref, { ...l, createdAt: admin.firestore.FieldValue.serverTimestamp() });
         }
         await batch.commit();
         // Enriched
         const eBatch = db.batch();
         for (const l of leads) {
             const ref = campRef.collection('enriched_leads').doc();
-            eBatch.set(ref, { ...l, employees: 200, tech: ['GCP', 'Firebase'], createdAt: FieldValue.serverTimestamp() });
+            eBatch.set(ref, { ...l, employees: 200, tech: ['GCP', 'Firebase'], createdAt: admin.firestore.FieldValue.serverTimestamp() });
         }
         await eBatch.commit();
         // Messages
         const mBatch = db.batch();
         for (const l of leads) {
             const ref = campRef.collection('messages').doc();
-            mBatch.set(ref, { to: l.contact, subject: `Quick idea for ${l.domain}`, body: `Hi, noticed ${l.domain} uses GCP. We can enrich SDR data and draft outreach in minutes.`, createdAt: FieldValue.serverTimestamp() });
+            mBatch.set(ref, { to: l.contact, subject: `Quick idea for ${l.domain}`, body: `Hi, noticed ${l.domain} uses GCP. We can enrich SDR data and draft outreach in minutes.`, createdAt: admin.firestore.FieldValue.serverTimestamp() });
         }
         await mBatch.commit();
-        await campRef.set({ status: 'DONE', finishedAt: FieldValue.serverTimestamp() }, { merge: true });
+        await campRef.set({ status: 'DONE', finishedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     }
     catch (e) {
         console.error(e);

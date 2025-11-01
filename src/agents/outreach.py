@@ -1,12 +1,32 @@
 """Outreach Agent - Personalized message generation for SDR outreach."""
 
 import os
+from typing import Any, Dict, List
+import vertexai
+from vertexai.generative_models import GenerativeModel
+from vertexai.reasoning_engines._reasoning_engines import Queryable
 
-# Outreach Agent configuration (no tools, pure LLM)
-outreach_agent_config = {
-    "display_name": "Outreach Agent",
-    "model": "gemini-2.0-flash",
-    "system_instruction": """You are the Outreach Agent for PipelinePilot.
+
+class OutreachAgent(Queryable):
+    """Queryable Outreach Agent for message generation."""
+
+    def __init__(self, project_id: str = None, location: str = "us-central1"):
+        """Initialize Outreach Agent.
+
+        Args:
+            project_id: GCP project ID (defaults to env var PROJECT_ID)
+            location: GCP location (defaults to us-central1)
+        """
+        self.project_id = project_id or os.getenv("PROJECT_ID", "pipelinepilot-prod")
+        self.location = location or os.getenv("LOCATION", "us-central1")
+
+        # Initialize Vertex AI
+        vertexai.init(project=self.project_id, location=self.location)
+
+        # Create generative model (no tools needed)
+        self.model = GenerativeModel(
+            "gemini-2.0-flash-exp",
+            system_instruction="""You are the Outreach Agent for PipelinePilot.
 
 Input: enriched_leads[] from Enrich Agent.
 Goal: Generate personalized outreach messages.
@@ -33,19 +53,31 @@ Output format (JSON):
 }
 
 Max 25 messages.
-""",
-    "tools": [],  # No tools - pure LLM generation
-    "response_mime_type": "application/json",
-}
+"""
+        )
+
+    def query(self, **kwargs) -> Dict[str, Any]:
+        """Execute outreach message generation.
+
+        Args:
+            **kwargs: Query parameters including:
+                - enriched_leads: List of enriched leads
+
+        Returns:
+            Dict with generated messages
+        """
+        enriched_leads = kwargs.get("enriched_leads", [])
+
+        # Build prompt
+        prompt = f"Generate personalized outreach messages for these {len(enriched_leads)} enriched leads:\n\n{enriched_leads}"
+
+        # Generate response
+        response = self.model.generate_content(prompt)
+
+        # Return response text (should be JSON formatted by the model)
+        return {"result": response.text}
 
 
-def create_outreach_agent():
-    """Create and return the Outreach Agent instance."""
-    from google.cloud import aiplatform
-
-    aiplatform.init(
-        project=os.getenv("PROJECT_ID", "pipelinepilot-prod"),
-        location=os.getenv("LOCATION", "us-central1"),
-    )
-
-    return outreach_agent_config
+def create_outreach_agent(project_id: str = None, location: str = "us-central1") -> OutreachAgent:
+    """Factory function to create Outreach Agent instance."""
+    return OutreachAgent(project_id=project_id, location=location)

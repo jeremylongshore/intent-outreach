@@ -1,18 +1,16 @@
 {
   "name": "pipelinepilot-functions",
-  "type": "module",
   "main": "lib/index.js",
-  "engines": { "node": "20" },
+  "engines": { "node": "18" },
   "scripts": {
     "build": "tsc -p .",
     "deploy": "firebase deploy --only functions"
   },
   "dependencies": {
-    "firebase-admin": "^12.6.0",
-    "firebase-functions": "^5.0.0",
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0",
     "@google-cloud/secret-manager": "^5.6.0",
-    "cors": "^2.8.5",
-    "node-fetch": "^3.3.2"
+    "cors": "^2.8.5"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

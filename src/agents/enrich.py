@@ -1,46 +1,72 @@
 """Enrich Agent - Firmographic and technographic enrichment using Clearbit and Crunchbase."""
 
-from google.cloud.aiplatform_v1beta1.types import Tool, FunctionDeclaration, Schema, Type
 import os
+from typing import Any, Dict, List
+import vertexai
+from vertexai.generative_models import GenerativeModel, Tool, FunctionDeclaration
+from vertexai.reasoning_engines._reasoning_engines import Queryable
 
-# Tool declarations for Enrich Agent
-clearbit_enrich_tool = Tool(
-    function_declarations=[
-        FunctionDeclaration(
-            name="clearbit_enrich",
-            description="Enrich company data using Clearbit API",
-            parameters=Schema(
-                type=Type.OBJECT,
-                properties={
-                    "domain": Schema(type=Type.STRING, description="Company domain"),
-                },
-                required=["domain"],
-            ),
+
+class EnrichAgent(Queryable):
+    """Queryable Enrich Agent for lead enrichment."""
+
+    def __init__(self, project_id: str = None, location: str = "us-central1"):
+        """Initialize Enrich Agent.
+
+        Args:
+            project_id: GCP project ID (defaults to env var PROJECT_ID)
+            location: GCP location (defaults to us-central1)
+        """
+        self.project_id = project_id or os.getenv("PROJECT_ID", "pipelinepilot-prod")
+        self.location = location or os.getenv("LOCATION", "us-central1")
+
+        # Initialize Vertex AI
+        vertexai.init(project=self.project_id, location=self.location)
+
+        # Define tools
+        self.clearbit_tool = Tool(
+            function_declarations=[
+                FunctionDeclaration(
+                    name="clearbit_enrich",
+                    description="Enrich company data using Clearbit API",
+                    parameters={
+                        "type": "object",
+                        "properties": {
+                            "domain": {
+                                "type": "string",
+                                "description": "Company domain"
+                            }
+                        },
+                        "required": ["domain"]
+                    }
+                )
+            ]
         )
-    ]
-)
 
-crunchbase_company_tool = Tool(
-    function_declarations=[
-        FunctionDeclaration(
-            name="crunchbase_company",
-            description="Look up company information on Crunchbase",
-            parameters=Schema(
-                type=Type.OBJECT,
-                properties={
-                    "query": Schema(type=Type.STRING, description="Company name or domain"),
-                },
-                required=["query"],
-            ),
+        self.crunchbase_tool = Tool(
+            function_declarations=[
+                FunctionDeclaration(
+                    name="crunchbase_company",
+                    description="Look up company information on Crunchbase",
+                    parameters={
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Company name or domain"
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                )
+            ]
         )
-    ]
-)
 
-# Enrich Agent configuration
-enrich_agent_config = {
-    "display_name": "Enrich Agent",
-    "model": "gemini-2.0-flash",
-    "system_instruction": """You are the Enrich Agent for PipelinePilot.
+        # Create generative model with tools
+        self.model = GenerativeModel(
+            "gemini-2.0-flash-exp",
+            tools=[self.clearbit_tool, self.crunchbase_tool],
+            system_instruction="""You are the Enrich Agent for PipelinePilot.
 
 Input: leads[] from Research Agent.
 Goal: Enrich leads with firmographic and technographic data.
@@ -62,19 +88,31 @@ Output format (JSON):
     }
   ]
 }
-""",
-    "tools": [clearbit_enrich_tool, crunchbase_company_tool],
-    "response_mime_type": "application/json",
-}
+"""
+        )
+
+    def query(self, **kwargs) -> Dict[str, Any]:
+        """Execute enrichment query.
+
+        Args:
+            **kwargs: Query parameters including:
+                - leads: List of leads to enrich
+
+        Returns:
+            Dict with enriched leads
+        """
+        leads = kwargs.get("leads", [])
+
+        # Build prompt
+        prompt = f"Enrich the following {len(leads)} leads:\n\n{leads}"
+
+        # Generate response
+        response = self.model.generate_content(prompt)
+
+        # Return response text (should be JSON formatted by the model)
+        return {"result": response.text}
 
 
-def create_enrich_agent():
-    """Create and return the Enrich Agent instance."""
-    from google.cloud import aiplatform
-
-    aiplatform.init(
-        project=os.getenv("PROJECT_ID", "pipelinepilot-prod"),
-        location=os.getenv("LOCATION", "us-central1"),
-    )
-
-    return enrich_agent_config
+def create_enrich_agent(project_id: str = None, location: str = "us-central1") -> EnrichAgent:
+    """Factory function to create Enrich Agent instance."""
+    return EnrichAgent(project_id=project_id, location=location)
