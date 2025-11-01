@@ -1,9 +1,97 @@
-# 000-DOCS INDEX
+# Document Inventory - pipelinepilot
 
-## After-Action Reports
-- 034-AA-REPT-phase-1-after-action-report.md
-- 035-AA-REPT-production-ready-deployment.md
+**Generated:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+**Standard:** Document Filing System v2.0
+**Structure:** Flat directory, chronological sequence
 
-## Quick Links
-- [Phase 1 AAR](034-AA-REPT-phase-1-after-action-report.md) - Initial scaffold and foundation
-- [Production Deployment AAR](035-AA-REPT-production-ready-deployment.md) - Validation, testing, and GitHub deployment
+---
+
+## Documents by Category
+
+### PP - Product & Planning (2 documents)
+
+- `001-PP-PROJ-project-overview.md`
+- `002-PP-PROD-pipelinepilot-prd.md`
+- `005-PP-LEAS-leasing-model.md`
+
+### AT - Architecture & Technical (2 documents)
+
+- `003-AT-ARCH-system-architecture.md`
+- `004-DR-TECH-google-agent-frameworks-comparison.md`
+
+### OD - Operations & Deployment (2 documents)
+
+- `006-OD-CICD-deployment-guide.md`
+- `010-OD-INFR-gcp-setup.md`
+
+### AA - After Action & Review (3 documents)
+
+- `007-AA-DASH-dashboard-deployment-complete.md`
+- `008-AA-STAT-current-project-status.md`
+- `009-AA-REVI-production-deployment-complete.md`
+
+### DR - Documentation & Reference (1 document)
+
+- `011-DR-REFF-quick-reference.md`
+
+---
+
+## Chronological Listing
+
+- `001-PP-PROJ-project-overview.md`
+- `002-PP-PROD-pipelinepilot-prd.md`
+- `003-AT-ARCH-system-architecture.md`
+- `004-DR-TECH-google-agent-frameworks-comparison.md`
+- `005-PP-LEAS-leasing-model.md`
+- `006-OD-CICD-deployment-guide.md`
+- `007-AA-DASH-dashboard-deployment-complete.md`
+- `008-AA-STAT-current-project-status.md`
+- `009-AA-REVI-production-deployment-complete.md`
+- `010-OD-INFR-gcp-setup.md`
+- `011-DR-REFF-quick-reference.md`
+
+---
+
+## By Subdirectory
+
+### adr/ (1 document)
+- `ADR-0001-adopt-vertex-adk.md`
+
+### reports/ (2 documents)
+- `adk_migration_audit.md`
+- `adk_migration_AAR.md`
+
+---
+
+## Quick Reference
+
+**Category Codes:**
+- **PP** = Product & Planning
+- **AT** = Architecture & Technical
+- **DC** = Development & Code
+- **TQ** = Testing & Quality
+- **OD** = Operations & Deployment
+- **LS** = Logs & Status
+- **RA** = Reports & Analysis
+- **MC** = Meetings & Communication
+- **PM** = Project Management
+- **DR** = Documentation & Reference
+- **UC** = User & Customer
+- **BL** = Business & Legal
+- **RL** = Research & Learning
+- **AA** = After Action & Review
+- **WA** = Workflows & Automation
+- **DD** = Data & Datasets
+- **MS** = Miscellaneous
+
+**Document Format:** `NNN-CC-ABCD-description.ext`
+- **NNN** = Sequential number (001-999)
+- **CC** = Category code (2 letters)
+- **ABCD** = Document type (4 letters)
+- **description** = 1-4 words, kebab-case
+- **ext** = File extension
+
+---
+
+**Last Updated:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+**Total Documents:** 11 in root, 3 in subdirectories (adr/, reports/)
