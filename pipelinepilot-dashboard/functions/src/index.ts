@@ -2,12 +2,16 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import corsLib from 'cors';
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import { GoogleAuth } from 'google-auth-library';
+import fetch from 'node-fetch';
 
 admin.initializeApp();
 const db = admin.firestore();
 const cors = corsLib({ origin: [/pipelinepilot-prod\.web\.app$/, /localhost:\d+/], credentials: true });
 const secrets = new SecretManagerServiceClient();
 const PROJECT = process.env.GCLOUD_PROJECT || 'pipelinepilot-prod';
+const REGION = 'us-central1';
+const ORCHESTRATOR_ID = functions.config().agents?.orchestrator_id || '';
 
 const ALLOWED = new Set([
   'CLAY_API_KEY','APOLLO_API_KEY','CLEARBIT_API_KEY','CRUNCHBASE_API_KEY',
@@ -58,7 +62,7 @@ export const api = functions.https.onRequest(async (req, res) => {
   });
 });
 
-// Queue processor: stub wires to Agent Engine when available
+// Queue processor: Call orchestrator agent in Vertex AI Agent Engine
 export const runQueuedCampaign = functions.firestore.document('queues/{id}').onCreate(async (snapshot, context) => {
   const id = context.params.id;
   const campRef = db.collection('campaigns').doc(id);
@@ -67,39 +71,82 @@ export const runQueuedCampaign = functions.firestore.document('queues/{id}').onC
   const camp = campSnap.data() as any;
 
   try {
-    // TODO: Replace stub with Agent Engine call sequence.
-    // 1) Research → write to campaigns/{id}/leads
-    // 2) Enrich → write to campaigns/{id}/enriched_leads
-    // 3) Outreach → write to campaigns/{id}/messages
-    // For now, simulate results so the UI is fully testable.
+    if (!ORCHESTRATOR_ID) {
+      throw new Error('ORCHESTRATOR_ID not configured. Run: firebase functions:config:set agents.orchestrator_id="..."');
+    }
 
-    const leads = camp.domains?.slice(0, 3)?.map((d: string, i: number) => ({ domain: d, contact: `user${i}@${d}`, score: 0.7 + i*0.05 })) || [];
-    const batch = db.batch();
-    for (const l of leads) {
+    // Call orchestrator agent
+    const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
+    const client = await auth.getClient();
+    const accessToken = await client.getAccessToken();
+
+    const url = `https://${REGION}-aiplatform.googleapis.com/v1/${ORCHESTRATOR_ID}:query`;
+    const payload = {
+      class_method: 'query',
+      input: {
+        user_id: 'dashboard',
+        message: `Run campaign.\nICP: ${camp.icp || ''}\nDomains: ${camp.domains?.join(',') || ''}\nPrimary Email: ${camp.email || ''}`
+      }
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Agent Engine query failed: ${response.statusText}`);
+    }
+
+    const result = await response.json() as any;
+
+    // Parse results and write to Firestore
+    const leads = result.leads || [];
+    const contacts = result.contacts || [];
+    const outreach = result.outreach || {};
+
+    // Write leads
+    const leadsBatch = db.batch();
+    for (const lead of leads) {
       const ref = campRef.collection('leads').doc();
-      batch.set(ref, { ...l, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+      leadsBatch.set(ref, { ...lead, createdAt: admin.firestore.FieldValue.serverTimestamp() });
     }
-    await batch.commit();
+    await leadsBatch.commit();
 
-    // Enriched
-    const eBatch = db.batch();
-    for (const l of leads) {
+    // Write contacts
+    const contactsBatch = db.batch();
+    for (const contact of contacts) {
       const ref = campRef.collection('enriched_leads').doc();
-      eBatch.set(ref, { ...l, employees: 200, tech: ['GCP','Firebase'], createdAt: admin.firestore.FieldValue.serverTimestamp() });
+      contactsBatch.set(ref, { ...contact, createdAt: admin.firestore.FieldValue.serverTimestamp() });
     }
-    await eBatch.commit();
+    await contactsBatch.commit();
 
-    // Messages
-    const mBatch = db.batch();
-    for (const l of leads) {
-      const ref = campRef.collection('messages').doc();
-      mBatch.set(ref, { to: l.contact, subject: `Quick idea for ${l.domain}`, body: `Hi, noticed ${l.domain} uses GCP. We can enrich SDR data and draft outreach in minutes.`, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    // Write outreach message
+    if (outreach.subject && outreach.body) {
+      const messageRef = campRef.collection('messages').doc();
+      await messageRef.set({
+        subject: outreach.subject,
+        body: outreach.body,
+        next_steps: outreach.next_steps || [],
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
     }
-    await mBatch.commit();
 
-    await campRef.set({ status:'DONE', finishedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    await campRef.set({
+      status: 'DONE',
+      finishedAt: admin.firestore.FieldValue.serverTimestamp(),
+      agentResult: result
+    }, { merge: true });
+
   } catch (e) {
-    console.error(e);
-    await campRef.set({ status:'ERROR' }, { merge:true });
+    console.error('Campaign execution error:', e);
+    await campRef.set({
+      status: 'ERROR',
+      error: e instanceof Error ? e.message : 'Unknown error'
+    }, { merge: true });
   }
 });

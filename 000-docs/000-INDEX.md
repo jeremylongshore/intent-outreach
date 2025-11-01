@@ -1,99 +1,69 @@
-# Document Inventory - pipelinepilot
+# 000-INDEX - PipelinePilot Documentation Master Index
 
-**Generated:** 2025-10-31T22:31:00Z
-**Standard:** Document Filing System v2.0
-**Structure:** Flat directory, chronological sequence
-
----
-
-## Documents by Category
-
-### PP - Product & Planning (3 documents)
-
-- `001-PP-PROJ-project-overview.md`
-- `002-PP-PROD-pipelinepilot-prd.md`
-- `005-PP-LEAS-leasing-model.md`
-
-### AT - Architecture & Technical (1 document)
-
-- `003-AT-ARCH-system-architecture.md`
-
-### OD - Operations & Deployment (2 documents)
-
-- `006-OD-CICD-deployment-guide.md`
-- `010-OD-INFR-gcp-setup.md`
-
-### AA - After Action & Review (3 documents)
-
-- `007-AA-DASH-dashboard-deployment-complete.md`
-- `008-AA-STAT-current-project-status.md`
-- `009-AA-REVI-production-deployment-complete.md`
-
-### DR - Documentation & Reference (3 documents)
-
-- `004-DR-TECH-google-agent-frameworks-comparison.md`
-- `011-DR-REFF-quick-reference.md`
-- `012-DR-EXEC-agent-cards-executive-brief.md` ← NEW
+**Last Updated:** 2025-11-01 19:30 UTC
+**Purpose:** Single comprehensive reference for all PipelinePilot documentation
 
 ---
 
-## Chronological Listing
+## ADK Migration Documents (Primary Reference)
 
-- `001-PP-PROJ-project-overview.md`
-- `002-PP-PROD-pipelinepilot-prd.md`
-- `003-AT-ARCH-system-architecture.md`
-- `004-DR-TECH-google-agent-frameworks-comparison.md`
-- `005-PP-LEAS-leasing-model.md`
-- `006-OD-CICD-deployment-guide.md`
-- `007-AA-DASH-dashboard-deployment-complete.md`
-- `008-AA-STAT-current-project-status.md`
-- `009-AA-REVI-production-deployment-complete.md`
-- `010-OD-INFR-gcp-setup.md`
-- `011-DR-REFF-quick-reference.md`
-- `012-DR-EXEC-agent-cards-executive-brief.md` ← NEW
+### 001 - Migration Audit | `001-RA-AUDT-adk-migration-audit.md`
+✅ Compliance verification: Zero YAML, LangChain, LlamaIndex, Genkit, OpenAI  
+📊 7/7 audit checks passed
 
----
+### 003 - Architecture Decision | `003-AT-ADEC-adopt-vertex-adk.md`  
+🏗️ Why Python ADK over alternatives
 
-## By Subdirectory
+### 004 - Secrets Management | `004-DR-SECU-secrets-management.md`  
+🔐 Secret Manager guide (CLAY_API_KEY, APOLLO_API_KEY, etc.)
 
-### adr/ (1 document)
-- `ADR-0001-adopt-vertex-adk.md`
+### 005 - Cloudpickle Lessons | `005-TQ-LESS-cloudpickle-lessons-learned.md`  
+🐛 3 critical deployment failures + solutions (inline pattern, cloudpickle==3.1.1)
 
-### reports/ (2 documents)
-- `adk_migration_audit.md`
-- `adk_migration_AAR.md`
+### 006 - Deployment Runbook | `006-OD-RUNB-deployment-runbook.md`  
+📖 Step-by-step deployment procedures
 
----
+### 007 - Migration AAR | `007-AA-RETRO-adk-migration-aar.md`  
+📝 After Action Report (Timeline, metrics, lessons learned)
 
-## Quick Reference
+### 008 - Agent Engine Limitations | `008-TQ-KNOW-agent-engine-limitations.md`  
+⚠️ Multi-tool restriction (Research/Enrich agents blocked)
 
-**Category Codes:**
-- **PP** = Product & Planning
-- **AT** = Architecture & Technical
-- **DC** = Development & Code
-- **TQ** = Testing & Quality
-- **OD** = Operations & Deployment
-- **LS** = Logs & Status
-- **RA** = Reports & Analysis
-- **MC** = Meetings & Communication
-- **PM** = Project Management
-- **DR** = Documentation & Reference
-- **UC** = User & Customer
-- **BL** = Business & Legal
-- **RL** = Research & Learning
-- **AA** = After Action & Review
-- **WA** = Workflows & Automation
-- **DD** = Data & Datasets
-- **MS** = Miscellaneous
-
-**Document Format:** `NNN-CC-ABCD-description.ext`
-- **NNN** = Sequential number (001-999)
-- **CC** = Category code (2 letters)
-- **ABCD** = Document type (4 letters)
-- **description** = 1-4 words, kebab-case
-- **ext** = File extension
+### 015 - Decision Diagnosis | `015-AA-DIAG-autonomous-decision-diagnosis.md`  
+🔍 All autonomous decisions with rationale and accountability
 
 ---
 
-**Last Updated:** 2025-10-31T22:31:00Z
-**Total Documents:** 12 in root, 3 in subdirectories (adr/, reports/)
+## Quick Start
+
+**New Developers:**  
+1. Read 001 (audit), 003 (architecture), 006 (runbook)
+
+**Deploy Agents:**  
+Follow 006 - Deployment Runbook
+
+**Troubleshoot:**  
+Check 005 (lessons), 007 (AAR), 015 (decisions)
+
+---
+
+## Critical Information
+
+**Deployed Resource IDs (Original - Deprecated):**
+- Research: `projects/.../6346543843243982848` (⚠️ STUB)
+- Enrich: `projects/.../4967738669826834432` (⚠️ STUB)
+- Outreach: `projects/.../6153311271732117504` (✅ Works)
+- Orchestrator: `projects/.../6509095642294386688` (⚠️ STUB)
+
+**New Architecture (fix/orchestrator-in-engine):**
+- Single Orchestrator with all 4 tools (Clay, Apollo, Clearbit, Crunchbase)
+- Dashboard calls ONE agent instead of 4
+
+**Known Issues:**
+1. 🔴 Multi-tool limitation (see 008-TQ-KNOW)
+2. 🔴 Orchestrator stub (see 015-AA-DIAG)
+
+---
+
+**All docs in:** `000-docs/`  
+**External:** https://cloud.google.com/vertex-ai/docs/agent-engine
