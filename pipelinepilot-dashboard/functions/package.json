@@ -1,20 +1,14 @@
 {
-  "name": "pipelinepilot-functions",
+  "name": "pp-functions",
+  "type": "module",
+  "private": true,
   "main": "lib/index.js",
-  "engines": { "node": "18" },
-  "scripts": {
-    "build": "tsc -p .",
-    "deploy": "firebase deploy --only functions"
-  },
+  "engines": { "node": "20" },
+  "scripts": { "build": "tsc" },
   "dependencies": {
-    "firebase-admin": "^11.11.1",
-    "firebase-functions": "^4.9.0",
-    "@google-cloud/secret-manager": "^5.6.0",
-    "google-auth-library": "^9.14.2",
-    "node-fetch": "^2.7.0",
-    "cors": "^2.8.5"
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.6.0",
+    "google-auth-library": "^9.0.0"
   },
-  "devDependencies": {
-    "typescript": "^5.6.3"
-  }
+  "devDependencies": { "typescript": "^5.6.0" }
 }
