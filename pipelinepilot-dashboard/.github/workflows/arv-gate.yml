@@ -1,0 +1,147 @@
+# Agent Readiness Verification (ARV) Gate
+#
+# Comprehensive validation gate that prevents broken deployments by checking:
+# - Tenant data integrity
+# - Secret configuration
+# - Function reachability
+# - Vertex AI integration
+#
+# Runs on:
+# - Pull requests to main
+# - Pushes to main
+# - Manual workflow dispatch
+#
+# Fails if:
+# - Any critical failures detected
+# - HTTP status >= 400
+# - result.critical == true
+
+name: ARV Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - '.github/workflows/arv-gate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+  workflow_dispatch:
+
+jobs:
+  arv-validate:
+    name: Run Agent Readiness Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ARV
+        id: arv
+        run: |
+          echo "Running Agent Readiness Verification..."
+
+          # Call ARV endpoint
+          response=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "x-admin-key: ${{ secrets.ARV_ADMIN_KEY }}" \
+            -H "Content-Type: application/json" \
+            "https://us-central1-pipelinepilot-prod.cloudfunctions.net/runArv")
+
+          # Extract HTTP status and body
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+
+          # Save for later steps
+          echo "http_code=$http_code" >> $GITHUB_OUTPUT
+          echo "$body" > arv-result.json
+
+          # Parse JSON result
+          ok=$(echo "$body" | jq -r '.ok // false')
+          critical=$(echo "$body" | jq -r '.critical // false')
+          tenantsChecked=$(echo "$body" | jq -r '.tenantsChecked // 0')
+          tenantsPassed=$(echo "$body" | jq -r '.tenantsPassed // 0')
+          tenantsFailed=$(echo "$body" | jq -r '.tenantsFailed // 0')
+
+          echo "ok=$ok" >> $GITHUB_OUTPUT
+          echo "critical=$critical" >> $GITHUB_OUTPUT
+          echo "tenantsChecked=$tenantsChecked" >> $GITHUB_OUTPUT
+          echo "tenantsPassed=$tenantsPassed" >> $GITHUB_OUTPUT
+          echo "tenantsFailed=$tenantsFailed" >> $GITHUB_OUTPUT
+
+      - name: Display ARV Summary
+        if: always()
+        run: |
+          echo "## ARV Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ steps.arv.outputs.ok == 'true' && '✅ PASS' || '❌ FAIL' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Critical | ${{ steps.arv.outputs.critical == 'true' && '🚨 YES' || '✅ NO' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| HTTP Code | ${{ steps.arv.outputs.http_code }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tenants Checked | ${{ steps.arv.outputs.tenantsChecked }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tenants Passed | ${{ steps.arv.outputs.tenantsPassed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tenants Failed | ${{ steps.arv.outputs.tenantsFailed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f arv-result.json ]; then
+            echo "<details>" >> $GITHUB_STEP_SUMMARY
+            echo "<summary>Full ARV Result (JSON)</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat arv-result.json | jq '.' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Display Failures
+        if: always() && steps.arv.outputs.tenantsFailed != '0'
+        run: |
+          echo "## ❌ ARV Failures" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          failures=$(cat arv-result.json | jq -r '.failures[]')
+
+          if [ ! -z "$failures" ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat arv-result.json | jq '.failures' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check ARV Result
+        if: always()
+        run: |
+          # Fail if HTTP status >= 400
+          if [ "${{ steps.arv.outputs.http_code }}" -ge 400 ]; then
+            echo "❌ ARV failed with HTTP ${{ steps.arv.outputs.http_code }}"
+            exit 1
+          fi
+
+          # Fail if critical failures detected
+          if [ "${{ steps.arv.outputs.critical }}" == "true" ]; then
+            echo "❌ ARV detected critical failures"
+            exit 1
+          fi
+
+          # Fail if ok is false
+          if [ "${{ steps.arv.outputs.ok }}" != "true" ]; then
+            echo "❌ ARV failed (ok=false)"
+            exit 1
+          fi
+
+          echo "✅ ARV passed successfully"
+
+      - name: Upload ARV Result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arv-result
+          path: arv-result.json
+          retention-days: 30

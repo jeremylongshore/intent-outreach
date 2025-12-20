@@ -1,0 +1,27 @@
+===================================================================
+PipelinePilot Orchestrator Engine - Smoke Test
+===================================================================
+
+Engine ID: projects/365258353703/locations/us-central1/reasoningEngines/4446447012958699520
+Project: pipelinepilot-prod
+Location: us-central1
+
+Test payload:
+{
+  "class_method": "query",
+  "input": {
+    "user_id": "smoke_test",
+    "message": "Run campaign.\nICP: B2B SaaS companies with 50-200 employees\nDomains: stripe.com,segment.com\nPrimary Email: contact@pipelinepilot.ai"
+  }
+}
+
+Querying Engine...
+
+[0;31mERROR: Engine query failed[0m
+{
+  "error": {
+    "code": 400,
+    "message": "Reasoning Engine Execution failed.\nPlease refer to our documentation (https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/troubleshooting/use) for checking logs and other troubleshooting tips.\nError Details: {\"detail\":\"Agent Engine Error: An error occurred during invocation. Exception: 'LlmAgent' object has no attribute 'send_message'\\nRequest Data: {'message': 'Run campaign.\\\\nICP: B2B SaaS companies with 50-200 employees\\\\nDomains: stripe.com,segment.com\\\\nPrimary Email: contact@pipelinepilot.ai', 'user_id': 'smoke_test'}\"}",
+    "status": "FAILED_PRECONDITION"
+  }
+}

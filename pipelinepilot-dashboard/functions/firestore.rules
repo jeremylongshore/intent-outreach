@@ -1,0 +1,147 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================
+    // TENANT ISOLATION RULES - PHASE 2
+    // ============================================================
+    // All tenant data is scoped under /tenants/{tenantId}
+    // Access is granted ONLY if request.auth.token.tenant_id matches
+    // ============================================================
+
+    // Helper function to check if user belongs to tenant
+    function isTenantMember(tenantId) {
+      return request.auth != null
+             && request.auth.token.tenant_id == tenantId;
+    }
+
+    // Helper function to check if user owns tenant (Phase 5)
+    function isTenantOwner(tenantId) {
+      return request.auth != null
+             && get(/databases/$(database)/documents/tenants/$(tenantId)).data.owner_uid == request.auth.uid;
+    }
+
+    // Helper function to check if tenant is active
+    function isTenantActive(tenantId) {
+      let tenantDoc = get(/databases/$(database)/documents/tenants/$(tenantId));
+      return tenantDoc.data.status == 'active';
+    }
+
+    // ============================================================
+    // TENANT ROOT DOCUMENTS
+    // ============================================================
+    // Tenant metadata at /tenants/{tenantId}
+    // Read/write only if user's token matches tenant OR user owns tenant (Phase 5)
+    match /tenants/{tenantId} {
+      allow read: if isTenantMember(tenantId) || isTenantOwner(tenantId);
+
+      // Only allow updates to specific fields (prevent status manipulation)
+      allow update: if isTenantMember(tenantId)
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['updated_at', 'metadata', 'company_name', 'email']);
+
+      // Tenant creation and deletion handled by Functions only
+      allow create, delete: if false;
+
+      // ============================================================
+      // TENANT SUBCOLLECTIONS
+      // ============================================================
+      // All data under tenant is readable/writable by tenant members only
+
+      // Runs - Orchestrator execution logs
+      match /runs/{runId} {
+        allow read, write: if isTenantMember(tenantId) && isTenantActive(tenantId);
+      }
+
+      // Workspaces - Campaign workspaces
+      match /workspaces/{workspaceId} {
+        allow read, write: if isTenantMember(tenantId) && isTenantActive(tenantId);
+
+        // Nested workspace data
+        match /{document=**} {
+          allow read, write: if isTenantMember(tenantId) && isTenantActive(tenantId);
+        }
+      }
+
+      // Leads - Enrichment pipeline data
+      match /leads/{leadId} {
+        allow read, write: if isTenantMember(tenantId) && isTenantActive(tenantId);
+      }
+
+      // Events - Activity logs
+      match /events/{eventId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantMember(tenantId) && isTenantActive(tenantId);
+      }
+
+      // Campaigns - Campaign metadata
+      match /campaigns/{campaignId} {
+        allow read, write: if isTenantMember(tenantId) && isTenantActive(tenantId);
+
+        // Campaign logs
+        match /logs/{logId} {
+          allow read, write: if isTenantMember(tenantId) && isTenantActive(tenantId);
+        }
+      }
+
+      // Config - Configuration data (secret health, etc.)
+      match /config/{configDoc} {
+        // Tenants can read their own config (Phase 5: also allow owners)
+        allow read: if isTenantMember(tenantId) || isTenantOwner(tenantId);
+
+        // Only Functions can write config (via admin SDK)
+        // This includes secret health updates from audit jobs
+        allow write: if false;
+      }
+
+      // Catch-all for any other tenant subcollections
+      match /{collection}/{docId} {
+        allow read, write: if isTenantMember(tenantId) && isTenantActive(tenantId);
+
+        // Nested documents
+        match /{document=**} {
+          allow read, write: if isTenantMember(tenantId) && isTenantActive(tenantId);
+        }
+      }
+    }
+
+    // ============================================================
+    // AUDIT COLLECTION
+    // ============================================================
+    // Tenant audit logs - read-only for tenant members
+    match /tenant_audit/{auditId} {
+      allow read: if request.auth != null
+                  && resource.data.tenant_id == request.auth.token.tenant_id;
+      allow write: if false; // Only Functions can write audit logs
+    }
+
+    // ============================================================
+    // SYSTEM COLLECTION
+    // ============================================================
+    // System-level data (ARV runs, health checks, etc.)
+    match /system/{doc} {
+      // ARV runs collection
+      match /arv-runs/runs/{runId} {
+        // Authenticated users can read ARV results
+        // Phase 5: Tenants can read runs that reference their tenant
+        allow read: if request.auth != null;
+
+        // Only Functions can write ARV results (via admin SDK)
+        allow write: if false;
+      }
+
+      // Other system documents
+      allow read: if request.auth != null;
+      allow write: if false; // Functions only
+    }
+
+    // ============================================================
+    // DENY ALL OTHER ACCESS
+    // ============================================================
+    // No top-level collections outside of /tenants/{tenantId}
+    // This prevents accidental data leakage
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

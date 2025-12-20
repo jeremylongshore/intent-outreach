@@ -1,0 +1,26 @@
+# PipelinePilot Infrastructure - Example Configuration
+# Copy this file to terraform.tfvars and fill in your values
+
+project_id = "pipelinepilot-prod"
+region     = "us-central1"
+
+# IMPORTANT: Bucket name must be globally unique
+staging_bucket_name = "pipelinepilot-agent-staging"
+
+service_account_name = "pp-dev"
+firestore_location   = "us-central"
+environment          = "dev"
+
+# External API secrets (will be created empty - populate via console or gcloud)
+external_api_secrets = [
+  "CLAY_API_KEY",
+  "APOLLO_API_KEY",
+  "CLEARBIT_API_KEY",
+  "CRUNCHBASE_API_KEY"
+]
+
+labels = {
+  project    = "pipelinepilot"
+  managed_by = "terraform"
+  owner      = "pp-dev"
+}

@@ -1,0 +1,206 @@
+[2025-11-02T00:43:17.664Z] Object "/functions" in "firebase.json" has unknown property: {"additionalProperty":"ignored"}
+[2025-11-02T00:43:17.665Z] Object "/functions" in "firebase.json" is missing required property: {"missingProperty":"remoteSource"}
+[2025-11-02T00:43:17.666Z] Field "/functions" in "firebase.json" is possibly invalid: must be array
+[2025-11-02T00:43:17.666Z] Field "/functions" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[2025-11-02T00:43:17.673Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[2025-11-02T00:43:17.676Z] > authorizing via signed-in user (jeremy@intentsolutions.io)
+[2025-11-02T00:43:17.676Z] [iam] checking project pipelinepilot-prod for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[2025-11-02T00:43:17.679Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:17.680Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:17.682Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/pipelinepilot-prod:testIamPermissions [none]
+[2025-11-02T00:43:17.698Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/pipelinepilot-prod:testIamPermissions x-goog-quota-user=projects/pipelinepilot-prod
+[2025-11-02T00:43:17.699Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/pipelinepilot-prod:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[2025-11-02T00:43:17.836Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/pipelinepilot-prod:testIamPermissions 200
+[2025-11-02T00:43:17.837Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/pipelinepilot-prod:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[2025-11-02T00:43:17.837Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:17.837Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:17.838Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/pipelinepilot-prod/serviceAccounts/pipelinepilot-prod@appspot.gserviceaccount.com:testIamPermissions [none]
+[2025-11-02T00:43:17.838Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/pipelinepilot-prod/serviceAccounts/pipelinepilot-prod@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[2025-11-02T00:43:17.991Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/pipelinepilot-prod/serviceAccounts/pipelinepilot-prod@appspot.gserviceaccount.com:testIamPermissions 200
+[2025-11-02T00:43:17.992Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/pipelinepilot-prod/serviceAccounts/pipelinepilot-prod@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+
+=== Deploying to 'pipelinepilot-prod'...
+
+i  deploying functions 
+[2025-11-02T00:43:17.997Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:17.998Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:17.998Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/pipelinepilot-prod [none]
+[2025-11-02T00:43:18.084Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/pipelinepilot-prod 200
+[2025-11-02T00:43:18.085Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/pipelinepilot-prod {"projectNumber":"365258353703","projectId":"pipelinepilot-prod","lifecycleState":"ACTIVE","name":"PipelinePilot Prod","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-10-31T23:23:37.030781Z","parent":{"type":"organization","id":"962837652878"}}
+i  functions: preparing codebase default for deployment 
+i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[2025-11-02T00:43:18.087Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:18.088Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:18.088Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/pipelinepilot-prod/adminSdkConfig [none]
+[2025-11-02T00:43:18.407Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/pipelinepilot-prod/adminSdkConfig 200
+[2025-11-02T00:43:18.407Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/pipelinepilot-prod/adminSdkConfig {"projectId":"pipelinepilot-prod","storageBucket":"pipelinepilot-prod.firebasestorage.app"}
+[2025-11-02T00:43:18.408Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:18.408Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:18.408Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/pipelinepilot-prod/configs [none]
+[2025-11-02T00:43:18.553Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/pipelinepilot-prod/configs 200
+[2025-11-02T00:43:18.553Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/pipelinepilot-prod/configs {"configs":[{"name":"projects/pipelinepilot-prod/configs/agents"}]}
+[2025-11-02T00:43:18.554Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:18.554Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:18.554Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/pipelinepilot-prod/configs/agents/variables [none]
+[2025-11-02T00:43:18.644Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/pipelinepilot-prod/configs/agents/variables 200
+[2025-11-02T00:43:18.644Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/pipelinepilot-prod/configs/agents/variables {"variables":[{"name":"projects/pipelinepilot-prod/configs/agents/variables/orchestrator_dev_id","updateTime":"2025-11-01T22:12:26.103291395Z"}]}
+[2025-11-02T00:43:18.645Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:18.645Z] Checked if tokens are valid: true, expires at: 1762045699060
+[2025-11-02T00:43:18.645Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/pipelinepilot-prod/configs/agents/variables/orchestrator_dev_id [none]
+[2025-11-02T00:43:18.724Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/pipelinepilot-prod/configs/agents/variables/orchestrator_dev_id 200
+[2025-11-02T00:43:18.724Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/pipelinepilot-prod/configs/agents/variables/orchestrator_dev_id {"name":"projects/pipelinepilot-prod/configs/agents/variables/orchestrator_dev_id","updateTime":"2025-11-01T22:12:26.103291395Z","text":"projects/365258353703/locations/us-central1/reasoningEngines/5660167112535048192"}
+[2025-11-02T00:43:18.726Z] Validating nodejs source
+[2025-11-02T00:43:19.200Z] > [functions] package.json contents: {
+  "name": "pp-functions",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.6.0",
+    "google-auth-library": "^9.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
+
+Error: There was an error reading functions/package.json:
+
+ functions/index.js does not exist, can't deploy Cloud Functions
+
+=== Deploying to 'pipelinepilot-prod'...
+
+i  deploying functions
+i  functions: preparing codebase default for deployment
+i  functions: ensuring required API cloudfunctions.googleapis.com is enabled...
+i  functions: ensuring required API cloudbuild.googleapis.com is enabled...
+i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled...
+i  functions: Loading and analyzing source code for codebase default to determine what to deploy
+Serving at port 8748
+
+i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled...
+i  functions: preparing functions directory for uploading...
+i  functions: packaged /home/jeremy/000-projects/iams/pipelinepilot/pipelinepilot-dashboard/functions (31.57 KB) for uploading
+i  functions: ensuring required API run.googleapis.com is enabled...
+i  functions: ensuring required API eventarc.googleapis.com is enabled...
+i  functions: ensuring required API pubsub.googleapis.com is enabled...
+i  functions: ensuring required API storage.googleapis.com is enabled...
+i  functions: generating the service identity for pubsub.googleapis.com...
+i  functions: generating the service identity for eventarc.googleapis.com...
+i  functions: ensuring required API secretmanager.googleapis.com is enabled...
+i  functions: ensuring 365258353703-compute@developer.gserviceaccount.com access to secret ORCHESTRATOR_DEV_ID.
+✔  secretmanager: Granted roles/secretmanager.secretAccessor on projects/pipelinepilot-prod/secrets/ORCHESTRATOR_DEV_ID to 365258353703-compute@developer.gserviceaccount.com
+✔  functions: ensured 365258353703-compute@developer.gserviceaccount.com access to ORCHESTRATOR_DEV_ID.
+✔  functions: functions source uploaded successfully
+i  functions: updating Node.js 20 (2nd Gen) function startCampaign(us-central1)...
+Build failed with status: FAILURE and message: An unexpected error occurred. Refer to build logs: https://console.cloud.google.com/cloud-build/builds;region=us-central1/c385d196-c17f-4648-afda-79a51d73eccc?project=365258353703. For more details see the logs at https://console.cloud.google.com/cloud-build/builds;region=us-central1/c385d196-c17f-4648-afda-79a51d73eccc?project=365258353703.
+
+Functions deploy had errors with the following functions:
+	startCampaign(us-central1)
+
+Error: There was an error deploying functions
+
+=== Deploying to 'pipelinepilot-prod'...
+
+i  deploying functions
+i  functions: preparing codebase default for deployment
+i  functions: ensuring required API cloudfunctions.googleapis.com is enabled...
+i  functions: ensuring required API cloudbuild.googleapis.com is enabled...
+i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled...
+i  functions: Loading and analyzing source code for codebase default to determine what to deploy
+Serving at port 8177
+
+i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled...
+i  functions: preparing functions directory for uploading...
+i  functions: packaged /home/jeremy/000-projects/iams/pipelinepilot/pipelinepilot-dashboard/functions (32.29 KB) for uploading
+i  functions: ensuring required API run.googleapis.com is enabled...
+i  functions: ensuring required API eventarc.googleapis.com is enabled...
+i  functions: ensuring required API pubsub.googleapis.com is enabled...
+i  functions: ensuring required API storage.googleapis.com is enabled...
+i  functions: generating the service identity for pubsub.googleapis.com...
+i  functions: generating the service identity for eventarc.googleapis.com...
+✔  functions: functions source uploaded successfully
+i  functions: creating Node.js 20 (2nd Gen) function hello(us-central1)...
+Build failed with status: FAILURE and message: An unexpected error occurred. Refer to build logs: https://console.cloud.google.com/cloud-build/builds;region=us-central1/51df5c2e-fd7e-428e-ac7a-22f621821273?project=365258353703. For more details see the logs at https://console.cloud.google.com/cloud-build/builds;region=us-central1/51df5c2e-fd7e-428e-ac7a-22f621821273?project=365258353703.
+
+Functions deploy had errors with the following functions:
+	hello(us-central1)
+
+Error: There was an error deploying functions
+
+=== Deploying to 'pipelinepilot-prod'...
+
+i  deploying functions
+i  functions: preparing codebase default for deployment
+i  functions: ensuring required API cloudfunctions.googleapis.com is enabled...
+i  functions: ensuring required API cloudbuild.googleapis.com is enabled...
+i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled...
+i  functions: Loading and analyzing source code for codebase default to determine what to deploy
+Serving at port 8740
+
+i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled...
+i  functions: preparing functions directory for uploading...
+i  functions: packaged /home/jeremy/000-projects/iams/pipelinepilot/pipelinepilot-dashboard/functions (32.29 KB) for uploading
+i  functions: ensuring required API run.googleapis.com is enabled...
+i  functions: ensuring required API eventarc.googleapis.com is enabled...
+i  functions: ensuring required API pubsub.googleapis.com is enabled...
+i  functions: ensuring required API storage.googleapis.com is enabled...
+i  functions: generating the service identity for pubsub.googleapis.com...
+i  functions: generating the service identity for eventarc.googleapis.com...
+✔  functions: functions source uploaded successfully
+i  functions: updating Node.js 20 (2nd Gen) function hello(us-central1)...
+Build failed with status: FAILURE and message: An unexpected error occurred. Refer to build logs: https://console.cloud.google.com/cloud-build/builds;region=us-central1/dee392d6-a308-4e92-ba60-be20b8404fe5?project=365258353703. For more details see the logs at https://console.cloud.google.com/cloud-build/builds;region=us-central1/dee392d6-a308-4e92-ba60-be20b8404fe5?project=365258353703.
+
+Functions deploy had errors with the following functions:
+	hello(us-central1)
+
+Error: There was an error deploying functions
+
+To live stream log output for this build, please ensure the grpc module is installed. Run:
+  pip install grpcio
+and set:
+  export CLOUDSDK_PYTHON_SITEPACKAGES=1
+
+----------------------------- REMOTE BUILD OUTPUT ------------------------------
+--------------------------------------------------------------------------------
+
+=== Deploying to 'pipelinepilot-prod'...
+
+i  deploying functions
+i  functions: preparing codebase default for deployment
+i  functions: ensuring required API cloudfunctions.googleapis.com is enabled...
+i  functions: ensuring required API cloudbuild.googleapis.com is enabled...
+i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled...
+i  functions: Loading and analyzing source code for codebase default to determine what to deploy
+Serving at port 8365
+
+i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled...
+i  functions: preparing functions directory for uploading...
+i  functions: packaged /home/jeremy/000-projects/iams/pipelinepilot/pipelinepilot-dashboard/functions (32.26 KB) for uploading
+i  functions: ensuring required API run.googleapis.com is enabled...
+i  functions: ensuring required API eventarc.googleapis.com is enabled...
+i  functions: ensuring required API pubsub.googleapis.com is enabled...
+i  functions: ensuring required API storage.googleapis.com is enabled...
+i  functions: generating the service identity for pubsub.googleapis.com...
+i  functions: generating the service identity for eventarc.googleapis.com...
+i  functions: ensuring required API secretmanager.googleapis.com is enabled...
+i  functions: ensuring 365258353703-compute@developer.gserviceaccount.com access to secret ORCHESTRATOR_DEV_ID.
+✔  secretmanager: Granted roles/secretmanager.secretAccessor on projects/pipelinepilot-prod/secrets/ORCHESTRATOR_DEV_ID to 365258353703-compute@developer.gserviceaccount.com
+✔  functions: ensured 365258353703-compute@developer.gserviceaccount.com access to ORCHESTRATOR_DEV_ID.
+✔  functions: functions source uploaded successfully
+i  functions: creating Node.js 20 (2nd Gen) function startCampaign(us-east1)...
+Build failed with status: FAILURE and message: An unexpected error occurred. Refer to build logs: https://console.cloud.google.com/cloud-build/builds;region=us-east1/e5be2090-dfd5-43f0-95d5-dbb04d0fa428?project=365258353703. For more details see the logs at https://console.cloud.google.com/cloud-build/builds;region=us-east1/e5be2090-dfd5-43f0-95d5-dbb04d0fa428?project=365258353703.
+
+Functions deploy had errors with the following functions:
+	startCampaign(us-east1)
+⚠  functions: No cleanup policy detected for repositories in us-east1. This may result in a small monthly bill as container images accumulate over time.
+
+Error: Functions successfully deployed but could not set up cleanup policy in location us-east1. Pass the --force option to automatically set up a cleanup policy or run 'firebase functions:artifacts:setpolicy' to manually set up a cleanup policy.
