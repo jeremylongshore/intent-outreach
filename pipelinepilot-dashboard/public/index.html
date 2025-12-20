@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PipelinePilot - AI-powered SDR automation platform for modern sales teams">
+  <title>PipelinePilot - AI-Powered SDR Automation</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Smooth scroll */
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* Gradient animation */
+    @keyframes gradient {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .animate-gradient {
+      background-size: 200% 200%;
+      animation: gradient 8s ease infinite;
+    }
+  </style>
+</head>
+
+<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white antialiased">
+
+  <!-- Status Bar -->
+  <div class="bg-slate-900/80 backdrop-blur-sm border-b border-slate-800">
+    <div class="max-w-6xl mx-auto px-6 py-3">
+      <div class="flex flex-wrap items-center justify-center gap-4 text-sm">
+        <span class="text-slate-400">Status:</span>
+        <div class="flex items-center gap-2 text-green-400">
+          <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span>All Systems Operational</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <header class="max-w-4xl mx-auto px-6 py-20 text-center">
+    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-8">
+      <div class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+      <span class="text-sm text-purple-300 font-medium">Now in Beta</span>
+    </div>
+
+    <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
+      PipelinePilot
+    </h1>
+
+    <p class="text-xl md:text-2xl text-slate-300 mb-4 font-light">
+      Your AI Sales Assistant
+    </p>
+
+    <p class="text-lg text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+      We build and deploy intent agent models that find customers, research their companies, and write personalized emails for you—fully managed.
+    </p>
+
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="mailto:jeremy@intentsolutions.io?subject=PipelinePilot%20Beta%20Access"
+         class="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+        Request Beta Access
+      </a>
+      <a href="#features"
+         class="px-8 py-4 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-lg transition-all duration-200 border border-white/10">
+        Learn More
+      </a>
+    </div>
+  </header>
+
+  <!-- What It Does -->
+  <section id="features" class="max-w-6xl mx-auto px-6 py-16">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">What PipelinePilot Does</h2>
+      <p class="text-slate-400 text-lg">End-to-end SDR automation in four steps</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- Feature 1 -->
+      <div class="p-6 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 hover:border-purple-500/50 transition-all duration-200">
+        <div class="text-3xl mb-4">🔄</div>
+        <h3 class="text-lg font-semibold text-white mb-2">Data Ingestion</h3>
+        <p class="text-slate-400 text-sm">Pull leads from Clay, Apollo, Clearbit, and Crunchbase</p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="p-6 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 hover:border-purple-500/50 transition-all duration-200">
+        <div class="text-3xl mb-4">⚡</div>
+        <h3 class="text-lg font-semibold text-white mb-2">Smart Enrichment</h3>
+        <p class="text-slate-400 text-sm">AI-powered normalization, deduplication, and signal enrichment</p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="p-6 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 hover:border-purple-500/50 transition-all duration-200">
+        <div class="text-3xl mb-4">✍️</div>
+        <h3 class="text-lg font-semibold text-white mb-2">Outreach Generation</h3>
+        <p class="text-slate-400 text-sm">Context-aware emails and messaging powered by Vertex AI</p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="p-6 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 hover:border-purple-500/50 transition-all duration-200">
+        <div class="text-3xl mb-4">📊</div>
+        <h3 class="text-lg font-semibold text-white mb-2">Campaign Orchestration</h3>
+        <p class="text-slate-400 text-sm">Multi-step workflows with intelligent routing and analytics</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="max-w-4xl mx-auto px-6 py-16">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">How It Works</h2>
+      <p class="text-slate-400 text-lg">From data to deployed campaigns in minutes</p>
+    </div>
+
+    <div class="space-y-6">
+      <!-- Step 1 -->
+      <div class="flex gap-6 items-start p-6 rounded-xl bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20">
+        <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+          1
+        </div>
+        <div>
+          <h3 class="text-xl font-semibold text-white mb-2">Connect Your Data Sources</h3>
+          <p class="text-slate-400">Link Clay, Apollo, Clearbit, and Crunchbase with secure per-tenant secrets managed in GCP Secret Manager.</p>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="flex gap-6 items-start p-6 rounded-xl bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20">
+        <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+          2
+        </div>
+        <div>
+          <h3 class="text-xl font-semibold text-white mb-2">Configure Your Playbook</h3>
+          <p class="text-slate-400">Define enrichment rules, outreach templates, and campaign parameters through the dashboard.</p>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="flex gap-6 items-start p-6 rounded-xl bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20">
+        <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+          3
+        </div>
+        <div>
+          <h3 class="text-xl font-semibold text-white mb-2">Launch Your Campaign</h3>
+          <p class="text-slate-400">AI agents orchestrate data enrichment, content generation, and multi-channel outreach automatically.</p>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="flex gap-6 items-start p-6 rounded-xl bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20">
+        <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+          4
+        </div>
+        <div>
+          <h3 class="text-xl font-semibold text-white mb-2">Monitor & Optimize</h3>
+          <p class="text-slate-400">Track performance metrics, analyze campaign health, and iterate with real-time insights.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Intelligent Agents -->
+  <section class="max-w-6xl mx-auto px-6 py-16">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">🤖 Meet Your AI Agents</h2>
+      <p class="text-slate-400 text-lg">Four specialized agents working together to automate your SDR pipeline</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <!-- Orchestrator Agent -->
+      <div class="p-6 rounded-xl bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/30">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center text-2xl">
+            🎯
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-1">Orchestrator Agent</h3>
+            <p class="text-purple-300 text-sm font-medium">Campaign Coordinator</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">The brain of your operation. Routes tasks to specialized agents, manages workflow execution, and ensures all components work together seamlessly.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-start gap-2">
+            <span class="text-purple-400">•</span>
+            <span class="text-slate-400">Coordinates multi-step campaign workflows</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-purple-400">•</span>
+            <span class="text-slate-400">Delegates tasks to specialized agents</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-purple-400">•</span>
+            <span class="text-slate-400">Monitors execution and handles failures gracefully</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Captain Agent -->
+      <div class="p-6 rounded-xl bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/30">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-2xl">
+            📊
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-1">Data Captain Agent</h3>
+            <p class="text-blue-300 text-sm font-medium">Data Enrichment Specialist</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">Fetches lead data from your connected sources (Clay, Apollo, Clearbit, Crunchbase), normalizes formats, removes duplicates, and enriches with AI-powered signals.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-start gap-2">
+            <span class="text-blue-400">•</span>
+            <span class="text-slate-400">Pulls data from 4 external APIs securely</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-blue-400">•</span>
+            <span class="text-slate-400">Normalizes and deduplicates lead records</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-blue-400">•</span>
+            <span class="text-slate-400">Enriches with AI-generated insights and signals</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Analyst Agent -->
+      <div class="p-6 rounded-xl bg-gradient-to-br from-green-500/10 to-transparent border border-green-500/30">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-green-600 to-green-700 flex items-center justify-center text-2xl">
+            ✍️
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-1">Content Analyst Agent</h3>
+            <p class="text-green-300 text-sm font-medium">Outreach Generation Expert</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">Powered by Gemini 2.5 Flash, this agent crafts context-aware, personalized outreach messages. Analyzes lead data, company info, and your playbook to generate high-converting content.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-start gap-2">
+            <span class="text-green-400">•</span>
+            <span class="text-slate-400">Generates personalized email sequences</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-green-400">•</span>
+            <span class="text-slate-400">Adapts tone and messaging to lead context</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-green-400">•</span>
+            <span class="text-slate-400">Optimizes subject lines and CTAs with AI</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Readiness Auditor Agent -->
+      <div class="p-6 rounded-xl bg-gradient-to-br from-orange-500/10 to-transparent border border-orange-500/30">
+        <div class="flex items-start gap-4 mb-4">
+          <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-orange-600 to-orange-700 flex items-center justify-center text-2xl">
+            🔍
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold text-white mb-1">Readiness Auditor Agent</h3>
+            <p class="text-orange-300 text-sm font-medium">Quality Assurance Guardian</p>
+          </div>
+        </div>
+        <p class="text-slate-300 mb-4">Validates tenant configurations, verifies API credentials, checks data quality, and ensures campaigns are ready to launch. Runs comprehensive health checks before execution.</p>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-start gap-2">
+            <span class="text-orange-400">•</span>
+            <span class="text-slate-400">Validates API keys and tenant secrets</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-orange-400">•</span>
+            <span class="text-slate-400">Checks data quality and completeness</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-orange-400">•</span>
+            <span class="text-slate-400">Reports readiness status before campaign launch</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Vertex AI Engine -->
+  <section class="max-w-6xl mx-auto px-6 py-16">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">⚡ Powered by Vertex AI Agent Engine</h2>
+      <p class="text-slate-400 text-lg">Enterprise-grade AI infrastructure that scales automatically and improves over time</p>
+    </div>
+
+    <div class="space-y-6">
+      <!-- What is Vertex AI Agent Engine -->
+      <div class="p-8 rounded-xl bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/30">
+        <h3 class="text-2xl font-semibold text-white mb-4">What is Vertex AI Agent Engine?</h3>
+        <p class="text-slate-300 mb-4 leading-relaxed">
+          Vertex AI Agent Engine is Google Cloud's managed platform for deploying and orchestrating AI agents at scale. Unlike traditional API calls, Agent Engine provides a complete infrastructure for agent coordination, state management, tool execution, and reasoning loops—all fully managed by Google.
+        </p>
+        <div class="grid md:grid-cols-3 gap-4 mt-6">
+          <div class="p-4 rounded-lg bg-slate-800/50">
+            <div class="text-2xl mb-2">🧠</div>
+            <h4 class="text-white font-semibold mb-2">Reasoning Engine</h4>
+            <p class="text-slate-400 text-sm">Manages multi-step reasoning, context retention, and decision-making across agent interactions</p>
+          </div>
+          <div class="p-4 rounded-lg bg-slate-800/50">
+            <div class="text-2xl mb-2">🔄</div>
+            <h4 class="text-white font-semibold mb-2">Tool Orchestration</h4>
+            <p class="text-slate-400 text-sm">Coordinates API calls, data transformations, and external integrations automatically</p>
+          </div>
+          <div class="p-4 rounded-lg bg-slate-800/50">
+            <div class="text-2xl mb-2">📦</div>
+            <h4 class="text-white font-semibold mb-2">State Management</h4>
+            <p class="text-slate-400 text-sm">Maintains conversation history, workflow state, and context across agent executions</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-Scaling & Performance -->
+      <div class="p-8 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10">
+        <h3 class="text-2xl font-semibold text-white mb-4">🚀 Auto-Scaling & Performance</h3>
+        <p class="text-slate-300 mb-6 leading-relaxed">
+          Agent Engine automatically scales to handle your workload—from a single campaign to thousands of concurrent operations. You pay only for what you use, with no infrastructure management required.
+        </p>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div>
+            <h4 class="text-white font-semibold mb-3 flex items-center gap-2">
+              <span class="text-green-400">✓</span>
+              Horizontal Scaling
+            </h4>
+            <p class="text-slate-400 text-sm mb-4">Automatically spins up additional agent instances during high-volume campaigns, then scales down during idle periods.</p>
+
+            <h4 class="text-white font-semibold mb-3 flex items-center gap-2">
+              <span class="text-green-400">✓</span>
+              Request Queuing
+            </h4>
+            <p class="text-slate-400 text-sm">Intelligently queues and batches requests to optimize throughput and reduce latency.</p>
+          </div>
+          <div>
+            <h4 class="text-white font-semibold mb-3 flex items-center gap-2">
+              <span class="text-green-400">✓</span>
+              Cold Start Optimization
+            </h4>
+            <p class="text-slate-400 text-sm mb-4">Google's infrastructure keeps agent instances warm, eliminating cold start delays even after idle periods.</p>
+
+            <h4 class="text-white font-semibold mb-3 flex items-center gap-2">
+              <span class="text-green-400">✓</span>
+              Global Load Balancing
+            </h4>
+            <p class="text-slate-400 text-sm">Routes requests to the nearest available region for optimal performance worldwide.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monitoring & Observability -->
+      <div class="p-8 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10">
+        <h3 class="text-2xl font-semibold text-white mb-4">📊 Google Cloud Monitoring & Observability</h3>
+        <p class="text-slate-300 mb-6 leading-relaxed">
+          Every agent execution is automatically monitored by Google Cloud's observability stack. Track performance, debug issues, and optimize workflows with comprehensive built-in tooling.
+        </p>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="space-y-4">
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center text-blue-400">
+                📈
+              </div>
+              <div>
+                <h4 class="text-white font-semibold mb-1">Cloud Monitoring</h4>
+                <p class="text-slate-400 text-sm">Real-time metrics for agent executions, token usage, latency, and error rates—all in the GCP console.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center text-purple-400">
+                📝
+              </div>
+              <div>
+                <h4 class="text-white font-semibold mb-1">Cloud Logging</h4>
+                <p class="text-slate-400 text-sm">Structured logs capture every agent decision, tool execution, and reasoning step for full audit trails.</p>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 w-8 h-8 rounded bg-green-500/20 flex items-center justify-center text-green-400">
+                🔍
+              </div>
+              <div>
+                <h4 class="text-white font-semibold mb-1">Cloud Trace</h4>
+                <p class="text-slate-400 text-sm">Distributed tracing shows exactly how long each step takes and where bottlenecks occur.</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="flex-shrink-0 w-8 h-8 rounded bg-orange-500/20 flex items-center justify-center text-orange-400">
+                🚨
+              </div>
+              <div>
+                <h4 class="text-white font-semibold mb-1">Error Reporting</h4>
+                <p class="text-slate-400 text-sm">Automatic error aggregation with stack traces, helping you identify and fix issues quickly.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Self-Improvement -->
+      <div class="p-8 rounded-xl bg-gradient-to-br from-green-500/10 to-transparent border border-green-500/30">
+        <h3 class="text-2xl font-semibold text-white mb-4">🌱 Continuous Learning & Self-Improvement</h3>
+        <p class="text-slate-300 mb-6 leading-relaxed">
+          Agent Engine integrates with Vertex AI's machine learning infrastructure, enabling agents to learn from every execution and improve over time—without manual retraining.
+        </p>
+        <div class="space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-white font-bold">
+              1
+            </div>
+            <div>
+              <h4 class="text-white font-semibold mb-2">Outcome Tracking</h4>
+              <p class="text-slate-400 text-sm">Agent Engine automatically logs campaign outcomes (opens, clicks, replies) and associates them with specific agent decisions and generated content.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-white font-bold">
+              2
+            </div>
+            <div>
+              <h4 class="text-white font-semibold mb-2">Pattern Recognition</h4>
+              <p class="text-slate-400 text-sm">Google's ML infrastructure analyzes successful patterns (subject lines, messaging angles, timing) and surfaces insights to improve future campaigns.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-white font-bold">
+              3
+            </div>
+            <div>
+              <h4 class="text-white font-semibold mb-2">Model Fine-Tuning (Optional)</h4>
+              <p class="text-slate-400 text-sm">For advanced users, Vertex AI enables fine-tuning Gemini models on your specific data, creating custom models optimized for your industry and audience.</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-white font-bold">
+              4
+            </div>
+            <div>
+              <h4 class="text-white font-semibold mb-2">Automatic Optimization</h4>
+              <p class="text-slate-400 text-sm">Agents adapt their strategies based on what works—automatically adjusting messaging, timing, and approach to maximize conversion rates over time.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Why This Matters -->
+      <div class="p-6 rounded-xl bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/30">
+        <h3 class="text-xl font-semibold text-white mb-3">💡 Why This Matters</h3>
+        <p class="text-slate-300 text-sm leading-relaxed">
+          Traditional SDR automation requires constant manual tuning. With Vertex AI Agent Engine, your system gets <strong class="text-white">smarter every day</strong>. Google handles the infrastructure complexity, monitoring, and optimization—so you can focus on strategy and results, not DevOps.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section class="max-w-4xl mx-auto px-6 py-16">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Built on Google Cloud</h2>
+      <p class="text-slate-400 text-lg">Enterprise-grade infrastructure and AI</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="p-6 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 text-center">
+        <div class="text-3xl mb-3">🤖</div>
+        <h3 class="text-lg font-semibold text-white mb-2">Vertex AI</h3>
+        <p class="text-slate-400 text-sm">Gemini 2.5 Flash for intelligent content generation</p>
+      </div>
+
+      <div class="p-6 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 text-center">
+        <div class="text-3xl mb-3">🔒</div>
+        <h3 class="text-lg font-semibold text-white mb-2">Secret Manager</h3>
+        <p class="text-slate-400 text-sm">Secure per-tenant API key storage with IAM</p>
+      </div>
+
+      <div class="p-6 rounded-xl bg-gradient-to-br from-white/5 to-transparent border border-white/10 text-center">
+        <div class="text-3xl mb-3">⚡</div>
+        <h3 class="text-lg font-semibold text-white mb-2">Cloud Functions</h3>
+        <p class="text-slate-400 text-sm">7 serverless functions for orchestration and validation</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="max-w-4xl mx-auto px-6 py-16">
+    <div class="p-8 md:p-12 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-center">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Ready to Automate Your Pipeline?</h2>
+      <p class="text-purple-100 text-lg mb-8">Join beta testers building the future of SDR automation</p>
+      <a href="mailto:jeremy@intentsolutions.io?subject=PipelinePilot%20Beta%20Access"
+         class="inline-block px-8 py-4 bg-white text-purple-600 font-semibold rounded-lg hover:bg-purple-50 transition-all duration-200 shadow-lg">
+        Request Beta Access
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 mt-16">
+    <div class="max-w-6xl mx-auto px-6 py-12">
+      <div class="grid md:grid-cols-3 gap-8">
+        <div>
+          <h3 class="text-lg font-bold text-white mb-4">PipelinePilot</h3>
+          <p class="text-slate-400 text-sm mb-4">AI-powered SDR automation for modern sales teams</p>
+          <p class="text-slate-500 text-xs">Currently in Beta</p>
+        </div>
+
+        <div>
+          <h4 class="text-white font-semibold mb-4">Contact</h4>
+          <ul class="space-y-2 text-sm">
+            <li>
+              <a href="mailto:jeremy@intentsolutions.io" class="text-slate-400 hover:text-purple-400 transition-colors">
+                jeremy@intentsolutions.io
+              </a>
+            </li>
+            <li>
+              <a href="https://intentsolutions.io" target="_blank" rel="noopener noreferrer" class="text-slate-400 hover:text-purple-400 transition-colors">
+                Intent Solutions
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="text-white font-semibold mb-4">Product</h4>
+          <ul class="space-y-2 text-sm">
+            <li>
+              <a href="#features" class="text-slate-400 hover:text-purple-400 transition-colors">Features</a>
+            </li>
+            <li>
+              <a href="https://pipelinepilot-prod.web.app/deployment-summary.html" class="text-slate-400 hover:text-purple-400 transition-colors">Deployment Status</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-12 pt-8 border-t border-slate-800 text-center">
+        <p class="text-slate-500 text-sm">
+          &copy; 2025 Intent Solutions. Built with Google Cloud Platform.
+        </p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

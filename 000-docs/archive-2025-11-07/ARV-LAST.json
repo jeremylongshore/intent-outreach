@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "critical": false,
+  "startedAt": "2025-11-03T05:52:59.843Z",
+  "finishedAt": "2025-11-03T05:53:06.457Z",
+  "durationMs": 6614,
+  "tenantsChecked": 4,
+  "tenantsPassed": 0,
+  "tenantsFailed": 0,
+  "tenantsWarning": 4,
+  "failures": [
+    {
+      "tenantId": "beta_customer_acme",
+      "check": "secrets",
+      "severity": "warning",
+      "reason": "PLACEHOLDER_SECRETS",
+      "details": {
+        "placeholders": [
+          "CLAY",
+          "APOLLO",
+          "CLEARBIT",
+          "CRUNCHBASE"
+        ]
+      }
+    },
+    {
+      "tenantId": "beta_internal_01",
+      "check": "secrets",
+      "severity": "warning",
+      "reason": "PLACEHOLDER_SECRETS",
+      "details": {
+        "placeholders": [
+          "CLAY",
+          "APOLLO",
+          "CLEARBIT",
+          "CRUNCHBASE"
+        ]
+      }
+    },
+    {
+      "tenantId": "beta_internal_02",
+      "check": "secrets",
+      "severity": "warning",
+      "reason": "PLACEHOLDER_SECRETS",
+      "details": {
+        "placeholders": [
+          "CLAY",
+          "APOLLO",
+          "CLEARBIT",
+          "CRUNCHBASE"
+        ]
+      }
+    },
+    {
+      "tenantId": "beta_internal_03",
+      "check": "secrets",
+      "severity": "warning",
+      "reason": "PLACEHOLDER_SECRETS",
+      "details": {
+        "placeholders": [
+          "CLAY",
+          "APOLLO",
+          "CLEARBIT",
+          "CRUNCHBASE"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "criticalFailures": 0,
+    "warnings": 4,
+    "checksPerformed": 16
+  }
+}
