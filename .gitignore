@@ -1,7 +1,17 @@
 node_modules
 dist
-.env
 .DS_Store
+
+# Environment files - NEVER commit secrets
+.env
+.env.*
+.env.local
+.env.*.local
+*.local.json
+credentials.json
+service-account*.json
+*-key.json
+secrets/
 *.log
 .vscode
 .idea
