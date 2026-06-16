@@ -1,0 +1,7 @@
+# Default owner for everything in this repo.
+* @jeremylongshore
+
+# The load-bearing invariants live here — review with extra care.
+/pipeline_core/validator.ts @jeremylongshore
+/pipeline_core/store.ts @jeremylongshore
+/.github/workflows/ @jeremylongshore

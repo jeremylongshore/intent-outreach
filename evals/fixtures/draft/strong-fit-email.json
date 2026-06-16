@@ -1,0 +1,23 @@
+{
+  "name": "strong-fit-email",
+  "icp": "Outbound automation for founder-led sales at seed-to-Series-A B2B SaaS.",
+  "lead": {
+    "domain": "northbeam.io",
+    "companyName": "Northbeam",
+    "industry": "B2B SaaS — marketing analytics",
+    "size": "11-50",
+    "source": "apollo"
+  },
+  "contact": {
+    "name": "Priya Nair",
+    "leadDomain": "northbeam.io",
+    "email": "priya@northbeam.io",
+    "title": "VP of Sales",
+    "source": "apollo"
+  },
+  "angles": [
+    "Northbeam raised a Series A and is hiring on the sales team — likely scaling outbound now.",
+    "Marketing-analytics buyers respond to data-led, specific outreach."
+  ],
+  "channel": "email"
+}

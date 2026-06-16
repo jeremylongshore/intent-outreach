@@ -1,0 +1,30 @@
+{
+  "name": "Agency Multi-Client Digest",
+  "description": "Digest profile for agencies running campaigns across multiple clients. Outputs markdown and CSV for spreadsheet review, surfaces more contacts per lead, and writes files locally for client delivery.",
+  "intake": {
+    "connectors": ["apollo", "hunter", "clearbit", "crunchbase", "leadmagic"],
+    "extraFields": ["industry", "size", "funding", "verifiedEmail"]
+  },
+  "filtering": {
+    "minScore": 50,
+    "companyFilters": [],
+    "contactTitles": ["CEO", "CMO", "VP Sales", "Head of Growth", "Founder", "Director"]
+  },
+  "outreach": {
+    "channel": "email",
+    "tone": "Professional and clear. Agency-aware: leave room for client personalization before sending.",
+    "maxLength": 800,
+    "maxContactsPerLead": 3,
+    "templateNotes": "Flag placeholder slots [CLIENT_NAME], [VALUE_PROP] for agency review before sending."
+  },
+  "structure": {
+    "sections": ["summary", "leads", "contacts", "messages", "cost"]
+  },
+  "output": {
+    "formats": ["markdown", "csv"]
+  },
+  "delivery": {
+    "targets": ["console", "file"],
+    "dir": "./reports/agency-digest"
+  }
+}

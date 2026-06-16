@@ -1,0 +1,16 @@
+{
+  "name": "thin-data-email",
+  "icp": "Outbound automation for founder-led sales at seed-to-Series-A B2B SaaS.",
+  "lead": {
+    "domain": "quietlabs.dev",
+    "companyName": "Quiet Labs",
+    "source": "manual"
+  },
+  "contact": {
+    "name": "Sam Okafor",
+    "leadDomain": "quietlabs.dev",
+    "source": "manual"
+  },
+  "angles": [],
+  "channel": "email"
+}

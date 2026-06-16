@@ -1,0 +1,30 @@
+{
+  "name": "LinkedIn Warm Intro",
+  "description": "Short LinkedIn connection request with warm, genuine tone. Targets single decision-maker per company. Very short body — LinkedIn limits and norms demand brevity. Surfaces a Slack preview and a file for review.",
+  "intake": {
+    "connectors": ["apollo", "peopledatalabs"],
+    "extraFields": ["linkedin"]
+  },
+  "filtering": {
+    "minScore": 70,
+    "companyFilters": [],
+    "contactTitles": ["CEO", "Founder", "VP", "Director", "Head of"]
+  },
+  "outreach": {
+    "channel": "linkedin",
+    "tone": "Warm, genuine, human. Short. No pitch in the opener — just a shared context hook.",
+    "maxLength": 300,
+    "maxContactsPerLead": 1,
+    "templateNotes": "LinkedIn connection note: under 300 chars, reference one specific mutual context (shared community, article, or event). No URLs."
+  },
+  "structure": {
+    "sections": ["summary", "contacts", "messages", "cost"]
+  },
+  "output": {
+    "formats": ["markdown", "slack"]
+  },
+  "delivery": {
+    "targets": ["console", "file"],
+    "dir": "./reports/linkedin"
+  }
+}

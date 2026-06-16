@@ -1,0 +1,22 @@
+{
+  "name": "strong-fit-linkedin",
+  "icp": "Outbound automation for founder-led sales at seed-to-Series-A B2B SaaS.",
+  "lead": {
+    "domain": "northbeam.io",
+    "companyName": "Northbeam",
+    "industry": "B2B SaaS — marketing analytics",
+    "size": "11-50",
+    "source": "apollo"
+  },
+  "contact": {
+    "name": "Priya Nair",
+    "leadDomain": "northbeam.io",
+    "title": "VP of Sales",
+    "linkedin": "https://www.linkedin.com/in/priyanair",
+    "source": "apollo"
+  },
+  "angles": [
+    "Northbeam is scaling its sales team after a recent raise."
+  ],
+  "channel": "linkedin"
+}
