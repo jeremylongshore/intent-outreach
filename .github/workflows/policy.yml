@@ -1,53 +1,73 @@
 name: Policy Enforcement
-on: [pull_request]
+on: [pull_request, push]
+
+# Replaces the old google.adk / Vertex / YAML-agent guards (017-AT-DECR §8).
+# The load-bearing invariant is now: NO UN-VALIDATED MODEL OUTPUT REACHES STORAGE.
+# It is enforced structurally — RunStore.saveRun accepts only Validated<CampaignRun>,
+# and that brand can only be minted by validator.ts — so `npm run typecheck` fails
+# any code path that tries to persist raw model output. The grep guards below back
+# that up by keeping the separation (and the GCP exodus) honest.
 
 jobs:
-  policy:
+  invariants:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install deps
+        run: npm ci
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install -y ripgrep
 
-      - name: Check for stub orchestrator
+      - name: "Invariant: no un-validated output reaches storage (type-enforced)"
         run: |
-          if rg -n 'status.*STUB' src/agents/orchestrator.py; then
-            echo "❌ ERROR: Stub orchestrator not allowed"
-            echo "Orchestrator must execute workflow in Agent Engine, not return stub"
-            exit 1
-          fi
-          echo "✅ No stub orchestrator found"
+          npm run typecheck
+          rg -q "export type Validated" pipeline_core/validator.ts \
+            || { echo "❌ validator brand is missing — the gate is gone"; exit 1; }
+          rg -q "Validated<CampaignRun>" pipeline_core/store.ts \
+            || { echo "❌ RunStore must require Validated<CampaignRun>"; exit 1; }
+          echo "✅ storage accepts only validated records"
 
-      - name: Check for YAML agent definitions
+      - name: "Invariant: pipeline_core/mcp are framework-free (no Google/cloud)"
         run: |
-          if rg -g '!.github/**' -l '\.ya?ml$' | grep -E '^(agents/|src/agents/)' ; then
-            echo "❌ ERROR: Agent YAML files banned"
-            echo "All agents must use Python ADK only"
-            exit 1
+          if rg -n -e "from ['\"][^'\"]*google" -e "from ['\"][^'\"]*firebase" \
+                   -e "from ['\"][^'\"]*firestore" -e "from ['\"][^'\"]*vertex" \
+                   -e "from ['\"]@google-cloud" -e "from ['\"][^'\"]*aiplatform" \
+                   -e "from ['\"][^'\"]*secretmanager" \
+                   pipeline_core/ mcp/ ; then
+            echo "❌ Google/cloud SDK import found — Intent Outreach is zero-Google"; exit 1
           fi
-          echo "✅ No YAML agent definitions found"
+          echo "✅ no Google/cloud imports"
 
-      - name: Check for forbidden frameworks
+      - name: "Invariant: store.ts does not depend on the LLM/provider layer"
         run: |
-          if rg -n 'from langchain|import langchain' src/; then
-            echo "❌ ERROR: LangChain imports found"
-            exit 1
+          if rg -n -e "from ['\"]\.\/providers" -e "from ['\"]ai['\"]" \
+                   -e "from ['\"]@ai-sdk" pipeline_core/store.ts ; then
+            echo "❌ store.ts must not import the model/provider layer (separation)"; exit 1
           fi
-          if rg -n 'llama_index|genkit' src/; then
-            echo "❌ ERROR: LlamaIndex or Genkit found"
-            exit 1
-          fi
-          if rg -n 'OPENAI_API_KEY' src/ .env* 2>/dev/null; then
-            echo "❌ ERROR: OpenAI API key found"
-            exit 1
-          fi
-          echo "✅ No forbidden frameworks found"
+          echo "✅ store/provider separation intact"
 
-      - name: Verify Agent Engine integration
+      - name: "Invariant: no framework bloat (LangChain/LlamaIndex/Genkit)"
         run: |
-          if ! rg -q 'from google.adk' src/agents/orchestrator.py; then
-            echo "❌ ERROR: Orchestrator must use google.adk.agents.Agent"
-            exit 1
+          if rg -n -e "from ['\"][^'\"]*langchain" -e "from ['\"][^'\"]*llamaindex" \
+                   -e "from ['\"][^'\"]*llama_index" -e "from ['\"][^'\"]*genkit" \
+                   pipeline_core/ mcp/ ; then
+            echo "❌ use the Vercel AI SDK, not a heavyweight agent framework"; exit 1
           fi
-          echo "✅ Agent Engine integration verified"
+          echo "✅ no framework bloat"
+
+      - name: "Invariant: retired Vertex/YAML/billing scaffolding stays gone"
+        run: |
+          if rg -n -e "reasoningEngines" -e "google\.adk" -e "Agent Engine" \
+                   pipeline_core/ mcp/ ; then
+            echo "❌ Vertex Agent Engine references are retired"; exit 1
+          fi
+          if rg -g "*.yml" -g "*.yaml" --files agents src/agents 2>/dev/null | grep -q .; then
+            echo "❌ YAML agent definitions are banned"; exit 1
+          fi
+          echo "✅ no retired scaffolding"
+
+      - name: Tests
+        run: npx vitest run

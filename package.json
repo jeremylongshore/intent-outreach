@@ -1,26 +1,40 @@
 {
-  "name": "pipelinepilot",
+  "name": "intent-outreach",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "ADK-based SDR orchestration with Vertex AI Agent Engine + Firestore",
+  "description": "Intent Outreach — a model-agnostic, Claude-Code-native SDR orchestrator (research → enrich → outreach). Local-only, BYO keys, zero Google dependency.",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Jeremy Longshore <jeremy@intentsolutions.io> (https://intentsolutions.io)",
+  "homepage": "https://github.com/jeremylongshore/intent-outreach",
+  "bin": {
+    "intent-outreach": "dist/cli.js"
+  },
   "scripts": {
-    "arv": "node scripts/validate_arv.mjs",
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "build": "tsc",
-    "enable:firestore": "bash scripts/enable_firestore.sh",
-    "deploy:agents": "bash scripts/deploy_agents.sh",
-    "demo": "tsx newsfeed-demo/demo_runner.ts"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "mcp": "tsx mcp/server.ts",
+    "evals": "promptfoo eval -c evals/promptfooconfig.yaml",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
-    "yaml": "^2.6.1"
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "ai": "^4.0.0",
+    "@ai-sdk/anthropic": "^1.0.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "optionalDependencies": {
+    "@ai-sdk/openai": "^1.0.0",
+    "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/xai": "^1.0.0"
   },
   "engines": {
     "node": ">=20.0.0"

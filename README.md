@@ -156,32 +156,6 @@ adk invoke agent_engine pipelinepilot-orchestrator \
 
 ---
 
-## Action Counting
-
-Every operation is tracked as an **action** for billing/metering:
-
-| Operation | Actions |
-|-----------|---------|
-| Clay API call | 1 |
-| Apollo search | 1 |
-| Clearbit lookup | 1 |
-| Crunchbase query | 1 |
-| Agent invocation (research, enrich, outreach) | 0 (routing only) |
-| NewsFeed export generation | 0 (local processing) |
-
-**Formula:**
-```
-Total Actions = Sum of all connector API calls
-```
-
-**Example Workflow:**
-- Research agent: Clay (1) + Crunchbase (1) = 2 actions
-- Enrich agent: Apollo (1) + Clearbit (1) = 2 actions
-- Outreach agent: 0 actions (analysis only)
-- **Total: 4 actions**
-
----
-
 ## BYO Keys Policy
 
 **Why BYO?**
