@@ -15,7 +15,12 @@ import {
   getSkippedConnectors,
   registerBuiltinConnectors,
 } from "./connectors/index.js";
-import type { Contact, Enrichment, Lead } from "./models.js";
+import { SCHEMA_VERSION } from "./models.js";
+import type { CampaignRun, Contact, Enrichment, Lead, Message } from "./models.js";
+import { assertCampaignRun, validateMessage, type Validated } from "./validator.js";
+import { getProvider, type LLMProvider } from "./providers.js";
+import { CostMeter } from "./cost.js";
+import { draftMessage, scoreLead } from "./seam.js";
 
 export interface ResearchResult {
   leads: Lead[];
@@ -129,4 +134,128 @@ export async function runEnrich(lead: Lead, contacts: Contact[]): Promise<Enrich
   }
 
   return { enrichments, ran, skipped, raw };
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// runCampaign — the full deterministic-control-flow pipeline with the LLM seam.
+// research → enrich → SCORE (llm) → DRAFT (llm) → VALIDATE → CampaignRun.
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface RunCampaignInput {
+  /** Caller-supplied run id (no Date.now/random in core). */
+  id: string;
+  icp: string;
+  domains: string[];
+  channel?: "email" | "linkedin";
+  /** Skip drafting for leads scoring below this (0–100). Default 0 = draft all. */
+  minScore?: number;
+  /** Contacts to draft per lead. Default 1. */
+  maxContactsPerLead?: number;
+  /** Injected provider (tests/evals). Default: getProvider() from env (eval-gated). */
+  provider?: LLMProvider;
+  /** Injected clock for determinism in tests. Default: real wall clock. */
+  now?: () => string;
+  /** Verbatim tone/length override from a Report Profile. */
+  styleOverride?: string;
+}
+
+export interface RunCampaignResult {
+  run: Validated<CampaignRun>;
+  cost: ReturnType<CostMeter["summary"]>;
+}
+
+export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignResult> {
+  const { icp, domains } = input;
+  const now = input.now ?? (() => new Date().toISOString());
+  const channel = input.channel ?? "email";
+  const minScore = input.minScore ?? 0;
+  const maxContacts = input.maxContactsPerLead ?? 1;
+  const provider = input.provider ?? (await getProvider());
+  const meter = new CostMeter();
+  const createdAt = now();
+
+  const allLeads: Lead[] = [];
+  const allContacts: Contact[] = [];
+  const allEnrichments: Enrichment[] = [];
+  const messages: Message[] = [];
+  const skipped = new Set<string>();
+
+  for (const domain of domains) {
+    const research = await runResearch(domain, icp);
+    research.skipped.forEach((s) => skipped.add(s));
+
+    for (const lead of research.leads) {
+      const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
+      const enrich = await runEnrich(lead, leadContacts);
+      enrich.skipped.forEach((s) => skipped.add(s));
+
+      allLeads.push(lead);
+      allContacts.push(...leadContacts);
+      allEnrichments.push(...enrich.enrichments);
+
+      // SCORE seam (LLM) — never trusted as a record, only as a routing signal.
+      const scored = await scoreLead(provider, {
+        icp,
+        lead,
+        contacts: leadContacts,
+        enrichments: enrich.enrichments,
+      });
+      meter.record(provider.model, scored.usage.inputTokens, scored.usage.outputTokens);
+      if (scored.object.fitScore < minScore) continue;
+
+      // DRAFT seam (LLM) — output goes through the validator before it can persist.
+      for (const contact of leadContacts.slice(0, maxContacts)) {
+        const drafted = await draftMessage(provider, {
+          icp,
+          lead,
+          contact,
+          angles: scored.object.angles,
+          channel,
+          ...(input.styleOverride ? { styleOverride: input.styleOverride } : {}),
+        });
+        meter.record(provider.model, drafted.usage.inputTokens, drafted.usage.outputTokens);
+
+        const candidate = {
+          contactKey: contact.email ?? `${contact.name}@${lead.domain}`,
+          channel,
+          subject: drafted.object.subject,
+          body: drafted.object.body,
+          cta: drafted.object.cta,
+          fitScore: scored.object.fitScore,
+          model: provider.model,
+          promptVersion: "outreach.v1",
+          createdAt: now(),
+        };
+        const validated = validateMessage(candidate);
+        if (validated.ok) messages.push(validated.value);
+      }
+    }
+  }
+
+  const status: CampaignRun["status"] = messages.length
+    ? "complete"
+    : allLeads.length
+      ? "enriched"
+      : "researched";
+
+  // Final gate: the whole record must pass the validator to become a record.
+  const run = assertCampaignRun({
+    id: input.id,
+    schemaVersion: SCHEMA_VERSION,
+    icp,
+    domains,
+    provider: provider.name,
+    model: provider.model,
+    status,
+    leads: dedupeLeads(allLeads),
+    contacts: dedupeContacts(allContacts),
+    enrichments: allEnrichments,
+    messages,
+    costUsd: meter.summary().spentUsd,
+    skippedConnectors: [...skipped],
+    createdAt,
+    finishedAt: now(),
+  });
+
+  return { run, cost: meter.summary() };
 }
