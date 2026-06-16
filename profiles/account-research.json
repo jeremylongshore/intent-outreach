@@ -1,0 +1,26 @@
+{
+  "name": "Account Research",
+  "description": "Deep research profile with no outreach drafting. Pulls maximum enrichment depth across all configured connectors and produces a structured markdown report for sales team review. No messages are drafted.",
+  "intake": {
+    "connectors": ["apollo", "hunter", "clearbit", "crunchbase", "leadmagic", "exa", "peopledatalabs"],
+    "extraFields": ["funding", "techStack", "news", "headcount", "competitors", "verifiedEmail", "phone"]
+  },
+  "filtering": {
+    "minScore": 80,
+    "companyFilters": [],
+    "contactTitles": []
+  },
+  "outreach": {
+    "maxContactsPerLead": 5
+  },
+  "structure": {
+    "sections": ["summary", "leads", "contacts", "cost"]
+  },
+  "output": {
+    "formats": ["markdown", "json", "csv"]
+  },
+  "delivery": {
+    "targets": ["file"],
+    "dir": "./reports/account-research"
+  }
+}

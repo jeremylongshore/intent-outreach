@@ -1,0 +1,36 @@
+{
+  "name": "strong-fit",
+  "icp": "Seed-to-Series-A B2B SaaS companies (11-50 employees) that just raised and are scaling go-to-market. Offer: outbound automation for founder-led sales.",
+  "lead": {
+    "domain": "northbeam.io",
+    "companyName": "Northbeam",
+    "industry": "B2B SaaS — marketing analytics",
+    "size": "11-50",
+    "description": "Marketing attribution platform for DTC and ecommerce brands.",
+    "source": "apollo"
+  },
+  "contacts": [
+    {
+      "name": "Priya Nair",
+      "leadDomain": "northbeam.io",
+      "email": "priya@northbeam.io",
+      "title": "VP of Sales",
+      "source": "apollo"
+    }
+  ],
+  "enrichments": [
+    {
+      "subjectType": "lead",
+      "subjectKey": "northbeam.io",
+      "provider": "crunchbase",
+      "funding": {
+        "lastRound": "Series A",
+        "totalRaisedUsd": 15000000,
+        "lastRoundDate": "2026-03-01",
+        "investors": ["Craft Ventures", "Y Combinator"]
+      },
+      "data": { "headcountGrowth90d": 0.28 },
+      "fetchedAt": "2026-06-15T10:00:00.000Z"
+    }
+  ]
+}

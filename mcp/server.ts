@@ -17,7 +17,17 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { runEnrich, runResearch } from "../pipeline_core/pipeline.js";
-import type { Contact, Lead } from "../pipeline_core/models.js";
+import {
+  ContactSchema,
+  EnrichmentSchema,
+  LeadSchema,
+  MessageSchema,
+  SCHEMA_VERSION,
+  type Contact,
+  type Lead,
+} from "../pipeline_core/models.js";
+import { assertCampaignRun, ValidationError } from "../pipeline_core/validator.js";
+import { JsonlRunStore, defaultStorePath } from "../pipeline_core/store.js";
 import {
   getConnectors,
   registerBuiltinConnectors,
@@ -103,6 +113,59 @@ server.registerTool(
       source: "manual",
     }));
     return asText(await runEnrich(lead, normalized));
+  },
+);
+
+server.registerTool(
+  "save_run",
+  {
+    title: "Save a validated campaign run",
+    description:
+      "Validate an assembled campaign run and append it to the LOCAL run store " +
+      "(JSONL under the user's home, never the cloud). This is the gate: the run " +
+      "is checked against the schema before it is persisted — un-validated model " +
+      "output is rejected here, not stored. Returns the saved run id + path, or a " +
+      "validation error describing what to fix.",
+    inputSchema: {
+      id: z.string(),
+      icp: z.string(),
+      domains: z.array(z.string()),
+      provider: z.string(),
+      model: z.string(),
+      leads: z.array(LeadSchema).default([]),
+      contacts: z.array(ContactSchema).default([]),
+      enrichments: z.array(EnrichmentSchema).default([]),
+      messages: z.array(MessageSchema).default([]),
+      skippedConnectors: z.array(z.string()).default([]),
+    },
+  },
+  async (args) => {
+    const nowIso = new Date().toISOString();
+    const status = args.messages.length
+      ? "complete"
+      : args.contacts.length
+        ? "enriched"
+        : "researched";
+    try {
+      const run = assertCampaignRun({
+        ...args,
+        schemaVersion: SCHEMA_VERSION,
+        status,
+        createdAt: nowIso,
+        finishedAt: nowIso,
+      });
+      const store = new JsonlRunStore();
+      await store.saveRun(run);
+      return asText({ saved: run.id, status, path: defaultStorePath(), messages: run.messages.length });
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        return {
+          isError: true,
+          content: [{ type: "text" as const, text: `validation failed (run NOT saved): ${err.message}` }],
+        };
+      }
+      throw err;
+    }
   },
 );
 

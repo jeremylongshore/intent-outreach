@@ -1,0 +1,30 @@
+{
+  "name": "Tech Founder Cold Outreach",
+  "description": "Beachhead profile for cold email campaigns targeting technical founders. High minimum score ensures only well-qualified leads get drafted. One contact per lead, founder voice, short punchy email.",
+  "intake": {
+    "connectors": ["apollo", "clearbit", "crunchbase"],
+    "extraFields": ["fundingStage", "techStack"]
+  },
+  "filtering": {
+    "minScore": 75,
+    "companyFilters": ["Series A", "Series B", "bootstrapped", "YC"],
+    "contactTitles": ["CEO", "CTO", "Founder", "Co-Founder"]
+  },
+  "outreach": {
+    "channel": "email",
+    "tone": "Direct, founder-to-founder, concise. No buzzwords. Show genuine insight about their product.",
+    "maxLength": 600,
+    "maxContactsPerLead": 1,
+    "templateNotes": "Lead with a specific observation about their company. One clear ask in the CTA."
+  },
+  "structure": {
+    "sections": ["summary", "leads", "contacts", "messages", "cost"]
+  },
+  "output": {
+    "formats": ["markdown", "json"]
+  },
+  "delivery": {
+    "targets": ["console", "file"],
+    "dir": "./reports"
+  }
+}

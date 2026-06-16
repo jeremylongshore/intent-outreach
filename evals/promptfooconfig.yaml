@@ -1,0 +1,63 @@
+# promptfoo config for the outreach (draft) seam.
+#
+# `npm run evals` runs:  promptfoo eval -c evals/promptfooconfig.yaml
+# This is the human-in-the-loop / prompt-iteration workflow over the live prompt.
+#
+# ⚠️ The CI GATE is the in-repo harness, NOT this file:
+#     tsx evals/run.ts --offline      (deterministic, free — the gate)
+#     tsx evals/run.ts --providers anthropic   (real, keyed — promotes a provider)
+# promptfoo here is for interactively tuning prompts/outreach.v1.md against a real
+# model; it needs ANTHROPIC_API_KEY and costs money. Keep the verdict in evals/run.ts.
+
+description: "Intent Outreach — outreach.v1 draft-seam prompt eval"
+
+prompts:
+  - file://../prompts/outreach.v1.md
+
+providers:
+  - id: anthropic:messages:claude-opus-4-8
+    config:
+      max_tokens: 1024
+
+defaultTest:
+  options:
+    # The prompt returns prose with subject/body/cta fields; do not require strict JSON.
+    # (Structured JSON is enforced by the seam's generateObject in evals/run.ts, not here.)
+    transform: "output"
+
+tests:
+  - description: "strong-fit — grounded, has a CTA"
+    vars:
+      icp: "Outbound automation for founder-led sales at seed-to-Series-A B2B SaaS."
+      channel: "email"
+      lead: '{"domain":"northbeam.io","companyName":"Northbeam","industry":"B2B SaaS — marketing analytics","size":"11-50","source":"apollo"}'
+      contact: '{"name":"Priya Nair","leadDomain":"northbeam.io","email":"priya@northbeam.io","title":"VP of Sales","source":"apollo"}'
+      angles: '["Northbeam raised a Series A and is hiring on the sales team — likely scaling outbound now."]'
+    assert:
+      # 1. Has a low-friction call to action.
+      - type: icontains-any
+        value: ["call", "chat", "15 min", "worth a", "open to", "reply", "interested"]
+      # 2. is-json OFF — the message is prose, not a JSON document.
+      - type: not-is-json
+      # 3. No fabrication (llm-rubric — requires a grader key; costs money).
+      - type: llm-rubric
+        value: >
+          The message uses ONLY facts present in the inputs (ICP, lead, contact, angles).
+          It must NOT invent a funding amount, an investor name, a customer, a metric, or a
+          product detail that is not in the provided angles. PASS only if every concrete claim
+          is grounded in the inputs.
+
+  - description: "thin-data — must NOT fabricate personalization"
+    vars:
+      icp: "Outbound automation for founder-led sales at seed-to-Series-A B2B SaaS."
+      channel: "email"
+      lead: '{"domain":"quietlabs.dev","companyName":"Quiet Labs","source":"manual"}'
+      contact: '{"name":"Sam Okafor","leadDomain":"quietlabs.dev","source":"manual"}'
+      angles: "[]"
+    assert:
+      - type: not-is-json
+      - type: llm-rubric
+        value: >
+          The inputs contain NO funding, investor, metric, or customer facts. PASS only if the
+          message stays honestly generic and does NOT claim the company raised money, has a
+          named investor, hit a metric, or has any specific detail absent from the inputs.

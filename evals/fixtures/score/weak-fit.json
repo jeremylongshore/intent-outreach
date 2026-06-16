@@ -1,0 +1,30 @@
+{
+  "name": "weak-fit",
+  "icp": "Seed-to-Series-A B2B SaaS companies (11-50 employees) that just raised and are scaling go-to-market. Offer: outbound automation for founder-led sales.",
+  "lead": {
+    "domain": "harborfreightcoffee.com",
+    "companyName": "Harbor Freight Coffee Roasters",
+    "industry": "Food & Beverage — retail coffee",
+    "size": "1001-5000",
+    "description": "Regional chain of brick-and-mortar coffee shops and a wholesale roastery.",
+    "source": "clearbit"
+  },
+  "contacts": [
+    {
+      "name": "Dale Murphy",
+      "leadDomain": "harborfreightcoffee.com",
+      "email": "dale@harborfreightcoffee.com",
+      "title": "Regional Store Operations Manager",
+      "source": "clearbit"
+    }
+  ],
+  "enrichments": [
+    {
+      "subjectType": "lead",
+      "subjectKey": "harborfreightcoffee.com",
+      "provider": "clearbit",
+      "data": { "sector": "retail", "publiclyTraded": false },
+      "fetchedAt": "2026-06-15T10:05:00.000Z"
+    }
+  ]
+}
