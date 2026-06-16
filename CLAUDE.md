@@ -2,323 +2,140 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Repository Overview
+## What PipelinePilot Is
 
-**PipelinePilot** - [Project purpose to be defined]
+An agentic **SDR (sales development) orchestrator** that runs a Research → Enrich → Outreach
+lead-generation workflow. A single Python ADK agent runs **inside Vertex AI Agent Engine**
+(GCP project `pipelinepilot-prod`, region `us-central1`), calling paid data providers
+(Clay, Apollo, Clearbit, Crunchbase) and drafting personalized outreach. A Next.js dashboard
+on Firebase Hosting drives it through a thin Firebase Functions shim.
 
-**Location:** `/home/jeremy/000-projects/iams/pipelinepilot/`
-**Status:** Initial Setup
-**Type:** Agent System Implementation (Tier 3)
+GitHub: `jeremylongshore/pipelinepilot`. Repo path is `~/000-projects/pipelinepilot/`
+(NOT `iams/pipelinepilot` — older docs say that; it's wrong).
 
----
+## ⚠️ Two implementations live in this tree — only one is current
 
-## Context in IAMS Architecture
+This repo migrated from a TypeScript prototype to Python ADK. Both still exist on disk:
 
-PipelinePilot is a **Tier 3** implementation within the IAMS (Intent Agent Manager & Engine System) hierarchy.
+| Path | Status | Notes |
+|---|---|---|
+| `src/` (Python) | **CURRENT / authoritative** | The deployed system. `from google.adk` agent + tools. |
+| `connectors/*.ts`, `agents/*.yaml`, `newsfeed-demo/` | **LEGACY / pre-migration** | The original TS prototype. `agents/` now holds only `_schemas/`. |
+| `README.md`, `000-docs/008-AA-STAT-*` | **STALE** | Describe the legacy TS version and a pre-migration "ADK not in PyPI / no dashboard" status. Do not trust them for current state. |
 
-### Three-Tier Architecture
+**The README documents the legacy TypeScript path and is misleading — read `src/` and the recent AARs (`016`, `015`) instead.** The `agents/*.yaml` files are now *banned* by CI (see Policy CI below).
 
-**Tier 1: iams/** (Master)
-- General agent system patterns
-- Cross-domain research and templates
-- Location: `/home/jeremy/000-projects/iams/`
-
-**Tier 2: [Domain Template]** (e.g., iamnews/, iamsdr/)
-- Domain-specific reusable templates
-- Generic configurations for that domain
-- Location: `/home/jeremy/000-projects/iams/iam[domain]/`
-
-**Tier 3: pipelinepilot/** ← YOU ARE HERE
-- Specific implementation
-- Product-specific configurations
-- Location: `/home/jeremy/000-projects/iams/pipelinepilot/`
-
-### Navigation Map
+## Core architecture (the part that needs multiple files to see)
 
 ```
-iams/ (Tier 1 - Master)
-├── 000-docs/                    # General agent patterns
-├── CLAUDE.md                    # Master guidance
-│
-├── [domain]/                    # Tier 2 - Template
-│   ├── CLAUDE.md               # Template guidance
-│   ├── README.md               # How to use template
-│   ├── 000-docs/               # Generic domain docs
-│   └── templates/              # Reusable configs
-│
-└── pipelinepilot/              # Tier 3 - Implementation (YOU ARE HERE)
-    ├── CLAUDE.md               # This file
-    ├── README.md               # Project overview
-    ├── 000-docs/               # Product docs
-    └── ... (implementation files)
+Next.js dashboard (Firebase Hosting)
+  └─ POST /campaigns/start → Firestore queues/{id}
+       └─ runQueuedCampaign (Firebase Function, onCreate)        ← pipelinepilot-dashboard/functions/src/index.ts
+            └─ Vertex AI Agent Engine :query  (ONE orchestrator) ← src/agents/orchestrator.py
+                 ├─ clay_lookup()        ┐
+                 ├─ apollo_people()      │  all 4 tools on ONE agent  ← src/agents/tools.py
+                 ├─ clearbit_enrich()    │
+                 └─ crunchbase_company() ┘
+            └─ writes results → Firestore campaigns/{id}/{leads,enriched_leads,messages}
 ```
 
----
+**Why a single agent with all 4 tools (the central design constraint):** Vertex AI Agent
+Engine rejects agents that have **2+ non-search function tools** at *query time*
+(`400 Multiple tools are supported only when they are all search tools`). The agents deploy
+fine but fail when called. The fix was to collapse the multi-agent design into **one
+orchestrator holding all four tools**, with orchestration logic living *inside* Agent Engine
+(not in Firebase Functions). See `000-docs/008-TQ-KNOW-agent-engine-limitations.md` and
+`000-docs/016-AA-RETRO-orchestration-fix-aar.md`. Firebase Functions is intentionally a thin
+shim — do not move workflow logic back into it.
 
-## Documentation Structure
+**Secrets:** tools fetch provider keys from GCP Secret Manager at call time
+(`_get_secret()` in `src/tools/secrets.py` / `src/agents/tools.py`), keyed by name
+(`CLAY_API_KEY`, `APOLLO_API_KEY`, `CLEARBIT_API_KEY`, `CRUNCHBASE_API_KEY`, plus
+`SALESNAV_*`/`ZOOMINFO_API_KEY` placeholders). The dashboard's `/keys/set` endpoint writes
+new secret versions. No keys in code or `.env`.
 
-### Where Documentation Lives
+## Deploy scripts — only one is canonical
 
-**General Patterns** → `iams/000-docs/`
-- Reasoning techniques
-- Agent communication patterns
-- Cross-domain research
+`src/` contains three deploy scripts from different eras. **Use `src/deploy_orchestrator.py`.**
 
-**Domain-Specific Patterns** → `iam[domain]/000-docs/`
-- Template architectures
-- Domain-specific tools
-- Reusable configurations
+| Script | Use it? |
+|---|---|
+| `src/deploy_orchestrator.py` | ✅ **Canonical.** Deploys the single ADK `orchestrator_agent` via `google.adk.Deployer`. |
+| `src/deploy_inline.py` | ❌ Deprecated multi-agent `Queryable` stub pattern (the design CI now forbids). |
+| `src/deploy.py` | ❌ Stale/broken. Imports `create_orchestrator_agent`, which no longer exists in `orchestrator.py`. |
 
-**PipelinePilot-Specific** → `pipelinepilot/000-docs/` ← YOU ARE HERE
-- Product documentation
-- Deployment guides
-- Configuration details
-- Implementation notes
+`src/agents/{research,enrich,outreach}.py` (with their `create_*_agent` factories) are the
+**deprecated** multi-agent path, kept for reference. The live agent is the module-level
+`orchestrator_agent` in `src/agents/orchestrator.py`.
 
-### Quick Decision Guide
-
-**"Where does this documentation go?"**
-
-Ask:
-1. "Does this apply to ALL agent systems?" → `iams/000-docs/`
-2. "Does this apply to all [DOMAIN] systems?" → `iam[domain]/000-docs/`
-3. "Does this apply to PipelinePilot only?" → `pipelinepilot/000-docs/`
-
----
-
-## File Organization
-
-### Directory Structure
-
-```
-pipelinepilot/
-├── 000-docs/                    # Documentation (filing system v2.0)
-│   ├── 001-PP-PROJ-project-overview.md
-│   └── ... (other docs as needed)
-│
-├── CLAUDE.md                    # This file
-├── README.md                    # Project README
-│
-├── src/                         # Source code
-│   ├── agents/                 # Agent implementations
-│   ├── tools/                  # Agent tools
-│   ├── configs/                # Configuration files
-│   └── utils/                  # Utility functions
-│
-├── terraform/                   # Infrastructure as Code
-│   ├── main.tf
-│   ├── variables.tf
-│   └── terraform.tfvars
-│
-├── tests/                       # Test files
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/
-│
-├── .github/                     # GitHub Actions
-│   └── workflows/
-│
-└── docker/                      # Docker configurations
-    ├── Dockerfile
-    └── docker-compose.yml
-```
-
----
-
-## Documentation Standards
-
-All documents follow **Document Filing System v2.0**:
-
-**Format:** `NNN-CC-ABCD-description.ext`
-
-**Components:**
-- **NNN** = Sequential number (001-999)
-- **CC** = Category code (2 letters)
-- **ABCD** = Document type (4 letters)
-- **description** = 1-4 words, kebab-case
-
-### Category Codes
-- **PP** = Product & Planning
-- **AT** = Architecture & Technical
-- **TQ** = Testing & Quality
-- **OD** = Operations & Deployment
-- **LS** = Logs & Status
-- **RA** = Reports & Analysis
-- **DR** = Documentation & Reference
-- **MC** = Meetings & Communication
-- **PM** = Project Management
-
-### Examples
-- `001-PP-PROJ-project-overview.md` (Project overview)
-- `002-AT-ARCH-system-architecture.md` (System architecture)
-- `003-TQ-TEST-test-strategy.md` (Test strategy)
-- `004-OD-DEPL-deployment-guide.md` (Deployment guide)
-
----
-
-## Technology Stack
-
-### Infrastructure (Tentative)
-- **Cloud:** Google Cloud Platform
-- **IaC:** Terraform
-- **Containers:** Docker
-- **CI/CD:** GitHub Actions
-
-### Agent Framework (Tentative)
-- **Primary:** Google ADK (Agent Development Kit)
-- **Hosting:** Vertex AI Agent Engine
-- **Alternative:** Genkit
-
-### AI Models (Tentative)
-- **Primary:** Gemini 2.5 Flash
-- **Complex:** Gemini 1.5 Pro
-
-### Languages (Tentative)
-- **Agents:** Python 3.12+
-- **Backend:** TypeScript/JavaScript (Genkit)
-- **IaC:** HCL (Terraform)
-- **Configs:** YAML
-
----
-
-## Development Workflow
-
-### Common Commands
+Imports in deploy scripts are rooted at `src/` (e.g. `from agents.orchestrator import ...`),
+so run them with `src/` on the path:
 
 ```bash
-# Navigate to project
-cd /home/jeremy/000-projects/iams/pipelinepilot/
-
-# Development (to be defined)
-# python -m src.main
-# npm run dev
-
-# Testing (to be defined)
-# pytest
-# npm test
-
-# Deployment (to be defined)
-# terraform apply
-# gcloud run deploy
+cd src && PROJECT_ID=pipelinepilot-prod LOCATION=us-central1 python3 deploy_orchestrator.py
+# then wire the returned resource ID into Firebase Functions:
+firebase functions:config:set agents.orchestrator_id="projects/.../reasoningEngines/XXXX"
 ```
 
-### Before Committing
+**Agent Engine deploy gotchas (hard-won — `000-docs/005-TQ-LESS-cloudpickle-lessons-learned.md`):**
+- Pin **`cloudpickle==3.1.1`** in the deploy `requirements=[...]` — version mismatch with the
+  runtime causes `Can't get attribute '_class_setstate'`.
+- Agent code must be **self-contained / inline-importable**; deploying agents that import
+  custom sibling modules can fail at runtime with `No module named 'agents'` (cloudpickle
+  serializes the import path). Don't rely on `extra_packages`.
 
-1. Run tests (when defined)
-2. Run linting (when defined)
-3. Update documentation
-4. Check for secrets/credentials
+## Commands
 
----
+**Python (agents) — `pyproject.toml`:**
+```bash
+pip install -e ".[dev]"      # google-cloud-aiplatform[adk], google-genai, httpx, pydantic
+pytest                       # tests/ (currently empty — asyncio_mode=auto)
+black . && ruff check .      # line-length 88
+```
 
-## Design Principles
+**Node root (legacy TS validation/demo) — `package.json`:**
+```bash
+npm run arv                  # ARV (agent-readiness) validation: scripts/validate_arv.mjs
+npm run typecheck            # tsc --noEmit
+npm run demo                 # newsfeed-demo via tsx (legacy standalone demo)
+```
 
-### 1. Separation of Concerns
-- Keep general patterns in Tier 1 (iams/)
-- Use domain templates from Tier 2
-- Only customize what's specific to PipelinePilot
+**Dashboard — `pipelinepilot-dashboard/`:**
+```bash
+cd pipelinepilot-dashboard/dashboard && npm run dev    # Next.js 15 dev server
+cd pipelinepilot-dashboard/functions && npm run build  # tsc → lib/  (Node 18 functions)
+firebase deploy --only functions                       # or --only hosting
+```
+Auto-deploys on push via `pipelinepilot-dashboard/.github/workflows/deploy-dashboard.yml`.
 
-### 2. Reusability
-- Follow template patterns
-- Extract reusable components
-- Document for future implementations
+**Test enforcement harness** (vendored `@intentsolutions/audit-harness`, v1.1.5):
+```bash
+scripts/audit-harness verify   # verify hash-pinned artifacts
+scripts/audit-harness init     # re-pin after reviewed edits to harness-governed files
+```
 
-### 3. Clear Documentation
-- Document at appropriate tier
-- Use filing system v2.0
-- Keep README up to date
+## Policy CI — what will block a PR
 
-### 4. Security First
-- Never commit secrets
-- Use environment variables
-- Follow GCP security best practices
+`.github/workflows/policy.yml` + `adk-guard.yml` enforce the migration's invariants. A PR
+fails if it:
+- adds a **stub orchestrator** (`status.*STUB` in `src/agents/orchestrator.py`),
+- adds **YAML agent definitions** under `agents/` or `src/agents/`,
+- imports a **forbidden framework** — LangChain, LlamaIndex, Genkit, or any `OPENAI_API_KEY`,
+- drops `from google.adk` out of the orchestrator.
 
----
+These exist because two prior sessions made unauthorized architecture changes (logic moved to
+Functions, downgraded to Gen1, merged incomplete). **`main` is branch-protected.** Treat
+changes to the orchestration topology, the agent/tool boundary, or the deploy path as
+**architectural — get explicit approval before changing them**, and keep the relevant AAR in
+`000-docs/` updated.
 
-## Getting Started
+## Docs & conventions
 
-### For New Developers
+All docs live flat in `000-docs/` under the `NNN-CC-ABCD-description.md` filing standard
+(`000-INDEX.md` is the index). Category codes: PP (product), AT (architecture), TQ (testing),
+OD (ops/deploy), DR (reference), AA/RA/LS (reports/status/logs). For current state, prefer the
+**highest-numbered** AA-/status docs; lower numbers and the README predate the ADK migration.
 
-1. **Read Master Guidance**
-   ```bash
-   cat /home/jeremy/000-projects/iams/CLAUDE.md
-   ```
-
-2. **Read Project Overview**
-   ```bash
-   cat 000-docs/001-PP-PROJ-project-overview.md
-   ```
-
-3. **Understand Tier Structure**
-   - Tier 1 (iams/): General patterns
-   - Tier 2 ([domain]/): Domain templates
-   - Tier 3 (pipelinepilot/): This project
-
-4. **Setup Environment** (to be defined)
-   - Install dependencies
-   - Configure GCP access
-   - Setup local development
-
----
-
-## Support & Resources
-
-### Internal Documentation
-- **Master Guidance:** `/home/jeremy/000-projects/iams/CLAUDE.md`
-- **Project Overview:** `000-docs/001-PP-PROJ-project-overview.md`
-- **README:** `README.md` (to be created)
-
-### Related Projects
-- **iamNews Template:** `/home/jeremy/000-projects/iams/iamnews/`
-- **BrightStream:** `/home/jeremy/000-projects/iams/iamnews/brightstream/`
-
-### External Resources
-- Google ADK: https://github.com/google/adk-python
-- Vertex AI: https://cloud.google.com/vertex-ai/docs
-- Terraform: https://www.terraform.io/docs
-- GCP Best Practices: https://cloud.google.com/docs/enterprise/best-practices-for-enterprise-organizations
-
----
-
-## Current Status
-
-**Phase:** Initial Setup
-
-### Completed ✅
-- Created 000-docs/ directory
-- Created project overview document
-- Created CLAUDE.md guidance file
-
-### Next Steps 🔴
-1. Define project scope and purpose
-2. Create README.md
-3. Determine Tier 2 template (or create new one)
-4. Setup development environment
-5. Implement initial agent system
-
----
-
-## Questions to Resolve
-
-1. **What does PipelinePilot do?**
-   - Define specific purpose
-   - Identify target use case
-
-2. **Which domain template?**
-   - Existing template (iamnews, iamsdr)?
-   - New template needed?
-
-3. **What agents are involved?**
-   - Single or multi-agent?
-   - What capabilities needed?
-
-4. **Deployment target?**
-   - Vertex AI Agent Engine?
-   - Cloud Run?
-   - Other?
-
----
-
-**Last Updated:** 2025-10-31
-**Status:** Initial project setup
-**Next Action:** Define project scope and create README.md
+Stack: Python 3.10+ (agents), TypeScript/Next.js 15 + Firebase Functions (dashboard/shim),
+Gemini (`gemini-2.0-flash-exp`) as the agent model, Firestore + Secret Manager + Cloud Storage
+staging on GCP. `tf-pipeline-multicloud/` is an empty placeholder (no `.tf` files yet).
