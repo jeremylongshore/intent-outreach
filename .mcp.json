@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "intent-outreach": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/mcp/server.js"],
+      "env": {
+        "APOLLO_API_KEY": "${APOLLO_API_KEY}",
+        "HUNTER_API_KEY": "${HUNTER_API_KEY}",
+        "PDL_API_KEY": "${PDL_API_KEY}",
+        "EXA_API_KEY": "${EXA_API_KEY}",
+        "CRUNCHBASE_API_KEY": "${CRUNCHBASE_API_KEY}",
+        "LEADMAGIC_API_KEY": "${LEADMAGIC_API_KEY}",
+        "CLAY_API_KEY": "${CLAY_API_KEY}",
+        "CLAY_WEBHOOK_URL": "${CLAY_WEBHOOK_URL}",
+        "CLEARBIT_API_KEY": "${CLEARBIT_API_KEY}",
+        "ZOOMINFO_JWT": "${ZOOMINFO_JWT}",
+        "INTENT_OUTREACH_HOME": "${INTENT_OUTREACH_HOME}"
+      }
+    }
+  }
+}

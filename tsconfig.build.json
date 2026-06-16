@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": false,
+    "declarationMap": false,
+    "allowImportingTsExtensions": false,
+    "outDir": "dist"
+  },
+  "include": ["pipeline_core/**/*.ts", "mcp/**/*.ts", "cli.ts"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

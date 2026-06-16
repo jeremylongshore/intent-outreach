@@ -1,0 +1,13 @@
+{
+  "name": "intent-outreach",
+  "version": "0.1.0",
+  "description": "Model-agnostic, Claude-Code-native SDR orchestrator: research → enrich → outreach over your own data-provider keys, fully local, with your own model. Built for technical founders who do their own outbound.",
+  "author": {
+    "name": "Jeremy Longshore",
+    "email": "jeremy@intentsolutions.io",
+    "url": "https://intentsolutions.io"
+  },
+  "homepage": "https://github.com/jeremylongshore/intent-outreach",
+  "license": "SEE LICENSE IN LICENSE",
+  "keywords": ["sdr", "outbound", "prospecting", "lead-generation", "sales", "mcp", "model-agnostic"]
+}
