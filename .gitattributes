@@ -1,0 +1,14 @@
+# Normalize line endings
+* text=auto eol=lf
+
+# Explicitly binary
+*.png binary
+*.jpg binary
+*.pdf binary
+
+# Keep shell scripts LF even on Windows checkouts
+*.sh text eol=lf
+
+# Lockfiles + generated dirs collapse in diffs
+package-lock.json -diff linguist-generated=true
+dist/ linguist-generated=true

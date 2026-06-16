@@ -1,0 +1,25 @@
+name: CI
+on: [pull_request, push]
+
+# Complements policy.yml (which enforces the architectural invariants). This is
+# the build/test gate: typecheck, unit tests, the free offline eval gate, and a
+# build (which also confirms prompts/ get copied into dist/).
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Eval gate (offline, deterministic)
+        run: npx tsx evals/run.ts --offline
+      - name: Build
+        run: npm run build
