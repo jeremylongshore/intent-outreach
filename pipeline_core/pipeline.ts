@@ -15,6 +15,7 @@ import {
   getSkippedConnectors,
   registerBuiltinConnectors,
 } from "./connectors/index.js";
+import { HttpError } from "./http.js";
 import { SCHEMA_VERSION } from "./models.js";
 import type { CampaignRun, Contact, Enrichment, Lead, Message } from "./models.js";
 import { assertCampaignRun, validateMessage, type Validated } from "./validator.js";
@@ -101,7 +102,12 @@ export async function runResearch(domain: string, icp: string): Promise<Research
       raw[connector.name] = out.raw;
       ran.push(connector.name);
     } catch (err) {
-      raw[connector.name] = { error: String(err) };
+      // Store only a sanitized status — never String(err), which can carry a
+      // secret-bearing URL (redacted at the HttpError seam, sanitized again here).
+      raw[connector.name] = {
+        failed: true,
+        status: err instanceof HttpError ? err.status : "error",
+      };
       skipped.push(connector.name);
     }
   }
@@ -128,7 +134,12 @@ export async function runEnrich(lead: Lead, contacts: Contact[]): Promise<Enrich
       raw[connector.name] = out.raw;
       ran.push(connector.name);
     } catch (err) {
-      raw[connector.name] = { error: String(err) };
+      // Store only a sanitized status — never String(err), which can carry a
+      // secret-bearing URL (redacted at the HttpError seam, sanitized again here).
+      raw[connector.name] = {
+        failed: true,
+        status: err instanceof HttpError ? err.status : "error",
+      };
       skipped.push(connector.name);
     }
   }
@@ -179,10 +190,12 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const allEnrichments: Enrichment[] = [];
   const messages: Message[] = [];
   const skipped = new Set<string>();
+  let anyResearchRan = false;
 
   for (const domain of domains) {
     const research = await runResearch(domain, icp);
     research.skipped.forEach((s) => skipped.add(s));
+    if (research.ran.length > 0) anyResearchRan = true;
 
     for (const lead of research.leads) {
       const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
@@ -236,7 +249,9 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     ? "complete"
     : allLeads.length
       ? "enriched"
-      : "researched";
+      : anyResearchRan
+        ? "researched" // research ran but surfaced no leads — an honest empty result
+        : "failed"; // no research connector ran at all (none configured / all skipped)
 
   // Final gate: the whole record must pass the validator to become a record.
   const run = assertCampaignRun({

@@ -63,7 +63,9 @@ export const ContactSchema = z.object({
   leadDomain: z.string().min(1),
   email: z.string().email().optional(),
   title: z.string().optional(),
-  linkedin: z.string().url().optional(),
+  // A LinkedIn handle OR full URL — providers return both shapes, so don't reject
+  // an otherwise-valid contact (and thus the whole run) over a non-URL handle.
+  linkedin: z.string().optional(),
   source: SourceSchema,
 });
 export type Contact = z.infer<typeof ContactSchema>;
@@ -117,14 +119,10 @@ export const MessageSchema = z.object({
 });
 export type Message = z.infer<typeof MessageSchema>;
 
-export const RunStatusSchema = z.enum([
-  "pending",
-  "researched",
-  "enriched",
-  "drafted",
-  "complete",
-  "failed",
-]);
+// Every value here is actually produced by runCampaign (no dead states):
+// researched (research ran, no leads/enrichment beyond), enriched (leads+enrichment,
+// no drafts), complete (drafts produced), failed (no connector ran at all).
+export const RunStatusSchema = z.enum(["researched", "enriched", "complete", "failed"]);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
 /**

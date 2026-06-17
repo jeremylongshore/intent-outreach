@@ -23,3 +23,8 @@ jobs:
         run: npx tsx evals/run.ts --offline
       - name: Build
         run: npm run build
+      - name: Bundle is fresh (committed bundle/ matches source)
+        run: |
+          npm run bundle
+          git diff --exit-code -- bundle/ \
+            || { echo "❌ bundle/ is stale — run 'npm run bundle' and commit the result"; exit 1; }

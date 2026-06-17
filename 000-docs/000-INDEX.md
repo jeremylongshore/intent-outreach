@@ -1,69 +1,40 @@
-# 000-INDEX - PipelinePilot Documentation Master Index
+# 000-INDEX — Intent Outreach Documentation Index
 
-**Last Updated:** 2025-11-01 19:30 UTC
-**Purpose:** Single comprehensive reference for all PipelinePilot documentation
-
----
-
-## ADK Migration Documents (Primary Reference)
-
-### 001 - Migration Audit | `001-RA-AUDT-adk-migration-audit.md`
-✅ Compliance verification: Zero YAML, LangChain, LlamaIndex, Genkit, OpenAI  
-📊 7/7 audit checks passed
-
-### 003 - Architecture Decision | `003-AT-ADEC-adopt-vertex-adk.md`  
-🏗️ Why Python ADK over alternatives
-
-### 004 - Secrets Management | `004-DR-SECU-secrets-management.md`  
-🔐 Secret Manager guide (CLAY_API_KEY, APOLLO_API_KEY, etc.)
-
-### 005 - Cloudpickle Lessons | `005-TQ-LESS-cloudpickle-lessons-learned.md`  
-🐛 3 critical deployment failures + solutions (inline pattern, cloudpickle==3.1.1)
-
-### 006 - Deployment Runbook | `006-OD-RUNB-deployment-runbook.md`  
-📖 Step-by-step deployment procedures
-
-### 007 - Migration AAR | `007-AA-RETRO-adk-migration-aar.md`  
-📝 After Action Report (Timeline, metrics, lessons learned)
-
-### 008 - Agent Engine Limitations | `008-TQ-KNOW-agent-engine-limitations.md`  
-⚠️ Multi-tool restriction (Research/Enrich agents blocked)
-
-### 015 - Decision Diagnosis | `015-AA-DIAG-autonomous-decision-diagnosis.md`  
-🔍 All autonomous decisions with rationale and accountability
+**Last Updated:** 2026-06-16
+**Purpose:** Map of the docs in this directory. For current state, prefer the highest-numbered docs;
+everything from `001`–`016` predates the rebuild and describes the retired Gemini-on-Vertex
+"PipelinePilot" system — kept for history only.
 
 ---
 
-## Quick Start
+## Current (the rebuild)
 
-**New Developers:**  
-1. Read 001 (audit), 003 (architecture), 006 (runbook)
+The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR orchestrator
+(TypeScript/Node, zero Google dependency, local-only, BYO keys). Start here:
 
-**Deploy Agents:**  
-Follow 006 - Deployment Runbook
+- **`017-AT-DECR-rebuild-intent-outreach.md`** — the ISEDC Decision Record for the rebuild: the
+  canon-thinker positions (Hickey / Thompson / Karpathy / Huyen) verbatim, the synthesis, the resolved
+  decisions (D1–D5), the target architecture, and the acceptance criteria. **The canonical "why".**
+- **`018-DR-LAND-b2b-data-provider-landscape-2026.md`** — the 2026 connector landscape: which data
+  providers are viable BYO-key, the corrected endpoints/auth, and the shipped connector roster.
 
-**Troubleshoot:**  
-Check 005 (lessons), 007 (AAR), 015 (decisions)
-
----
-
-## Critical Information
-
-**Deployed Resource IDs (Original - Deprecated):**
-- Research: `projects/.../6346543843243982848` (⚠️ STUB)
-- Enrich: `projects/.../4967738669826834432` (⚠️ STUB)
-- Outreach: `projects/.../6153311271732117504` (✅ Works)
-- Orchestrator: `projects/.../6509095642294386688` (⚠️ STUB)
-
-**New Architecture (fix/orchestrator-in-engine):**
-- Single Orchestrator with all 4 tools (Clay, Apollo, Clearbit, Crunchbase)
-- Dashboard calls ONE agent instead of 4
-
-**Known Issues:**
-1. 🔴 Multi-tool limitation (see 008-TQ-KNOW)
-2. 🔴 Orchestrator stub (see 015-AA-DIAG)
+For how the system works and how to run it, read the repo root:
+- `README.md` — install (plugin + CLI), keys, architecture-in-one-screen.
+- `CLAUDE.md` — architecture, the load-bearing invariants, and how to add a connector / promote a provider.
 
 ---
 
-**All docs in:** `000-docs/`  
-**External:** https://cloud.google.com/vertex-ai/docs/agent-engine
+## Historical (pre-rebuild — Gemini on Vertex AI Agent Engine)
+
+These document the original PipelinePilot system that the rebuild **replaced and removed** (Vertex Agent
+Engine, Firebase Functions/Firestore, the Next.js dashboard, the Gemini single-orchestrator design, the
+billing scaffold). They are retained only as a historical record — do **not** treat them as current.
+
+| Range | Topic (historical) |
+|---|---|
+| `001`–`004` | Migration audit, Vertex-ADK architecture decision, Secret Manager, framework comparison |
+| `005`–`008` | Cloudpickle lessons, deployment runbook, migration AAR, Agent Engine multi-tool limitation |
+| `009`–`014` | Production/dashboard deployment reports, GCP setup, quick reference, exec briefs |
+| `015`–`016` | Autonomous-decision diagnosis, orchestration-fix AAR |
+
+If a claim in `001`–`016` contradicts `017`/`018`, the README, or `CLAUDE.md`, the latter win.

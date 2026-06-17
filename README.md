@@ -44,12 +44,15 @@ with you between each, drafts grounded messages, and saves a **validated** run l
 ### 2. Standalone CLI
 
 ```bash
-npm install && npm run build
-node dist/cli.js run --icp "B2B SaaS founders doing their own outbound" \
-                     --domains acme.com,globex.com --channel email
-node dist/cli.js connectors   # which connectors are configured
-node dist/cli.js providers    # model providers + eval-gate status
+npm install                    # only needed to develop/regenerate; the bundle is committed
+node bundle/cli.mjs run --icp "B2B SaaS founders doing their own outbound" \
+                        --domains acme.com,globex.com --channel email
+node bundle/cli.mjs connectors   # which connectors are configured
+node bundle/cli.mjs providers    # model providers + eval-gate status
 ```
+
+`bundle/cli.mjs` and `bundle/server.mjs` are committed, dependency-inlined builds (so the plugin runs
+on a fresh clone with no `node_modules`); regenerate them with `npm run bundle`.
 
 ## Keys (bring your own)
 

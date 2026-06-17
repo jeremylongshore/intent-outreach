@@ -14,8 +14,8 @@
  *     workspace — they do NOT return synchronously here.
  *   - The caller receives { leads: [], contacts: [], raw: { pushed: domain } } to
  *     signal "queued" rather than "data". Downstream stages that need the Clay
- *     output must read it from the user's Clay table (or a Firestore callback row
- *     if the user has wired Clay's webhook output back to this system).
+ *     output must read it from the user's Clay table (or wherever they have routed
+ *     Clay's webhook output) — all local; this system never hosts that callback.
  *
  * Auth: CLAY_API_KEY is sent as Authorization: Bearer <key>.
  * The webhook URL is stored separately as CLAY_WEBHOOK_URL (typically a URL like
@@ -25,7 +25,7 @@
  * destination and there is nothing to do.
  */
 
-import { httpJson } from "../http.js";
+import { httpJson, HttpError } from "../http.js";
 import { getSecret, hasSecret } from "../secrets.js";
 import type { Connector, ResearchInput, ResearchOutput } from "./types.js";
 
@@ -54,11 +54,18 @@ export const clayConnector: Connector = {
     // Push the domain into the user's Clay enrichment table via the webhook.
     // Clay will kick off its configured enrichment workflow asynchronously.
     // There is no synchronous response that contains lead or contact records.
-    await httpJson<unknown>(getSecret(WEBHOOK_ENV), {
-      method: "POST",
-      headers: headers(),
-      json: { domain, icp },
-    });
+    try {
+      await httpJson<unknown>(getSecret(WEBHOOK_ENV), {
+        method: "POST",
+        headers: headers(),
+        json: { domain, icp },
+      });
+    } catch (err) {
+      // The webhook URL can itself be the secret (token in the path). Never let it
+      // reach the error message — surface the status only.
+      const status = err instanceof HttpError ? err.status : "error";
+      throw new Error(`Clay webhook push failed (${status})`);
+    }
 
     // Return an empty result with a raw marker so the pipeline records the push
     // in the audit trail. The caller should NOT interpret leads/contacts as empty
