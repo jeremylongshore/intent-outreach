@@ -1,0 +1,21 @@
+{
+  "name": "jeremylongshore",
+  "owner": {
+    "name": "Jeremy Longshore",
+    "url": "https://intentsolutions.io"
+  },
+  "plugins": [
+    {
+      "name": "intent-outreach",
+      "source": ".",
+      "description": "Model-agnostic, Claude-Code-native SDR orchestrator: research → enrich → outreach over your own data-provider keys, fully local, with your own model.",
+      "version": "0.1.0",
+      "category": "sales",
+      "keywords": ["sdr", "outbound", "prospecting", "lead-generation", "sales", "mcp"],
+      "author": {
+        "name": "Jeremy Longshore",
+        "email": "jeremy@intentsolutions.io"
+      }
+    }
+  ]
+}

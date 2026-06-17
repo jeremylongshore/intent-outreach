@@ -8,32 +8,44 @@
   "author": "Jeremy Longshore <jeremy@intentsolutions.io> (https://intentsolutions.io)",
   "homepage": "https://github.com/jeremylongshore/intent-outreach",
   "bin": {
-    "intent-outreach": "dist/cli.js"
+    "intent-outreach": "bundle/cli.mjs"
   },
+  "files": [
+    "bundle/",
+    "prompts/",
+    "pipeline_core/",
+    "mcp/",
+    "skills/",
+    "profiles/",
+    ".mcp.json",
+    ".claude-plugin/"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('prompts','dist/prompts',{recursive:true})\"",
+    "bundle": "esbuild mcp/server.ts --bundle --platform=node --format=esm --outfile=bundle/server.mjs && esbuild cli.ts --bundle --platform=node --format=esm --banner:js='#!/usr/bin/env node' --outfile=bundle/cli.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "mcp": "tsx mcp/server.ts",
-    "evals": "promptfoo eval -c evals/promptfooconfig.yaml",
+    "evals": "npx -y promptfoo eval -c evals/promptfooconfig.yaml",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "ai": "^4.0.0",
-    "@ai-sdk/anthropic": "^1.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "esbuild": "^0.28.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   },
   "optionalDependencies": {
-    "@ai-sdk/openai": "^1.0.0",
     "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/openai": "^1.0.0",
     "@ai-sdk/xai": "^1.0.0"
   },
   "engines": {

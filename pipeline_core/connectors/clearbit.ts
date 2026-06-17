@@ -16,7 +16,7 @@
  * cached the lookup.
  */
 
-import { httpJson, HttpError } from "../http.js";
+import { httpJson } from "../http.js";
 import { getSecret, hasSecret } from "../secrets.js";
 import type { Enrichment } from "../models.js";
 import type {
@@ -47,32 +47,20 @@ interface ClearbitCompany {
 }
 
 /**
- * Attempt a Clearbit lookup and return the parsed JSON, or null when Clearbit
- * signals "not ready yet" (HTTP 202) or the body is absent/not an object. Any
- * other non-2xx status propagates as HttpError so the caller sees the real error.
+ * Attempt a Clearbit lookup and return the parsed JSON, or null when the body is
+ * absent/empty. Clearbit's async "looking up" response (HTTP 202) is a 2xx, so
+ * httpJson returns its (empty) body rather than throwing — the empty-object check
+ * below handles it. Any genuine non-2xx propagates as HttpError to the caller.
  */
 async function tryFetch<T extends Record<string, unknown>>(
   url: string,
   query: Record<string, string>,
 ): Promise<T | null> {
-  try {
-    const result = await httpJson<T>(url, {
-      method: "GET",
-      headers: headers(),
-      query,
-    });
-    // If the response is not a populated object, treat as "no data".
-    if (!result || typeof result !== "object" || Object.keys(result).length === 0) {
-      return null;
-    }
-    return result;
-  } catch (err) {
-    // HTTP 202 = Clearbit is looking up the record asynchronously; not an error.
-    if (err instanceof HttpError && err.status === 202) {
-      return null;
-    }
-    throw err;
+  const result = await httpJson<T>(url, { method: "GET", headers: headers(), query });
+  if (!result || typeof result !== "object" || Object.keys(result).length === 0) {
+    return null;
   }
+  return result;
 }
 
 export const clearbitConnector: Connector = {
