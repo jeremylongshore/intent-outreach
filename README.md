@@ -43,12 +43,13 @@ with you between each, drafts grounded messages, and saves a **validated** run l
 
 The plugin also ships:
 
+- **Phase sub-agents** — the orchestrator skill dispatches one per stage via the `Task` tool:
+  `outreach-researcher` (Phase 1, one per domain — fan-out), `outreach-enricher` (Phase 2),
+  `outreach-drafter` (Phase 3, grounded score + draft). Each keeps its own context and calls only the
+  deterministic MCP tools for its stage; the orchestrator aggregates and checkpoints with you.
 - **Companion skills (slash commands)** — `/outreach-connectors` (which data connectors are
-  configured), `/outreach-research` (Phase-1 research on a domain list), `/outreach-profile` (inspect
-  or scaffold a Report Profile). Each is a focused, user-invocable skill.
-- **Delegate agents** — `outreach-operator` (runs a whole campaign autonomously and hands back a
-  saved run to review before sending) and `lead-researcher` (returns a grounded account brief, no
-  drafting). Both are separate entry points; the interactive, checkpointed path is the skill.
+  configured), `/outreach-research` (quick Phase-1-only research without a full campaign),
+  `/outreach-profile` (inspect or scaffold a Report Profile). Each is a focused, user-invocable skill.
 - **A `SessionStart` hook** that prints a one-line connector-readiness status.
 
 ### 2. Standalone CLI
@@ -101,9 +102,9 @@ standalone CLI ─────┘                                               
 
 - **`pipeline_core/`** — the framework-free spine (CI-guarded against any Google/cloud import).
 - **`mcp/server.ts`** — one stdio MCP server, thin wrapper over `pipeline_core`.
-- **`skills/intent-outreach/SKILL.md`** — the orchestrator skill (one skill, no subagent fan-out).
+- **`skills/intent-outreach/SKILL.md`** — the orchestrator skill; dispatches phase agents in fixed order.
 - **`skills/outreach-{connectors,research,profile}/`** — focused companion skills (the slash commands).
-- **`agents/`** — delegate subagents (`outreach-operator`, `lead-researcher`).
+- **`agents/`** — phase sub-agents (`outreach-researcher`, `outreach-enricher`, `outreach-drafter`).
 - **`hooks/`** — `SessionStart` connector-readiness hook.
 - **`prompts/`** — versioned, eval-gated prompt files.
 - **`evals/`** — golden fixtures + scorers; the supported-provider gate.
