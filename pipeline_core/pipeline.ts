@@ -22,6 +22,7 @@ import { assertCampaignRun, validateMessage, type Validated } from "./validator.
 import { getProvider, type LLMProvider } from "./providers.js";
 import { CostMeter } from "./cost.js";
 import { draftMessage, scoreLead } from "./seam.js";
+import { registerBuiltinPacks, resolvePack } from "./packs/index.js";
 
 export interface ResearchResult {
   leads: Lead[];
@@ -168,6 +169,8 @@ export interface RunCampaignInput {
   now?: () => string;
   /** Verbatim tone/length override from a Report Profile. */
   styleOverride?: string;
+  /** Which pack to run. Default: "b2b-sdr" (today's behavior). */
+  pack?: string;
 }
 
 export interface RunCampaignResult {
@@ -182,6 +185,8 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const minScore = input.minScore ?? 0;
   const maxContacts = input.maxContactsPerLead ?? 1;
   const provider = input.provider ?? (await getProvider());
+  registerBuiltinPacks();
+  const pack = resolvePack(input.pack);
   const meter = new CostMeter();
   const createdAt = now();
 
@@ -189,6 +194,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const allContacts: Contact[] = [];
   const allEnrichments: Enrichment[] = [];
   const messages: Message[] = [];
+  const blockedContacts: { contactKey: string; reason: string }[] = [];
   const skipped = new Set<string>();
   let anyResearchRan = false;
 
@@ -212,18 +218,37 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
         lead,
         contacts: leadContacts,
         enrichments: enrich.enrichments,
+        scorePrompts: pack.prompts.score,
       });
       meter.record(provider.model, scored.usage.inputTokens, scored.usage.outputTokens);
       if (scored.object.fitScore < minScore) continue;
 
+      // COMPLIANCE gate (pack-supplied) — runs BEFORE drafting so a blocked
+      // contact never burns LLM tokens. Blocked contacts are recorded for the
+      // audit trail and do not consume a draft slot. b2b-sdr's gate is a no-op,
+      // so `eligible` === leadContacts and behavior is byte-identical.
+      const eligible: Contact[] = [];
+      for (const contact of leadContacts) {
+        const verdict = pack.compliance.check({ lead, contact, now: new Date(now()) });
+        if (verdict.status === "blocked") {
+          blockedContacts.push({
+            contactKey: contact.email ?? `${contact.name}@${lead.domain}`,
+            reason: verdict.reason ?? "blocked",
+          });
+        } else {
+          eligible.push(contact);
+        }
+      }
+
       // DRAFT seam (LLM) — output goes through the validator before it can persist.
-      for (const contact of leadContacts.slice(0, maxContacts)) {
+      for (const contact of eligible.slice(0, maxContacts)) {
         const drafted = await draftMessage(provider, {
           icp,
           lead,
           contact,
           angles: scored.object.angles,
           channel,
+          draftPrompt: pack.prompts.draft,
           ...(input.styleOverride ? { styleOverride: input.styleOverride } : {}),
         });
         meter.record(provider.model, drafted.usage.inputTokens, drafted.usage.outputTokens);
@@ -257,6 +282,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const run = assertCampaignRun({
     id: input.id,
     schemaVersion: SCHEMA_VERSION,
+    vertical: pack.id,
     icp,
     domains,
     provider: provider.name,
@@ -268,6 +294,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     messages,
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],
+    blockedContacts,
     createdAt,
     finishedAt: now(),
   });
