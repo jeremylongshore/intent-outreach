@@ -8,7 +8,7 @@
     {
       "name": "intent-outreach",
       "source": ".",
-      "description": "Model-agnostic, Claude-Code-native SDR orchestrator: research → enrich → outreach over your own data-provider keys, fully local, with your own model.",
+      "description": "Model-agnostic, Claude-Code-native SDR orchestrator (research → enrich → outreach). An orchestrator skill dispatches phase sub-agents over a bundled MCP server; fully local, BYO keys, zero Google.",
       "version": "0.1.0",
       "category": "sales",
       "keywords": ["sdr", "outbound", "prospecting", "lead-generation", "sales", "mcp"],

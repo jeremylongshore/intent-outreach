@@ -1,7 +1,7 @@
 {
   "name": "intent-outreach",
   "version": "0.1.0",
-  "description": "Model-agnostic, Claude-Code-native SDR orchestrator: research → enrich → outreach over your own data-provider keys, fully local, with your own model. Built for technical founders who do their own outbound. Ships an MCP server, an orchestrator skill, slash commands, and delegate agents.",
+  "description": "Model-agnostic, Claude-Code-native SDR orchestrator: research → enrich → outreach over your own data-provider keys, fully local, with your own model. Built for technical founders who do their own outbound. An orchestrator skill dispatches phase sub-agents (research → enrich → draft) over a bundled MCP server that houses your data-provider APIs, with companion slash-command skills.",
   "author": {
     "name": "Jeremy Longshore",
     "email": "jeremy@intentsolutions.io",
