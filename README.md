@@ -8,6 +8,10 @@ enriches the leads, and drafts personalized outreach — running **fully on your
 own** data-provider and model keys, and **zero Google dependency**. Claude is the default model; bring
 an OpenAI / Grok / Gemini key once it's passed the eval gate.
 
+As a Claude Code plugin, an **orchestrator skill** (`/intent-outreach`) dispatches **phase sub-agents**
+(research → enrich → draft) over a **bundled MCP server** that houses your data-provider APIs — keeping
+each phase in its own context while the orchestrator checkpoints with you between stages.
+
 > Built for technical founders / indie SaaS & AI startups who do their own outbound — no SDR
 > headcount, no per-seat data tools, you own your keys and your data.
 
@@ -90,10 +94,10 @@ To drive a non-Anthropic model from inside Claude Code, point `ANTHROPIC_BASE_UR
 ## Architecture (one screen)
 
 ```
-Claude Code skill  ─┐                      ┌─ research_domain ─┐
-  (deterministic    ├─► Intent Outreach ───┤  enrich_lead       ├─► pipeline_core
-   R→E→O phases)    │     MCP server       └─ save_run ─────────┘   (framework-free)
-standalone CLI ─────┘                                                │
+orchestrator skill  ─┐                     ┌─ research_domain ─┐
+  → phase agents     ├─► Intent Outreach ──┤  enrich_lead       ├─► pipeline_core
+  (R→E→O, fixed)     │     MCP server      └─ save_run ─────────┘   (framework-free)
+standalone CLI ──────┘                                               │
                                                                      ├─ connectors/ (registry; 9 adapters)
   research() → enrich()  : deterministic, fixed connector order      ├─ providers.ts (Vercel AI SDK; eval-gated)
   score() → draft()      : the ONLY LLM calls (structured output)    ├─ validator.ts (the gate: Validated<T> brand)
