@@ -34,9 +34,11 @@ standalone CLI ────┘
 | `store.ts` | `RunStore` — local JSONL default (`~/.intent-outreach/runs.jsonl`). `saveRun` accepts **only** `Validated<CampaignRun>`. Never a hosted DB. |
 | `secrets.ts` | `getSecret()` = env (default) \| local file. **No cloud secret store.** |
 | `connectors/` | Registry + 9 adapters. Deterministic registration order. Each self-skips without its key. |
-| `pipeline.ts` | `runResearch()/runEnrich()` (deterministic, fixed connector order) + `runCampaign()` (adds the LLM seam + the validate→record gate). |
+| `compliance/` | DNC + TCPA quiet-hours + service-area gate (`normalizePhone`, `DncList`, `dncScrub`, `withinQuietHours`, `inServiceArea`). **Pure, clock-injected, fail-closed**, zero imports. A pack supplies it; a live DNC *lookup* belongs in a BYOK enrich connector, never here. |
+| `packs/` | Pack registry (mirrors `connectors/`) + built-in `b2b-sdr`. A **pack** = a declarative composition (compliance gate + prompt files) over seams the engine already has — no new orchestration path. `runCampaign` resolves `input.pack ?? "b2b-sdr"`. |
+| `pipeline.ts` | `runResearch()/runEnrich()` (deterministic, fixed connector order) + `runCampaign()` (adds the LLM seam, the pack compliance filter before drafting, + the validate→record gate). |
 | `providers.ts` | Vercel AI SDK wrapper (`generateObject`). Provider eval-gate lives here (`SUPPORTED_PROVIDERS`). |
-| `seam.ts` | `scoreLead()` + `draftMessage()` — the ONLY LLM calls. Output is never trusted directly. |
+| `seam.ts` | `scoreLead()` + `draftMessage()` — the ONLY LLM calls. Output is never trusted directly. Prompt files are pack-supplied (default to today's). |
 | `cost.ts` | `CostMeter`. `prompts.ts` loads versioned prompt files. |
 
 ## Load-bearing invariants (enforced by `.github/workflows/policy.yml`)
@@ -52,6 +54,10 @@ These replace the old `google.adk`/Vertex guards. **Treat them as architectural 
 4. **No framework bloat** (LangChain/LlamaIndex/Genkit) — use the Vercel AI SDK.
 5. **Determinism:** connectors are called in fixed registration order; the LLM does not choose which API to
    call. Asserted in `tests/pipeline.test.ts`.
+6. **Schema bumps are additive + backward-readable.** `CampaignRunSchema.schemaVersion` is a `z.union` of all
+   live versions, **never** a single `z.literal` — `store.ts` re-validates every JSONL line on read, so a
+   re-literal would silently drop every older run. New fields are `.default(...)` so old lines still parse.
+   Asserted in `tests/packs.test.ts`.
 
 ## Working in this repo
 
@@ -70,6 +76,16 @@ A provider is **gated**: it only runs once added to `SUPPORTED_PROVIDERS`, and i
 `evals/` (Claude-first, per D4). To promote one: run `npx tsx evals/run.ts --providers <name>` with a real
 key, confirm it passes, then add it to `SUPPORTED_PROVIDERS`. `INTENT_OUTREACH_ALLOW_UNGATED=1` overrides
 the gate for local testing.
+
+### Adding a vertical pack
+
+Write `pipeline_core/packs/<name>.ts` implementing the `Pack` interface (copy `b2b-sdr.ts`): an `id`, a
+`compliance` gate (compose `../compliance` for DNC/TCPA/geofence, or use `noopCompliance`), and `prompts`
+(score files + draft file resolved via `loadPrompt`). Register it in `packs/index.ts` — or `registerPack()`
+your own at runtime. `runCampaign({ pack: "<id>" })` selects it; an unregistered id fails loud (no silent
+b2b fallback). The compliance gate runs **before** drafting (blocked contacts are recorded in
+`run.blockedContacts`, never drafted) and must stay **pure + clock-injected** — a live data lookup goes in a
+BYOK enrich connector, not the gate. `b2b-sdr` is the default and is byte-identical to the pre-pack engine.
 
 ### Commands
 
