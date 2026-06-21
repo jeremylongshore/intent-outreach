@@ -21927,7 +21927,7 @@ function registerBuiltinConnectors() {
 
 // pipeline_core/models.ts
 init_zod();
-var SCHEMA_VERSION = 1;
+var SCHEMA_VERSION = 2;
 var SourceSchema = external_exports.string().min(1);
 var LeadSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -21985,9 +21985,14 @@ var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete
 var CampaignRunSchema = external_exports.object({
   /** Caller-supplied or generated run id (no Date.now/random inside core). */
   id: external_exports.string().min(1),
-  schemaVersion: external_exports.literal(SCHEMA_VERSION),
+  // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
+  // existing v1 line on read (store.ts re-validates each line). New writes emit
+  // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
+  schemaVersion: external_exports.union([external_exports.literal(1), external_exports.literal(2)]),
   icp: external_exports.string().min(1),
   domains: external_exports.array(external_exports.string().min(1)),
+  /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
+  vertical: external_exports.string().min(1).default("b2b-sdr"),
   /** Model + provider that ran the LLM seams. */
   provider: external_exports.string().min(1),
   model: external_exports.string().min(1),
@@ -22000,6 +22005,17 @@ var CampaignRunSchema = external_exports.object({
   costUsd: external_exports.number().nonnegative().optional(),
   /** Names of connectors that were skipped (no key / unsupported) this run. */
   skippedConnectors: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Contacts the pack's compliance gate blocked before drafting — the audit trail
+   * for "did not contact, and why". Always empty for b2b-sdr (no-op gate); the
+   * append-only RunStore IS the compliance record for verticals that do block.
+   */
+  blockedContacts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      reason: external_exports.string().min(1)
+    })
+  ).default([]),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });

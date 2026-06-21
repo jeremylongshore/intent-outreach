@@ -11826,7 +11826,7 @@ function registerBuiltinConnectors() {
 
 // pipeline_core/models.ts
 init_zod();
-var SCHEMA_VERSION = 1;
+var SCHEMA_VERSION = 2;
 var SourceSchema = external_exports.string().min(1);
 var LeadSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -11884,9 +11884,14 @@ var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete
 var CampaignRunSchema = external_exports.object({
   /** Caller-supplied or generated run id (no Date.now/random inside core). */
   id: external_exports.string().min(1),
-  schemaVersion: external_exports.literal(SCHEMA_VERSION),
+  // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
+  // existing v1 line on read (store.ts re-validates each line). New writes emit
+  // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
+  schemaVersion: external_exports.union([external_exports.literal(1), external_exports.literal(2)]),
   icp: external_exports.string().min(1),
   domains: external_exports.array(external_exports.string().min(1)),
+  /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
+  vertical: external_exports.string().min(1).default("b2b-sdr"),
   /** Model + provider that ran the LLM seams. */
   provider: external_exports.string().min(1),
   model: external_exports.string().min(1),
@@ -11899,6 +11904,17 @@ var CampaignRunSchema = external_exports.object({
   costUsd: external_exports.number().nonnegative().optional(),
   /** Names of connectors that were skipped (no key / unsupported) this run. */
   skippedConnectors: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Contacts the pack's compliance gate blocked before drafting — the audit trail
+   * for "did not contact, and why". Always empty for b2b-sdr (no-op gate); the
+   * append-only RunStore IS the compliance record for verticals that do block.
+   */
+  blockedContacts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      reason: external_exports.string().min(1)
+    })
+  ).default([]),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
@@ -17754,12 +17770,11 @@ var DraftOutputSchema = external_exports.object({
 function compact(value) {
   return JSON.stringify(value, null, 0);
 }
+var DEFAULT_SCORE_PROMPTS = ["research.v1.md", "enrich.v1.md"];
+var DEFAULT_DRAFT_PROMPT = "outreach.v1.md";
 async function scoreLead(provider, ctx) {
-  const system = `${loadPrompt("research.v1.md")}
-
----
-
-${loadPrompt("enrich.v1.md")}`;
+  const names = ctx.scorePrompts ?? DEFAULT_SCORE_PROMPTS;
+  const system = names.map((n) => loadPrompt(n)).join("\n\n---\n\n");
   const prompt = [
     `ICP: ${ctx.icp}`,
     `LEAD: ${compact(ctx.lead)}`,
@@ -17769,7 +17784,7 @@ ${loadPrompt("enrich.v1.md")}`;
   return provider.generateObject({ schema: ScoreOutputSchema, system, prompt });
 }
 async function draftMessage(provider, ctx) {
-  const base = loadPrompt("outreach.v1.md");
+  const base = loadPrompt(ctx.draftPrompt ?? DEFAULT_DRAFT_PROMPT);
   const system = ctx.styleOverride ? `${base}
 
 ## Profile overrides
@@ -17782,6 +17797,48 @@ ${ctx.styleOverride}` : base;
     `ANGLES: ${compact(ctx.angles)}`
   ].join("\n");
   return provider.generateObject({ schema: DraftOutputSchema, system, prompt });
+}
+
+// pipeline_core/packs/types.ts
+var DEFAULT_PACK_ID = "b2b-sdr";
+var noopCompliance = {
+  check: () => ({ status: "clean" })
+};
+
+// pipeline_core/packs/registry.ts
+var REGISTRY2 = /* @__PURE__ */ new Map();
+function registerPack(pack) {
+  REGISTRY2.set(pack.id, pack);
+}
+function resolvePack(id) {
+  const wanted = id ?? DEFAULT_PACK_ID;
+  const pack = REGISTRY2.get(wanted);
+  if (!pack) {
+    throw new Error(
+      `pack not registered: ${wanted} (registered: ${[...REGISTRY2.keys()].join(", ") || "none"})`
+    );
+  }
+  return pack;
+}
+
+// pipeline_core/packs/b2b-sdr.ts
+var b2bSdrPack = {
+  id: "b2b-sdr",
+  displayName: "B2B SDR",
+  compliance: noopCompliance,
+  // Exactly the files seam.ts loaded before packs existed — keeps output identical.
+  prompts: {
+    score: ["research.v1.md", "enrich.v1.md"],
+    draft: "outreach.v1.md"
+  }
+};
+
+// pipeline_core/packs/index.ts
+var registered2 = false;
+function registerBuiltinPacks() {
+  if (registered2) return;
+  registerPack(b2bSdrPack);
+  registered2 = true;
 }
 
 // pipeline_core/pipeline.ts
@@ -17878,12 +17935,15 @@ async function runCampaign(input) {
   const minScore = input.minScore ?? 0;
   const maxContacts = input.maxContactsPerLead ?? 1;
   const provider = input.provider ?? await getProvider();
+  registerBuiltinPacks();
+  const pack = resolvePack(input.pack);
   const meter = new CostMeter();
   const createdAt = now();
   const allLeads = [];
   const allContacts = [];
   const allEnrichments = [];
   const messages = [];
+  const blockedContacts = [];
   const skipped = /* @__PURE__ */ new Set();
   let anyResearchRan = false;
   for (const domain of domains) {
@@ -17901,17 +17961,31 @@ async function runCampaign(input) {
         icp,
         lead,
         contacts: leadContacts,
-        enrichments: enrich.enrichments
+        enrichments: enrich.enrichments,
+        scorePrompts: pack.prompts.score
       });
       meter.record(provider.model, scored.usage.inputTokens, scored.usage.outputTokens);
       if (scored.object.fitScore < minScore) continue;
-      for (const contact of leadContacts.slice(0, maxContacts)) {
+      const eligible = [];
+      for (const contact of leadContacts) {
+        const verdict = pack.compliance.check({ lead, contact, now: new Date(now()) });
+        if (verdict.status === "blocked") {
+          blockedContacts.push({
+            contactKey: contact.email ?? `${contact.name}@${lead.domain}`,
+            reason: verdict.reason ?? "blocked"
+          });
+        } else {
+          eligible.push(contact);
+        }
+      }
+      for (const contact of eligible.slice(0, maxContacts)) {
         const drafted = await draftMessage(provider, {
           icp,
           lead,
           contact,
           angles: scored.object.angles,
           channel,
+          draftPrompt: pack.prompts.draft,
           ...input.styleOverride ? { styleOverride: input.styleOverride } : {}
         });
         meter.record(provider.model, drafted.usage.inputTokens, drafted.usage.outputTokens);
@@ -17935,6 +18009,7 @@ async function runCampaign(input) {
   const run = assertCampaignRun({
     id: input.id,
     schemaVersion: SCHEMA_VERSION,
+    vertical: pack.id,
     icp,
     domains,
     provider: provider.name,
@@ -17946,6 +18021,7 @@ async function runCampaign(input) {
     messages,
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],
+    blockedContacts,
     createdAt,
     finishedAt: now()
   });
