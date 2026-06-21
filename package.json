@@ -16,6 +16,8 @@
     "pipeline_core/",
     "mcp/",
     "skills/",
+    "agents/",
+    "hooks/",
     "profiles/",
     ".mcp.json",
     ".claude-plugin/"

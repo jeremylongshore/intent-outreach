@@ -41,6 +41,16 @@ Then invoke the skill (`/intent-outreach`) with an ICP and some domains. The ski
 **Intent Outreach MCP server** through deterministic Research → Enrich → Outreach phases, checkpoints
 with you between each, drafts grounded messages, and saves a **validated** run locally.
 
+The plugin also ships:
+
+- **Companion skills (slash commands)** — `/outreach-connectors` (which data connectors are
+  configured), `/outreach-research` (Phase-1 research on a domain list), `/outreach-profile` (inspect
+  or scaffold a Report Profile). Each is a focused, user-invocable skill.
+- **Delegate agents** — `outreach-operator` (runs a whole campaign autonomously and hands back a
+  saved run to review before sending) and `lead-researcher` (returns a grounded account brief, no
+  drafting). Both are separate entry points; the interactive, checkpointed path is the skill.
+- **A `SessionStart` hook** that prints a one-line connector-readiness status.
+
 ### 2. Standalone CLI
 
 ```bash
@@ -92,6 +102,9 @@ standalone CLI ─────┘                                               
 - **`pipeline_core/`** — the framework-free spine (CI-guarded against any Google/cloud import).
 - **`mcp/server.ts`** — one stdio MCP server, thin wrapper over `pipeline_core`.
 - **`skills/intent-outreach/SKILL.md`** — the orchestrator skill (one skill, no subagent fan-out).
+- **`skills/outreach-{connectors,research,profile}/`** — focused companion skills (the slash commands).
+- **`agents/`** — delegate subagents (`outreach-operator`, `lead-researcher`).
+- **`hooks/`** — `SessionStart` connector-readiness hook.
 - **`prompts/`** — versioned, eval-gated prompt files.
 - **`evals/`** — golden fixtures + scorers; the supported-provider gate.
 - **`profiles/`** — Report Profiles: declarative output customization (starter profiles included).
