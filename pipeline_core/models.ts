@@ -12,8 +12,17 @@
 
 import { z } from "zod";
 
-/** Bump on any breaking change to a schema below. Persisted on every record. */
-export const SCHEMA_VERSION = 1 as const;
+/**
+ * Bump on any breaking change to a schema below. Persisted on every record.
+ *
+ * v2 added `vertical` + `blockedContacts` (both additive, both defaulted). The
+ * schemaVersion field is a UNION of all live versions — NOT a single literal — so
+ * old v1 JSONL still passes re-validation on read (store.ts re-validates every
+ * line). New writes emit the latest version; never narrow this back to one literal.
+ */
+export const SCHEMA_VERSION = 2 as const;
+/** Every schema version a stored record may legitimately carry. */
+export const SUPPORTED_SCHEMA_VERSIONS = [1, 2] as const;
 
 /**
  * Where a piece of data came from. OPEN-ENDED by design: `source` is any
@@ -132,9 +141,14 @@ export type RunStatus = z.infer<typeof RunStatusSchema>;
 export const CampaignRunSchema = z.object({
   /** Caller-supplied or generated run id (no Date.now/random inside core). */
   id: z.string().min(1),
-  schemaVersion: z.literal(SCHEMA_VERSION),
+  // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
+  // existing v1 line on read (store.ts re-validates each line). New writes emit
+  // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
+  schemaVersion: z.union([z.literal(1), z.literal(2)]),
   icp: z.string().min(1),
   domains: z.array(z.string().min(1)),
+  /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
+  vertical: z.string().min(1).default("b2b-sdr"),
   /** Model + provider that ran the LLM seams. */
   provider: z.string().min(1),
   model: z.string().min(1),
@@ -147,6 +161,19 @@ export const CampaignRunSchema = z.object({
   costUsd: z.number().nonnegative().optional(),
   /** Names of connectors that were skipped (no key / unsupported) this run. */
   skippedConnectors: z.array(z.string()).default([]),
+  /**
+   * Contacts the pack's compliance gate blocked before drafting — the audit trail
+   * for "did not contact, and why". Always empty for b2b-sdr (no-op gate); the
+   * append-only RunStore IS the compliance record for verticals that do block.
+   */
+  blockedContacts: z
+    .array(
+      z.object({
+        contactKey: z.string().min(1),
+        reason: z.string().min(1),
+      }),
+    )
+    .default([]),
   createdAt: z.string().datetime(),
   finishedAt: z.string().datetime().optional(),
 });
