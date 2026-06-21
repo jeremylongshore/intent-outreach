@@ -43,7 +43,20 @@ Drive the bundled **Intent Outreach MCP server** through fixed phases, in order.
 **not** spawn subagents or let tool choice become improvised. The connectors decide *what data* comes
 back; the model only *molds* that data into outreach. Everything is local; keys are the user's own.
 
-## Operating rules (non-negotiable)
+## Prerequisites
+
+- **The bundled Intent Outreach MCP server** — this skill drives its tools (`list_connectors`,
+  `research_domain`, `enrich_lead`, `save_run`). It ships with the plugin.
+- **At least one data-connector key** in the environment (e.g. `APOLLO_API_KEY`, `HUNTER_API_KEY` —
+  both have free tiers). With none set, Preflight stops and tells the user what to add.
+- **A model** — runs on whatever model Claude Code is using; no extra key needed for the default.
+- **(Optional) a Report Profile** under `profiles/` or `~/.intent-outreach/profiles/`.
+
+## Instructions
+
+Run the phases below in strict, deterministic order — never skip ahead to drafting.
+
+### Operating rules (non-negotiable)
 
 - **Deterministic order.** Always run the phases below in sequence. Do not skip Research/Enrich to
   "just write emails." A message with no grounding is the failure mode.
@@ -55,7 +68,7 @@ back; the model only *molds* that data into outreach. Everything is local; keys 
 - **The validator is the gate.** Persist a run only through `save_run`, which validates before it
   writes. If `save_run` returns a validation error, fix the run and retry — never work around it.
 
-## Phase 0 — Preflight
+### Phase 0 — Preflight
 
 1. Call `list_connectors`. Show the user which data connectors are **configured** (have a key) and
    which are skipped, with each one's tier (free / paid / enterprise / legacy).
@@ -67,18 +80,18 @@ back; the model only *molds* that data into outreach. Everything is local; keys 
 3. Confirm the **ICP/offer** and the **target domains** with the user. Confirm the channel
    (email or linkedin) and how many contacts per company to draft (default 1).
 
-## Phase 1 — Research (deterministic)
+### Phase 1 — Research (deterministic)
 
 For each domain, call `research_domain(domain, icp)`. Aggregate the returned **leads** and
 **contacts**. Present a compact table (company, industry, size, # contacts). Checkpoint: let the user
 drop any companies before spending enrichment calls.
 
-## Phase 2 — Enrich (deterministic)
+### Phase 2 — Enrich (deterministic)
 
 For each lead the user kept, call `enrich_lead(domain, companyName, contacts)`. Collect the
 **enrichments** (funding, verified emails/phones, web context). Show the user the new signals.
 
-## Phase 3 — Score + Draft (your judgment, grounded)
+### Phase 3 — Score + Draft (your judgment, grounded)
 
 For each lead:
 1. **Score fit** 0–100 against the ICP using only the lead + enrichment data. Be discriminating;
@@ -95,7 +108,7 @@ For each lead:
 
 Show the drafts. **Checkpoint:** the user approves, edits, or rejects each before anything is saved.
 
-## Phase 4 — Save (validated, local)
+### Phase 4 — Save (validated, local)
 
 Assemble the run and call `save_run` with: `id` (a unique id you generate, e.g. from the current time), `icp`, `domains`,
 `provider` (the model you used), `model`, and the arrays `leads`, `contacts`, `enrichments`,
@@ -103,6 +116,30 @@ Assemble the run and call `save_run` with: `id` (a unique id you generate, e.g. 
 `promptVersion: "outreach.v1"`, `createdAt`). `save_run` validates and appends to the local JSONL
 store; report the saved path and counts. If it returns a validation error, correct the offending
 field and call it again.
+
+## Output
+
+The skill produces a **validated `CampaignRun`** appended to the local JSONL store
+(`~/.intent-outreach/runs.jsonl` by default), plus an at-a-glance summary for the user:
+
+- counts — leads researched, contacts found, enrichments collected, messages drafted;
+- the saved run id and path;
+- which connectors ran versus were skipped;
+- the drafted messages themselves (shown for approval).
+
+Nothing is ever sent — `save_run` only persists locally; sending stays the user's deliberate act.
+
+## Error Handling
+
+- **No connectors configured (Preflight)** — stop and list the keys to set (free tiers first); do not
+  proceed to Research.
+- **A connector errors mid-run** — the pipeline records it as skipped and continues; report which
+  connectors ran versus skipped so the user knows the result is partial. Never fabricate data to fill
+  a gap.
+- **A lead has thin data** — write an honest, generic message; never invent a funding round, customer,
+  metric, or mutual connection to manufacture personalization.
+- **`save_run` returns a validation error** — fix the offending field named in the error and call it
+  again. Never work around the validator; it is the gate that keeps un-validated output out of the store.
 
 ## Examples
 
@@ -144,3 +181,13 @@ If the user has a Report Profile (a local file under `profiles/` or `~/.intent-o
 use **Read** to load it and honor its knobs — intake, filtering, tone/length, output formats, and
 delivery. The profile owns the deterministic choices; the model owns the creative drafting. Full knob
 reference and the shipped starters: [references/report-profiles.md](references/report-profiles.md).
+
+## Resources
+
+- **Companion skills** — `outreach-connectors` (preflight connector status), `outreach-research`
+  (Phase-1-only research), `outreach-profile` (manage Report Profiles).
+- **Delegate agents** — `outreach-operator` (autonomous full campaign → saved run to review),
+  `lead-researcher` (research + enrich account brief, no drafting).
+- **Report Profiles** — knob reference + starters: [references/report-profiles.md](references/report-profiles.md).
+- **Decisions + landscape** — `000-docs/017-AT-DECR` (rebuild decision record), `000-docs/018-DR-LAND`
+  (B2B data-provider landscape).
