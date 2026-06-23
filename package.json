@@ -47,7 +47,7 @@
   },
   "optionalDependencies": {
     "@ai-sdk/google": "^3.0.83",
-    "@ai-sdk/openai": "^3.0.73",
+    "@ai-sdk/openai": "^3.0.74",
     "@ai-sdk/xai": "^3.0.96"
   },
   "engines": {
