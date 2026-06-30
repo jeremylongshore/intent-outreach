@@ -33,9 +33,9 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.85",
+    "@ai-sdk/anthropic": "^4.0.2",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "ai": "^6.0.208",
+    "ai": "^7.0.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -46,9 +46,9 @@
     "vitest": "^4.1.9"
   },
   "optionalDependencies": {
-    "@ai-sdk/google": "^3.0.83",
-    "@ai-sdk/openai": "^3.0.73",
-    "@ai-sdk/xai": "^3.0.96"
+    "@ai-sdk/google": "^4.0.2",
+    "@ai-sdk/openai": "^4.0.3",
+    "@ai-sdk/xai": "^4.0.2"
   },
   "engines": {
     "node": ">=20.0.0"
