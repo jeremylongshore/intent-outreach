@@ -66,11 +66,10 @@ afterEach(() => {
 // 1. eval-gate blocks unsupported providers BEFORE any key is needed
 // ---------------------------------------------------------------------------
 describe("eval-gate invariant", () => {
-  it('rejects getProvider({provider:"openai"}) with "eval gate" message before key resolution', async () => {
-    // No OPENAI_API_KEY set — but the gate must fire before getSecret is reached.
-    await expect(getProvider({ provider: "openai" })).rejects.toThrow(
-      /eval gate/i,
-    );
+  it("openai is gated IN (passed the eval harness 2026-08-20) and resolves with a key", async () => {
+    process.env.OPENAI_API_KEY = "sk-test";
+    const p = await getProvider({ provider: "openai" });
+    expect(p.name).toBe("openai");
   });
 
   it('rejects getProvider({provider:"google"}) with "eval gate" message', async () => {
@@ -79,15 +78,16 @@ describe("eval-gate invariant", () => {
     );
   });
 
-  it('rejects getProvider({provider:"xai"}) with "eval gate" message', async () => {
+  it('rejects getProvider({provider:"xai"}) with "eval gate" message before key resolution', async () => {
+    // No XAI_API_KEY set — but the gate must fire before getSecret is reached.
     await expect(getProvider({ provider: "xai" })).rejects.toThrow(
       /eval gate/i,
     );
   });
 
-  it("rejection happens before key resolution — openai throws eval gate even with a key present", async () => {
-    process.env.OPENAI_API_KEY = "sk-test-key-present";
-    await expect(getProvider({ provider: "openai" })).rejects.toThrow(
+  it("rejection happens before key resolution — xai throws eval gate even with a key present", async () => {
+    process.env.XAI_API_KEY = "xai-test-key-present";
+    await expect(getProvider({ provider: "xai" })).rejects.toThrow(
       /eval gate/i,
     );
   });
@@ -240,10 +240,10 @@ describe("listProviderStatus()", () => {
     expect(names).toContain("xai");
   });
 
-  it("marks only 'anthropic' as supported", () => {
+  it("marks exactly the gated-in providers as supported: anthropic + openai", () => {
     const statuses = listProviderStatus();
     const supported = statuses.filter((s) => s.supported).map((s) => s.name);
-    expect(supported).toEqual(["anthropic"]);
+    expect(supported.sort()).toEqual(["anthropic", "openai"]);
   });
 
   it("reports configured=false for all providers when no keys set", () => {
@@ -260,11 +260,11 @@ describe("listProviderStatus()", () => {
     expect(entry.supported).toBe(true);
   });
 
-  it("reports configured=true for openai when OPENAI_API_KEY is set, supported=false", () => {
+  it("reports configured=true AND supported=true for openai when OPENAI_API_KEY is set", () => {
     process.env.OPENAI_API_KEY = "sk-openai-test";
     const entry = listProviderStatus().find((s) => s.name === "openai")!;
     expect(entry.configured).toBe(true);
-    expect(entry.supported).toBe(false);
+    expect(entry.supported).toBe(true);
   });
 
   it("reports configured=true for google when GEMINI_API_KEY is set", () => {

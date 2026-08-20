@@ -7,6 +7,18 @@ All notable changes to Intent Outreach are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- **OpenAI (gpt-4o) promoted through the provider eval gate** — passed all 7
+  golden fixtures (`npx tsx evals/run.ts --providers openai`, 2026-08-20) and is
+  now in `SUPPORTED_PROVIDERS`. BYO `OPENAI_API_KEY` runs unguarded; Grok/Gemini
+  adapters remain gated until an eval run with a real key passes.
+
+### Changed
+- Seam output schemas are now strict-structured-output compatible across
+  providers: `ScoreOutput.angles` is required (was `.default([])`) and
+  `DraftOutput.subject` is required-but-nullable (was `.optional()`) — OpenAI's
+  json_schema strict mode rejects any property missing from `required`, which
+  the eval gate caught on the first real openai run. `null` maps back to
+  "no subject" (linkedin) at the Message boundary.
 - Governance set: `LICENSE` (Intent Solutions Proprietary), `CONTRIBUTING.md`,
   `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `.editorconfig`,
   `.gitattributes`, PR template, `CODEOWNERS`, `dependabot.yml`, and a node CI
