@@ -20,8 +20,13 @@ import { costFor, type Usage } from "./cost.js";
 
 export type ProviderName = "anthropic" | "openai" | "google" | "xai";
 
-/** Providers that have passed the eval gate and may run unguarded. */
-export const SUPPORTED_PROVIDERS = new Set<ProviderName>(["anthropic"]);
+/**
+ * Providers that have passed the eval gate and may run unguarded.
+ * openai gated in 2026-08-20: gpt-4o passed all 7 golden fixtures
+ * (evals/run.ts --providers openai). google/xai adapters ship ready but stay
+ * gated until an eval run with a real key passes.
+ */
+export const SUPPORTED_PROVIDERS = new Set<ProviderName>(["anthropic", "openai"]);
 
 const DEFAULT_MODEL: Record<ProviderName, string> = {
   anthropic: "claude-sonnet-4-6",

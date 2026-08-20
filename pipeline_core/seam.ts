@@ -16,15 +16,20 @@ import type { LLMProvider } from "./providers.js";
 import type { Usage } from "./cost.js";
 import type { Contact, Enrichment, Lead } from "./models.js";
 
+// Strict-schema compatibility: OpenAI's structured-output mode (and Gemini/xAI
+// equivalents) require EVERY property to be listed in `required` — .optional()
+// and .default() both drop a property from `required` and get the whole schema
+// rejected. So seam outputs use required-but-nullable, never optional.
 export const ScoreOutputSchema = z.object({
   fitScore: z.number().min(0).max(100),
   fitReason: z.string(),
-  angles: z.array(z.string()).max(3).default([]),
+  angles: z.array(z.string()).max(3),
 });
 export type ScoreOutput = z.infer<typeof ScoreOutputSchema>;
 
 export const DraftOutputSchema = z.object({
-  subject: z.string().optional(),
+  /** null = channel has no subject line (linkedin). */
+  subject: z.string().nullable(),
   body: z.string().min(1),
   cta: z.string().min(1),
 });

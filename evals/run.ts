@@ -94,8 +94,8 @@ function makeStubProvider(name: ProviderName): LLMProvider & { _setDraftContext(
       fitScore: 72,
       fitReason: "Matches the ICP on industry and size.",
       angles: ctx ? ctx.angles.slice(0, 3) : ["Scaling go-to-market after a recent raise."],
-      // DraftOutput superset (subject omitted for linkedin)
-      ...(channel === "email" ? { subject: `An idea for ${lead}` } : {}),
+      // DraftOutput superset (subject is null for linkedin: required-but-nullable)
+      subject: channel === "email" ? `An idea for ${lead}` : null,
       body,
       cta: "Open to a 15-minute call next week?",
     };

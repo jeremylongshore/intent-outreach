@@ -32499,10 +32499,11 @@ var assertCampaignRun = (raw) => gateOrThrow("CampaignRun", CampaignRunSchema, r
 var ScoreOutputSchema = external_exports.object({
   fitScore: external_exports.number().min(0).max(100),
   fitReason: external_exports.string(),
-  angles: external_exports.array(external_exports.string()).max(3).default([])
+  angles: external_exports.array(external_exports.string()).max(3)
 });
 var DraftOutputSchema = external_exports.object({
-  subject: external_exports.string().optional(),
+  /** null = channel has no subject line (linkedin). */
+  subject: external_exports.string().nullable(),
   body: external_exports.string().min(1),
   cta: external_exports.string().min(1)
 });

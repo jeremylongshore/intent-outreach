@@ -256,7 +256,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
         const candidate = {
           contactKey: contact.email ?? `${contact.name}@${lead.domain}`,
           channel,
-          subject: drafted.object.subject,
+          subject: drafted.object.subject ?? undefined,
           body: drafted.object.body,
           cta: drafted.object.cta,
           fitScore: scored.object.fitScore,
