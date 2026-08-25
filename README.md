@@ -17,6 +17,8 @@ each phase in its own context while the orchestrator checkpoints with you betwee
 
 ---
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U5S225PTME)
+
 ## Why it's different
 
 - **Local-only.** Runs on your machine. No hosted database, no telemetry, no server-side retention.
