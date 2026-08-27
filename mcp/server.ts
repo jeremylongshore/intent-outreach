@@ -35,7 +35,7 @@ import {
 
 registerBuiltinConnectors();
 
-const server = new McpServer({ name: "intent-outreach", version: "0.1.0" });
+const server = new McpServer({ name: "intent-outreach", version: "0.2.0" });
 
 function asText(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] };
