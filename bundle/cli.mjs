@@ -51773,7 +51773,7 @@ var CostMeter = class {
 };
 
 // pipeline_core/providers.ts
-var SUPPORTED_PROVIDERS = /* @__PURE__ */ new Set(["anthropic"]);
+var SUPPORTED_PROVIDERS = /* @__PURE__ */ new Set(["anthropic", "openai"]);
 var DEFAULT_MODEL = {
   anthropic: "claude-sonnet-4-6",
   openai: "gpt-4o",
@@ -51895,10 +51895,11 @@ function loadPrompt(name24) {
 var ScoreOutputSchema = external_exports.object({
   fitScore: external_exports.number().min(0).max(100),
   fitReason: external_exports.string(),
-  angles: external_exports.array(external_exports.string()).max(3).default([])
+  angles: external_exports.array(external_exports.string()).max(3)
 });
 var DraftOutputSchema = external_exports.object({
-  subject: external_exports.string().optional(),
+  /** null = channel has no subject line (linkedin). */
+  subject: external_exports.string().nullable(),
   body: external_exports.string().min(1),
   cta: external_exports.string().min(1)
 });
@@ -52127,7 +52128,7 @@ async function runCampaign(input) {
         const candidate = {
           contactKey: contact.email ?? `${contact.name}@${lead.domain}`,
           channel,
-          subject: drafted.object.subject,
+          subject: drafted.object.subject ?? void 0,
           body: drafted.object.body,
           cta: drafted.object.cta,
           fitScore: scored.object.fitScore,

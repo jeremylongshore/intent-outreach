@@ -5,8 +5,9 @@ Claude Code, with your own model.**
 
 Intent Outreach is a model-agnostic, Claude-Code-native SDR orchestrator. It researches companies,
 enriches the leads, and drafts personalized outreach — running **fully on your machine**, with **your
-own** data-provider and model keys, and **zero Google dependency**. Claude is the default model; bring
-an OpenAI / Grok / Gemini key once it's passed the eval gate.
+own** data-provider and model keys, and **zero Google dependency**. Claude is the default model;
+**OpenAI (gpt-4o) is eval-gated in** — bring an `OPENAI_API_KEY` and it just works. Grok / Gemini
+adapters ship ready and gate in the same way once an eval run with a real key passes.
 
 As a Claude Code plugin, an **orchestrator skill** (`/intent-outreach`) dispatches **phase sub-agents**
 (research → enrich → draft) over a **bundled MCP server** that houses your data-provider APIs — keeping
@@ -87,8 +88,9 @@ free tiers, so a full campaign can run for $0.**
 | `CLAY_API_KEY` + `CLAY_WEBHOOK_URL` | Clay — middleware (push-only) | paid |
 | `CLEARBIT_API_KEY` | Clearbit — enrichment | legacy (pre-2024 keys only) |
 | `ZOOMINFO_JWT` | ZoomInfo — enrichment | enterprise |
-| `ANTHROPIC_API_KEY` | Claude (default model) | — |
-| `OPENAI_API_KEY` / `XAI_API_KEY` / `GEMINI_API_KEY` | alternate models (eval-gated) | — |
+| `ANTHROPIC_API_KEY` | Claude (default model, eval-gated ✓) | — |
+| `OPENAI_API_KEY` | OpenAI gpt-4o (eval-gated ✓ 2026-08-20) | — |
+| `XAI_API_KEY` / `GEMINI_API_KEY` | Grok / Gemini (adapters ready; gate pending an eval run) | — |
 
 To drive a non-Anthropic model from inside Claude Code, point `ANTHROPIC_BASE_URL` at an LLM gateway
 (LiteLLM/Bifrost). See `000-docs/017-AT-DECR`.
