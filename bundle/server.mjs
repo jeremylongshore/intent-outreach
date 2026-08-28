@@ -32656,7 +32656,7 @@ var JsonlRunStore = class {
 
 // mcp/server.ts
 registerBuiltinConnectors();
-var server = new McpServer({ name: "intent-outreach", version: "0.1.0" });
+var server = new McpServer({ name: "intent-outreach", version: "0.2.0" });
 function asText(value) {
   return { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] };
 }

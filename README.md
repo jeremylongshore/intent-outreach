@@ -34,6 +34,9 @@ each phase in its own context while the orchestrator checkpoints with you betwee
   silent-quality surprises from a weak model dropping a tool call.
 - **Pluggable connectors.** Ships adapters for Apollo, Hunter, People Data Labs, Exa, Crunchbase,
   LeadMagic, Clay, Clearbit, and ZoomInfo — and a registry so you can add your own in one file.
+- **Vertical packs + a compliance gate.** A pack composes a fail-closed compliance gate (DNC, TCPA
+  quiet hours, service area) with versioned prompts over the same engine; blocked contacts are
+  recorded, never drafted. `b2b-sdr` ships as the default.
 
 ## Two ways to run it
 
@@ -98,10 +101,11 @@ To drive a non-Anthropic model from inside Claude Code, point `ANTHROPIC_BASE_UR
 ## Architecture (one screen)
 
 ```
-orchestrator skill  ─┐                     ┌─ research_domain ─┐
-  → phase agents     ├─► Intent Outreach ──┤  enrich_lead       ├─► pipeline_core
-  (R→E→O, fixed)     │     MCP server      └─ save_run ─────────┘   (framework-free)
-standalone CLI ──────┘                                               │
+orchestrator skill  ─┐                     ┌─ list_connectors ──┐
+  → phase agents     ├─► Intent Outreach ──┤  research_domain    ├─► pipeline_core
+  (R→E→O, fixed)     │     MCP server      │  enrich_lead        │   (framework-free)
+standalone CLI ──────┘                     └─ save_run ──────────┘
+                                                                     │
                                                                      ├─ connectors/ (registry; 9 adapters)
   research() → enrich()  : deterministic, fixed connector order      ├─ providers.ts (Vercel AI SDK; eval-gated)
   score() → draft()      : the ONLY LLM calls (structured output)    ├─ validator.ts (the gate: Validated<T> brand)
