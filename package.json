@@ -39,11 +39,11 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^25.9.3",
-    "esbuild": "^0.28.1",
-    "tsx": "^4.19.2",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "@types/node": "^26.4.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
   },
   "optionalDependencies": {
     "@ai-sdk/google": "^3.0.83",
