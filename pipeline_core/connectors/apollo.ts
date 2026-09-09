@@ -82,7 +82,7 @@ export const apolloConnector: Connector = {
   tier: "free",
   keyEnvVar: KEY_ENV,
   phases: ["research", "enrich"],
-  note: "Self-serve key; 50 free credits/mo. Covers company, people, and enrichment.",
+  note: "Credential required; check current provider access and quota terms. Covers company, people, and enrichment.",
 
   isConfigured() {
     return hasSecret(KEY_ENV);
@@ -90,11 +90,16 @@ export const apolloConnector: Connector = {
 
   async research({ domain, icp }: ResearchInput): Promise<ResearchOutput> {
     // 1) Company lookup by domain.
-    const orgRes = await httpJson<{ organizations?: ApolloOrg[]; organization?: ApolloOrg }>(
-      `${BASE}/organizations/api_search`,
-      { method: "POST", headers: headers(), json: { q_organization_domains: [domain], per_page: 1 } },
-    );
-    const org = orgRes.organization ?? orgRes.organizations?.[0] ?? { primary_domain: domain };
+    const orgRes = await httpJson<{
+      organizations?: ApolloOrg[];
+      organization?: ApolloOrg;
+    }>(`${BASE}/organizations/api_search`, {
+      method: "POST",
+      headers: headers(),
+      json: { q_organization_domains: [domain], per_page: 1 },
+    });
+    const org = orgRes.organization ??
+      orgRes.organizations?.[0] ?? { primary_domain: domain };
     const lead = orgToLead(org, domain);
 
     // 2) People at that company, biased by the ICP keywords.
@@ -103,10 +108,16 @@ export const apolloConnector: Connector = {
       {
         method: "POST",
         headers: headers(),
-        json: { q_organization_domains: [domain], q_keywords: icp, per_page: 10 },
+        json: {
+          q_organization_domains: [domain],
+          q_keywords: icp,
+          per_page: 10,
+        },
       },
     );
-    const contacts = (peopleRes.people ?? []).map((p) => personToContact(p, lead.domain));
+    const contacts = (peopleRes.people ?? []).map((p) =>
+      personToContact(p, lead.domain),
+    );
 
     return { leads: [lead], contacts, raw: { org: orgRes, people: peopleRes } };
   },
@@ -116,14 +127,17 @@ export const apolloConnector: Connector = {
     const needy = contacts.filter((c) => !c.email).slice(0, 10);
     if (needy.length === 0) return { enrichments: [] };
 
-    const res = await httpJson<{ matches?: ApolloPerson[] }>(`${BASE}/people/bulk_match`, {
-      method: "POST",
-      headers: headers(),
-      json: {
-        details: needy.map((c) => ({ name: c.name, domain: lead.domain })),
-        reveal_personal_emails: false,
+    const res = await httpJson<{ matches?: ApolloPerson[] }>(
+      `${BASE}/people/bulk_match`,
+      {
+        method: "POST",
+        headers: headers(),
+        json: {
+          details: needy.map((c) => ({ name: c.name, domain: lead.domain })),
+          reveal_personal_emails: false,
+        },
       },
-    });
+    );
 
     const now = new Date().toISOString();
     const enrichments: Enrichment[] = (res.matches ?? [])

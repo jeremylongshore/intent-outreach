@@ -31781,15 +31781,16 @@ var apolloConnector = {
   tier: "free",
   keyEnvVar: KEY_ENV,
   phases: ["research", "enrich"],
-  note: "Self-serve key; 50 free credits/mo. Covers company, people, and enrichment.",
+  note: "Credential required; check current provider access and quota terms. Covers company, people, and enrichment.",
   isConfigured() {
     return hasSecret(KEY_ENV);
   },
   async research({ domain: domain2, icp }) {
-    const orgRes = await httpJson(
-      `${BASE}/organizations/api_search`,
-      { method: "POST", headers: headers(), json: { q_organization_domains: [domain2], per_page: 1 } }
-    );
+    const orgRes = await httpJson(`${BASE}/organizations/api_search`, {
+      method: "POST",
+      headers: headers(),
+      json: { q_organization_domains: [domain2], per_page: 1 }
+    });
     const org = orgRes.organization ?? orgRes.organizations?.[0] ?? { primary_domain: domain2 };
     const lead = orgToLead(org, domain2);
     const peopleRes = await httpJson(
@@ -31797,23 +31798,32 @@ var apolloConnector = {
       {
         method: "POST",
         headers: headers(),
-        json: { q_organization_domains: [domain2], q_keywords: icp, per_page: 10 }
+        json: {
+          q_organization_domains: [domain2],
+          q_keywords: icp,
+          per_page: 10
+        }
       }
     );
-    const contacts = (peopleRes.people ?? []).map((p) => personToContact(p, lead.domain));
+    const contacts = (peopleRes.people ?? []).map(
+      (p) => personToContact(p, lead.domain)
+    );
     return { leads: [lead], contacts, raw: { org: orgRes, people: peopleRes } };
   },
   async enrich({ lead, contacts }) {
     const needy = contacts.filter((c) => !c.email).slice(0, 10);
     if (needy.length === 0) return { enrichments: [] };
-    const res = await httpJson(`${BASE}/people/bulk_match`, {
-      method: "POST",
-      headers: headers(),
-      json: {
-        details: needy.map((c) => ({ name: c.name, domain: lead.domain })),
-        reveal_personal_emails: false
+    const res = await httpJson(
+      `${BASE}/people/bulk_match`,
+      {
+        method: "POST",
+        headers: headers(),
+        json: {
+          details: needy.map((c) => ({ name: c.name, domain: lead.domain })),
+          reveal_personal_emails: false
+        }
       }
-    });
+    );
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const enrichments = (res.matches ?? []).filter((m) => Boolean(m && m.email)).map((m) => ({
       subjectType: "contact",
@@ -31837,7 +31847,7 @@ var hunterConnector = {
   tier: "free",
   keyEnvVar: KEY_ENV2,
   phases: ["research", "enrich"],
-  note: "Self-serve key; 50 free searches/mo. Email finding + verification.",
+  note: "Credential required; check current provider access and quota terms. Email finding + verification.",
   isConfigured() {
     return hasSecret(KEY_ENV2);
   },
@@ -31867,7 +31877,11 @@ var hunterConnector = {
     const enrichments = [];
     for (const c of needy) {
       const res = await httpJson(`${BASE2}/email-finder`, {
-        query: { domain: lead.domain, full_name: c.name, api_key: getSecret(KEY_ENV2) }
+        query: {
+          domain: lead.domain,
+          full_name: c.name,
+          api_key: getSecret(KEY_ENV2)
+        }
       });
       const email3 = res.data?.email;
       if (email3 && email3.includes("@")) {
@@ -31902,7 +31916,7 @@ var peopledatalabsConnector = {
   tier: "free",
   keyEnvVar: KEY_ENV3,
   phases: ["research", "enrich"],
-  note: "Self-serve key; 100 free/mo. Structured person & company enrichment.",
+  note: "Credential required; check current provider access and quota terms. Structured person & company enrichment.",
   isConfigured() {
     return hasSecret(KEY_ENV3);
   },
@@ -31935,7 +31949,7 @@ var peopledatalabsConnector = {
           json: {
             query: {
               bool: {
-                must: [{ term: { "job_company_website": domain2 } }]
+                must: [{ term: { job_company_website: domain2 } }]
               }
             },
             size: 10
@@ -32009,7 +32023,7 @@ var exaConnector = {
   tier: "free",
   keyEnvVar: KEY_ENV4,
   phases: ["research", "enrich"],
-  note: "Self-serve key; 1k free/mo. Web research context (news, funding mentions), not contact records.",
+  note: "Credential required; check current provider access and quota terms. Web research context (news and funding mentions), not contact records.",
   isConfigured() {
     return hasSecret(KEY_ENV4);
   },
@@ -32066,7 +32080,7 @@ var crunchbaseConnector = {
   tier: "paid",
   keyEnvVar: KEY_ENV5,
   phases: ["enrich"],
-  note: "Paid (Pro $99/mo+); funding, investors, valuation. Free tier discontinued.",
+  note: "Paid provider access required; check current terms. Covers funding, investors, and valuation.",
   isConfigured() {
     return hasSecret(KEY_ENV5);
   },
@@ -32135,7 +32149,7 @@ var leadmagicConnector = {
   tier: "paid",
   keyEnvVar: KEY_ENV6,
   phases: ["enrich"],
-  note: "Paid ($49/mo); email + mobile finding, company enrichment, AI-native.",
+  note: "Paid provider access required; check current terms. Email and mobile finding plus company enrichment.",
   isConfigured() {
     return hasSecret(KEY_ENV6);
   },
@@ -32216,7 +32230,11 @@ function headers7() {
   return { Authorization: `Bearer ${getSecret(KEY_ENV8)}` };
 }
 async function tryFetch(url2, query) {
-  const result = await httpJson(url2, { method: "GET", headers: headers7(), query });
+  const result = await httpJson(url2, {
+    method: "GET",
+    headers: headers7(),
+    query
+  });
   if (!result || typeof result !== "object" || Object.keys(result).length === 0) {
     return null;
   }
@@ -32228,7 +32246,7 @@ var clearbitConnector = {
   tier: "legacy",
   keyEnvVar: KEY_ENV8,
   phases: ["enrich"],
-  note: "Legacy: new API keys are no longer issued (folded into HubSpot Breeze). Works only with a pre-2024 key.",
+  note: "Legacy connector for existing compatible credentials; check current HubSpot/Clearbit availability.",
   isConfigured() {
     return hasSecret(KEY_ENV8);
   },
@@ -32237,9 +32255,12 @@ var clearbitConnector = {
     const enrichments = [];
     const withEmail = contacts.filter((c) => Boolean(c.email)).slice(0, 10);
     for (const contact of withEmail) {
-      const person = await tryFetch(`${PERSON_BASE}/people/find`, {
-        email: contact.email
-      });
+      const person = await tryFetch(
+        `${PERSON_BASE}/people/find`,
+        {
+          email: contact.email
+        }
+      );
       if (person) {
         enrichments.push({
           subjectType: "contact",
@@ -32253,9 +32274,12 @@ var clearbitConnector = {
       }
     }
     if (lead.domain) {
-      const company = await tryFetch(`${COMPANY_BASE}/companies/find`, {
-        domain: lead.domain
-      });
+      const company = await tryFetch(
+        `${COMPANY_BASE}/companies/find`,
+        {
+          domain: lead.domain
+        }
+      );
       if (company) {
         enrichments.push({
           subjectType: "lead",

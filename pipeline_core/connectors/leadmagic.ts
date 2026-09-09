@@ -45,7 +45,7 @@ export const leadmagicConnector: Connector = {
   tier: "paid",
   keyEnvVar: KEY_ENV,
   phases: ["enrich"],
-  note: "Paid ($49/mo); email + mobile finding, company enrichment, AI-native.",
+  note: "Paid provider access required; check current terms. Email and mobile finding plus company enrichment.",
 
   isConfigured() {
     return hasSecret(KEY_ENV);

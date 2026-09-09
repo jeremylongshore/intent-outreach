@@ -3,7 +3,7 @@
  *
  * NOTE: Clearbit was acquired by HubSpot in 2023 and folded into HubSpot Breeze
  * Intelligence. New API keys are no longer issued. This connector works only with
- * a pre-2024 key obtained before the acquisition.
+ * an existing compatible credential; availability is controlled by the provider.
  *
  * Endpoints (Clearbit v2, auth via Authorization: Bearer <key>):
  *   - Person lookup:  GET https://person.clearbit.com/v2/people/find?email=<email>
@@ -19,11 +19,7 @@
 import { httpJson } from "../http.js";
 import { getSecret, hasSecret } from "../secrets.js";
 import type { Enrichment } from "../models.js";
-import type {
-  Connector,
-  EnrichInput,
-  EnrichOutput,
-} from "./types.js";
+import type { Connector, EnrichInput, EnrichOutput } from "./types.js";
 
 const PERSON_BASE = "https://person.clearbit.com/v2";
 const COMPANY_BASE = "https://company.clearbit.com/v2";
@@ -56,8 +52,16 @@ async function tryFetch<T extends Record<string, unknown>>(
   url: string,
   query: Record<string, string>,
 ): Promise<T | null> {
-  const result = await httpJson<T>(url, { method: "GET", headers: headers(), query });
-  if (!result || typeof result !== "object" || Object.keys(result).length === 0) {
+  const result = await httpJson<T>(url, {
+    method: "GET",
+    headers: headers(),
+    query,
+  });
+  if (
+    !result ||
+    typeof result !== "object" ||
+    Object.keys(result).length === 0
+  ) {
     return null;
   }
   return result;
@@ -69,7 +73,7 @@ export const clearbitConnector: Connector = {
   tier: "legacy",
   keyEnvVar: KEY_ENV,
   phases: ["enrich"],
-  note: "Legacy: new API keys are no longer issued (folded into HubSpot Breeze). Works only with a pre-2024 key.",
+  note: "Legacy connector for existing compatible credentials; check current HubSpot/Clearbit availability.",
 
   isConfigured() {
     return hasSecret(KEY_ENV);
@@ -82,9 +86,12 @@ export const clearbitConnector: Connector = {
     // Enrich up to 10 contacts that have an email address.
     const withEmail = contacts.filter((c) => Boolean(c.email)).slice(0, 10);
     for (const contact of withEmail) {
-      const person = await tryFetch<ClearbitPerson>(`${PERSON_BASE}/people/find`, {
-        email: contact.email!,
-      });
+      const person = await tryFetch<ClearbitPerson>(
+        `${PERSON_BASE}/people/find`,
+        {
+          email: contact.email!,
+        },
+      );
       if (person) {
         enrichments.push({
           subjectType: "contact",
@@ -100,9 +107,12 @@ export const clearbitConnector: Connector = {
 
     // One company enrichment keyed by domain.
     if (lead.domain) {
-      const company = await tryFetch<ClearbitCompany>(`${COMPANY_BASE}/companies/find`, {
-        domain: lead.domain,
-      });
+      const company = await tryFetch<ClearbitCompany>(
+        `${COMPANY_BASE}/companies/find`,
+        {
+          domain: lead.domain,
+        },
+      );
       if (company) {
         enrichments.push({
           subjectType: "lead",

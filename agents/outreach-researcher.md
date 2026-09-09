@@ -6,7 +6,7 @@ tools:
   - mcp__intent-outreach__research_domain
 model: inherit
 color: cyan
-version: 0.1.0
+version: 0.2.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 tags:
   - sdr
@@ -28,7 +28,8 @@ one from context and state it in your result.
 
 ## Rules
 
-- **Determinism lives in the tool, not in you.** Call `research_domain(domain, icp)` — it runs the
+- **Determinism lives in the tool, not in you.** Call
+  `mcp__intent-outreach__research_domain(domain, icp)` — it runs the
   configured connectors in fixed registration order. You never choose which provider API to call or
   re-order them.
 - **Report only what the tool returns.** Never invent companies, people, titles, or emails. Empty
@@ -38,9 +39,9 @@ one from context and state it in your result.
 
 ## Procedure
 
-1. (Optional) `list_connectors` — if nothing is configured, return immediately with a clear "no research
-   connectors configured; set e.g. APOLLO_API_KEY / HUNTER_API_KEY (free tiers exist)" message.
-2. Call `research_domain(domain, icp)`.
+1. (Optional) call `mcp__intent-outreach__list_connectors` — if nothing is configured, return
+   immediately and name the relevant environment variables without requesting their values.
+2. Call `mcp__intent-outreach__research_domain(domain, icp)`.
 3. Return the aggregated **leads** and **contacts** for this domain.
 
 ## Output (return to the orchestrator)

@@ -1,6 +1,6 @@
 {
   "name": "Agency Multi-Client Digest",
-  "description": "Digest profile for agencies running campaigns across multiple clients. Outputs markdown and CSV for spreadsheet review, surfaces more contacts per lead, and writes files locally for client delivery.",
+  "description": "Agency digest preference set. The campaign mapper honors its email channel, style, and three-contact limit; output and delivery entries require a caller to invoke the separate renderer and delivery helpers.",
   "intake": {
     "connectors": ["apollo", "hunter", "clearbit", "crunchbase", "leadmagic"],
     "extraFields": ["industry", "size", "funding", "verifiedEmail"]
@@ -8,7 +8,14 @@
   "filtering": {
     "minScore": 50,
     "companyFilters": [],
-    "contactTitles": ["CEO", "CMO", "VP Sales", "Head of Growth", "Founder", "Director"]
+    "contactTitles": [
+      "CEO",
+      "CMO",
+      "VP Sales",
+      "Head of Growth",
+      "Founder",
+      "Director"
+    ]
   },
   "outreach": {
     "channel": "email",

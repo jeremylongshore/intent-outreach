@@ -5,7 +5,7 @@ tools:
   - mcp__intent-outreach__enrich_lead
 model: inherit
 color: blue
-version: 0.1.0
+version: 0.2.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 tags:
   - sdr
@@ -26,20 +26,21 @@ A **lead** (`{ domain, companyName, ... }`) and its **contacts[]** (from the dis
 
 ## Rules
 
-- **Determinism lives in the tool, not in you.** Call `enrich_lead(domain, companyName, contacts)` — it
+- **Determinism lives in the tool, not in you.** Call
+  `mcp__intent-outreach__enrich_lead(domain, companyName, contacts)` — it
   runs the configured enrich connectors in fixed registration order. You never pick or re-order providers.
 - **Report only what the tool returns.** Never fabricate funding, customers, metrics, phones, or emails.
 - **Local + BYO keys.** Connectors use the user's own env keys.
 
 ## Procedure
 
-1. Call `enrich_lead(domain, companyName, contacts)`.
+1. Call `mcp__intent-outreach__enrich_lead(domain, companyName, contacts)`.
 2. Return the collected **enrichments** for this lead.
 
 ## Output (return to the orchestrator)
 
-- **enrichments[]** — `{ subjectType: "lead"|"contact", subjectKey, provider, funding?, verifiedEmail?,
-  phone?, data, fetchedAt }`
+- **enrichments[]** with `subjectType`, `subjectKey`, `provider`, `funding?`, `verifiedEmail?`, `phone?`,
+  `data`, and `fetchedAt` fields. `subjectType` is either `lead` or `contact`.
 - **ran / skipped** — which enrich connectors ran vs were skipped.
 
 One-line summary of the strongest signals (e.g. "Series B, 2 verified emails"); the payload is the

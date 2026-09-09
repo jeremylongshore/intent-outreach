@@ -1,7 +1,7 @@
 /**
  * pipeline_core/connectors/hunter.ts — Hunter.io connector.
  *
- * Self-serve BYO-key with a generous free tier (50 searches/mo) — the connector
+ * Bring-your-own provider key — the connector
  * that lets an indie user run a full campaign for $0. Best-in-class docs.
  *
  * Endpoints (Hunter v2, auth via `api_key` query param):
@@ -44,7 +44,7 @@ export const hunterConnector: Connector = {
   tier: "free",
   keyEnvVar: KEY_ENV,
   phases: ["research", "enrich"],
-  note: "Self-serve key; 50 free searches/mo. Email finding + verification.",
+  note: "Credential required; check current provider access and quota terms. Email finding + verification.",
 
   isConfigured() {
     return hasSecret(KEY_ENV);
@@ -61,7 +61,8 @@ export const hunterConnector: Connector = {
       source: "hunter",
     };
     const contacts: Contact[] = (res.data?.emails ?? []).map((e) => ({
-      name: [e.first_name, e.last_name].filter(Boolean).join(" ") || "(unknown)",
+      name:
+        [e.first_name, e.last_name].filter(Boolean).join(" ") || "(unknown)",
       leadDomain: domain,
       email: e.value && e.value.includes("@") ? e.value : undefined,
       title: e.position,
@@ -77,7 +78,11 @@ export const hunterConnector: Connector = {
     const enrichments: Enrichment[] = [];
     for (const c of needy) {
       const res = await httpJson<HunterFinder>(`${BASE}/email-finder`, {
-        query: { domain: lead.domain, full_name: c.name, api_key: getSecret(KEY_ENV) },
+        query: {
+          domain: lead.domain,
+          full_name: c.name,
+          api_key: getSecret(KEY_ENV),
+        },
       });
       const email = res.data?.email;
       if (email && email.includes("@")) {

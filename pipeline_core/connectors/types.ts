@@ -51,7 +51,7 @@ export interface Connector {
   /** Env var holding this connector's key; null = needs no key. */
   readonly keyEnvVar: string | null;
   readonly phases: readonly ConnectorPhase[];
-  /** One-line note shown to users (e.g. "requires a pre-2024 key"). */
+  /** One-line operational note shown to users; avoid time-sensitive pricing claims. */
   readonly note?: string;
 
   /** True when the connector has what it needs to run (its key, or none needed). */

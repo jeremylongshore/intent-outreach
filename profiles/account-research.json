@@ -1,9 +1,25 @@
 {
   "name": "Account Research",
-  "description": "Deep research profile with no outreach drafting. Pulls maximum enrichment depth across all configured connectors and produces a structured markdown report for sales team review. No messages are drafted.",
+  "description": "Account-research preference set with no messages section. Connector and extra-field entries are schema metadata until a caller explicitly wires them; the markdown renderer honors the selected report sections when given this profile.",
   "intake": {
-    "connectors": ["apollo", "hunter", "clearbit", "crunchbase", "leadmagic", "exa", "peopledatalabs"],
-    "extraFields": ["funding", "techStack", "news", "headcount", "competitors", "verifiedEmail", "phone"]
+    "connectors": [
+      "apollo",
+      "hunter",
+      "clearbit",
+      "crunchbase",
+      "leadmagic",
+      "exa",
+      "peopledatalabs"
+    ],
+    "extraFields": [
+      "funding",
+      "techStack",
+      "news",
+      "headcount",
+      "competitors",
+      "verifiedEmail",
+      "phone"
+    ]
   },
   "filtering": {
     "minScore": 80,

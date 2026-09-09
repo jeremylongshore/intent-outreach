@@ -1,6 +1,6 @@
 {
   "name": "LinkedIn Warm Intro",
-  "description": "Short LinkedIn connection request with warm, genuine tone. Targets single decision-maker per company. Very short body — LinkedIn limits and norms demand brevity. Surfaces a Slack preview and a file for review.",
+  "description": "Short LinkedIn drafting preference set with warm tone and one contact per lead. Slack-format and file-delivery entries require a caller to invoke the separate renderer and delivery helpers.",
   "intake": {
     "connectors": ["apollo", "peopledatalabs"],
     "extraFields": ["linkedin"]

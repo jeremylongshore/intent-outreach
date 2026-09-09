@@ -1,83 +1,102 @@
 ---
 name: outreach-profile
 description: >-
-  Inspect or scaffold an Intent Outreach Report Profile — the local file of deterministic knobs
-  (intake, filtering, tone/length, output formats, delivery) that shape a campaign. Use when the user
-  wants to list existing profiles, see a named profile, or create a new one. Triggers:
-  "/outreach-profile", "list report profiles", "show a report profile", "create an outreach profile".
+  List, inspect, or scaffold a local Intent Outreach Report Profile JSON file. Use when a user wants to
+  manage repeatable campaign settings while preserving existing files. Trigger with
+  "/outreach-profile", "show my outreach profile", or "create an outreach profile".
 allowed-tools:
   - Read
   - Glob
   - Write
   - AskUserQuestion
-version: 0.1.0
-author: Jeremy Longshore
+version: 0.2.0
+author: Jeremy Longshore <jeremy@intentsolutions.io>
 license: SEE LICENSE IN LICENSE
-compatibility: Claude Code (and any MCP-capable client for the bundled server)
+compatibility: Claude Code; local filesystem access required
 tags:
   - sdr
   - profiles
   - configuration
-argument-hint: "[list | show NAME | new NAME]"
+argument-hint: "[list | show <name> | new <name>]"
 model: inherit
+effort: medium
 user-invocable: true
+disable-model-invocation: true
 ---
 
-# Outreach Profile — manage Report Profiles
+# Outreach Profile
 
-## Overview
+## Purpose
 
-A **Report Profile** is a local file (under `profiles/` or `~/.intent-outreach/profiles/`) that owns
-the deterministic choices for a campaign — intake, filtering, tone/length, output formats, and
-delivery — while the model owns the creative drafting. This skill lists profiles, shows a named
-profile's knobs, or scaffolds a new one. It is a local-file utility; it sends nothing.
+Manage local JSON configuration files validated by `ReportProfileSchema`. A report profile records campaign
+preferences, but only a documented subset is automatically mapped into `RunCampaignInput`; this skill
+must not imply that every accepted field is currently executed.
 
 ## Prerequisites
 
-- Read/Glob/Write access to the project (and optionally the user-global
-  `~/.intent-outreach/profiles/` directory).
-- The Report Profile knob reference, shipped at the path
-  `skills/intent-outreach/references/report-profiles.md` (read it before scaffolding a new profile).
+- Read access for `./profiles/` and, when requested, `~/.intent-outreach/profiles/`.
+- Write access only when the user explicitly requests `new` or approves replacing a specific file.
+- Read [references/profile-contract.md](references/profile-contract.md) before creating a profile.
 
 ## Instructions
 
-Read the argument: one of `list`, `show NAME`, or `new NAME` (default to `list`).
+1. Parse the operation as `list`, `show NAME`, or `new NAME`. Default to `list` only when the user
+   omitted an operation.
+2. For `list`, Glob `./profiles/*.json` and `~/.intent-outreach/profiles/*.json`. Return each file's
+   basename and full location; do not expose unrelated files.
+3. For `show`, resolve an exact JSON filename from those two roots, Read it, and summarize its fields.
+   Label every field as **runtime-mapped**, **renderer-consumed**, or **schema-only** according to the
+   profile contract.
+4. For `new`, normalize the requested name to a `.json` filename, reject traversal and absolute paths,
+   then use AskUserQuestion for the required fields and desired optional knobs. Default to
+   `./profiles/NAME.json`; use the user-global root only when requested.
+5. Before writing, Glob or Read the exact destination. If it exists, stop and obtain explicit overwrite
+   approval. Otherwise Write one valid JSON object with `name`, `description`, non-empty
+   `output.formats`, and non-empty `delivery.targets`.
+6. Read the completed file back, verify its JSON shape against the contract, and report its path plus
+   the runtime status of every selected knob.
 
-- **list** — Glob `profiles/*` and `~/.intent-outreach/profiles/*`; show the available profiles by name.
-- **show NAME** — Read the named profile and summarize its knobs (intake, filtering, tone/length,
-  output formats, delivery).
-- **new NAME** — Read the knob reference for the schema, ask the user for the key knobs via
-  AskUserQuestion, then Write a new profile. Default location `profiles/NAME`; offer
-  `~/.intent-outreach/profiles/NAME` if the user wants it user-global. Never overwrite an existing
-  profile without confirming first.
+## File and execution boundaries
+
+- Write only beneath `./profiles/` or `~/.intent-outreach/profiles/`.
+- Never overwrite a starter or user profile silently.
+- Never include API keys, tokens, contact records, or message bodies in a profile.
+- Profile loading validates structure. It does not itself run connectors, render files, deliver output,
+  or send messages.
 
 ## Output
 
-- **list** — a bullet list of profile names + their locations.
-- **show** — a short summary of the named profile's knobs.
-- **new** — the path of the profile written, plus a one-line recap of the knobs chosen.
+- `list`: profile names and locations.
+- `show`: a field summary with runtime-mapped/renderer-consumed/schema-only labels.
+- `new`: the written path, selected knobs, and a warning for any schema-only setting.
 
-```
-Profiles:
-- default            (profiles/default)
-- residential-re     (~/.intent-outreach/profiles/residential-re)
-```
+## Error handling
 
-## Error Handling
-
-- **No profiles found (list)** — not an error; say so and offer to scaffold one with `new`.
-- **show NAME not found** — report it and list the names that DO exist.
-- **new NAME already exists** — stop and confirm before overwriting; never clobber silently.
-- **Knob reference missing** — proceed with the documented defaults and note the reference was absent.
+- **No profiles found:** return an empty result and offer `new`; do not create a file automatically.
+- **Ambiguous name:** show all matches and require the user to select one.
+- **Invalid JSON or missing required field:** report the exact field and leave the file unchanged.
+- **Existing destination:** stop before Write until the user explicitly approves replacement.
+- **Unsafe name/path:** reject it and request a simple filename.
 
 ## Examples
 
-> **User:** "/outreach-profile new residential-re"
->
-> Reads the knob reference, asks for intake/filtering/tone/output/delivery via AskUserQuestion, writes
-> `profiles/residential-re`, and confirms the path + chosen knobs.
+> **User:** `/outreach-profile new founder-email`
+
+Ask for a description, output formats, delivery targets, channel, threshold, and drafting constraints;
+write `profiles/founder-email.json` only if absent; then report which settings the runtime currently maps.
+
+- **Example: list profiles.** Search only the project and user-global profile roots, then report distinct
+  locations for duplicate basenames.
+- **Example: inspect a starter.** Read its JSON and label connector-selection and delivery fields
+  schema-only rather than promising execution.
+- **Example: existing destination.** Stop before Write, show the exact path, and wait for explicit
+  replacement approval.
+
+For troubleshooting invalid JSON, identify the parse location or missing required field and recommend a
+minimal correction. Do not rewrite an existing file unless the user authorized that exact destination.
 
 ## Resources
 
-- Knob reference + shipped starters: `skills/intent-outreach/references/report-profiles.md`.
-- Full campaign that consumes a profile: the `intent-outreach` skill.
+- Read [Profile schema and runtime mapping](references/profile-contract.md) before writing or describing
+  any profile field.
+- Use `intent-outreach` only after the user selects a profile and confirms the campaign scope.

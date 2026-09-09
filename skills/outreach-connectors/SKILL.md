@@ -1,78 +1,95 @@
 ---
 name: outreach-connectors
 description: >-
-  Show which Intent Outreach data connectors are configured (have a bring-your-own key) versus
-  skipped, with each one's tier. Use when the user asks which connectors or data providers are set up,
-  whether a specific provider (apollo, hunter, …) is configured, or wants a preflight check before
-  running a campaign. Triggers: "/outreach-connectors", "which connectors are configured",
-  "connector status", "what data providers do I have".
+  Inspect the bundled Intent Outreach connector registry without running research or enrichment. Use
+  when a user asks which providers are configured or wants a campaign preflight. Trigger with
+  "/outreach-connectors", "connector status", or "which data providers are configured?".
 allowed-tools:
   - mcp__intent-outreach__list_connectors
-version: 0.1.0
-author: Jeremy Longshore
+version: 0.2.0
+author: Jeremy Longshore <jeremy@intentsolutions.io>
 license: SEE LICENSE IN LICENSE
-compatibility: Claude Code (and any MCP-capable client for the bundled server)
+compatibility: Claude Code with the bundled Intent Outreach MCP server
 tags:
   - sdr
   - connectors
   - prospecting
+argument-hint: "[connector name]"
 model: inherit
+effort: low
 user-invocable: true
 ---
 
-# Outreach Connectors — preflight status
+# Outreach Connectors
 
-## Overview
+## Purpose
 
-A read-only preflight for Intent Outreach. It reports which data connectors are **configured** (have a
-bring-your-own key in the environment) versus **skipped**, with each one's tier, so the user knows what
-a campaign can do right now. It runs no research, enrichment, or drafting — it is the safe first step
-before the `intent-outreach` campaign skill.
+Provide a read-only preflight of the connector registry and credential presence. This skill does not
+call provider APIs, disclose keys, research domains, enrich leads, or draft messages.
 
 ## Prerequisites
 
-- The bundled Intent Outreach MCP server is available (tool `mcp__intent-outreach__list_connectors`).
-- Optionally, one or more provider keys set in the environment (e.g. `APOLLO_API_KEY`, `HUNTER_API_KEY`).
-  None are required to run this check — reporting their absence is the point.
+- Enable the bundled Intent Outreach MCP server.
+- Provider credentials are optional for this inspection. When present, the server reads them from the
+  environment; see [references/connector-runtime.md](references/connector-runtime.md).
 
 ## Instructions
 
-1. Call `list_connectors`.
-2. Render a compact table: connector · tier (free / paid / enterprise / legacy) · status
-   (✓ configured / — skipped, no key).
-3. Summarize how many are configured and what is runnable now.
-4. If **nothing** is configured, explain that keys are bring-your-own environment variables (Apollo and
-   Hunter both have free tiers, so a full campaign can run for free) and that no research/enrich call
-   can run until at least one is set. Keys never leave the machine except to each provider's own API.
+1. Call `list_connectors` once.
+2. If the user named a connector, filter the returned rows by `name` or `displayName`; otherwise retain
+   all rows.
+3. Render `displayName`, `tier`, `phases`, `keyEnvVar`, `configured`, and `note` exactly from the tool
+   result. Do not replace runtime notes with remembered pricing or quota claims.
+4. Count configured connectors and separately identify which support `research` and `enrich`.
+5. If no configured connector supports the requested phase, list the relevant environment-variable
+   names and explain that the credential must be supplied outside the chat. Never request its value.
+
+## Authentication and security
+
+- `list_connectors` checks whether each expected environment variable is present; it does not return
+  the secret value.
+- A `configured: true` result means only that the expected variable is non-empty. It does not prove the
+  credential is valid, funded, authorized for an endpoint, or within quota.
+- Provider tiers and notes are repository metadata, not a guarantee of current external pricing.
 
 ## Output
 
-A markdown table plus a one-line summary, for example:
+Return a compact table followed by counts for configured research and enrichment connectors:
 
+```text
+| Connector | Tier | Phases | Credential variable | Status | Runtime note |
+|---|---|---|---|---|---|
+| Example | paid | enrich | EXAMPLE_API_KEY | not configured | … |
 ```
-| Connector | Tier | Status         |
-|-----------|------|----------------|
-| apollo    | free | ✓ configured   |
-| hunter    | free | — skipped      |
-```
 
-> 1/9 connectors configured (apollo) — research + enrich can run on Apollo's free tier.
+## Error handling
 
-## Error Handling
-
-- **MCP server unreachable** — tell the user the Intent Outreach MCP server isn't running and how to
-  install/enable the plugin. Never fabricate a connector list.
-- **Zero connectors configured** — not an error; report it plainly and list the keys to set, free tiers
-  first.
+- **MCP unavailable:** report that the bundled server must be enabled; do not fabricate a registry.
+- **Empty registry:** report zero connectors and stop.
+- **Unknown requested name:** show the valid names returned by the tool.
+- **No credentials:** treat this as a valid preflight result and explain how to set the named variables
+  in the user's shell or host configuration without exposing their values.
 
 ## Examples
 
-> **User:** "/outreach-connectors"
->
-> Calls `list_connectors`, prints the table, and notes (say) Apollo + Hunter configured on free tiers,
-> the rest skipped — ready to run a campaign.
+> **User:** `/outreach-connectors apollo`
+
+Call `list_connectors`, show only the matching row, and distinguish credential presence from credential
+validity. Do not run `research_domain` or `enrich_lead`.
+
+- **Example: all connectors.** With no argument, return all registry rows and separate research-ready
+  from enrichment-ready counts.
+- **Example: configured but unusable.** If a later provider call reports an authentication or quota
+  failure, explain that preflight checks presence only.
+- **Example: unknown connector.** Return the valid registry names without guessing an alias.
+
+For troubleshooting, rerun `list_connectors` after the user updates their host environment. If status
+is unchanged, advise restarting the MCP host so it receives the new environment; never request the key.
 
 ## Resources
 
-- Full research → enrich → outreach campaign: the `intent-outreach` skill.
-- Connector landscape (which APIs are viable): `000-docs/018-DR-LAND-b2b-data-provider-landscape-2026.md`.
+- Read [Connector runtime and authentication](references/connector-runtime.md) for field semantics,
+  credential boundaries, and the Clay webhook exception.
+- Use `intent-outreach` for the full reviewed workflow or `outreach-research` for research only.
+- Treat the tool result as the operational source of truth. Repository notes can change between releases,
+  and each external provider independently controls its authentication, access, pricing, and quota terms.

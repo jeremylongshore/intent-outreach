@@ -1,7 +1,7 @@
 /**
  * pipeline_core/connectors/peopledatalabs.ts — People Data Labs connector.
  *
- * Self-serve key; 100 free API calls/mo on the free tier. Covers both pipeline
+ * Bring-your-own provider key. Covers both pipeline
  * phases: company enrich (research) and person enrich (enrich loop by email).
  *
  * Auth: X-Api-Key header. Base: https://api.peopledatalabs.com/v5.
@@ -95,7 +95,7 @@ export const peopledatalabsConnector: Connector = {
   tier: "free",
   keyEnvVar: KEY_ENV,
   phases: ["research", "enrich"],
-  note: "Self-serve key; 100 free/mo. Structured person & company enrichment.",
+  note: "Credential required; check current provider access and quota terms. Structured person & company enrichment.",
 
   isConfigured() {
     return hasSecret(KEY_ENV);
@@ -109,14 +109,12 @@ export const peopledatalabsConnector: Connector = {
     );
 
     // Flatten: PDL sometimes returns a `data` wrapper, sometimes bare fields.
-    const co: PdlCompany =
-      companyRes.data ??
-      {
-        name: companyRes.name,
-        industry: companyRes.industry,
-        employee_count: companyRes.employee_count,
-        summary: companyRes.summary,
-      };
+    const co: PdlCompany = companyRes.data ?? {
+      name: companyRes.name,
+      industry: companyRes.industry,
+      employee_count: companyRes.employee_count,
+      summary: companyRes.summary,
+    };
 
     const lead: Lead = {
       domain,
@@ -141,7 +139,7 @@ export const peopledatalabsConnector: Connector = {
           json: {
             query: {
               bool: {
-                must: [{ term: { "job_company_website": domain } }],
+                must: [{ term: { job_company_website: domain } }],
               },
             },
             size: 10,
@@ -149,13 +147,13 @@ export const peopledatalabsConnector: Connector = {
         },
       );
 
-      const people: PdlPerson[] =
-        personRes.data ?? personRes.items ?? [];
+      const people: PdlPerson[] = personRes.data ?? personRes.items ?? [];
 
       contacts = people.map((p) => {
         const name =
           p.full_name ??
-          ([p.first_name, p.last_name].filter(Boolean).join(" ") || "(unknown)");
+          ([p.first_name, p.last_name].filter(Boolean).join(" ") ||
+            "(unknown)");
         const email = bestEmail(p);
         return {
           name,

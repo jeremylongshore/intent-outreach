@@ -4,7 +4,7 @@
  * Exa is a web-search API, not a people/contact database. It returns rich web
  * results (news, funding mentions, company pages) keyed by query. Use it for
  * research-phase context and enrich-phase web intel; it produces NO contact
- * records. Self-serve BYO-key with 1k free searches per month.
+ * records. Uses a bring-your-own provider key.
  *
  * Endpoints (auth via x-api-key header):
  *   - Search: POST https://api.exa.ai/search
@@ -41,9 +41,7 @@ interface ExaSearchResponse {
 /** Pull the best single-sentence snippet from a result for a Lead description. */
 function topSnippet(result: ExaResult): string | undefined {
   const raw =
-    result.highlights?.[0] ??
-    result.text?.slice(0, 200) ??
-    result.title;
+    result.highlights?.[0] ?? result.text?.slice(0, 200) ?? result.title;
   return raw?.trim() || undefined;
 }
 
@@ -53,7 +51,7 @@ export const exaConnector: Connector = {
   tier: "free",
   keyEnvVar: KEY_ENV,
   phases: ["research", "enrich"],
-  note: "Self-serve key; 1k free/mo. Web research context (news, funding mentions), not contact records.",
+  note: "Credential required; check current provider access and quota terms. Web research context (news and funding mentions), not contact records.",
 
   isConfigured() {
     return hasSecret(KEY_ENV);

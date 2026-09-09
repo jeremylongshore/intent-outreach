@@ -1,5 +1,6 @@
 {
   "name": "jeremylongshore",
+  "description": "Intent Solutions public plugins and skills by Jeremy Longshore.",
   "owner": {
     "name": "Jeremy Longshore",
     "url": "https://intentsolutions.io"
@@ -11,7 +12,14 @@
       "description": "Model-agnostic, Claude-Code-native SDR orchestrator (research → enrich → outreach). An orchestrator skill dispatches phase sub-agents over a bundled MCP server; fully local, BYO keys, zero Google.",
       "version": "0.2.0",
       "category": "sales",
-      "keywords": ["sdr", "outbound", "prospecting", "lead-generation", "sales", "mcp"],
+      "keywords": [
+        "sdr",
+        "outbound",
+        "prospecting",
+        "lead-generation",
+        "sales",
+        "mcp"
+      ],
       "author": {
         "name": "Jeremy Longshore",
         "email": "jeremy@intentsolutions.io"

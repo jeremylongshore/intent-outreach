@@ -24,7 +24,7 @@ try {
   const total = Object.keys(KEYS).length;
   const msg = configured.length
     ? `Intent Outreach: ${configured.length}/${total} data connectors configured (${configured.join(", ")}).`
-    : `Intent Outreach: 0/${total} data connectors configured — set provider keys (e.g. APOLLO_API_KEY, HUNTER_API_KEY; both have free tiers) to enable research/enrich.`;
+    : `Intent Outreach: 0/${total} data connectors configured — set a provider key (for example APOLLO_API_KEY or HUNTER_API_KEY) to enable research/enrich.`;
   process.stdout.write(msg + "\n");
 } catch {
   // Stay silent on any error — a hook must never break a session.

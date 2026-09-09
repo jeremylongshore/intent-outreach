@@ -17,11 +17,7 @@
 import { httpJson } from "../http.js";
 import { getSecret, hasSecret } from "../secrets.js";
 import type { Enrichment } from "../models.js";
-import type {
-  Connector,
-  EnrichInput,
-  EnrichOutput,
-} from "./types.js";
+import type { Connector, EnrichInput, EnrichOutput } from "./types.js";
 
 const BASE = "https://api.crunchbase.com/v4/data";
 const KEY_ENV = "CRUNCHBASE_API_KEY";
@@ -55,7 +51,7 @@ export const crunchbaseConnector: Connector = {
   tier: "paid",
   keyEnvVar: KEY_ENV,
   phases: ["enrich"],
-  note: "Paid (Pro $99/mo+); funding, investors, valuation. Free tier discontinued.",
+  note: "Paid provider access required; check current terms. Covers funding, investors, and valuation.",
 
   isConfigured() {
     return hasSecret(KEY_ENV);

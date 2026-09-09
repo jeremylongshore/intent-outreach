@@ -24,7 +24,7 @@ each phase in its own context while the orchestrator checkpoints with you betwee
 
 - **Local-only.** Runs on your machine. No hosted database, no telemetry, no server-side retention.
   Run records go to a local JSONL file (`~/.intent-outreach/runs.jsonl`).
-- **BYO keys.** Connector + model keys live in your environment (or a local file). They're read
+- **BYO keys.** Connector + model keys live in your environment (or supported local configuration). They're read
   locally and sent only to each provider's own API — never to us, never to a cloud secret store.
 - **Deterministic where it matters.** Connectors are called in a fixed order in code; the model is
   called only at two seams (fit-scoring, drafting). The LLM never decides which API to hit.
@@ -53,7 +53,7 @@ with you between each, drafts grounded messages, and saves a **validated** run l
 
 The plugin also ships:
 
-- **Phase sub-agents** — the orchestrator skill dispatches one per stage via the `Task` tool:
+- **Phase sub-agents** — the orchestrator skill dispatches one per stage via the `Agent` tool:
   `outreach-researcher` (Phase 1, one per domain — fan-out), `outreach-enricher` (Phase 2),
   `outreach-drafter` (Phase 3, grounded score + draft). Each keeps its own context and calls only the
   deterministic MCP tools for its stage; the orchestrator aggregates and checkpoints with you.
@@ -77,23 +77,24 @@ on a fresh clone with no `node_modules`); regenerate them with `npm run bundle`.
 
 ## Keys (bring your own)
 
-Set only the providers you want; unset connectors are silently skipped. **Apollo + Hunter both have
-free tiers, so a full campaign can run for $0.**
+Set only the providers you want; unset connectors are skipped. Provider access, pricing, and quotas
+change independently, so use `/outreach-connectors` for the repository's current runtime notes and
+confirm commercial terms with the provider before a campaign.
 
-| Env var | Provider | Tier |
-|---|---|---|
-| `APOLLO_API_KEY` | Apollo.io — company, people, enrichment | free (50/mo) |
-| `HUNTER_API_KEY` | Hunter.io — email finding/verification | free (50/mo) |
-| `PDL_API_KEY` | People Data Labs — person/company enrichment | free (100/mo) |
-| `EXA_API_KEY` | Exa — web research context | free (1k/mo) |
-| `CRUNCHBASE_API_KEY` | Crunchbase — funding/investors | paid |
-| `LEADMAGIC_API_KEY` | LeadMagic — email + mobile finding | paid |
-| `CLAY_API_KEY` + `CLAY_WEBHOOK_URL` | Clay — middleware (push-only) | paid |
-| `CLEARBIT_API_KEY` | Clearbit — enrichment | legacy (pre-2024 keys only) |
-| `ZOOMINFO_JWT` | ZoomInfo — enrichment | enterprise |
-| `ANTHROPIC_API_KEY` | Claude (default model, eval-gated ✓) | — |
-| `OPENAI_API_KEY` | OpenAI gpt-4o (eval-gated ✓ 2026-08-20) | — |
-| `XAI_API_KEY` / `GEMINI_API_KEY` | Grok / Gemini (adapters ready; gate pending an eval run) | — |
+| Env var                             | Provider                                                 | Tier             |
+| ----------------------------------- | -------------------------------------------------------- | ---------------- |
+| `APOLLO_API_KEY`                    | Apollo.io — company, people, enrichment                  | registry: free   |
+| `HUNTER_API_KEY`                    | Hunter.io — email finding/verification                   | registry: free   |
+| `PDL_API_KEY`                       | People Data Labs — person/company enrichment             | registry: free   |
+| `EXA_API_KEY`                       | Exa — web research context                               | registry: free   |
+| `CRUNCHBASE_API_KEY`                | Crunchbase — funding/investors                           | paid             |
+| `LEADMAGIC_API_KEY`                 | LeadMagic — email + mobile finding                       | paid             |
+| `CLAY_API_KEY` + `CLAY_WEBHOOK_URL` | Clay — middleware (push-only)                            | paid             |
+| `CLEARBIT_API_KEY`                  | Clearbit — enrichment                                    | registry: legacy |
+| `ZOOMINFO_JWT`                      | ZoomInfo — enrichment                                    | enterprise       |
+| `ANTHROPIC_API_KEY`                 | Claude (default model, eval-gated ✓)                     | —                |
+| `OPENAI_API_KEY`                    | OpenAI gpt-4o (eval-gated ✓ 2026-08-20)                  | —                |
+| `XAI_API_KEY` / `GEMINI_API_KEY`    | Grok / Gemini (adapters ready; gate pending an eval run) | —                |
 
 To drive a non-Anthropic model from inside Claude Code, point `ANTHROPIC_BASE_URL` at an LLM gateway
 (LiteLLM/Bifrost). See `000-docs/017-AT-DECR`.
@@ -120,7 +121,8 @@ standalone CLI ──────┘                     └─ save_run ──�
 - **`hooks/`** — `SessionStart` connector-readiness hook.
 - **`prompts/`** — versioned, eval-gated prompt files.
 - **`evals/`** — golden fixtures + scorers; the supported-provider gate.
-- **`profiles/`** — Report Profiles: declarative output customization (starter profiles included).
+- **`profiles/`** — Report Profile schema and starters. The skill path automatically maps channel,
+  score threshold, contacts-per-lead, and style; renderer and delivery helpers are separate APIs.
 
 ## Develop
 
