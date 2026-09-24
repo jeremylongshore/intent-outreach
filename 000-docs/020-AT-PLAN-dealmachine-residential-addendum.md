@@ -2,6 +2,7 @@
 
 **Filed:** 2026-09-18 · **Amends:** `019-AT-PLAN-unify-engine-packs-phase0-1.md` (Deferred tracks → Phase 2, Phase 3)
 **Status:** Proposed. No code yet. It becomes active when a DealMachine seat is bought.
+**Updated 2026-09-24:** DealMachine support answered 14 of 15 pre-purchase questions (see below); webhooks are still unanswered.
 
 ## Why this exists
 
@@ -24,10 +25,46 @@ record since 2026-09-18) through the `coastal-realty-ops` dashboard.
 | API / webhooks / Zapier | Listed as included on **all** plans | dealmachine.com/pricing |
 | Credit model | 1 credit per unique property, 1 per unique contact (phone/email included). A re-pull in the same billing month is free. **Export costs 1 credit per record.** Credits reset monthly and **do not roll over**. Annual billing is discounted | MCP docs; DealMachine support assistant 2026-09-18 |
 
-**Unverified:** the pricing page says webhooks are included, but the API doc index has **no webhook
-section** (no event types, no payload, no signing). Do not design around webhooks until we have
-confirmed event types and request signing with a live key. Skip-trace cost per record is also not
-published.
+**Answered by DealMachine support 2026-09-21** (Pam, Support — reply to our 15 questions; their AI
+assistant could confirm almost none of this, a human did):
+
+| Question | Answer |
+|---|---|
+| Skip-trace cost | **1 credit per contact revealed**, same on Basic and Pro, drawn from the plan allowance, never billed separately. |
+| Cost per property | 1 credit for the property + 1 per contact revealed/exported → a property with one contact = **2 credits**. Re-pull inside the same billing period is free (deduplicated); a new period charges again. |
+| API / MCP by plan | API, CLI, **MCP server and webhooks are on every plan**. No Pro-only endpoints or MCP tools. Only *filters* differ. |
+| Rate limits | **60 requests/minute, 5,000/day.** Batch endpoints take up to 250 items and count as one request. |
+| Basic filters | Absentee, high equity, vacant, out-of-state owner, pre-foreclosure status — **all on Basic**. |
+| Pro "premium" filters | Pre-foreclosure auction/default dates, mover + buyer signals, investor/multi-property insights, mortgage activity, detailed equity/refinance terms, insurance signals, some demographics. |
+| **Expired listings** | **Yes — a dedicated Expired Listings filter.** |
+| Data freshness | Property + owner from county public records; contact data from a third party. Equity/mortgage derived from recorded mortgage and sale data. **Updated monthly**, with the full pass taking 1–2 weeks. |
+| DNC | Numbers carry a **DNC badge**, and there's a Scrub DNC option on export. **No litigator flagging and no reassigned-number detection.** |
+| Mobile vs landline | **Yes**, identified. |
+| STR / vacation-rental flag | **No such flag.** |
+| Baldwin County hit rates | **Not published**, by county or city. |
+| Cancellation | Access runs to the end of the paid period; exported data stays with you. No stated restriction on storing it in our own CRM. |
+| Billing | Monthly or annual (**annual saves 17%**). Mid-cycle upgrades allowed. |
+| Free trial | **None**, and no sample credits. A free explore account exists but paid features stay locked. |
+
+**Still open:** webhook events, payload shape, signing and retry policy — support escalated it to their
+team on 2026-09-21 and has not followed up (a "need anything else?" nudge arrived 2026-09-22). Until
+that lands, the sync design stays on a scheduled pull.
+
+**What their answers change for us:**
+
+1. **Expired listings are in.** 019 planned Vulcan7 for expireds. If DealMachine's expired filter holds
+   up in Baldwin County, one $99–149 seat replaces BatchLeads *and* Vulcan7 — re-scope Phase 2 before
+   buying a Vulcan7 seat.
+2. **Credits are per-contact, not per-property.** Budget ~2 credits per usable lead, so Basic's 10k/mo
+   is roughly **5,000 skip-traced leads a month** — far above Mandy's volume. Basic is the right tier;
+   Pro only buys premium filters.
+3. **No STR flag** — the Gulf Shores/Orange Beach investor angle needs the STR-registry cross-reference
+   already planned in coastal PRD FR-11, not a provider flag.
+4. **No litigator scrub** — DealMachine's DNC badge is necessary but not sufficient. Keep the engine's
+   own compliance gate authoritative (`pipeline_core/compliance/`), and treat an unknown DNC status as
+   blocked, which the dashboard already does.
+5. **No trial** means Phase 2a starts by paying for one Basic month. The free MCP counts still let us
+   size Baldwin County inventory before that.
 
 ## Decision 1 — evaluate before building (Phase 2a, zero code)
 
@@ -94,6 +131,7 @@ Per the pack rules, a live lookup belongs in a BYOK enrich connector and never i
 
 ## Open questions
 
-1. Do webhook events exist in practice? Emailed support@dealmachine.com on 2026-09-18 (15 questions; their AI assistant could not confirm events or signing).
-2. What does skip trace cost per record on Basic vs Pro?
-3. Does Mandy need Pro's premium filters for her motivated-seller criteria? Check this during Phase 2a with the free counts.
+1. **Webhooks** — events, payload, signing, retries. Support escalated 2026-09-21, no answer yet. Chase it before designing any push-based sync.
+2. ~~Skip-trace cost~~ — answered: 1 credit per contact revealed, same on both plans.
+3. Does Mandy need Pro's premium filters? Her core criteria are all on Basic; Pro adds mover/buyer signals and investor insights. **Start on Basic.**
+4. Does the Expired Listings filter cover Baldwin County well enough to drop Vulcan7 from Phase 2?
