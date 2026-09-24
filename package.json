@@ -36,7 +36,7 @@
     "@ai-sdk/anthropic": "^3.0.85",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "ai": "^6.0.208",
-    "zod": "^4.4.3"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^26.5.1",
