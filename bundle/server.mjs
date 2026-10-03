@@ -37661,7 +37661,14 @@ function registerBuiltinConnectors() {
 }
 
 // pipeline_core/models.ts
-var SCHEMA_VERSION = 2;
+var SCHEMA_VERSION = 3;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
+var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
+var SchemaVersionSchema = external_exports.union([
+  external_exports.literal(V_FIRST),
+  external_exports.literal(V_SECOND),
+  ...V_REST.map((v) => external_exports.literal(v))
+]);
 var SourceSchema = external_exports.string().min(1);
 var LeadSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -37696,6 +37703,12 @@ var EnrichmentSchema = external_exports.object({
     investors: external_exports.array(external_exports.string()).optional()
   }).optional(),
   verifiedEmail: external_exports.string().email().optional(),
+  /**
+   * Optional back-reference to the Contact's `name` when the enrichment found an
+   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
+   * pipeline fold the found email into the working contact list. Optional/additive.
+   */
+  contactName: external_exports.string().min(1).optional(),
   phone: external_exports.string().optional(),
   /** Raw provider payload, retained for audit; never trusted as schema. */
   data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
@@ -37715,14 +37728,30 @@ var MessageSchema = external_exports.object({
   promptVersion: external_exports.string().min(1),
   createdAt: external_exports.string().datetime()
 });
-var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "failed"]);
+var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
+var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
+var RunErrorSchema = external_exports.object({
+  domain: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1).optional(),
+  stage: RunErrorStageSchema,
+  /** Sanitized, truncated error message (secrets redacted). */
+  message: external_exports.string(),
+  /** AI SDK finish reason when the error carried one (e.g. "length"). */
+  finishReason: external_exports.string().optional()
+});
+var FailedConnectorSchema = external_exports.object({
+  name: external_exports.string().min(1),
+  phase: external_exports.enum(["research", "enrich"]),
+  /** HTTP status, "timeout", or "error". */
+  status: external_exports.union([external_exports.number().int(), external_exports.string().min(1)])
+});
 var CampaignRunSchema = external_exports.object({
   /** Caller-supplied or generated run id (no Date.now/random inside core). */
   id: external_exports.string().min(1),
   // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
   // existing v1 line on read (store.ts re-validates each line). New writes emit
   // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
-  schemaVersion: external_exports.union([external_exports.literal(1), external_exports.literal(2)]),
+  schemaVersion: SchemaVersionSchema,
   icp: external_exports.string().min(1),
   domains: external_exports.array(external_exports.string().min(1)),
   /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
@@ -37750,6 +37779,19 @@ var CampaignRunSchema = external_exports.object({
       reason: external_exports.string().min(1)
     })
   ).default([]),
+  /**
+   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
+   * A provider error on domain 2 no longer loses domain 1's drafts.
+   */
+  errors: external_exports.array(RunErrorSchema).default([]),
+  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
+  rejectedDrafts: external_exports.array(external_exports.object({ contactKey: external_exports.string().min(1), issues: external_exports.array(external_exports.string()) })).default([]),
+  /**
+   * Configured connectors that threw (sanitized status only — never the error
+   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
+   * "not configured" only (v3).
+   */
+  failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
@@ -37796,19 +37838,53 @@ var DraftOutputSchema = external_exports.object({
 });
 
 // pipeline_core/pipeline.ts
+var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
+var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+function normalizeDomain(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) {
+    throw new Error(`invalid domain ${JSON.stringify(input2)}: empty`);
+  }
+  const trimmed = input2.trim();
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  let host;
+  try {
+    host = new URL(withScheme).hostname.toLowerCase();
+  } catch {
+    throw new Error(`invalid domain ${JSON.stringify(input2)}: not a hostname`);
+  }
+  host = host.replace(/\.$/, "");
+  const labels = host.split(".");
+  if (labels[0] === "www" && labels.length > 2) labels.shift();
+  const tld = labels[labels.length - 1] ?? "";
+  if (labels.length < 2 || labels.join(".").length > 253 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
+    throw new Error(`invalid domain ${JSON.stringify(input2)}: not a valid hostname`);
+  }
+  return labels.join(".");
+}
+function normalizeDomainLenient(domain2) {
+  try {
+    return normalizeDomain(domain2);
+  } catch {
+    return String(domain2 ?? "").trim().toLowerCase();
+  }
+}
 function dedupeLeads(leads) {
   const byDomain = /* @__PURE__ */ new Map();
-  for (const lead of leads) {
+  for (const raw of leads) {
+    const lead = { ...raw, domain: normalizeDomainLenient(raw.domain) };
     const existing = byDomain.get(lead.domain);
     if (!existing) {
-      byDomain.set(lead.domain, { ...lead });
+      byDomain.set(lead.domain, lead);
     } else {
+      const sources = existing.source.split(",");
       byDomain.set(lead.domain, {
         ...existing,
         companyName: existing.companyName || lead.companyName,
         industry: existing.industry ?? lead.industry,
         size: existing.size ?? lead.size,
-        description: existing.description ?? lead.description
+        description: existing.description ?? lead.description,
+        source: sources.includes(lead.source) ? existing.source : `${existing.source},${lead.source}`
       });
     }
   }
@@ -37816,11 +37892,12 @@ function dedupeLeads(leads) {
 }
 function dedupeContacts(contacts) {
   const byKey = /* @__PURE__ */ new Map();
-  for (const c of contacts) {
+  for (const raw of contacts) {
+    const c = { ...raw, leadDomain: normalizeDomainLenient(raw.leadDomain) };
     const key = c.email ?? `${c.name.toLowerCase()}@${c.leadDomain}`;
     const existing = byKey.get(key);
     if (!existing) {
-      byKey.set(key, { ...c });
+      byKey.set(key, c);
     } else {
       byKey.set(key, {
         ...existing,
@@ -37832,55 +37909,132 @@ function dedupeContacts(contacts) {
   }
   return [...byKey.values()];
 }
-async function runResearch(domain2, icp) {
+var ConnectorTimeoutError = class extends Error {
+  constructor(ms) {
+    super(`connector exceeded ${ms}ms deadline`);
+    this.name = "ConnectorTimeoutError";
+  }
+};
+async function callWithDeadline(fn, timeoutMs) {
+  const signal = AbortSignal.timeout(timeoutMs);
+  let onAbort = () => {
+  };
+  const deadline = new Promise((_, reject) => {
+    onAbort = () => reject(new ConnectorTimeoutError(timeoutMs));
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([fn(signal), deadline]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
+}
+function failureStatus(err) {
+  if (err instanceof HttpError) return err.status;
+  const name = err?.name;
+  if (err instanceof ConnectorTimeoutError || name === "TimeoutError" || name === "AbortError") return "timeout";
+  return "error";
+}
+function recordConnectorFailure(connector, phase, err, raw, failed) {
+  const status = failureStatus(err);
+  raw[connector.name] = { failed: true, status };
+  failed.push({ name: connector.name, phase, status });
+}
+async function runResearch(domain2, icp, opts = {}) {
   registerBuiltinConnectors();
+  const target = normalizeDomain(domain2);
+  const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const connectors = getConfiguredConnectors("research");
   const leads = [];
   const contacts = [];
   const raw = {};
   const ran = [];
   const skipped = getSkippedConnectors("research").map((c) => c.name);
+  const failedConnectors = [];
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
-      const out = await connector.research({ domain: domain2, icp });
+      const out = await callWithDeadline(
+        (signal) => connector.research({ domain: target, icp, signal }),
+        timeoutMs
+      );
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
     } catch (err) {
-      raw[connector.name] = {
-        failed: true,
-        status: err instanceof HttpError ? err.status : "error"
-      };
-      skipped.push(connector.name);
+      recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
   }
-  return { leads: dedupeLeads(leads), contacts: dedupeContacts(contacts), ran, skipped, raw };
+  return {
+    leads: dedupeLeads(leads),
+    contacts: dedupeContacts(contacts),
+    ran,
+    skipped,
+    failedConnectors,
+    raw
+  };
 }
-async function runEnrich(lead, contacts) {
+function payloadName(data) {
+  const str = (v) => typeof v === "string" && v.trim() ? v.trim() : void 0;
+  const direct = str(data.full_name) ?? str(data.fullName) ?? str(data.name);
+  if (direct) return direct;
+  const parts = [str(data.first_name) ?? str(data.firstName), str(data.last_name) ?? str(data.lastName)].filter(Boolean).join(" ");
+  return parts || void 0;
+}
+var sameName = (a, b) => a.trim().toLowerCase().replace(/\s+/g, " ") === b.trim().toLowerCase().replace(/\s+/g, " ");
+function foldVerifiedEmails(working, found) {
+  const known = new Set(working.filter((c) => c.email).map((c) => c.email.toLowerCase()));
+  const candidates = found.filter(
+    (e) => e.subjectType === "contact" && typeof e.verifiedEmail === "string" && ContactSchema.shape.email.safeParse(e.verifiedEmail).success && !known.has(e.verifiedEmail.toLowerCase())
+  );
+  if (candidates.length === 0) return working;
+  const next = working.map((c) => ({ ...c }));
+  const needy = () => next.filter((c) => !c.email);
+  const unattributed = [];
+  for (const e of candidates) {
+    const name = e.contactName ?? payloadName(e.data ?? {});
+    const match = name ? needy().find((c) => sameName(c.name, name)) : void 0;
+    if (match) {
+      match.email = e.verifiedEmail;
+      known.add(e.verifiedEmail.toLowerCase());
+    } else {
+      unattributed.push(e);
+    }
+  }
+  const stillNeedy = needy();
+  if (unattributed.length === 1 && stillNeedy.length === 1) {
+    stillNeedy[0].email = unattributed[0].verifiedEmail;
+  }
+  return next;
+}
+async function runEnrich(lead, contacts, opts = {}) {
   registerBuiltinConnectors();
+  const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const connectors = getConfiguredConnectors("enrich");
   const enrichments = [];
   const raw = {};
   const ran = [];
   const skipped = getSkippedConnectors("enrich").map((c) => c.name);
+  const failedConnectors = [];
+  let working = contacts.map((c) => ({ ...c }));
   for (const connector of connectors) {
     if (!connector.enrich) continue;
     try {
-      const out = await connector.enrich({ lead, contacts });
+      const current = working;
+      const out = await callWithDeadline(
+        (signal) => connector.enrich({ lead, contacts: current, signal }),
+        timeoutMs
+      );
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      working = foldVerifiedEmails(working, out.enrichments);
     } catch (err) {
-      raw[connector.name] = {
-        failed: true,
-        status: err instanceof HttpError ? err.status : "error"
-      };
-      skipped.push(connector.name);
+      recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }
   }
-  return { enrichments, ran, skipped, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
 }
 
 // pipeline_core/store.ts
