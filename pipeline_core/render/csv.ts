@@ -3,15 +3,36 @@
  *
  * Hand-rolled — no external CSV library dependency.  RFC 4180 compliant:
  * fields containing commas, double-quotes, or newlines are quoted, and embedded
- * double-quotes are doubled.
+ * double-quotes are doubled.  String cells beginning with a spreadsheet formula
+ * trigger (= + - @ TAB CR) are neutralised with a leading single quote.
  */
 
 import type { Validated } from "../validator.js";
 import type { CampaignRun } from "../models.js";
 
-/** RFC 4180 field quoting: quote if the value contains , " or a newline. */
+/**
+ * Characters that make a spreadsheet (Excel, LibreOffice, Google Sheets) treat
+ * a cell as a formula.  OWASP "CSV Injection": = + - @ TAB CR.
+ */
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+
+/**
+ * Encode one CSV field.
+ *
+ * Genuine numbers and booleans (typed fields our own code emits, e.g. fitScore)
+ * are written verbatim — `-3` stays a number.  Every string (connector or LLM
+ * data, which is untrusted) that starts with a formula trigger gets a leading
+ * single quote and is always double-quoted, per OWASP CSV Injection guidance
+ * (OWASP A03:2021 Injection, CWE-1236).  Otherwise RFC 4180 quoting applies:
+ * quote if the value contains , " CR or LF; embedded quotes are doubled.
+ */
 function csvField(value: string | number | boolean | undefined | null): string {
-  const s = value === undefined || value === null ? "" : String(value);
+  if (value === undefined || value === null) return "";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  const s = value;
+  if (FORMULA_TRIGGER.test(s)) {
+    return `"'${s.replace(/"/g, '""')}"`;
+  }
   if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
     return `"${s.replace(/"/g, '""')}"`;
   }

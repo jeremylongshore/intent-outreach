@@ -19,6 +19,12 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DeliveryTarget } from "../profiles.js";
 import type { RenderResult, SlackMessage, EmailDraft } from "./index.js";
+import {
+  encodeHeaderValue,
+  isValidEmailAddress,
+  stripHeaderControls,
+  INVALID_RECIPIENT_NOTE,
+} from "./headers.js";
 
 export interface DeliveryReceipt {
   target: DeliveryTarget;
@@ -79,7 +85,7 @@ function deliverConsole(rendered: RenderResult): DeliveryReceipt {
       output = rendered.value.text;
       break;
     case "email-draft":
-      output = `To: ${rendered.value.to ?? "(none)"}\nSubject: ${rendered.value.subject}\n\n${rendered.value.body}`;
+      output = `To: ${isValidEmailAddress(rendered.value.to) ? rendered.value.to : "(none)"}\nSubject: ${stripHeaderControls(rendered.value.subject)}\n\n${rendered.value.body}`;
       break;
   }
   return { target: "console", output };
@@ -143,9 +149,18 @@ function deliverEmailDraft(draft: EmailDraft, opts: DeliverOptions): DeliveryRec
   ensureDir(dir);
 
   const path = join(dir, `${base}.eml`);
+  // Every header value is untrusted (subject = model output, to = connector data):
+  // CR/LF is stripped and non-ASCII is RFC 2047-encoded (see headers.ts).
+  // To: is re-validated here as defence in depth — a caller may hand-build a draft.
+  const headers: string[] = [];
+  if (isValidEmailAddress(draft.to)) {
+    headers.push(`To: ${draft.to}`);
+  } else if (draft.to !== undefined || draft.note !== undefined) {
+    headers.push(`X-Intent-Outreach-Note: ${encodeHeaderValue(draft.note ?? INVALID_RECIPIENT_NOTE)}`);
+  }
   const content = [
-    `To: ${draft.to ?? ""}`,
-    `Subject: ${draft.subject}`,
+    ...headers,
+    `Subject: ${encodeHeaderValue(draft.subject)}`,
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=UTF-8",
     "",
