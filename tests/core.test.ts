@@ -5,18 +5,25 @@
  * ordering) from 017-AT-DECR, plus the local store round-trip.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { SCHEMA_VERSION } from "../pipeline_core/models.js";
 import { assertCampaignRun, validateMessage } from "../pipeline_core/validator.js";
 import { JsonlRunStore, MemoryRunStore } from "../pipeline_core/store.js";
-import { _resetSecretCache } from "../pipeline_core/secrets.js";
+import {
+  _resetSecretCache,
+  getSecret,
+  hasSecret,
+  isUnsetValue,
+  localSecretsPath,
+  MissingSecretError,
+} from "../pipeline_core/secrets.js";
 import {
   _resetBuiltins,
   getConfiguredConnectors,
   getSkippedConnectors,
   registerBuiltinConnectors,
 } from "../pipeline_core/connectors/index.js";
-import { mkdtempSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -135,5 +142,101 @@ describe("deterministic connector ordering (acceptance #6)", () => {
 
   it("nothing configured → empty list, never throws", () => {
     expect(getConfiguredConnectors("enrich")).toEqual([]);
+  });
+});
+
+describe("secrets: placeholder/empty values are unset, getSecret and hasSecret agree", () => {
+  const KEY = "IO_TEST_SECRET_KEY";
+  const savedEnv = { ...process.env };
+  let dir: string;
+  let stderr: MockInstance<typeof process.stderr.write>;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "io-secrets-"));
+    process.env.INTENT_OUTREACH_SECRETS_FILE = join(dir, "secrets.json");
+    delete process.env[KEY];
+    _resetSecretCache();
+    stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+  });
+  afterEach(() => {
+    stderr.mockRestore();
+    process.env = { ...savedEnv };
+    _resetSecretCache();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeSecrets = (obj: unknown, mode = 0o600) => {
+    const p = join(dir, "secrets.json");
+    writeFileSync(p, JSON.stringify(obj));
+    chmodSync(p, mode);
+    _resetSecretCache();
+  };
+
+  for (const bad of ["", "   ", "${IO_TEST_SECRET_KEY}", "${user_config.apollo_key}"]) {
+    it(`env value ${JSON.stringify(bad)} is treated as unset by both probes`, () => {
+      process.env[KEY] = bad;
+      expect(hasSecret(KEY)).toBe(false);
+      expect(() => getSecret(KEY)).toThrow(MissingSecretError);
+    });
+
+    it(`file value ${JSON.stringify(bad)} is treated as unset by both probes`, () => {
+      writeSecrets({ [KEY]: bad });
+      expect(hasSecret(KEY)).toBe(false);
+      expect(() => getSecret(KEY)).toThrow(MissingSecretError);
+    });
+  }
+
+  for (const nonString of [123, true, { nested: "x" }, ["a"], null]) {
+    it(`non-string file value ${JSON.stringify(nonString)} is unset for both probes`, () => {
+      writeSecrets({ [KEY]: nonString });
+      expect(hasSecret(KEY)).toBe(false);
+      expect(() => getSecret(KEY)).toThrow(MissingSecretError);
+    });
+  }
+
+  it("a placeholder env value falls through to a real file value", () => {
+    process.env[KEY] = "${IO_TEST_SECRET_KEY}";
+    writeSecrets({ [KEY]: "real-from-file" });
+    expect(hasSecret(KEY)).toBe(true);
+    expect(getSecret(KEY)).toBe("real-from-file");
+  });
+
+  it("isUnsetValue classifies values", () => {
+    expect(isUnsetValue(undefined)).toBe(true);
+    expect(isUnsetValue(" ${X} ")).toBe(true);
+    expect(isUnsetValue("sk-live-123")).toBe(false);
+    expect(isUnsetValue("pre${X}post")).toBe(false);
+  });
+
+  it("warns (without the value) on a group/other-readable secrets file", () => {
+    writeSecrets({ [KEY]: "sk-very-secret" }, 0o644);
+    expect(getSecret(KEY)).toBe("sk-very-secret");
+    const out = stderr.mock.calls.map((c) => String(c[0])).join("");
+    expect(out).toMatch(/readable by group\/other/);
+    expect(out).not.toContain("sk-very-secret");
+  });
+
+  it("does not warn on an owner-only secrets file", () => {
+    writeSecrets({ [KEY]: "sk-ok" }, 0o600);
+    expect(getSecret(KEY)).toBe("sk-ok");
+    expect(stderr).not.toHaveBeenCalled();
+  });
+
+  it("empty/placeholder INTENT_OUTREACH_SECRETS_FILE falls back to <home>/secrets.json", () => {
+    process.env.INTENT_OUTREACH_SECRETS_FILE = "${INTENT_OUTREACH_SECRETS_FILE}";
+    process.env.INTENT_OUTREACH_HOME = dir;
+    expect(localSecretsPath()).toBe(join(dir, "secrets.json"));
+    process.env.INTENT_OUTREACH_SECRETS_FILE = "";
+    process.env.INTENT_OUTREACH_HOME = "  ";
+    expect(localSecretsPath().endsWith(join(".intent-outreach", "secrets.json"))).toBe(true);
+  });
+
+  it("a relative secrets-file or home path is rejected loudly", () => {
+    process.env.INTENT_OUTREACH_SECRETS_FILE = "secrets.json";
+    expect(() => localSecretsPath()).toThrow(/absolute/);
+    expect(() => hasSecret(KEY)).toThrow(/absolute/);
+    delete process.env.INTENT_OUTREACH_SECRETS_FILE;
+    process.env.INTENT_OUTREACH_HOME = "./rel";
+    expect(() => localSecretsPath()).toThrow(/absolute/);
   });
 });

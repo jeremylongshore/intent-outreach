@@ -30,6 +30,17 @@ jobs:
             || { echo "❌ RunStore must require Validated<CampaignRun>"; exit 1; }
           echo "✅ storage accepts only validated records"
 
+      - name: "Invariant: only validator.ts may mint the Validated brand (no casts)"
+        # tests/ is deliberately out of scope: the store tests forge the brand on
+        # purpose to prove saveRun's runtime re-check refuses it.
+        run: |
+          if rg -n -e "as\s+(unknown\s+as\s+)?Validated\b" \
+                   --glob '!pipeline_core/validator.ts' \
+                   pipeline_core/ mcp/ cli.ts ; then
+            echo "❌ casting to Validated<T> bypasses the gate — call a validator.ts function"; exit 1
+          fi
+          echo "✅ the Validated brand is minted only by validator.ts"
+
       - name: "Invariant: pipeline_core/mcp are framework-free (no Google/cloud)"
         run: |
           if rg -n -e "from ['\"][^'\"]*google" -e "from ['\"][^'\"]*firebase" \

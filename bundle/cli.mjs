@@ -4544,7 +4544,7 @@ function isRef(value) {
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
-function isRecursive(inst, stack, resolve3) {
+function isRecursive(inst, stack, resolve4) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -4554,7 +4554,7 @@ function isRecursive(inst, stack, resolve3) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve3);
+      const answer = isRecursive(child, stack, resolve4);
       if (answer > result)
         result = answer;
     }
@@ -4565,7 +4565,7 @@ function isRecursive(inst, stack, resolve3) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve3) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve4) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -4629,7 +4629,7 @@ function isRecursive(inst, stack, resolve3) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve3 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve4 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -23325,7 +23325,7 @@ function createProviderExecutedToolFactory({
     supportsDeferredResults
   });
 }
-async function resolve(value) {
+async function resolve2(value) {
   if (typeof value === "function") {
     value = value();
   }
@@ -33008,14 +33008,14 @@ var init_dist5 = __esm({
         headers: headers9
       }) {
         return combineHeaders(
-          this.config.headers ? await resolve(this.config.headers) : void 0,
+          this.config.headers ? await resolve2(this.config.headers) : void 0,
           headers9,
           betas.size > 0 ? { "anthropic-beta": Array.from(betas).join(",") } : {}
         );
       }
       async getBetasFromHeaders(requestHeaders) {
         var _a31, _b29;
-        const configHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+        const configHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
         const configBetaHeader = (_a31 = configHeaders == null ? void 0 : configHeaders["anthropic-beta"]) != null ? _a31 : "";
         const requestBetaHeader = (_b29 = requestHeaders == null ? void 0 : requestHeaders["anthropic-beta"]) != null ? _b29 : "";
         return new Set(
@@ -34885,7 +34885,7 @@ var init_dist5 = __esm({
       }
       async getBatchHeaders(headers9) {
         return combineHeaders(
-          this.options.config.headers ? await resolve(this.options.config.headers) : void 0,
+          this.options.config.headers ? await resolve2(this.options.config.headers) : void 0,
           headers9
         );
       }
@@ -35462,7 +35462,7 @@ var init_dist5 = __esm({
         return this.config.provider;
       }
       async getHeaders() {
-        return combineHeaders(await resolve(this.config.headers), {
+        return combineHeaders(await resolve2(this.config.headers), {
           "anthropic-beta": "skills-2025-10-02"
         });
       }
@@ -35682,8 +35682,8 @@ async function raceWithTimeout(promise2, timeoutMs) {
   try {
     const raced = await Promise.race([
       wrapped,
-      new Promise((resolve3) => {
-        timer = setTimeout(() => resolve3({ timedOut: true }), timeoutMs);
+      new Promise((resolve4) => {
+        timer = setTimeout(() => resolve4({ timedOut: true }), timeoutMs);
       })
     ]);
     if (raced.timedOut) {
@@ -49195,22 +49195,22 @@ function buildGoogleInteractionsStreamTransform({
         }
         case "step.delta": {
           const event = value;
-          let open2 = openBlocks.get(event.index);
-          if (open2 == null) break;
+          let open3 = openBlocks.get(event.index);
+          if (open3 == null) break;
           const dtype = (_g = event.delta) == null ? void 0 : _g.type;
-          if (open2.kind === "pending_model_output") {
+          if (open3.kind === "pending_model_output") {
             if (dtype === "text" || dtype === "text_annotation" || dtype === "text_annotation_delta") {
               const promoted = {
                 kind: "text",
-                id: open2.id,
+                id: open3.id,
                 emittedSourceKeys: /* @__PURE__ */ new Set()
               };
               openBlocks.set(event.index, promoted);
-              open2 = promoted;
+              open3 = promoted;
               controller.enqueue({ type: "text-start", id: promoted.id });
             }
           }
-          if (dtype === "image" && (open2.kind === "pending_model_output" || open2.kind === "text" || open2.kind === "image")) {
+          if (dtype === "image" && (open3.kind === "pending_model_output" || open3.kind === "text" || open3.kind === "image")) {
             const imageDelta = event.delta;
             const google2 = {};
             if (interactionId != null) google2.interactionId = interactionId;
@@ -49230,13 +49230,13 @@ function buildGoogleInteractionsStreamTransform({
                 ...providerMetadata ? { providerMetadata } : {}
               });
             }
-            if (open2.kind === "image") {
-              open2.data = void 0;
-              open2.uri = void 0;
+            if (open3.kind === "image") {
+              open3.data = void 0;
+              open3.uri = void 0;
             }
             break;
           }
-          if (dtype === "video" && (open2.kind === "pending_model_output" || open2.kind === "text")) {
+          if (dtype === "video" && (open3.kind === "pending_model_output" || open3.kind === "text")) {
             const videoDelta = event.delta;
             const google2 = {};
             if (interactionId != null) google2.interactionId = interactionId;
@@ -49259,25 +49259,25 @@ function buildGoogleInteractionsStreamTransform({
             break;
           }
           const delta = event.delta;
-          if (open2.kind === "custom" && ((delta == null ? void 0 : delta.type) === "processing_call" || (delta == null ? void 0 : delta.type) === "processing_result")) {
+          if (open3.kind === "custom" && ((delta == null ? void 0 : delta.type) === "processing_call" || (delta == null ? void 0 : delta.type) === "processing_result")) {
             if (delta.signature != null)
-              open2.google.signature = delta.signature;
+              open3.google.signature = delta.signature;
             if (delta.type === "processing_call" && delta.id != null && delta.id.length > 0) {
-              open2.google.processingId = delta.id;
+              open3.google.processingId = delta.id;
             }
             if (delta.type === "processing_result" && delta.call_id != null && delta.call_id.length > 0) {
-              open2.google.processingCallId = delta.call_id;
+              open3.google.processingCallId = delta.call_id;
             }
-          } else if (open2.kind === "text" && (delta == null ? void 0 : delta.type) === "text") {
+          } else if (open3.kind === "text" && (delta == null ? void 0 : delta.type) === "text") {
             const text2 = (_l = delta.text) != null ? _l : "";
             if (text2.length > 0) {
               controller.enqueue({
                 type: "text-delta",
-                id: open2.id,
+                id: open3.id,
                 delta: text2
               });
             }
-          } else if (open2.kind === "text" && ((delta == null ? void 0 : delta.type) === "text_annotation" || (delta == null ? void 0 : delta.type) === "text_annotation_delta")) {
+          } else if (open3.kind === "text" && ((delta == null ? void 0 : delta.type) === "text_annotation" || (delta == null ? void 0 : delta.type) === "text_annotation_delta")) {
             const sources = annotationsToSources({
               annotations: delta.annotations,
               generateId: generateId4
@@ -49286,153 +49286,153 @@ function buildGoogleInteractionsStreamTransform({
               const key = sourceKey(source);
               if (emittedSourceKeys.has(key)) continue;
               emittedSourceKeys.add(key);
-              open2.emittedSourceKeys.add(key);
+              open3.emittedSourceKeys.add(key);
               controller.enqueue(source);
             }
-          } else if (open2.kind === "image" && (delta == null ? void 0 : delta.type) === "image") {
-            if (delta.data != null) open2.data = delta.data;
-            if (delta.mime_type != null) open2.mimeType = delta.mime_type;
-            if (delta.uri != null) open2.uri = delta.uri;
-          } else if (open2.kind === "reasoning") {
+          } else if (open3.kind === "image" && (delta == null ? void 0 : delta.type) === "image") {
+            if (delta.data != null) open3.data = delta.data;
+            if (delta.mime_type != null) open3.mimeType = delta.mime_type;
+            if (delta.uri != null) open3.uri = delta.uri;
+          } else if (open3.kind === "reasoning") {
             if ((delta == null ? void 0 : delta.type) === "thought_summary") {
               const item = delta.content;
               if ((item == null ? void 0 : item.type) === "text" && typeof item.text === "string") {
                 controller.enqueue({
                   type: "reasoning-delta",
-                  id: open2.id,
+                  id: open3.id,
                   delta: item.text
                 });
               }
             } else if ((delta == null ? void 0 : delta.type) === "thought_signature") {
               const signature = delta.signature;
               if (signature != null) {
-                open2.signature = signature;
+                open3.signature = signature;
               }
             }
-          } else if (open2.kind === "function_call" && (delta == null ? void 0 : delta.type) === "arguments_delta") {
+          } else if (open3.kind === "function_call" && (delta == null ? void 0 : delta.type) === "arguments_delta") {
             const slice = typeof delta.arguments === "string" ? delta.arguments : "";
             if (slice.length > 0) {
-              open2.argumentsAccum += slice;
+              open3.argumentsAccum += slice;
               controller.enqueue({
                 type: "tool-input-delta",
-                id: open2.toolCallId,
+                id: open3.toolCallId,
                 delta: slice
               });
             }
             if (delta.id != null && delta.id.length > 0) {
-              open2.toolCallId = delta.id;
+              open3.toolCallId = delta.id;
             }
             if (delta.signature != null) {
-              open2.signature = delta.signature;
+              open3.signature = delta.signature;
             }
             hasFunctionCall = true;
-          } else if (open2.kind === "builtin_tool_call" && (delta == null ? void 0 : delta.type) === open2.blockType) {
+          } else if (open3.kind === "builtin_tool_call" && (delta == null ? void 0 : delta.type) === open3.blockType) {
             if (delta.id != null && delta.id.length > 0) {
-              open2.toolCallId = delta.id;
+              open3.toolCallId = delta.id;
             }
             if (delta.arguments != null && typeof delta.arguments === "object") {
-              open2.arguments = delta.arguments;
+              open3.arguments = delta.arguments;
             }
-            if (delta.name != null && open2.blockType === "mcp_server_tool_call") {
-              open2.toolName = delta.name;
+            if (delta.name != null && open3.blockType === "mcp_server_tool_call") {
+              open3.toolName = delta.name;
             }
-          } else if (open2.kind === "builtin_tool_result" && (delta == null ? void 0 : delta.type) === open2.blockType) {
+          } else if (open3.kind === "builtin_tool_result" && (delta == null ? void 0 : delta.type) === open3.blockType) {
             if (delta.call_id != null && delta.call_id.length > 0) {
-              open2.callId = delta.call_id;
+              open3.callId = delta.call_id;
             }
-            if (delta.result !== void 0) open2.result = delta.result;
-            if (delta.is_error != null) open2.isError = delta.is_error;
-            if (delta.name != null && open2.blockType === "mcp_server_tool_result") {
-              open2.toolName = delta.name;
+            if (delta.result !== void 0) open3.result = delta.result;
+            if (delta.is_error != null) open3.isError = delta.is_error;
+            if (delta.name != null && open3.blockType === "mcp_server_tool_result") {
+              open3.toolName = delta.name;
             }
           }
           break;
         }
         case "step.stop": {
           const event = value;
-          const open2 = openBlocks.get(event.index);
-          if (open2 == null) break;
-          if (open2.kind === "text") {
+          const open3 = openBlocks.get(event.index);
+          if (open3 == null) break;
+          if (open3.kind === "text") {
             const textProviderMetadata = interactionId != null ? { google: { interactionId } } : void 0;
             controller.enqueue({
               type: "text-end",
-              id: open2.id,
+              id: open3.id,
               ...textProviderMetadata ? { providerMetadata: textProviderMetadata } : {}
             });
-          } else if (open2.kind === "reasoning") {
+          } else if (open3.kind === "reasoning") {
             const google2 = {};
-            if (open2.signature != null) google2.signature = open2.signature;
+            if (open3.signature != null) google2.signature = open3.signature;
             if (interactionId != null) google2.interactionId = interactionId;
             const providerMetadata = Object.keys(google2).length > 0 ? { google: google2 } : void 0;
             controller.enqueue({
               type: "reasoning-end",
-              id: open2.id,
+              id: open3.id,
               ...providerMetadata ? { providerMetadata } : {}
             });
-          } else if (open2.kind === "image") {
+          } else if (open3.kind === "image") {
             const google2 = {};
             if (interactionId != null) google2.interactionId = interactionId;
             const providerMetadata = Object.keys(google2).length > 0 ? { google: google2 } : void 0;
-            if (open2.data != null && open2.data.length > 0) {
+            if (open3.data != null && open3.data.length > 0) {
               controller.enqueue({
                 type: "file",
-                mediaType: (_m = open2.mimeType) != null ? _m : "image/png",
-                data: { type: "data", data: open2.data },
+                mediaType: (_m = open3.mimeType) != null ? _m : "image/png",
+                data: { type: "data", data: open3.data },
                 ...providerMetadata ? { providerMetadata } : {}
               });
-            } else if (open2.uri != null && open2.uri.length > 0) {
+            } else if (open3.uri != null && open3.uri.length > 0) {
               controller.enqueue({
                 type: "file",
-                mediaType: (_n = open2.mimeType) != null ? _n : "image/png",
-                data: { type: "url", url: new URL(open2.uri) },
+                mediaType: (_n = open3.mimeType) != null ? _n : "image/png",
+                data: { type: "url", url: new URL(open3.uri) },
                 ...providerMetadata ? { providerMetadata } : {}
               });
             }
-          } else if (open2.kind === "function_call") {
-            const accumulated = open2.argumentsAccum.length > 0 ? open2.argumentsAccum : "{}";
+          } else if (open3.kind === "function_call") {
+            const accumulated = open3.argumentsAccum.length > 0 ? open3.argumentsAccum : "{}";
             controller.enqueue({
               type: "tool-input-end",
-              id: open2.toolCallId
+              id: open3.toolCallId
             });
             const google2 = {};
-            if (open2.signature != null) google2.signature = open2.signature;
+            if (open3.signature != null) google2.signature = open3.signature;
             if (interactionId != null) google2.interactionId = interactionId;
             const providerMetadata = Object.keys(google2).length > 0 ? { google: google2 } : void 0;
             controller.enqueue({
               type: "tool-call",
-              toolCallId: open2.toolCallId,
-              toolName: open2.toolName,
+              toolCallId: open3.toolCallId,
+              toolName: open3.toolName,
               input: accumulated,
               ...providerMetadata ? { providerMetadata } : {}
             });
-          } else if (open2.kind === "custom") {
+          } else if (open3.kind === "custom") {
             controller.enqueue({
               type: "custom",
-              kind: open2.customKind,
-              providerMetadata: { google: open2.google }
+              kind: open3.customKind,
+              providerMetadata: { google: open3.google }
             });
-          } else if (open2.kind === "builtin_tool_call" && !open2.callEmitted) {
+          } else if (open3.kind === "builtin_tool_call" && !open3.callEmitted) {
             controller.enqueue({
               type: "tool-call",
-              toolCallId: open2.toolCallId,
-              toolName: open2.toolName,
-              input: JSON.stringify((_o = open2.arguments) != null ? _o : {}),
+              toolCallId: open3.toolCallId,
+              toolName: open3.toolName,
+              input: JSON.stringify((_o = open3.arguments) != null ? _o : {}),
               providerExecuted: true
             });
-            open2.callEmitted = true;
-          } else if (open2.kind === "builtin_tool_result" && !open2.resultEmitted) {
+            open3.callEmitted = true;
+          } else if (open3.kind === "builtin_tool_result" && !open3.resultEmitted) {
             controller.enqueue({
               type: "tool-result",
-              toolCallId: open2.callId,
-              toolName: open2.toolName,
-              result: (_p = open2.result) != null ? _p : null
+              toolCallId: open3.callId,
+              toolName: open3.toolName,
+              result: (_p = open3.result) != null ? _p : null
             });
-            open2.resultEmitted = true;
+            open3.resultEmitted = true;
             const sources = builtinToolResultToSources({
               block: {
-                type: open2.blockType,
-                call_id: open2.callId,
-                result: open2.result
+                type: open3.blockType,
+                call_id: open3.callId,
+                result: open3.result
               },
               generateId: generateId4
             });
@@ -51784,7 +51784,7 @@ var init_dist7 = __esm({
           });
         }
         const mergedHeaders = combineHeaders(
-          this.config.headers ? await resolve(this.config.headers) : void 0,
+          this.config.headers ? await resolve2(this.config.headers) : void 0,
           headers9
         );
         const multimodalContent = googleOptions == null ? void 0 : googleOptions.content;
@@ -52666,7 +52666,7 @@ var init_dist7 = __esm({
           toolNameMapping
         } = await this.getArgs(options);
         const mergedHeaders = combineHeaders(
-          this.config.headers ? await resolve(this.config.headers) : void 0,
+          this.config.headers ? await resolve2(this.config.headers) : void 0,
           options.headers,
           extraHeaders
         );
@@ -52714,7 +52714,7 @@ var init_dist7 = __esm({
           providerOptionsNames.map((name29) => [name29, payload])
         );
         const headers9 = combineHeaders(
-          this.config.headers ? await resolve(this.config.headers) : void 0,
+          this.config.headers ? await resolve2(this.config.headers) : void 0,
           options.headers,
           extraHeaders
         );
@@ -53939,7 +53939,7 @@ var init_dist7 = __esm({
       }
       async getHeaders(headers9) {
         return combineHeaders(
-          this.batchConfig.headers ? await resolve(this.batchConfig.headers) : void 0,
+          this.batchConfig.headers ? await resolve2(this.batchConfig.headers) : void 0,
           headers9
         );
       }
@@ -54490,7 +54490,7 @@ var init_dist7 = __esm({
         }
         const videos = [];
         const videoMetadata = [];
-        const resolvedHeaders = await resolve(this.config.headers);
+        const resolvedHeaders = await resolve2(this.config.headers);
         const apiKey = resolvedHeaders == null ? void 0 : resolvedHeaders["x-goog-api-key"];
         for (const generatedSample of response.generateVideoResponse.generatedSamples) {
           if ((_b29 = generatedSample.video) == null ? void 0 : _b29.uri) {
@@ -54534,7 +54534,7 @@ var init_dist7 = __esm({
         const { value: operation, responseHeaders } = await postJsonToApi({
           url: `${this.config.baseURL}/models/${this.modelId}:predictLongRunning`,
           headers: combineHeaders(
-            await resolve(this.config.headers),
+            await resolve2(this.config.headers),
             options.headers
           ),
           body: {
@@ -54573,7 +54573,7 @@ var init_dist7 = __esm({
           url: `${this.config.baseURL}/${operationName}`,
           validateUrl: false,
           headers: combineHeaders(
-            await resolve(this.config.headers),
+            await resolve2(this.config.headers),
             options.headers
           ),
           successfulResponseHandler: createJsonResponseHandler(
@@ -54884,7 +54884,7 @@ var init_dist7 = __esm({
         } = await postJsonToApi({
           url: `${this.config.baseURL}/models/${this.modelId}:generateContent`,
           headers: combineHeaders(
-            this.config.headers ? await resolve(this.config.headers) : void 0,
+            this.config.headers ? await resolve2(this.config.headers) : void 0,
             options.headers
           ),
           body: requestBody,
@@ -55828,7 +55828,7 @@ var init_dist7 = __esm({
         const { args, warnings, isAgent, pollingTimeoutMs } = await this.getArgs(options);
         const url2 = `${this.config.baseURL}/interactions`;
         const mergedHeaders = combineHeaders(
-          this.config.headers ? await resolve(this.config.headers) : void 0,
+          this.config.headers ? await resolve2(this.config.headers) : void 0,
           options.headers
         );
         const postResult = await postJsonToApi({
@@ -55912,7 +55912,7 @@ var init_dist7 = __esm({
         const { args, warnings, isBackground, pollingTimeoutMs } = await this.getArgs(options);
         const url2 = `${this.config.baseURL}/interactions`;
         const mergedHeaders = combineHeaders(
-          this.config.headers ? await resolve(this.config.headers) : void 0,
+          this.config.headers ? await resolve2(this.config.headers) : void 0,
           options.headers
         );
         if (isBackground) {
@@ -56450,7 +56450,7 @@ var init_dist7 = __esm({
         } = await postJsonToApi({
           url: `${this.config.baseURL}/interactions`,
           headers: combineHeaders(
-            this.config.headers ? await resolve(this.config.headers) : void 0,
+            this.config.headers ? await resolve2(this.config.headers) : void 0,
             options.headers
           ),
           body: requestBody,
@@ -56510,7 +56510,7 @@ var init_dist7 = __esm({
         const googleOptions = await this.parseOptions(options.providerOptions);
         validateLiveInputAudioFormat(options.inputAudioFormat);
         const headers9 = combineHeaders(
-          this.config.headers ? await resolve(this.config.headers) : void 0,
+          this.config.headers ? await resolve2(this.config.headers) : void 0,
           options.headers
         );
         let apiKey;
@@ -59155,7 +59155,7 @@ function createProviderExecutedToolFactory2({
     supportsDeferredResults
   });
 }
-async function resolve2(value) {
+async function resolve3(value) {
   if (typeof value === "function") {
     value = value();
   }
@@ -66180,7 +66180,7 @@ var init_dist10 = __esm({
         const { value, responseHeaders, rawValue } = await postJsonToApi2({
           url: `${this.config.baseURL}/tts`,
           headers: combineHeaders2(
-            this.config.headers ? await resolve2(this.config.headers) : void 0,
+            this.config.headers ? await resolve3(this.config.headers) : void 0,
             options.headers
           ),
           body: requestBody,
@@ -66558,44 +66558,86 @@ async function httpJson(url2, opts = {}) {
 }
 
 // pipeline_core/secrets.ts
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, statSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 import { homedir } from "node:os";
 var MissingSecretError = class extends Error {
   constructor(name29) {
+    let where;
+    try {
+      where = localSecretsPath();
+    } catch {
+      where = "the local secrets file";
+    }
     super(
-      `secret "${name29}" not found. Set the ${name29} environment variable, or add it to ${localSecretsPath()}. Intent Outreach never stores keys in the cloud.`
+      `secret "${name29}" not found. Set the ${name29} environment variable, or add it to ${where}. Intent Outreach never stores keys in the cloud.`
     );
     this.name = name29;
     this.name = "MissingSecretError";
   }
   name;
 };
+var PLACEHOLDER = /^\$\{.*\}$/;
+function isUnsetValue(v) {
+  if (typeof v !== "string") return true;
+  const t = v.trim();
+  return t.length === 0 || PLACEHOLDER.test(t);
+}
+function envPath(name29) {
+  const raw = process.env[name29];
+  if (isUnsetValue(raw)) return void 0;
+  const p = raw.trim();
+  if (!isAbsolute(p)) {
+    throw new Error(`${name29} must be an absolute path (got "${p}")`);
+  }
+  return p;
+}
+function intentOutreachHome() {
+  return envPath("INTENT_OUTREACH_HOME") ?? join(homedir(), ".intent-outreach");
+}
 function localSecretsPath() {
-  return process.env.INTENT_OUTREACH_SECRETS_FILE ?? join(process.env.INTENT_OUTREACH_HOME ?? join(homedir(), ".intent-outreach"), "secrets.json");
+  return envPath("INTENT_OUTREACH_SECRETS_FILE") ?? join(intentOutreachHome(), "secrets.json");
 }
 var fileCache = null;
+function warnIfBroadPermissions(path) {
+  try {
+    const mode = statSync(path).mode & 511;
+    if (mode & 63) {
+      process.stderr.write(
+        `intent-outreach: warning: secrets file ${path} is readable by group/other (mode ${mode.toString(8).padStart(3, "0")}); run: chmod 600 ${path}
+`
+      );
+    }
+  } catch {
+  }
+}
 function loadLocalFile() {
   if (fileCache) return fileCache;
+  const path = localSecretsPath();
   try {
-    const text2 = readFileSync(localSecretsPath(), "utf8");
+    const text2 = readFileSync(path, "utf8");
+    warnIfBroadPermissions(path);
     const parsed = JSON.parse(text2);
-    fileCache = parsed && typeof parsed === "object" ? parsed : {};
+    fileCache = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
   } catch {
     fileCache = {};
   }
   return fileCache;
 }
-function getSecret(name29) {
+function resolve(name29) {
   const fromEnv = process.env[name29];
-  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  if (!isUnsetValue(fromEnv)) return fromEnv;
   const fromFile = loadLocalFile()[name29];
-  if (fromFile && fromFile.length > 0) return fromFile;
-  throw new MissingSecretError(name29);
+  if (!isUnsetValue(fromFile)) return fromFile;
+  return void 0;
+}
+function getSecret(name29) {
+  const v = resolve(name29);
+  if (v === void 0) throw new MissingSecretError(name29);
+  return v;
 }
 function hasSecret(name29) {
-  if (process.env[name29]) return true;
-  return Boolean(loadLocalFile()[name29]);
+  return resolve(name29) !== void 0;
 }
 
 // pipeline_core/connectors/apollo.ts
@@ -67253,6 +67295,7 @@ init_external();
 
 // pipeline_core/models.ts
 var SCHEMA_VERSION = 2;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
 var SourceSchema = external_exports.string().min(1);
 var LeadSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -67346,6 +67389,14 @@ var CampaignRunSchema = external_exports.object({
 });
 
 // pipeline_core/validator.ts
+function deepFreeze(value, seen = /* @__PURE__ */ new WeakSet()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const key of Reflect.ownKeys(value)) {
+    deepFreeze(value[key], seen);
+  }
+  return Object.freeze(value);
+}
 var ValidationError = class extends Error {
   constructor(kind, issues) {
     super(
@@ -67361,7 +67412,7 @@ var ValidationError = class extends Error {
 function gate(kind, schema, raw) {
   const parsed = schema.safeParse(raw);
   if (parsed.success) {
-    return { ok: true, value: parsed.data };
+    return { ok: true, value: deepFreeze(parsed.data) };
   }
   return { ok: false, error: new ValidationError(kind, parsed.error.issues) };
 }
@@ -67996,7 +68047,7 @@ var GatewayFetchMetadata = class {
       const { value } = await getFromApi({
         url: `${this.config.baseURL}/config`,
         validateUrl: false,
-        headers: this.config.headers ? await resolve(this.config.headers) : void 0,
+        headers: this.config.headers ? await resolve2(this.config.headers) : void 0,
         successfulResponseHandler: createJsonResponseHandler(
           gatewayAvailableModelsResponseSchema
         ),
@@ -68020,7 +68071,7 @@ var GatewayFetchMetadata = class {
       const { value } = await getFromApi({
         url: `${baseUrl.origin}/v1/credits`,
         validateUrl: false,
-        headers: this.config.headers ? await resolve(this.config.headers) : void 0,
+        headers: this.config.headers ? await resolve2(this.config.headers) : void 0,
         successfulResponseHandler: createJsonResponseHandler(
           gatewayCreditsResponseSchema
         ),
@@ -68120,7 +68171,7 @@ var GatewaySpendReport = class {
       const { value } = await getFromApi({
         url: `${baseUrl.origin}/v1/report?${searchParams.toString()}`,
         validateUrl: false,
-        headers: this.config.headers ? await resolve(this.config.headers) : void 0,
+        headers: this.config.headers ? await resolve2(this.config.headers) : void 0,
         successfulResponseHandler: createJsonResponseHandler(
           gatewaySpendReportResponseSchema
         ),
@@ -68198,7 +68249,7 @@ var GatewayGenerationInfoFetcher = class {
       const { value } = await getFromApi({
         url: `${baseUrl.origin}/v1/generation?id=${encodeURIComponent(params.id)}`,
         validateUrl: false,
-        headers: this.config.headers ? await resolve(this.config.headers) : void 0,
+        headers: this.config.headers ? await resolve2(this.config.headers) : void 0,
         successfulResponseHandler: createJsonResponseHandler(
           gatewayGenerationInfoResponseSchema
         ),
@@ -68299,7 +68350,7 @@ var GatewayBatch = class {
     var _a124;
     assertTextBatchRequests(requests);
     const modelId = validateSingleModel(requests);
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     const idempotencyKey = getGatewayBatchIdempotencyKey(providerOptions);
     const forwardedProviderOptions = omitGatewayIdempotencyKey(providerOptions);
     try {
@@ -68309,7 +68360,7 @@ var GatewayBatch = class {
           resolvedHeaders,
           headers9,
           { "ai-model-id": modelId },
-          await resolve(this.config.o11yHeaders),
+          await resolve2(this.config.o11yHeaders),
           idempotencyKey != null ? { "idempotency-key": idempotencyKey } : void 0
         ),
         body: {
@@ -68361,14 +68412,14 @@ var GatewayBatch = class {
     headers: headers9,
     abortSignal
   }) {
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const { value: responseBody } = await postJsonToApi({
         url: this.getBatchUrl("status"),
         headers: combineHeaders(
           resolvedHeaders,
           headers9,
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: { batchId },
         successfulResponseHandler: createJsonResponseHandler(
@@ -68407,14 +68458,14 @@ var GatewayBatch = class {
     headers: headers9,
     abortSignal
   }) {
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const { value: lines } = await postJsonToApi({
         url: this.getBatchUrl("results"),
         headers: combineHeaders(
           resolvedHeaders,
           headers9,
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: { batchId },
         successfulResponseHandler: createJsonLinesResponseHandler(
@@ -68449,14 +68500,14 @@ var GatewayBatch = class {
     headers: headers9,
     abortSignal
   }) {
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const { value: responseBody } = await postJsonToApi({
         url: this.getBatchUrl("cancel"),
         headers: combineHeaders(
           resolvedHeaders,
           headers9,
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: { batchId },
         successfulResponseHandler: createJsonResponseHandler(
@@ -68692,7 +68743,7 @@ var GatewayLanguageModel = class _GatewayLanguageModel {
     var _a124;
     const { args, warnings } = await this.getArgs(options);
     const { abortSignal } = options;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const {
         responseHeaders,
@@ -68704,7 +68755,7 @@ var GatewayLanguageModel = class _GatewayLanguageModel {
           resolvedHeaders,
           options.headers,
           this.getModelConfigHeaders(this.modelId, false),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: args,
         successfulResponseHandler: createJsonResponseHandler(z2.any()),
@@ -68734,7 +68785,7 @@ var GatewayLanguageModel = class _GatewayLanguageModel {
   async doStream(options) {
     const { args, warnings } = await this.getArgs(options);
     const { abortSignal } = options;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const { value: response, responseHeaders } = await postJsonToApi({
         url: this.getUrl(),
@@ -68742,7 +68793,7 @@ var GatewayLanguageModel = class _GatewayLanguageModel {
           resolvedHeaders,
           options.headers,
           this.getModelConfigHeaders(this.modelId, true),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: args,
         successfulResponseHandler: createEventSourceResponseHandler(z2.any()),
@@ -68863,7 +68914,7 @@ var GatewayEmbeddingModel = class _GatewayEmbeddingModel {
     providerOptions
   }) {
     var _a124, _b124;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const {
         responseHeaders,
@@ -68875,7 +68926,7 @@ var GatewayEmbeddingModel = class _GatewayEmbeddingModel {
           resolvedHeaders,
           headers9 != null ? headers9 : {},
           this.getModelConfigHeaders(),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: {
           values,
@@ -68981,7 +69032,7 @@ var GatewayImageModel = class _GatewayImageModel {
     abortSignal
   }) {
     var _a124, _b124, _c, _d;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const { responseHeaders, value: responseBody } = await postJsonToApi({
         url: this.getUrl(),
@@ -68989,7 +69040,7 @@ var GatewayImageModel = class _GatewayImageModel {
           resolvedHeaders,
           headers9 != null ? headers9 : {},
           this.getModelConfigHeaders(),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: {
           prompt,
@@ -69113,7 +69164,7 @@ var GatewayVideoModel = class {
   async doGenerate(options) {
     var _a124, _b124;
     const { headers: headers9, abortSignal } = options;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const { responseHeaders, value: responseBody } = await postJsonToApi({
         url: this.getUrl(),
@@ -69121,7 +69172,7 @@ var GatewayVideoModel = class {
           resolvedHeaders,
           headers9 != null ? headers9 : {},
           this.getModelConfigHeaders(),
-          await resolve(this.config.o11yHeaders),
+          await resolve2(this.config.o11yHeaders),
           { accept: "text/event-stream" }
         ),
         body: this.buildRequestBody(options),
@@ -69227,7 +69278,7 @@ var GatewayVideoModel = class {
   async doStart(options) {
     var _a124, _b124;
     const { headers: headers9, abortSignal, webhookUrl } = options;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const { responseHeaders, value: responseBody } = await postJsonToApi({
         url: this.getStartUrl(),
@@ -69235,7 +69286,7 @@ var GatewayVideoModel = class {
           resolvedHeaders,
           headers9 != null ? headers9 : {},
           this.getModelConfigHeaders(),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: {
           ...this.buildRequestBody(options),
@@ -69279,7 +69330,7 @@ var GatewayVideoModel = class {
     headers: headers9
   }) {
     var _a124, _b124, _c, _d, _e, _f;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const { responseHeaders, value: responseBody } = await postJsonToApi({
         url: this.getStatusUrl(),
@@ -69287,7 +69338,7 @@ var GatewayVideoModel = class {
           resolvedHeaders,
           headers9 != null ? headers9 : {},
           this.getModelConfigHeaders(),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: { operation },
         successfulResponseHandler: createJsonResponseHandler(
@@ -69505,7 +69556,7 @@ var GatewayEvaluationModel = class {
     providerOptions
   }) {
     var _a124;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const {
         responseHeaders,
@@ -69517,7 +69568,7 @@ var GatewayEvaluationModel = class {
           resolvedHeaders,
           headers9 != null ? headers9 : {},
           this.getModelConfigHeaders(),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: {
           state,
@@ -69638,7 +69689,7 @@ var GatewayRerankingModel = class {
     providerOptions
   }) {
     var _a124;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const {
         responseHeaders,
@@ -69650,7 +69701,7 @@ var GatewayRerankingModel = class {
           resolvedHeaders,
           headers9 != null ? headers9 : {},
           this.getModelConfigHeaders(),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: {
           documents,
@@ -69750,7 +69801,7 @@ var GatewaySpeechModel = class {
     abortSignal
   }) {
     var _a124;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const {
         responseHeaders,
@@ -69762,7 +69813,7 @@ var GatewaySpeechModel = class {
           resolvedHeaders,
           headers9 != null ? headers9 : {},
           this.getModelConfigHeaders(),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: {
           text: text2,
@@ -69858,7 +69909,7 @@ var GatewayTranscriptionModel = class {
     abortSignal
   }) {
     var _a124, _b124, _c, _d;
-    const resolvedHeaders = this.config.headers ? await resolve(this.config.headers) : void 0;
+    const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
       const {
         responseHeaders,
@@ -69870,7 +69921,7 @@ var GatewayTranscriptionModel = class {
           resolvedHeaders,
           headers9 != null ? headers9 : {},
           this.getModelConfigHeaders(),
-          await resolve(this.config.o11yHeaders)
+          await resolve2(this.config.o11yHeaders)
         ),
         body: {
           audio: audio instanceof Uint8Array ? convertUint8ArrayToBase64(audio) : audio,
@@ -69915,10 +69966,10 @@ var GatewayTranscriptionModel = class {
     var _a124, _b124, _c, _d, _e;
     const currentDate = (_c = (_b124 = (_a124 = this.config._internal) == null ? void 0 : _a124.currentDate) == null ? void 0 : _b124.call(_a124)) != null ? _c : /* @__PURE__ */ new Date();
     const headers9 = combineHeaders(
-      await resolve((_d = this.config.headers) != null ? _d : {}),
+      await resolve2((_d = this.config.headers) != null ? _d : {}),
       (_e = options.headers) != null ? _e : {},
       this.getModelConfigHeaders(),
-      await resolve(this.config.o11yHeaders)
+      await resolve2(this.config.o11yHeaders)
     );
     const authMethod = await parseAuthMethod(headers9);
     const startFrame = {
@@ -73910,7 +73961,7 @@ var object2 = ({
   const schema = asSchema(inputSchema);
   return {
     name: "object",
-    responseFormat: resolve(schema.jsonSchema).then((jsonSchema32) => ({
+    responseFormat: resolve2(schema.jsonSchema).then((jsonSchema32) => ({
       type: "json",
       schema: jsonSchema32,
       ...name252 != null && { name: name252 },
@@ -73985,7 +74036,7 @@ var array2 = ({
   return {
     name: "array",
     // JSON schema that describes an array of elements:
-    responseFormat: resolve(elementSchema.jsonSchema).then((jsonSchema32) => {
+    responseFormat: resolve2(elementSchema.jsonSchema).then((jsonSchema32) => {
       const {
         $schema: _$schema,
         definitions,
@@ -76459,60 +76510,178 @@ async function runCampaign(input2) {
 }
 
 // pipeline_core/store.ts
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { constants, mkdir, open as open2, readFile, stat, unlink } from "node:fs/promises";
 import { dirname as dirname2, join as join3 } from "node:path";
-import { homedir as homedir2 } from "node:os";
+var DuplicateRunError = class extends Error {
+  constructor(runId) {
+    super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
+    this.runId = runId;
+    this.name = "DuplicateRunError";
+  }
+  runId;
+};
+var StoreLockTimeoutError = class extends Error {
+  constructor(lockPath) {
+    super(`timed out waiting for run-store lock ${lockPath} (another intent-outreach process is writing)`);
+    this.lockPath = lockPath;
+    this.name = "StoreLockTimeoutError";
+  }
+  lockPath;
+};
 function defaultStorePath() {
-  const base = process.env.INTENT_OUTREACH_HOME ?? join3(homedir2(), ".intent-outreach");
-  return join3(base, "runs.jsonl");
+  return join3(intentOutreachHome(), "runs.jsonl");
 }
+var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
+var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 var JsonlRunStore = class {
-  constructor(path = defaultStorePath()) {
+  constructor(path = defaultStorePath(), opts = {}) {
     this.path = path;
+    this.lockTimeoutMs = opts.lockTimeoutMs ?? 1e4;
+    this.staleLockMs = opts.staleLockMs ?? 3e4;
   }
   path;
-  async saveRun(run) {
-    await mkdir(dirname2(this.path), { recursive: true });
-    await appendFile(this.path, JSON.stringify(run) + "\n", "utf8");
+  lockTimeoutMs;
+  staleLockMs;
+  permsChecked = false;
+  warnedKey = "";
+  async saveRun(run, opts = {}) {
+    const checked = assertCampaignRun(run);
+    const line = JSON.stringify(checked) + "\n";
+    await mkdir(dirname2(this.path), { recursive: true, mode: 448 });
+    await this.withLock(async () => {
+      if (!opts.overwrite) {
+        const { runs } = await this.scan();
+        if (runs.some((r) => r.run.id === checked.id)) throw new DuplicateRunError(checked.id);
+      }
+      await this.append(line);
+    });
   }
   async getRun(id) {
-    const lines = await this.readLines();
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i];
-      if (line === void 0) continue;
-      const parsed = this.tryParseLine(line);
-      if (parsed && parsed.id === id) return parsed;
+    const { runs } = await this.scan();
+    for (let i = runs.length - 1; i >= 0; i--) {
+      const r = runs[i];
+      if (r && r.run.id === id) return r.run;
     }
     return null;
   }
   async listRunIds() {
-    const lines = await this.readLines();
-    const ids = /* @__PURE__ */ new Set();
-    for (const line of lines) {
-      const parsed = this.tryParseLine(line);
-      if (parsed) ids.add(parsed.id);
-    }
-    return [...ids];
+    const { runs } = await this.scan();
+    return [...new Set(runs.map((r) => r.run.id))];
   }
-  async readLines() {
+  async corruptLines() {
+    return (await this.scan()).corrupt;
+  }
+  // ── write path ──────────────────────────────────────────────────────────────
+  /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
+  async append(line) {
+    const fh = await open2(
+      this.path,
+      constants.O_RDWR | constants.O_APPEND | constants.O_CREAT,
+      384
+    );
     try {
-      const text2 = await readFile(this.path, "utf8");
-      return text2.split("\n").filter((l) => l.trim().length > 0);
+      const st = await fh.stat();
+      if (!this.permsChecked) {
+        if ((st.mode & 63) !== 0) await fh.chmod(384);
+        this.permsChecked = true;
+      }
+      let payload = line;
+      if (st.size > 0) {
+        const last = Buffer.alloc(1);
+        await fh.read(last, 0, 1, st.size - 1);
+        if (last[0] !== 10) payload = "\n" + line;
+      }
+      await fh.write(payload);
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  }
+  /**
+   * Cross-process mutual exclusion via an exclusive-create lockfile. A lock older
+   * than `staleLockMs` (writer crashed mid-save) is broken. Backoff is bounded.
+   */
+  async withLock(fn) {
+    const lockPath = `${this.path}.lock`;
+    const deadline = Date.now() + this.lockTimeoutMs;
+    let delay3 = 5;
+    let lock;
+    while (!lock) {
+      try {
+        lock = await open2(lockPath, "wx", 384);
+      } catch (err) {
+        if (err.code !== "EEXIST") throw err;
+        try {
+          const st = await stat(lockPath);
+          if (Date.now() - st.mtimeMs > this.staleLockMs) {
+            await unlink(lockPath).catch(() => void 0);
+            continue;
+          }
+        } catch {
+          continue;
+        }
+        if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
+        await sleep(delay3 + Math.floor(Math.random() * delay3));
+        delay3 = Math.min(delay3 * 2, 200);
+      }
+    }
+    try {
+      await lock.write(`${process.pid} ${(/* @__PURE__ */ new Date()).toISOString()}
+`);
+      return await fn();
+    } finally {
+      await lock.close().catch(() => void 0);
+      await unlink(lockPath).catch(() => void 0);
+    }
+  }
+  // ── read path ───────────────────────────────────────────────────────────────
+  async scan() {
+    let text2;
+    try {
+      text2 = await readFile(this.path, "utf8");
     } catch (err) {
-      if (err.code === "ENOENT") return [];
+      if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
     }
-  }
-  /** Re-validate on read so a hand-edited/corrupt line can never poison a result. */
-  tryParseLine(line) {
-    let raw;
-    try {
-      raw = JSON.parse(line);
-    } catch {
-      return null;
+    const runs = [];
+    const corrupt = [];
+    const lines = text2.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      if (raw === void 0 || raw.trim().length === 0) continue;
+      const lineNo = i + 1;
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        corrupt.push({ line: lineNo, reason: "invalid-json" });
+        continue;
+      }
+      const r = validateCampaignRun(parsed);
+      if (r.ok) {
+        runs.push({ line: lineNo, run: r.value });
+        continue;
+      }
+      const version2 = parsed && typeof parsed === "object" ? parsed.schemaVersion : void 0;
+      corrupt.push({
+        line: lineNo,
+        reason: SUPPORTED_VERSIONS.includes(version2) ? "schema-invalid" : "unknown-schema-version"
+      });
     }
-    const r = validateCampaignRun(raw);
-    return r.ok ? r.value : null;
+    this.warnCorrupt(corrupt);
+    return { runs, corrupt };
+  }
+  /** One stderr warning per distinct set of bad lines (not one per read). */
+  warnCorrupt(corrupt) {
+    if (corrupt.length === 0) return;
+    const key = corrupt.map((c) => `${c.line}:${c.reason}`).join(",");
+    if (key === this.warnedKey) return;
+    this.warnedKey = key;
+    const detail = corrupt.map((c) => `${c.line} (${c.reason})`).join(", ");
+    process.stderr.write(
+      `intent-outreach: warning: ${corrupt.length} unreadable line(s) in ${this.path} were skipped: line ${detail}
+`
+    );
   }
 };
 
