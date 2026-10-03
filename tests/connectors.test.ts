@@ -18,10 +18,21 @@ import { hunterConnector } from "../pipeline_core/connectors/hunter.js";
 import { crunchbaseConnector } from "../pipeline_core/connectors/crunchbase.js";
 import { peopledatalabsConnector } from "../pipeline_core/connectors/peopledatalabs.js";
 import { zoominfoConnector } from "../pipeline_core/connectors/zoominfo.js";
-import { exaConnector } from "../pipeline_core/connectors/exa.js";
+import { _setExaClock, exaConnector } from "../pipeline_core/connectors/exa.js";
 import { leadmagicConnector } from "../pipeline_core/connectors/leadmagic.js";
 import { clearbitConnector } from "../pipeline_core/connectors/clearbit.js";
 import { clayConnector } from "../pipeline_core/connectors/clay.js";
+import {
+  HttpError,
+  MAX_BODY_BYTES,
+  ResponseTooLargeError,
+  _clearRedactionRegistry,
+  httpJson,
+  parseRetryAfter,
+  registerSecretForRedaction,
+} from "../pipeline_core/http.js";
+import { forEachContact } from "../pipeline_core/connectors/_per-item.js";
+import { normalizeDomain } from "../pipeline_core/connectors/_domain.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -238,9 +249,9 @@ describe("apolloConnector", () => {
       vi.stubGlobal("fetch", mockFetchWith(matchPayload));
 
       const contacts = [
-        { name: "Alice", leadDomain: DOMAIN, source: "apollo" as const },
-        { name: "Bob", leadDomain: DOMAIN, source: "apollo" as const },
-        { name: "Ghost", leadDomain: DOMAIN, source: "apollo" as const },
+        { name: "Alice Smith", leadDomain: DOMAIN, source: "apollo" as const },
+        { name: "Bob Jones", leadDomain: DOMAIN, source: "apollo" as const },
+        { name: "Ghost Writer", leadDomain: DOMAIN, source: "apollo" as const },
       ];
 
       const { enrichments } = await apolloConnector.enrich!({ lead, contacts });
@@ -272,7 +283,7 @@ describe("apolloConnector", () => {
 
     it("returns no enrichments when matches array is empty", async () => {
       vi.stubGlobal("fetch", mockFetchWith({ matches: [] }));
-      const contacts = [{ name: "Nobody", leadDomain: DOMAIN, source: "apollo" as const }];
+      const contacts = [{ name: "No Body", leadDomain: DOMAIN, source: "apollo" as const }];
 
       const { enrichments } = await apolloConnector.enrich!({ lead, contacts });
 
@@ -377,11 +388,16 @@ describe("hunterConnector", () => {
   });
 
   it("enrich skips a finder result that lacks @", async () => {
-    vi.stubGlobal("fetch", mockFetchWith({ data: { email: "invalid" } }));
+    const f = mockFetchWith({ data: { email: "invalid" } });
+    vi.stubGlobal("fetch", f);
     const lead = { domain: DOMAIN, companyName: "Acme", source: "hunter" as const };
-    const contacts = [{ name: "X", leadDomain: DOMAIN, source: "hunter" as const }];
+    const contacts = [{ name: "Xavier Ray", leadDomain: DOMAIN, source: "hunter" as const }];
     const { enrichments } = await hunterConnector.enrich!({ lead, contacts });
     expect(enrichments).toHaveLength(0);
+    expect(f).toHaveBeenCalledTimes(1);
+    const url = String(vi.mocked(f).mock.calls[0]?.[0]);
+    expect(url).toContain("https://api.hunter.io/v2/email-finder");
+    expect(url).toContain("full_name=Xavier+Ray");
   });
 
   it("enrich skips contacts that already have an email", async () => {
@@ -466,13 +482,11 @@ describe("crunchbaseConnector", () => {
     expect(enrichments[0]?.funding?.lastRound).toBe("Seed");
   });
 
-  it("enrich produces an enrichment even when entities is empty (defensive)", async () => {
+  it("enrich produces NO enrichment when entities is empty (no fabricated data:{})", async () => {
     vi.stubGlobal("fetch", mockFetchWith({ entities: [] }));
     const lead = { domain: DOMAIN, companyName: "Acme", source: "crunchbase" as const };
     const { enrichments } = await crunchbaseConnector.enrich!({ lead, contacts: [] });
-    // entity is undefined, but one enrichment is still produced with empty funding
-    expect(enrichments).toHaveLength(1);
-    expect(enrichments[0]?.subjectKey).toBe(DOMAIN);
+    expect(enrichments).toHaveLength(0);
   });
 
   it("investors with missing identifier.value are filtered out", async () => {
@@ -578,9 +592,9 @@ describe("peopledatalabsConnector", () => {
     expect(contacts[0]?.email).toBe("alice@acme.com");
     expect(contacts[0]?.title).toBe("Head of Engineering");
     expect(contacts[0]?.source).toBe("peopledatalabs");
-    // Bob: no full_name, joins first+last; uses personal email as fallback
+    // Bob: no full_name, joins first+last; personal emails are NEVER used (PII)
     expect(contacts[1]?.name).toBe("Bob Jones");
-    expect(contacts[1]?.email).toBe("bob@personal.com");
+    expect(contacts[1]?.email).toBeUndefined();
   });
 
   it("research swallows person-search errors and still returns the lead", async () => {
@@ -621,7 +635,9 @@ describe("peopledatalabsConnector", () => {
     expect(enrichments).toHaveLength(1);
     expect(enrichments[0]?.subjectKey).toBe("jane@acme.com");
     expect(enrichments[0]?.verifiedEmail).toBe("jane@acme.com");
-    expect(enrichments[0]?.phone).toBe("+15559876");
+    // PDL phone_numbers are unlabeled (often personal mobiles) — never kept.
+    expect(enrichments[0]?.phone).toBeUndefined();
+    expect(enrichments[0]?.data).not.toHaveProperty("phone_numbers");
     expect(enrichments[0]?.provider).toBe("peopledatalabs");
   });
 
@@ -714,7 +730,7 @@ describe("zoominfoConnector", () => {
     expect(contacts[0]?.linkedin).toBeUndefined();
   });
 
-  it("enrich produces an Enrichment with phone from mobilePhone", async () => {
+  it("enrich never keeps mobilePhone (personal) as the phone", async () => {
     const enrichPayload = {
       data: [
         {
@@ -735,7 +751,8 @@ describe("zoominfoConnector", () => {
     const { enrichments } = await zoominfoConnector.enrich!({ lead, contacts });
 
     expect(enrichments).toHaveLength(1);
-    expect(enrichments[0]?.phone).toBe("+15553333444");
+    expect(enrichments[0]?.phone).toBeUndefined();
+    expect(enrichments[0]?.data).not.toHaveProperty("mobilePhone");
     expect(enrichments[0]?.verifiedEmail).toBe("dave@acme.com");
     expect(enrichments[0]?.provider).toBe("zoominfo");
   });
@@ -844,10 +861,20 @@ describe("exaConnector", () => {
       source: "exa" as const,
     };
 
+    _setExaClock(() => new Date("2031-06-01T00:00:00Z"));
     const { enrichments } = await exaConnector.enrich!({ lead, contacts: [] });
+    _setExaClock(null);
+
+    // Query uses the injected clock's year, never a hardcoded one.
+    const f = vi.mocked(globalThis.fetch);
+    expect(String(f.mock.calls[0]?.[0])).toBe("https://api.exa.ai/search");
+    const sent = JSON.parse(String((f.mock.calls[0]?.[1] as RequestInit).body)) as { query: string };
+    expect(sent.query).toBe("Acme funding news 2031");
 
     expect(enrichments).toHaveLength(1);
     const e = enrichments[0]!;
+    // Full payload lives only in `raw`, not duplicated into data._raw.
+    expect(e.data).not.toHaveProperty("_raw");
     expect(e.subjectType).toBe("lead");
     expect(e.subjectKey).toBe(DOMAIN);
     expect(e.provider).toBe("exa");
@@ -896,11 +923,14 @@ describe("leadmagicConnector", () => {
   });
 
   it("enrich skips a result with no email", async () => {
-    vi.stubGlobal("fetch", mockFetchWith({ first_name: "Ghost" }));
+    const f = mockFetchWith({ first_name: "Ghost" });
+    vi.stubGlobal("fetch", f);
     const lead = { domain: DOMAIN, companyName: "Acme", source: "leadmagic" as const };
-    const contacts = [{ name: "Ghost", leadDomain: DOMAIN, source: "leadmagic" as const }];
+    const contacts = [{ name: "Ghost Rider", leadDomain: DOMAIN, source: "leadmagic" as const }];
     const { enrichments } = await leadmagicConnector.enrich!({ lead, contacts });
     expect(enrichments).toHaveLength(0);
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(String(vi.mocked(f).mock.calls[0]?.[0])).toBe("https://api.leadmagic.io/email-finder");
   });
 
   it("enrich skips contacts that already have an email", async () => {
@@ -915,13 +945,17 @@ describe("leadmagicConnector", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("enrich splits a single-token name into first only", async () => {
-    // Verifies splitName handles mononyms without crashing
-    vi.stubGlobal("fetch", mockFetchWith({ email: "mono@acme.com" }));
+  it("enrich skips single-token and (unknown) names without spending a lookup", async () => {
+    const spy = vi.fn();
+    vi.stubGlobal("fetch", spy);
     const lead = { domain: DOMAIN, companyName: "Acme", source: "leadmagic" as const };
-    const contacts = [{ name: "Madonna", leadDomain: DOMAIN, source: "leadmagic" as const }];
+    const contacts = [
+      { name: "Madonna", leadDomain: DOMAIN, source: "leadmagic" as const },
+      { name: "(unknown)", leadDomain: DOMAIN, source: "leadmagic" as const },
+    ];
     const { enrichments } = await leadmagicConnector.enrich!({ lead, contacts });
-    expect(enrichments).toHaveLength(1);
+    expect(enrichments).toHaveLength(0);
+    expect(spy).not.toHaveBeenCalled();
   });
 });
 
@@ -1073,5 +1107,599 @@ describe("clayConnector", () => {
   it("clay has no enrich method (push-only phases:['research'])", () => {
     expect(clayConnector.phases).toEqual(["research"]);
     expect(clayConnector.enrich).toBeUndefined();
+  });
+});
+
+// ===========================================================================
+// Resilience: http.ts retries / redirects / body cap / redaction / URL policy
+// ===========================================================================
+
+/** A Response-like stub with real Headers (status, body, headers). */
+function resp(status: number, body: unknown = {}, headers: Record<string, string> = {}): Response {
+  const text = typeof body === "string" ? body : JSON.stringify(body);
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers(headers),
+    text: async () => text,
+  } as unknown as Response;
+}
+
+/** fetch stub returning the given responses in order (last one repeats). */
+function fetchSeq(...responses: Array<Response | Error>) {
+  let i = 0;
+  return vi.fn().mockImplementation(async () => {
+    const r = responses[Math.min(i, responses.length - 1)]!;
+    i++;
+    if (r instanceof Error) throw r;
+    return r;
+  });
+}
+
+describe("httpJson resilience", () => {
+  const URL_ = "https://api.example.com/v1/thing";
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0); // backoff = 0.5 x 250ms x 2^n
+    _clearRedactionRegistry();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    _clearRedactionRegistry();
+  });
+
+  it("retries 503 with jittered exponential backoff, then succeeds", async () => {
+    const f = fetchSeq(resp(503), resp(503), resp(200, { ok: 1 }));
+    vi.stubGlobal("fetch", f);
+    const p = httpJson<{ ok: number }>(URL_);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(f).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(124);
+    expect(f).toHaveBeenCalledTimes(1); // first backoff = 125ms
+    await vi.advanceTimersByTimeAsync(1);
+    expect(f).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(250); // second backoff = 250ms
+    expect(f).toHaveBeenCalledTimes(3);
+    await expect(p).resolves.toEqual({ ok: 1 });
+    expect(String(f.mock.calls[0]?.[0])).toBe(URL_);
+    expect((f.mock.calls[0]?.[1] as RequestInit).redirect).toBe("manual");
+  });
+
+  it("gives up after 2 retries and throws HttpError with status + retryAfterMs", async () => {
+    const f = fetchSeq(resp(429, "slow down", { "retry-after": "1" }));
+    vi.stubGlobal("fetch", f);
+    const p = httpJson(URL_).catch((e: unknown) => e);
+    await vi.advanceTimersByTimeAsync(5_000);
+    const err = await p;
+    expect(f).toHaveBeenCalledTimes(3);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(429);
+    expect((err as HttpError).retryAfterMs).toBe(1000);
+  });
+
+  it("honors Retry-After seconds over the computed backoff", async () => {
+    const f = fetchSeq(resp(429, "", { "retry-after": "3" }), resp(200, { ok: 1 }));
+    vi.stubGlobal("fetch", f);
+    const p = httpJson(URL_);
+    await vi.advanceTimersByTimeAsync(2_999);
+    expect(f).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(f).toHaveBeenCalledTimes(2);
+    await expect(p).resolves.toEqual({ ok: 1 });
+  });
+
+  it("caps an HTTP-date Retry-After at 10s", async () => {
+    const future = new Date(Date.now() + 60_000).toUTCString();
+    const f = fetchSeq(resp(503, "", { "retry-after": future }), resp(200, {}));
+    vi.stubGlobal("fetch", f);
+    const p = httpJson(URL_);
+    await vi.advanceTimersByTimeAsync(9_999);
+    expect(f).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(f).toHaveBeenCalledTimes(2);
+    await p;
+  });
+
+  it("parseRetryAfter handles seconds, HTTP dates and junk", () => {
+    expect(parseRetryAfter("2")).toBe(2000);
+    expect(
+      parseRetryAfter("Thu, 01 Jan 2099 00:00:10 GMT", Date.parse("Thu, 01 Jan 2099 00:00:00 GMT")),
+    ).toBe(10_000);
+    expect(parseRetryAfter("soon")).toBeUndefined();
+    expect(parseRetryAfter(null)).toBeUndefined();
+  });
+
+  it.each([401, 403, 404, 422])("never retries %i", async (status) => {
+    const f = fetchSeq(resp(status, "nope"));
+    vi.stubGlobal("fetch", f);
+    const err = await httpJson(URL_).catch((e: unknown) => e);
+    expect(f).toHaveBeenCalledTimes(1);
+    expect((err as HttpError).status).toBe(status);
+  });
+
+  it("retries network errors and rethrows the original after exhausting retries", async () => {
+    const f = fetchSeq(new TypeError("fetch failed"));
+    vi.stubGlobal("fetch", f);
+    const p = httpJson(URL_).catch((e: unknown) => e);
+    await vi.advanceTimersByTimeAsync(1_000);
+    const err = await p;
+    expect(f).toHaveBeenCalledTimes(3);
+    expect(err).toBeInstanceOf(TypeError);
+  });
+
+  it("does not retry when the caller's AbortSignal is already aborted", async () => {
+    const f = fetchSeq(new DOMException("aborted", "AbortError"));
+    vi.stubGlobal("fetch", f);
+    const ac = new AbortController();
+    ac.abort();
+    const err = await httpJson(URL_, { signal: ac.signal }).catch((e: unknown) => e);
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(err).toBeDefined();
+    // The combined signal handed to fetch is aborted too.
+    expect(((f.mock.calls[0]?.[1] as RequestInit).signal as AbortSignal).aborted).toBe(true);
+  });
+
+  it("follows a same-origin redirect", async () => {
+    const f = fetchSeq(resp(302, "", { location: "/v1/moved" }), resp(200, { moved: true }));
+    vi.stubGlobal("fetch", f);
+    await expect(httpJson(URL_)).resolves.toEqual({ moved: true });
+    expect(String(f.mock.calls[1]?.[0])).toBe("https://api.example.com/v1/moved");
+  });
+
+  it("refuses a cross-origin redirect (no hop to the other host)", async () => {
+    const f = fetchSeq(resp(301, "", { location: "https://evil.example.net/steal" }));
+    vi.stubGlobal("fetch", f);
+    const err = await httpJson(URL_).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as Error).message).toMatch(/cross-origin redirect/);
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses more than 3 redirects", async () => {
+    const f = fetchSeq(resp(307, "", { location: "/loop" }));
+    vi.stubGlobal("fetch", f);
+    const err = await httpJson(URL_).catch((e: unknown) => e);
+    expect((err as Error).message).toMatch(/more than 3 redirects/);
+    expect(f).toHaveBeenCalledTimes(4);
+  });
+
+  it("caps a streamed body at 5 MB and aborts the read", async () => {
+    let pulled = 0;
+    const cancel = vi.fn();
+    const stream = new ReadableStream<Uint8Array>({
+      pull(c) {
+        pulled++;
+        if (pulled > 20) c.close();
+        else c.enqueue(new Uint8Array(1024 * 1024));
+      },
+      cancel,
+    });
+    vi.stubGlobal("fetch", fetchSeq(new Response(stream, { status: 200 })));
+    const err = await httpJson(URL_).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ResponseTooLargeError);
+    expect(pulled).toBeLessThanOrEqual(8); // stopped right after crossing 5 MB
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  it("rejects up front when Content-Length exceeds the cap", async () => {
+    vi.stubGlobal(
+      "fetch",
+      fetchSeq(resp(200, "{}", { "content-length": String(MAX_BODY_BYTES + 1) })),
+    );
+    await expect(httpJson(URL_)).rejects.toBeInstanceOf(ResponseTooLargeError);
+  });
+
+  it("scrubs registered secret values and per-call redact values from error messages", async () => {
+    registerSecretForRedaction("sk_live_SUPERSECRET");
+    vi.stubGlobal(
+      "fetch",
+      fetchSeq(resp(400, "bad key sk_live_SUPERSECRET and tok_PERCALL123 echoed")),
+    );
+    const err = (await httpJson(URL_, { redact: ["tok_PERCALL123"] }).catch(
+      (e: unknown) => e,
+    )) as HttpError;
+    expect(err.message).not.toContain("sk_live_SUPERSECRET");
+    expect(err.message).not.toContain("tok_PERCALL123");
+    expect(err.body).not.toContain("sk_live_SUPERSECRET");
+    expect(err.message).toContain("REDACTED");
+  });
+
+  it("rejects non-https URLs except loopback", async () => {
+    const f = fetchSeq(resp(200, { ok: 1 }));
+    vi.stubGlobal("fetch", f);
+    await expect(httpJson("http://api.example.com/x")).rejects.toThrow(/non-https/);
+    await expect(httpJson("ftp://api.example.com/x")).rejects.toThrow(/non-https/);
+    expect(f).not.toHaveBeenCalled();
+    await expect(httpJson("http://localhost:8080/x")).resolves.toEqual({ ok: 1 });
+    await expect(httpJson("http://127.0.0.1/x")).resolves.toEqual({ ok: 1 });
+  });
+});
+
+describe("connector-level secret scrubbing", () => {
+  beforeEach(() => {
+    clearKeys();
+    _clearRedactionRegistry();
+    process.env.PDL_API_KEY = "pdl_key_ECHOED_9f8e7d";
+    _resetSecretCache();
+  });
+
+  it("a vendor that echoes the key in its error body never surfaces it", async () => {
+    vi.stubGlobal("fetch", fetchSeq(resp(400, "invalid key pdl_key_ECHOED_9f8e7d")));
+    const contacts = [
+      { name: "Jane Doe", leadDomain: DOMAIN, email: "jane@acme.com", source: "peopledatalabs" },
+    ];
+    const err = await peopledatalabsConnector
+      .enrich!({ lead: { domain: DOMAIN, companyName: "Acme", source: "x" }, contacts })
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HttpError);
+    expect(String((err as Error).message)).not.toContain("pdl_key_ECHOED_9f8e7d");
+  });
+});
+
+// ===========================================================================
+// forEachContact — partial results
+// ===========================================================================
+
+describe("forEachContact", () => {
+  const mk = (name: string, email?: string) => ({ name, email, leadDomain: DOMAIN, source: "x" });
+  const http = (status: number) => new HttpError(status, "https://x.test/", "");
+
+  it("keeps earlier and later items when one item 404s (empty, not a failure)", async () => {
+    const out = await forEachContact([mk("A One"), mk("B Two"), mk("C Three")], 10, async (c) => {
+      if (c.name === "B Two") throw http(404);
+      return c.name;
+    });
+    expect(out.results).toEqual(["A One", "C Three"]);
+    expect(out.failures).toEqual([]);
+  });
+
+  it("records a non-auth failure and continues", async () => {
+    const out = await forEachContact([mk("A One"), mk("B Two")], 10, async (c) => {
+      if (c.name === "A One") throw http(500);
+      return c.name;
+    });
+    expect(out.results).toEqual(["B Two"]);
+    expect(out.failures).toEqual([{ item: 0, reason: "http", status: 500 }]);
+  });
+
+  it("rethrows 401/403 immediately", async () => {
+    const fn = vi.fn(async () => {
+      throw http(401);
+    });
+    await expect(forEachContact([mk("A One"), mk("B Two")], 10, fn)).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it("rethrows when every attempted item failed", async () => {
+    await expect(
+      forEachContact([mk("A One"), mk("B Two")], 10, async () => {
+        throw http(502);
+      }),
+    ).rejects.toMatchObject({ status: 502 });
+  });
+
+  it("skips (unknown) and single-token names before spending a lookup, then caps", async () => {
+    const fn = vi.fn(async (c: { name: string }) => c.name);
+    const out = await forEachContact(
+      [mk("(unknown)"), mk("Cher"), mk("A One"), mk("B Two"), mk("C Three")],
+      2,
+      fn,
+    );
+    expect(out.results).toEqual(["A One", "B Two"]);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it("requireFullName:false keeps single-token names (email-keyed lookups)", async () => {
+    const out = await forEachContact([mk("Cher", "cher@acme.com")], 10, async (c) => c.name, {
+      requireFullName: false,
+    });
+    expect(out.results).toEqual(["Cher"]);
+  });
+});
+
+describe("enrich loops keep partial results", () => {
+  beforeEach(() => {
+    clearKeys();
+    process.env.PDL_API_KEY = "test-pdl-key";
+    process.env.HUNTER_API_KEY = "test-hunter-key";
+    _resetSecretCache();
+  });
+
+  it("PDL: a 404 on the 2nd contact keeps the 1st and 3rd", async () => {
+    const f = fetchSeq(
+      resp(200, { data: { work_email: "a@acme.com" } }),
+      resp(404, "not found"),
+      resp(200, { data: { work_email: "c@acme.com" } }),
+    );
+    vi.stubGlobal("fetch", f);
+    const contacts = ["a", "b", "c"].map((x) => ({
+      name: x.toUpperCase() + " Person",
+      email: x + "@acme.com",
+      leadDomain: DOMAIN,
+      source: "peopledatalabs",
+    }));
+    const out = await peopledatalabsConnector.enrich!({
+      lead: { domain: DOMAIN, companyName: "Acme", source: "x" },
+      contacts,
+    });
+    expect(out.enrichments.map((e) => e.subjectKey)).toEqual(["a@acme.com", "c@acme.com"]);
+    expect(out.failures).toEqual([]);
+    expect(String(f.mock.calls[1]?.[0])).toBe(
+      "https://api.peopledatalabs.com/v5/person/enrich?email=b%40acme.com",
+    );
+  });
+
+  it("Hunter: a 401 aborts the whole call (bad key, stop spending)", async () => {
+    const f = fetchSeq(resp(401, "unauthorized"));
+    vi.stubGlobal("fetch", f);
+    const contacts = [
+      { name: "Ann Lee", leadDomain: DOMAIN, source: "hunter" },
+      { name: "Bo Kim", leadDomain: DOMAIN, source: "hunter" },
+    ];
+    await expect(
+      hunterConnector.enrich!({
+        lead: { domain: DOMAIN, companyName: "Acme", source: "x" },
+        contacts,
+      }),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it("PDL research: company 404 still runs person search", async () => {
+    const f = fetchSeq(
+      resp(404, "no company"),
+      resp(200, { data: [{ full_name: "Ann Lee", work_email: "ann@acme.com" }] }),
+    );
+    vi.stubGlobal("fetch", f);
+    const out = await peopledatalabsConnector.research!({ domain: DOMAIN, icp: "" });
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(String(f.mock.calls[0]?.[0])).toBe(
+      "https://api.peopledatalabs.com/v5/company/enrich?website=acme.com",
+    );
+    expect(String(f.mock.calls[1]?.[0])).toBe("https://api.peopledatalabs.com/v5/person/search");
+    expect(out.leads[0]?.companyName).toBe(DOMAIN);
+    expect(out.contacts.map((c) => c.email)).toEqual(["ann@acme.com"]);
+    expect(out.failures).toEqual([]);
+  });
+
+  it("PDL research: person-search 401 is not swallowed", async () => {
+    vi.stubGlobal("fetch", fetchSeq(resp(200, { data: { name: "Acme" } }), resp(401, "bad key")));
+    await expect(
+      peopledatalabsConnector.research!({ domain: DOMAIN, icp: "" }),
+    ).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+// ===========================================================================
+// PII minimization
+// ===========================================================================
+
+describe("PII minimization", () => {
+  const PERSONAL = {
+    personal_emails: ["jane@gmail.com"],
+    mobile_phone: "+15550000001",
+    phone_numbers: ["+15550000002"],
+    location_street_address: "1 Home St",
+    birth_date: "1990-01-01",
+    birth_year: 1990,
+  };
+
+  beforeEach(() => {
+    clearKeys();
+    delete process.env.INTENT_OUTREACH_KEEP_RAW;
+    process.env.PDL_API_KEY = "test-pdl-key";
+    process.env.ZOOMINFO_JWT = "test-zi-jwt";
+    process.env.APOLLO_API_KEY = "test-apollo-key";
+    _resetSecretCache();
+  });
+
+  const contact = { name: "Jane Doe", leadDomain: DOMAIN, email: "jane@acme.com", source: "x" };
+  const lead = { domain: DOMAIN, companyName: "Acme", source: "x" };
+
+  it("PDL enrichment data keeps B2B fields and drops personal ones", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetchWith({
+        data: {
+          ...PERSONAL,
+          full_name: "Jane Doe",
+          job_title: "VP Sales",
+          job_title_levels: ["vp"],
+          job_company_name: "Acme",
+          work_email: "jane@acme.com",
+          linkedin_url: "linkedin.com/in/jane",
+        },
+      }),
+    );
+    const { enrichments } = await peopledatalabsConnector.enrich!({ lead, contacts: [contact] });
+    const data = enrichments[0]!.data;
+    expect(data).toMatchObject({
+      job_title: "VP Sales",
+      job_title_levels: ["vp"],
+      job_company_name: "Acme",
+      work_email: "jane@acme.com",
+      linkedin_url: "linkedin.com/in/jane",
+    });
+    for (const k of Object.keys(PERSONAL)) expect(data).not.toHaveProperty(k);
+    expect(JSON.stringify(enrichments)).not.toContain("jane@gmail.com");
+  });
+
+  it("INTENT_OUTREACH_KEEP_RAW=1 opts back in to the full payload", async () => {
+    process.env.INTENT_OUTREACH_KEEP_RAW = "1";
+    _resetSecretCache();
+    vi.stubGlobal("fetch", mockFetchWith({ data: { ...PERSONAL, work_email: "jane@acme.com" } }));
+    const { enrichments } = await peopledatalabsConnector.enrich!({ lead, contacts: [contact] });
+    expect(enrichments[0]!.data).toHaveProperty("personal_emails");
+  });
+
+  it("ZoomInfo enrichment data drops mobilePhone and home address", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetchWith({
+        data: [
+          {
+            firstName: "Jane",
+            lastName: "Doe",
+            jobTitle: "VP Sales",
+            managementLevel: "VP",
+            email: "jane@acme.com",
+            directPhone: "+15551112222",
+            mobilePhone: "+15550000001",
+            street: "1 Home St",
+          },
+        ],
+      }),
+    );
+    const { enrichments } = await zoominfoConnector.enrich!({ lead, contacts: [contact] });
+    expect(enrichments[0]!.phone).toBe("+15551112222");
+    expect(enrichments[0]!.data).toMatchObject({ jobTitle: "VP Sales", managementLevel: "VP" });
+    expect(enrichments[0]!.data).not.toHaveProperty("mobilePhone");
+    expect(enrichments[0]!.data).not.toHaveProperty("street");
+  });
+
+  it("Apollo enrichment data drops personal emails and mobile phones", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetchWith({
+        matches: [
+          {
+            name: "Jane Doe",
+            title: "VP Sales",
+            seniority: "vp",
+            email: "jane@acme.com",
+            personal_emails: ["jane@gmail.com"],
+            phone_numbers: [
+              { raw_number: "+15550000001", type: "mobile" },
+              { raw_number: "+15551112222", type: "work_direct" },
+            ],
+            organization: { name: "Acme", primary_domain: "acme.com", street_address: "HQ" },
+          },
+        ],
+      }),
+    );
+    const { enrichments, raw } = await apolloConnector.enrich!({
+      lead,
+      contacts: [{ name: "Jane Doe", leadDomain: DOMAIN, source: "apollo" }],
+    });
+    expect(enrichments[0]!.phone).toBe("+15551112222");
+    const data = enrichments[0]!.data;
+    expect(data).toMatchObject({ title: "VP Sales", seniority: "vp" });
+    expect(data).not.toHaveProperty("personal_emails");
+    expect(data).not.toHaveProperty("phone_numbers");
+    expect(JSON.stringify({ enrichments, raw })).not.toContain("+15550000001");
+    expect(JSON.stringify({ enrichments, raw })).not.toContain("jane@gmail.com");
+  });
+});
+
+// ===========================================================================
+// Tolerant schema validation
+// ===========================================================================
+
+describe("vendor schema failures are recorded, not TypeErrors", () => {
+  beforeEach(() => {
+    clearKeys();
+    process.env.PDL_API_KEY = "test-pdl-key";
+    process.env.APOLLO_API_KEY = "test-apollo-key";
+    _resetSecretCache();
+  });
+
+  it("PDL enrich: one malformed body becomes a schema failure; the other item survives", async () => {
+    vi.stubGlobal(
+      "fetch",
+      fetchSeq(
+        resp(200, { data: { work_email: 12345 } }), // wrong type
+        resp(200, { data: { work_email: "b@acme.com" } }),
+      ),
+    );
+    const contacts = ["a", "b"].map((x) => ({
+      name: x + " x",
+      email: x + "@acme.com",
+      leadDomain: DOMAIN,
+      source: "peopledatalabs",
+    }));
+    const out = await peopledatalabsConnector.enrich!({
+      lead: { domain: DOMAIN, companyName: "Acme", source: "x" },
+      contacts,
+    });
+    expect(out.enrichments.map((e) => e.subjectKey)).toEqual(["b@acme.com"]);
+    expect(out.failures).toHaveLength(1);
+    expect(out.failures?.[0]).toMatchObject({ item: 0, reason: "schema" });
+    expect(out.failures?.[0]?.detail).toContain("work_email");
+  });
+
+  it("Apollo research: a non-array `people` throws a SchemaFailure, not a TypeError", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockFetchSequence([{ organization: { name: "Acme" } }, { people: "oops" }]),
+    );
+    const err = await apolloConnector
+      .research!({ domain: DOMAIN, icp: "" })
+      .catch((e: unknown) => e);
+    expect(err).not.toBeInstanceOf(TypeError);
+    expect((err as Error).name).toBe("SchemaFailure");
+  });
+});
+
+// ===========================================================================
+// Domain normalization, Clearbit queued, Clay pushOnly
+// ===========================================================================
+
+describe("normalizeDomain", () => {
+  it.each([
+    ["https://www.Acme.com/about?x=1", "acme.com"],
+    ["http://acme.com:8080", "acme.com"],
+    ["WWW.ACME.CO.UK.", "acme.co.uk"],
+    ["acme.com", "acme.com"],
+    ["https://user@sub.acme.io/path", "sub.acme.io"],
+  ])("%s -> %s", (input, expected) => {
+    expect(normalizeDomain(input)).toBe(expected);
+  });
+
+  it.each([[""], ["   "], ["not a domain"], [undefined], [42]])("rejects %s", (input) => {
+    expect(normalizeDomain(input)).toBeUndefined();
+  });
+
+  it("ZoomInfo website URLs are normalized onto lead.domain", async () => {
+    clearKeys();
+    process.env.ZOOMINFO_JWT = "test-zi-jwt";
+    _resetSecretCache();
+    vi.stubGlobal(
+      "fetch",
+      mockFetchSequence([
+        { data: [{ name: "Acme", website: "https://www.Acme.com/" }] },
+        { data: [] },
+      ]),
+    );
+    const { leads } = await zoominfoConnector.research!({ domain: "x.com", icp: "" });
+    expect(leads[0]?.domain).toBe("acme.com");
+  });
+});
+
+describe("clearbit queued + clay pushOnly", () => {
+  beforeEach(() => {
+    clearKeys();
+    process.env.CLEARBIT_API_KEY = "test-cb-key";
+    _resetSecretCache();
+  });
+
+  it("clearbit treats a 202-style {error} / queued body as no result", async () => {
+    vi.stubGlobal(
+      "fetch",
+      fetchSeq(resp(202, { error: { type: "queued" } }), resp(200, { status: "queued" })),
+    );
+    const out = await clearbitConnector.enrich!({
+      lead: { domain: DOMAIN, companyName: "Acme", source: "x" },
+      contacts: [{ name: "A B", email: "a@acme.com", leadDomain: DOMAIN, source: "x" }],
+    });
+    expect(out.enrichments).toHaveLength(0);
+  });
+
+  it("clay is flagged pushOnly", () => {
+    expect(clayConnector.pushOnly).toBe(true);
+    expect(apolloConnector.pushOnly).toBeUndefined();
   });
 });

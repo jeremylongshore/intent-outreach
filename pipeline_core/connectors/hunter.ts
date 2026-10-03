@@ -8,11 +8,18 @@
  *   - Domain search: GET https://api.hunter.io/v2/domain-search?domain=...
  *   - Email finder:  GET https://api.hunter.io/v2/email-finder?domain=...&full_name=...
  *   - Email verify:  GET https://api.hunter.io/v2/email-verifier?email=...
+ *
+ * The email finder is name-keyed: contacts with "(unknown)" or single-token
+ * names are skipped (no lookup spent), and one contact's 404/5xx no longer
+ * discards the others' results (see _per-item.ts).
  */
 
+import { z } from "zod";
 import { httpJson } from "../http.js";
-import { getSecret, hasSecret } from "../secrets.js";
+import { hasSecret } from "../secrets.js";
 import type { Contact, Enrichment, Lead } from "../models.js";
+import { forEachContact } from "./_per-item.js";
+import { parseVendor, useSecret } from "./_shared.js";
 import type {
   Connector,
   EnrichInput,
@@ -24,19 +31,34 @@ import type {
 const BASE = "https://api.hunter.io/v2";
 const KEY_ENV = "HUNTER_API_KEY";
 
-interface HunterEmail {
-  value?: string;
-  first_name?: string;
-  last_name?: string;
-  position?: string;
-  linkedin?: string;
-}
-interface HunterDomainSearch {
-  data?: { organization?: string; emails?: HunterEmail[] };
-}
-interface HunterFinder {
-  data?: { email?: string; score?: number };
-}
+const HunterEmailSchema = z
+  .object({
+    value: z.string().nullish(),
+    first_name: z.string().nullish(),
+    last_name: z.string().nullish(),
+    position: z.string().nullish(),
+    linkedin: z.string().nullish(),
+  })
+  .passthrough();
+const DomainSearchSchema = z
+  .object({
+    data: z
+      .object({
+        organization: z.string().nullish(),
+        emails: z.array(HunterEmailSchema).nullish(),
+      })
+      .passthrough()
+      .nullish(),
+  })
+  .passthrough();
+const FinderSchema = z
+  .object({
+    data: z
+      .object({ email: z.string().nullish(), score: z.number().nullish() })
+      .passthrough()
+      .nullish(),
+  })
+  .passthrough();
 
 export const hunterConnector: Connector = {
   name: "hunter",
@@ -51,9 +73,12 @@ export const hunterConnector: Connector = {
   },
 
   async research({ domain }: ResearchInput): Promise<ResearchOutput> {
-    const res = await httpJson<HunterDomainSearch>(`${BASE}/domain-search`, {
-      query: { domain, api_key: getSecret(KEY_ENV), limit: 10 },
-    });
+    const res = parseVendor(
+      DomainSearchSchema,
+      await httpJson(`${BASE}/domain-search`, {
+        query: { domain, api_key: useSecret(KEY_ENV), limit: 10 },
+      }),
+    );
     const org = res.data?.organization;
     const lead: Lead = {
       domain,
@@ -61,11 +86,10 @@ export const hunterConnector: Connector = {
       source: "hunter",
     };
     const contacts: Contact[] = (res.data?.emails ?? []).map((e) => ({
-      name:
-        [e.first_name, e.last_name].filter(Boolean).join(" ") || "(unknown)",
+      name: [e.first_name, e.last_name].filter(Boolean).join(" ") || "(unknown)",
       leadDomain: domain,
       email: e.value && e.value.includes("@") ? e.value : undefined,
-      title: e.position,
+      title: e.position ?? undefined,
       linkedin: e.linkedin ?? undefined,
       source: "hunter",
     }));
@@ -73,29 +97,30 @@ export const hunterConnector: Connector = {
   },
 
   async enrich({ lead, contacts }: EnrichInput): Promise<EnrichOutput> {
-    const needy = contacts.filter((c) => !c.email).slice(0, 10);
     const now = new Date().toISOString();
-    const enrichments: Enrichment[] = [];
-    for (const c of needy) {
-      const res = await httpJson<HunterFinder>(`${BASE}/email-finder`, {
-        query: {
-          domain: lead.domain,
-          full_name: c.name,
-          api_key: getSecret(KEY_ENV),
-        },
-      });
-      const email = res.data?.email;
-      if (email && email.includes("@")) {
-        enrichments.push({
+    const { results, failures } = await forEachContact<Enrichment>(
+      contacts,
+      10,
+      async (c) => {
+        const res = parseVendor(
+          FinderSchema,
+          await httpJson(`${BASE}/email-finder`, {
+            query: { domain: lead.domain, full_name: c.name, api_key: useSecret(KEY_ENV) },
+          }),
+        );
+        const email = res.data?.email;
+        if (!email || !email.includes("@")) return null;
+        return {
           subjectType: "contact",
           subjectKey: email,
           provider: "hunter",
           verifiedEmail: email,
           data: (res.data ?? {}) as Record<string, unknown>,
           fetchedAt: now,
-        });
-      }
-    }
-    return { enrichments };
+        };
+      },
+      { filter: (c) => !c.email },
+    );
+    return { enrichments: results, failures, raw: { failures } };
   },
 };

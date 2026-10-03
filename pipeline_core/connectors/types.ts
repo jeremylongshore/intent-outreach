@@ -26,11 +26,29 @@ export interface ResearchInput {
   icp: string;
 }
 
+/**
+ * A non-fatal, per-item failure inside one connector call (one contact's lookup
+ * failed, or a vendor response failed schema validation). Sanitized: carries an
+ * item index + status/reason only — never a URL, key, or PII.
+ */
+export interface ConnectorItemFailure {
+  /** Index into the eligible item list (or -1 for a whole-call response). */
+  item: number;
+  /** HTTP status when the failure was an HttpError. */
+  status?: number;
+  /** "http" | "schema" | "error". */
+  reason: "http" | "schema" | "error";
+  /** Short, secret-free detail (e.g. the zod issue path). */
+  detail?: string;
+}
+
 export interface ResearchOutput {
   leads: Lead[];
   contacts: Contact[];
   /** Raw provider payload, retained for the audit trail. */
   raw?: unknown;
+  /** Per-item / schema failures that did not abort the call. */
+  failures?: ConnectorItemFailure[];
 }
 
 export interface EnrichInput {
@@ -41,6 +59,8 @@ export interface EnrichInput {
 export interface EnrichOutput {
   enrichments: Enrichment[];
   raw?: unknown;
+  /** Per-item / schema failures that did not abort the call. */
+  failures?: ConnectorItemFailure[];
 }
 
 export interface Connector {
@@ -53,6 +73,12 @@ export interface Connector {
   readonly phases: readonly ConnectorPhase[];
   /** One-line operational note shown to users; avoid time-sensitive pricing claims. */
   readonly note?: string;
+  /**
+   * True for push-only connectors (e.g. Clay) that hand data off asynchronously
+   * and return no records. Such a connector "running" is not evidence that
+   * research produced anything; the pipeline may exclude it from "research ran".
+   */
+  readonly pushOnly?: boolean;
 
   /** True when the connector has what it needs to run (its key, or none needed). */
   isConfigured(): boolean;
