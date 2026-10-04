@@ -1,5 +1,7 @@
 # Executive Brief: Agent Cards in Google Cloud AI Ecosystem
 
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
 **Document:** 012-DR-EXEC-agent-cards-executive-brief.md  
 **Date:** 2025-10-31  
 **Project:** PipelinePilot (SDR Automation)  
