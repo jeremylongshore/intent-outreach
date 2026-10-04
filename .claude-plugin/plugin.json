@@ -10,5 +10,11 @@
   "homepage": "https://github.com/jeremylongshore/intent-outreach",
   "repository": "https://github.com/jeremylongshore/intent-outreach",
   "license": "SEE LICENSE IN LICENSE",
-  "keywords": ["sdr", "outbound", "prospecting", "lead-generation", "sales", "mcp", "model-agnostic"]
+  "keywords": ["sdr", "outbound", "prospecting", "lead-generation", "sales", "mcp", "model-agnostic"],
+  "mcpServers": {
+    "intent-outreach": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bundle/server.mjs"]
+    }
+  }
 }
