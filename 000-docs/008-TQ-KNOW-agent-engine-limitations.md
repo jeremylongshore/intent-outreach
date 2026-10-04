@@ -1,5 +1,7 @@
 # Agent Engine Known Limitations
 
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
 **Project:** PipelinePilot
 **Date:** 2025-11-01
 **Category:** Testing & Quality (TQ-KNOW)

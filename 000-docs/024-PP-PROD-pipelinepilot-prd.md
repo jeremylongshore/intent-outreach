@@ -1,6 +1,8 @@
 # Product Requirements Document: PipelinePilot
 
-**Document ID:** 001-PP-PROD-pipelinepilot-prd
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
+**Document ID:** 024-PP-PROD-pipelinepilot-prd
 **Created:** 2025-10-31
 **Status:** Draft v0.2
 **Owner:** Jeremy Longshore
@@ -209,7 +211,7 @@ All pricing adjustable per-tenant in LeaseContract.
 
 - **JSON Schemas:** See [004-DR-SCHM-json-schemas.md](./004-DR-SCHM-json-schemas.md)
 - **API Reference:** See [003-DR-APIM-api-reference.md](./003-DR-APIM-api-reference.md)
-- **Architecture:** See [002-AT-ARCH-system-architecture.md](./002-AT-ARCH-system-architecture.md)
+- **Architecture:** See [025-AT-ARCH-system-architecture.md](./025-AT-ARCH-system-architecture.md)
 
 ---
 

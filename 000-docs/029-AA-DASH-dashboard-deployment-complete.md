@@ -1,5 +1,7 @@
 # After Action Report: Firebase Dashboard Deployment Complete
 
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
 **Date:** 2025-10-31T23:59:00Z
 **Project:** PipelinePilot Firebase Dashboard MVP
 **Status:** ✅ **DASHBOARD SCAFFOLD COMPLETE - READY FOR FIREBASE CONFIG**

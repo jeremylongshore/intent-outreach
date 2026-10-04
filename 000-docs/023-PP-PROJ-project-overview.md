@@ -1,5 +1,7 @@
 # PipelinePilot - Project Overview
 
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
 **Created:** 2025-10-31
 **Status:** Initial Setup
 **Tier:** 3 (Implementation)
@@ -34,7 +36,7 @@ PipelinePilot - [Project purpose to be defined]
 ```
 pipelinepilot/
 ├── 000-docs/                    # Project documentation (you are here)
-│   └── 001-PP-PROJ-project-overview.md
+│   └── 023-PP-PROJ-project-overview.md
 ├── CLAUDE.md                    # Claude Code guidance (to be created)
 ├── README.md                    # Project README (to be created)
 └── ... (project files to be added)

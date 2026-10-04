@@ -1,6 +1,8 @@
 # Deployment Guide: PipelinePilot
 
-**Document ID:** 006-OD-CICD-deployment-guide
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
+**Document ID:** 028-OD-CICD-deployment-guide
 **Created:** 2025-10-31
 **Status:** Draft v0.2
 
@@ -455,9 +457,9 @@ adk deploy agent_engine --verbose \
 
 ## Appendix
 
-- **Architecture:** [002-AT-ARCH-system-architecture.md](./002-AT-ARCH-system-architecture.md)
+- **Architecture:** [025-AT-ARCH-system-architecture.md](./025-AT-ARCH-system-architecture.md)
 - **API Reference:** [003-DR-APIM-api-reference.md](./003-DR-APIM-api-reference.md)
-- **Leasing Model:** [007-PP-LEAS-leasing-model.md](./007-PP-LEAS-leasing-model.md)
+- **Leasing Model:** [027-PP-LEAS-leasing-model.md](./027-PP-LEAS-leasing-model.md)
 
 ---
 

@@ -4,6 +4,9 @@
 > plan appeared lost. Nothing was lost: it was recovered verbatim from the session transcript
 > (`d8e72b23-6259-4191-86ce-d1295104bca4`, original plan-mode timestamp `2026-06-21T00:58:32Z UTC`).
 > Content below is unaltered.
+>
+> **Status note (2026-10-04).** The optional `@ai-sdk/google` provider this plan permits was removed by
+> owner decision (PR #58); Intent Outreach now has no Google adapter. See `021-AT-PLAN`.
 
 ---
 
