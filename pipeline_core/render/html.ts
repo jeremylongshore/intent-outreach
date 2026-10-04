@@ -14,13 +14,18 @@ import type { CampaignRun } from "../models.js";
 import type { ReportProfile } from "../profiles.js";
 import { renderMarkdown } from "./markdown.js";
 
-/** Escape HTML special characters. */
+/**
+ * Escape HTML special characters (text and quoted-attribute contexts).
+ * Every piece of run data that reaches the document must pass through here —
+ * OWASP A03:2021 Injection / XSS (CWE-79).
+ */
 function he(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /** Apply inline markdown to HTML: bold, italic, code. */
@@ -158,7 +163,7 @@ export function renderHtml(run: Validated<CampaignRun>, profile?: ReportProfile)
     "<head>",
     '  <meta charset="UTF-8" />',
     '  <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
-    `  <title>Intent Outreach Report — ${run.id}</title>`,
+    `  <title>Intent Outreach Report — ${he(run.id)}</title>`,
     `  <style>${CSS}</style>`,
     "</head>",
     "<body>",
