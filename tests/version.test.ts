@@ -41,6 +41,10 @@ describe("version is single-sourced from package.json", () => {
   });
 
   it("has a matching CHANGELOG release heading", () => {
-    expect(read("CHANGELOG.md")).toMatch(new RegExp(`^## \\[${version.replace(/\./g, "\\.")}\\] - \\d{4}-\\d{2}-\\d{2}$`, "m"));
+    const headings = read("CHANGELOG.md")
+      .split("\n")
+      .filter((line) => line.startsWith(`## [${version}] - `));
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toMatch(/^## \[\d+\.\d+\.\d+\] - \d{4}-\d{2}-\d{2}$/);
   });
 });
