@@ -74,10 +74,11 @@ export const crunchbaseConnector: Connector = {
     return hasSecret(KEY_ENV);
   },
 
-  async enrich({ lead }: EnrichInput): Promise<EnrichOutput> {
+  async enrich({ lead, signal }: EnrichInput): Promise<EnrichOutput> {
     const res = parseVendor(
       CbSearchSchema,
       await httpJson(`${BASE}/searches/organizations`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: {

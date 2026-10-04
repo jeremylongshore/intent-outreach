@@ -11,6 +11,9 @@
  * tests/pipeline.test.ts.
  */
 
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runCampaign } from "../pipeline_core/pipeline.js";
 import { validateCampaignRun } from "../pipeline_core/validator.js";
@@ -30,6 +33,11 @@ import { DncList } from "../pipeline_core/compliance/index.js";
 import { SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSIONS } from "../pipeline_core/models.js";
 import type { Connector } from "../pipeline_core/connectors/types.js";
 import type { LLMProvider, ProviderName } from "../pipeline_core/providers.js";
+
+// runCampaign loads ${INTENT_OUTREACH_HOME}/suppressions.jsonl. Point it at an
+// empty tmp dir at MODULE load (before any describe snapshots process.env) so
+// these tests never read the real ~/.intent-outreach.
+process.env.INTENT_OUTREACH_HOME = mkdtempSync(join(tmpdir(), "io-packs-home-"));
 
 const FIXED = "2026-06-16T12:00:00.000Z";
 const clock = () => FIXED;

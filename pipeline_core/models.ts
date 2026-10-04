@@ -20,7 +20,7 @@ import { z } from "zod";
  * old v1 JSONL still passes re-validation on read (store.ts re-validates every
  * line). New writes emit the latest version; never narrow this back to one literal.
  */
-export const SCHEMA_VERSION = 3 as const;
+export const SCHEMA_VERSION = 4 as const;
 /**
  * Every schema version a stored record may legitimately carry. The CampaignRun
  * `schemaVersion` union is DERIVED from this list (see SchemaVersionSchema), so
@@ -28,8 +28,11 @@ export const SCHEMA_VERSION = 3 as const;
  *
  * v3 added `errors`, `rejectedDrafts`, `failedConnectors` (all defaulted) and the
  * "partial" run status. Additive: every v1/v2 line still parses.
+ *
+ * v4 added `complianceWarnings` on CampaignRun and `needsSenderIdentity` on
+ * Message (both defaulted) for the code-appended CAN-SPAM footer. Additive.
  */
-export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3] as const;
+export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4] as const;
 export type SchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
 
 /** z.union of one literal per supported version — never a single literal. */
@@ -147,6 +150,12 @@ export const MessageSchema = z.object({
   model: z.string().min(1),
   promptVersion: z.string().min(1),
   createdAt: z.string().datetime(),
+  /**
+   * True when this is an EMAIL draft and no sender identity (name, company,
+   * postal address) was configured, so the CAN-SPAM footer could NOT be appended.
+   * Such a draft must not be sent as-is. Additive (v4); defaults false.
+   */
+  needsSenderIdentity: z.boolean().default(false),
 });
 export type Message = z.infer<typeof MessageSchema>;
 
@@ -158,6 +167,19 @@ export type Message = z.infer<typeof MessageSchema>;
 // Extending this enum is additive: every older value still parses.
 export const RunStatusSchema = z.enum(["researched", "enriched", "complete", "partial", "failed"]);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
+
+/**
+ * Statuses that pre-dd46601b v1 records may carry. That commit pruned them from
+ * the enum WITHOUT bumping schemaVersion, so old v1 lines with "pending" or
+ * "drafted" stopped parsing (invariant 6 violation). They are READ-only: the
+ * stored value is kept verbatim (we never rewrite an audit record's status),
+ * and the writer never produces them — deriveRunStatus returns RunStatus only.
+ */
+export const LEGACY_RUN_STATUSES = ["pending", "drafted"] as const;
+export const LegacyRunStatusSchema = z.enum(LEGACY_RUN_STATUSES);
+/** What a stored record's `status` may be: a live status or a legacy v1 one. */
+export const StoredRunStatusSchema = z.union([RunStatusSchema, LegacyRunStatusSchema]);
+export type StoredRunStatus = z.infer<typeof StoredRunStatusSchema>;
 
 /** Pipeline stage a per-lead failure happened in. */
 export const RunErrorStageSchema = z.enum(["score", "gate", "draft"]);
@@ -199,7 +221,7 @@ export const CampaignRunSchema = z.object({
   /** Model + provider that ran the LLM seams. */
   provider: z.string().min(1),
   model: z.string().min(1),
-  status: RunStatusSchema,
+  status: StoredRunStatusSchema,
   leads: z.array(LeadSchema).default([]),
   contacts: z.array(ContactSchema).default([]),
   enrichments: z.array(EnrichmentSchema).default([]),
@@ -236,6 +258,12 @@ export const CampaignRunSchema = z.object({
    * "not configured" only (v3).
    */
   failedConnectors: z.array(FailedConnectorSchema).default([]),
+  /**
+   * Run-level compliance warnings that did not block a contact but must be seen
+   * before anything is sent — e.g. email drafts produced without a configured
+   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
+   */
+  complianceWarnings: z.array(z.string()).default([]),
   createdAt: z.string().datetime(),
   finishedAt: z.string().datetime().optional(),
 });

@@ -19,6 +19,7 @@
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 import type { RunCampaignInput } from "./pipeline.js";
+import { SenderIdentitySchema } from "./footer.js";
 
 // ── Schema ─────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,13 @@ export const ReportProfileSchema = z.object({
   structure: StructureSchema.optional(),
   output: OutputSchema,
   delivery: DeliverySchema,
+  /**
+   * Sender identity for the CAN-SPAM footer the CODE appends to email drafts:
+   * { name, company, postalAddress, replyToEmail?, optOutText?, optOutOnLinkedin? }.
+   * Optional — when absent, email drafts are flagged `needsSenderIdentity` and the
+   * run records a compliance warning; nothing is ever fabricated.
+   */
+  sender: SenderIdentitySchema.optional(),
 });
 export type ReportProfile = z.infer<typeof ReportProfileSchema>;
 
@@ -143,7 +151,7 @@ export function loadProfile(path: string): ReportProfile {
 export interface ProfileCampaignOverrides
   extends Pick<
     RunCampaignInput,
-    "channel" | "minScore" | "maxContactsPerLead" | "styleOverride"
+    "channel" | "minScore" | "maxContactsPerLead" | "styleOverride" | "sender"
   > {}
 
 /**
@@ -171,6 +179,9 @@ export function applyProfileToCampaignInput(
     minScore: filtering?.minScore,
     maxContactsPerLead: outreach?.maxContactsPerLead,
     ...(styleOverride !== undefined ? { styleOverride } : {}),
+    // Deterministic, operator-owned: passed straight through to the footer, never
+    // to the LLM (it must not be paraphrased or invented by the model).
+    ...(profile.sender !== undefined ? { sender: profile.sender } : {}),
   };
 }
 
@@ -217,6 +228,10 @@ export function mergeProfileOverrides(
       overrides.delivery !== undefined
         ? { ...profile.delivery, ...overrides.delivery }
         : profile.delivery,
+    sender:
+      overrides.sender !== undefined
+        ? { ...profile.sender, ...overrides.sender }
+        : profile.sender,
   };
 
   const result = ReportProfileSchema.safeParse(merged);

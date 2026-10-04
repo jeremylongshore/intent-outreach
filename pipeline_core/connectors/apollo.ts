@@ -120,6 +120,12 @@ const APOLLO_ORG_ALLOW = [
 /** Phone types that are personal — never kept. */
 const PERSONAL_PHONE = /mobile|home|personal/i;
 
+/** The contact name an Apollo match belongs to: the requested name, else the vendor's. */
+function contactNameOf(requested: string | undefined, p: ApolloPerson): string | undefined {
+  const vendor = p.name?.trim() || [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+  return requested?.trim() || vendor || undefined;
+}
+
 function workPhone(p: ApolloPerson): string | undefined {
   const hit = (p.phone_numbers ?? []).find(
     (n) => n.raw_number && !(n.type && PERSONAL_PHONE.test(n.type)),
@@ -175,11 +181,12 @@ export const apolloConnector: Connector = {
     return hasSecret(KEY_ENV);
   },
 
-  async research({ domain, icp }: ResearchInput): Promise<ResearchOutput> {
+  async research({ domain, icp, signal }: ResearchInput): Promise<ResearchOutput> {
     // 1) Company lookup by domain.
     const orgRes = parseVendor(
       OrgSearchSchema,
       await httpJson(`${BASE}/organizations/api_search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { q_organization_domains: [domain], per_page: 1 },
@@ -192,6 +199,7 @@ export const apolloConnector: Connector = {
     const peopleRes = parseVendor(
       PeopleSearchSchema,
       await httpJson(`${BASE}/mixed_people/api_search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { q_organization_domains: [domain], q_keywords: icp, per_page: 10 },
@@ -209,7 +217,7 @@ export const apolloConnector: Connector = {
     };
   },
 
-  async enrich({ lead, contacts }: EnrichInput): Promise<EnrichOutput> {
+  async enrich({ lead, contacts, signal }: EnrichInput): Promise<EnrichOutput> {
     // Enrich contacts missing an email (verified email/phone consume credits).
     // bulk_match is name-keyed: unmatched-able names are filtered out first.
     const needy = eligibleContacts(contacts, 10, { filter: (c) => !c.email });
@@ -221,6 +229,7 @@ export const apolloConnector: Connector = {
       const res = parseVendor(
         BulkMatchSchema,
         await httpJson(`${BASE}/people/bulk_match`, {
+          signal,
           method: "POST",
           headers: headers(),
           json: {
@@ -236,17 +245,28 @@ export const apolloConnector: Connector = {
     }
 
     const now = new Date().toISOString();
+    // bulk_match returns `matches` index-aligned with `details` (null = no match),
+    // so the requested contact's name is the back-reference; fall back to the
+    // vendor's own name only if the arrays are not aligned.
+    const aligned = matches.length === needy.length;
     const enrichments: Enrichment[] = matches
-      .filter((m): m is ApolloPerson => Boolean(m && m.email && m.email.includes("@")))
-      .map((m) => ({
-        subjectType: "contact" as const,
-        subjectKey: m.email!,
-        provider: "apollo",
-        verifiedEmail: m.email!,
-        phone: workPhone(m),
-        data: minimizePerson(m),
-        fetchedAt: now,
-      }));
+      .map((m, i) => ({ m, requested: aligned ? needy[i]?.name : undefined }))
+      .filter((x): x is { m: ApolloPerson; requested: string | undefined } =>
+        Boolean(x.m && x.m.email && x.m.email.includes("@")),
+      )
+      .map(({ m, requested }) => {
+        const contactName = contactNameOf(requested, m);
+        return {
+          subjectType: "contact" as const,
+          subjectKey: m.email!,
+          provider: "apollo",
+          verifiedEmail: m.email!,
+          ...(contactName ? { contactName } : {}),
+          phone: workPhone(m),
+          data: minimizePerson(m),
+          fetchedAt: now,
+        };
+      });
 
     return {
       enrichments,

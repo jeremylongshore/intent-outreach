@@ -8,6 +8,9 @@
  * No live API calls: the LLM provider and the connectors are deterministic stubs.
  */
 
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_MAX_DOMAINS,
@@ -23,6 +26,11 @@ import { _resetSecretCache } from "../pipeline_core/secrets.js";
 import { _resetBuiltins, registerConnector } from "../pipeline_core/connectors/index.js";
 import type { Connector } from "../pipeline_core/connectors/types.js";
 import type { LLMProvider, ProviderName } from "../pipeline_core/providers.js";
+
+// runCampaign loads ${INTENT_OUTREACH_HOME}/suppressions.jsonl. Point it at an
+// empty tmp dir at MODULE load (before any describe snapshots process.env) so
+// these tests never read the real ~/.intent-outreach.
+process.env.INTENT_OUTREACH_HOME = mkdtempSync(join(tmpdir(), "io-pipeline-home-"));
 
 const FIXED = "2026-06-16T12:00:00.000Z";
 const clock = () => FIXED;
