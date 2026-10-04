@@ -1,12 +1,19 @@
 /**
  * evals/scorers.ts — deterministic (and one optional LLM) scorers for the seam outputs.
  *
- * The deterministic scorers are the CI gate: they need no key, no network, and
- * are byte-for-byte reproducible. A provider is "supported" only if every fixture
- * passes schemaConformance + draftContract + groundingHeuristic (see evals/run.ts).
+ * The deterministic scorers need no key, no network, and are byte-for-byte
+ * reproducible. In KEYED mode they are the quality gate a model must pass to be
+ * approved (see evals/run.ts):
  *
- * llmJudge is OPTIONAL and COSTS MONEY — it calls a real provider and is never
- * part of the offline/CI verdict.
+ *   score seam:  schemaConformance + scoreBand + angleGrounding
+ *   draft seam:  schemaConformance + draftContract + draftStyle + groundingHeuristic
+ *
+ * In OFFLINE mode the same scorers run against a stub, which proves wiring only.
+ *
+ * Fact grounding reuses pipeline_core/draft-guard.ts (groundAngles / guardDraft)
+ * rather than re-implementing it, so the eval and the product enforce one rule.
+ *
+ * llmJudge is OPTIONAL and COSTS MONEY — it runs only with `--judge` (keyed).
  */
 
 import {
@@ -14,10 +21,11 @@ import {
   ScoreOutputSchema,
   type DraftContext,
   type DraftOutput,
-  type ScoreContext,
   type ScoreOutput,
 } from "../pipeline_core/seam.js";
 import type { LLMProvider } from "../pipeline_core/providers.js";
+import type { Contact, Enrichment, Lead } from "../pipeline_core/models.js";
+import { groundAngles, guardDraft, type DroppedAngle } from "../pipeline_core/draft-guard.js";
 import { z } from "zod";
 
 /** One scorer's verdict. `findings` explains a fail (or warns on a pass). */
@@ -26,7 +34,7 @@ export interface ScoreResult {
   findings: string[];
 }
 
-/** Draft length bounds (chars), aligned with outreach.v1.md word ceilings. */
+/** Draft length bounds (chars), a coarse sanity check under the word caps below. */
 export const DRAFT_BODY_MIN_CHARS = 20;
 export const DRAFT_BODY_MAX_CHARS = 1200;
 
@@ -44,10 +52,7 @@ function fail(...findings: string[]): ScoreResult {
  * model output through generateObject, but a provider could hand back something
  * that drifts; this re-validates against the canonical schema as the gate.
  */
-export function schemaConformance(
-  kind: "score" | "draft",
-  output: unknown,
-): ScoreResult {
+export function schemaConformance(kind: "score" | "draft", output: unknown): ScoreResult {
   const schema = kind === "score" ? ScoreOutputSchema : DraftOutputSchema;
   const parsed = schema.safeParse(output);
   if (parsed.success) return ok();
@@ -86,6 +91,40 @@ export function draftContract(ctx: DraftContext, output: DraftOutput): ScoreResu
   return findings.length === 0 ? ok() : fail(...findings);
 }
 
+// ───────────────────────────── draftStyle (guard) ────────────────────────────
+
+/** Prompt-level caps (prompts/outreach.v2.md). draft-guard's product caps keep a margin above these. */
+export const EVAL_MAX_EMAIL_WORDS = 90;
+export const EVAL_MAX_LINKEDIN_WORDS = 60;
+export const EVAL_MAX_SUBJECT_WORDS = 7;
+
+function wordCount(s: string): number {
+  const t = s.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
+/**
+ * The product send-safety guard (guardDraft: injected url/email/phone, banned
+ * openers, fake Re:/Fwd:, header injection) PLUS the prompt's tighter length
+ * contract: email body ≤90 words, linkedin ≤60, subject ≤7.
+ */
+export function draftStyle(ctx: DraftContext, output: DraftOutput): ScoreResult {
+  const findings: string[] = [];
+  const verdict = guardDraft(output, {
+    allowedText: [ctx.icp, ctx.lead.domain, ctx.contact.email, ctx.contact.linkedin, ctx.styleOverride].filter(
+      (x): x is string => typeof x === "string" && x.length > 0,
+    ),
+  });
+  if (!verdict.ok) findings.push(...verdict.issues);
+  const cap = ctx.channel === "linkedin" ? EVAL_MAX_LINKEDIN_WORDS : EVAL_MAX_EMAIL_WORDS;
+  const bodyWords = wordCount(output.body ?? "");
+  if (bodyWords > cap) findings.push(`body: ${bodyWords} words exceeds the prompt's ${cap}-word cap (${ctx.channel})`);
+  if (output.subject !== null && wordCount(output.subject) > EVAL_MAX_SUBJECT_WORDS) {
+    findings.push(`subject: ${wordCount(output.subject)} words exceeds the prompt's ${EVAL_MAX_SUBJECT_WORDS}-word cap`);
+  }
+  return findings.length === 0 ? ok() : fail(...findings);
+}
+
 // ───────────────────────────── groundingHeuristic ────────────────────────────
 
 const FUNDING_VERB = /\b(raised|raising|secured|closed)\b/i;
@@ -105,19 +144,34 @@ function norm(s: string): string {
 
 /** Build the corpus of facts the model is ALLOWED to state, from the fixture inputs. */
 function allowedCorpus(ctx: DraftContext): string {
-  const parts: string[] = [ctx.icp, ctx.lead.companyName, ctx.lead.industry ?? "", ...ctx.angles];
+  const parts: string[] = [
+    ctx.icp,
+    ctx.lead.companyName,
+    ctx.lead.industry ?? "",
+    ctx.lead.size ?? "",
+    ctx.lead.description ?? "",
+    ctx.contact.name,
+    ctx.contact.title ?? "",
+    ...ctx.angles,
+  ];
   // (DraftContext carries no enrichment; angles are the grounded carry-over from score().)
   return norm(parts.join("  ||  "));
 }
 
 /**
- * Cheap no-fabrication check. Flags funding/dollar/investor claims in the body
- * that are NOT supported by the fixture's angles/ICP/lead. Returns findings
- * (not just pass/fail) so a reviewer can see exactly what looked fabricated.
+ * Cheap no-fabrication check over the whole draft (subject + body + cta).
+ * Returns findings (not just pass/fail) so a reviewer can see exactly what
+ * looked fabricated. It flags, when NOT supported by the fixture's inputs:
  *
- * Conservative by design: it only flags a funding-shaped claim when the body
- * actually uses a funding verb, a "Series X" token, or a dollar figure that the
- * inputs don't contain. A grounded mention of a round that IS in the angles passes.
+ *   1-4. funding: dollar figures, "Series X", a funding verb with no funding
+ *        signal, investor/firm names;
+ *   5.   mutual connections ("a mutual friend", "X suggested I reach out");
+ *   6.   named customers / references ("customers like Acme", "we helped Acme");
+ *   7.   metrics: percentages, money, headcounts and proper names (draft-guard's
+ *        groundAngles, sentence by sentence) and "3x"-style multipliers;
+ *   8.   "I noticed / saw / congrats" claims with no grounded signal behind them.
+ *
+ * Conservative by design: a grounded mention of a fact that IS in the inputs passes.
  */
 export function groundingHeuristic(ctx: DraftContext, output: DraftOutput): ScoreResult {
   const body = output.body ?? "";
@@ -130,34 +184,27 @@ export function groundingHeuristic(ctx: DraftContext, output: DraftOutput): Scor
   }
 
   // 2. "Series X" round claims not present in the inputs.
-  const series = body.match(new RegExp(SERIES_ROUND, "gi")) ?? [];
-  for (const m of series) {
+  for (const m of body.match(new RegExp(SERIES_ROUND, "gi")) ?? []) {
     if (!corpus.includes(norm(m))) findings.push(`fabricated round claim: "${m.trim()}"`);
   }
 
   // 3. A funding verb ("raised", "closed", ...) when no round/funding signal exists in inputs.
   if (FUNDING_VERB.test(body)) {
-    const inputsMentionFunding =
-      FUNDING_VERB.test(corpus) || SERIES_ROUND.test(corpus) || DOLLAR_FIGURE.test(corpus);
+    const inputsMentionFunding = FUNDING_VERB.test(corpus) || SERIES_ROUND.test(corpus) || DOLLAR_FIGURE.test(corpus);
     if (!inputsMentionFunding) {
       const verb = body.match(FUNDING_VERB)?.[0] ?? "raised";
       findings.push(`funding claim ("${verb}") with no funding signal in the inputs`);
     }
   }
 
-  // 4. Named entities (likely investor/customer names) that don't appear in the inputs.
-  //    Skip names that ARE the lead/contact, and skip single common words.
+  // 4. Named entities (likely investor names) that don't appear in the inputs.
   const known = new Set(
-    [
-      norm(ctx.lead.companyName),
-      norm(ctx.contact.name),
-      ...ctx.angles.map(norm),
-      norm(ctx.icp),
-    ].flatMap((s) => s.split(" ")),
+    [norm(ctx.lead.companyName), norm(ctx.contact.name), ...ctx.angles.map(norm), norm(ctx.icp)].flatMap((s) =>
+      s.split(" "),
+    ),
   );
   for (const m of body.match(NAMED_ENTITY) ?? []) {
     const phrase = norm(m);
-    // Only treat as a potential named investor if it's multi-word and not in inputs/known tokens.
     const words = phrase.split(" ");
     const isMultiWord = words.length >= 2;
     const everyWordKnown = words.every((w) => known.has(w) || w.length <= 2);
@@ -167,6 +214,149 @@ export function groundingHeuristic(ctx: DraftContext, output: DraftOutput): Scor
     }
   }
 
+  // 5-8.
+  findings.push(...draftClaimFindings(ctx, output, corpus));
+
+  return findings.length === 0 ? ok() : fail(...findings);
+}
+
+/**
+ * Words a draft may capitalize that are not named facts (channel names,
+ * greetings, sign-offs). Appended to the fact corpus for the sentence-level
+ * groundAngles pass so ordinary prose is not read as an invented name.
+ */
+const EVAL_BENIGN_VOCAB =
+  "linkedin email inbox calendar zoom hi hello hey thanks thank cheers best regards open happy worth " +
+  "would could curious mind next week today tomorrow quarter i'd i'm i've";
+
+const MUTUAL_RE =
+  /\b(?:mutual (?:friend|connection|contact|colleague)s?|we both know|introduced me|(?:suggested|recommended) (?:that )?i (?:reach out|contact|email|connect))\b/i;
+/** "customers like Acme", "clients such as Foo Bar" — group 1 = the name(s). */
+const CUSTOMER_RE =
+  /\b(?:customers?|clients?|companies|brands) (?:like|such as|including) ((?:[A-Z][\w&.'-]*)(?:,?\s+(?:and\s+)?[A-Z][\w&.'-]*)*)/g;
+/** "we helped Acme", "worked with Foo" — group 1 = the name. */
+const HELPED_RE = /\b(?:helped|work(?:ed|s)? with|partnered with) ((?:[A-Z][\w&.'-]*)(?:\s+[A-Z][\w&.'-]*)*)/g;
+const MULTIPLIER_RE = /\b\d+(?:\.\d+)?x\b/gi;
+const NOTICED_RE = /\b(?:noticed|saw|came across|congrats|congratulations)\b/i;
+const SIGNAL_STOP = new Set(
+  "about after again their there these those which while would could should being other likely recent recently really".split(
+    " ",
+  ),
+);
+
+function splitSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function longTokens(text: string): string[] {
+  return (text.toLowerCase().match(/[a-z][a-z0-9-]{4,}/g) ?? []).filter((w) => !SIGNAL_STOP.has(w));
+}
+
+/** Distinctive (≥5-char, non-stopword) tokens of the angles + lead facts: what a "noticed" claim may rest on. */
+function signalTokens(ctx: DraftContext): Set<string> {
+  return new Set(longTokens([...ctx.angles, ctx.lead.industry ?? "", ctx.lead.description ?? ""].join(" ")));
+}
+
+function draftClaimFindings(ctx: DraftContext, output: DraftOutput, corpus: string): string[] {
+  const findings: string[] = [];
+  const text = [output.subject ?? "", output.body ?? "", output.cta ?? ""].join("\n");
+
+  // 5. Mutual connections — inputs never carry one, so any claim is invented.
+  const mutual = text.match(MUTUAL_RE);
+  if (mutual) findings.push(`invented mutual connection: "${mutual[0]}"`);
+
+  // 6. Named customers / references not present in the inputs.
+  for (const re of [CUSTOMER_RE, HELPED_RE]) {
+    for (const m of text.matchAll(re)) {
+      for (const name of m[1]!
+        .split(/,|\band\b/)
+        .map((x) => x.trim())
+        .filter(Boolean)) {
+        if (!corpus.includes(norm(name))) findings.push(`invented customer/reference: "${name}"`);
+      }
+    }
+  }
+
+  // 7. Metrics/names via draft-guard's groundAngles, plus multipliers.
+  const { dropped } = groundAngles(splitSentences(text), { facts: [corpus, EVAL_BENIGN_VOCAB], identifiers: [] });
+  for (const d of dropped) {
+    // url/email/phone are guardDraft's job (draftStyle); report fact claims only.
+    if (/^(?:url|email address|phone number) /.test(d.reason)) continue;
+    findings.push(`ungrounded claim: ${d.reason}`);
+  }
+  for (const m of text.match(MULTIPLIER_RE) ?? []) {
+    if (!corpus.includes(norm(m))) findings.push(`invented metric: "${m}"`);
+  }
+
+  // 8. "I noticed / saw / congrats" — the sentence must rest on a grounded signal.
+  const signals = signalTokens(ctx);
+  for (const sentence of splitSentences(text)) {
+    if (!NOTICED_RE.test(sentence)) continue;
+    if (!longTokens(sentence).some((w) => signals.has(w))) {
+      findings.push(`"noticed"-style claim with no grounded signal: "${sentence.slice(0, 80)}"`);
+    }
+  }
+
+  return findings;
+}
+
+// ─────────────────────────────── scoreBand ───────────────────────────────────
+
+export interface ScoreExpect {
+  scoreMin: number;
+  scoreMax: number;
+  note?: string;
+}
+
+/** Is fitScore inside the fixture's expected band? A weak-fit lead scored 95 fails. */
+export function scoreBand(expect: ScoreExpect | undefined, output: ScoreOutput): ScoreResult {
+  if (!expect || typeof expect.scoreMin !== "number" || typeof expect.scoreMax !== "number") {
+    return fail("fixture has no expect {scoreMin, scoreMax} band");
+  }
+  const s = output.fitScore;
+  if (s < expect.scoreMin || s > expect.scoreMax) {
+    return fail(`fitScore ${s} outside expected band [${expect.scoreMin}, ${expect.scoreMax}]`);
+  }
+  return ok();
+}
+
+// ───────────────────────────── angleGrounding ────────────────────────────────
+
+export interface ScoreInputs {
+  icp: string;
+  lead: Lead;
+  contacts: Contact[];
+  enrichments: Enrichment[];
+}
+
+/** Does any input carry a funding signal (structured funding, or funding words in the description)? */
+function hasFundingSignal(inputs: ScoreInputs): boolean {
+  if (inputs.enrichments.some((e) => e.funding && Object.keys(e.funding).length > 0)) return true;
+  const free = inputs.lead.description ?? "";
+  return FUNDING_VERB.test(free) || SERIES_ROUND.test(free) || DOLLAR_FIGURE.test(free);
+}
+
+/**
+ * Angle laundering check on the SCORE seam. scoreLead() silently drops angles
+ * that cite facts absent from the inputs (groundAngles); in the product that is
+ * a safety net, in the eval it is a FAILURE — a model that fabricates "Raised a
+ * $20M Series B" must not be approved just because the net caught it. Kept
+ * angles are also checked for a bare funding claim ("raised", "new round")
+ * when the inputs carry no funding signal at all (groundAngles only checks
+ * amounts and named rounds).
+ */
+export function angleGrounding(inputs: ScoreInputs, kept: string[], dropped: DroppedAngle[]): ScoreResult {
+  const findings = dropped.map((d) => `fabricated angle dropped by groundAngles: "${d.angle}" (${d.reason})`);
+  if (!hasFundingSignal(inputs)) {
+    for (const a of kept) {
+      if (FUNDING_VERB.test(a) || /\b(?:funding|funded|round|investors?)\b/i.test(a)) {
+        findings.push(`angle claims funding with no funding signal in the inputs: "${a}"`);
+      }
+    }
+  }
   return findings.length === 0 ? ok() : fail(...findings);
 }
 
@@ -175,7 +365,7 @@ export function groundingHeuristic(ctx: DraftContext, output: DraftOutput): Scor
 const JudgeSchema = z.object({
   grounded: z.boolean(),
   hasCta: z.boolean(),
-  hallucinatedFacts: z.array(z.string()).default([]),
+  hallucinatedFacts: z.array(z.string()),
   rating: z.number().int().min(1).max(5),
   rationale: z.string(),
 });
@@ -183,8 +373,7 @@ export type JudgeOutput = z.infer<typeof JudgeSchema>;
 
 /**
  * OPTIONAL rubric scorer — REQUIRES A PROVIDER KEY AND COSTS MONEY.
- * Not part of the offline/CI verdict. Pass a real provider (e.g. from getProvider()).
- * Returns the structured judgment; callers decide how to weight it.
+ * Runs only with `evals/run.ts --judge`; the harness gates on the mean rating.
  */
 export async function llmJudge(
   provider: LLMProvider,

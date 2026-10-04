@@ -13,5 +13,10 @@
       "source": "manual"
     }
   ],
-  "enrichments": []
+  "enrichments": [],
+  "expect": {
+    "scoreMin": 0,
+    "scoreMax": 60,
+    "note": "No industry, size or funding data: a calibrated model must not score this as a strong fit."
+  }
 }
