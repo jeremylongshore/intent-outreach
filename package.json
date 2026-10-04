@@ -29,7 +29,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "mcp": "tsx mcp/server.ts",
-    "evals": "npx -y promptfoo eval -c evals/promptfooconfig.yaml",
+    "evals": "tsx evals/run.ts --providers anthropic --repeat 3",
+    "evals:promote": "tsx evals/promote.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

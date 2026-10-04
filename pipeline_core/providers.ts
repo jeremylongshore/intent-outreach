@@ -20,16 +20,19 @@ import { generateText, Output, type LanguageModel, type LanguageModelUsage } fro
 import type { z } from "zod";
 import { getSecret, hasSecret } from "./secrets.js";
 import { costFor, type Usage } from "./cost.js";
+import { approvedEntry, supportedProviderNames } from "../evals/supported.js";
 
 export type ProviderName = "anthropic" | "openai" | "xai";
 
 /**
- * Providers that have passed the eval gate and may run unguarded.
- * openai gated in 2026-08-20: gpt-4o passed all 7 golden fixtures
- * (evals/run.ts --providers openai). The xai adapter ships ready but stays
- * gated until an eval run with a real key passes.
+ * Providers that may run unguarded: DERIVED from evals/supported.ts. A provider
+ * is supported iff it has at least one approved {provider, model} pair there;
+ * a pair is approved by a passing keyed run of the eval harness (`npm run
+ * evals:promote`). anthropic + openai are carried as legacy claims
+ * (verified: false) until re-run with a key. The xai adapter ships ready but
+ * stays gated until an eval run with a real key passes.
  */
-export const SUPPORTED_PROVIDERS = new Set<ProviderName>(["anthropic", "openai"]);
+export const SUPPORTED_PROVIDERS: ReadonlySet<ProviderName> = new Set<ProviderName>(supportedProviderNames());
 
 const DEFAULT_MODEL: Record<ProviderName, string> = {
   anthropic: "claude-sonnet-4-6",
@@ -154,15 +157,53 @@ export interface GetProviderOptions {
   model?: string;
 }
 
+const warnedUnapproved = new Set<string>();
+
+/**
+ * Warn (stderr, once per pair per process) when a supported provider runs a
+ * model with no approved record in evals/supported.ts: the provider passed the
+ * gate, this model has not.
+ */
+function warnIfUnapproved(provider: ProviderName, model: string): void {
+  if (approvedEntry(provider, model)) return;
+  const key = `${provider}:${model}`;
+  if (warnedUnapproved.has(key)) return;
+  warnedUnapproved.add(key);
+  process.stderr.write(
+    `intent-outreach: warning: ${provider} model "${model}" has no approved eval record (evals/supported.ts); ` +
+      `qualify it with: npm run evals:promote -- --provider ${provider} --model ${model}\n`,
+  );
+}
+
+/** Reset the once-per-pair warning memory. Tests only. */
+export function _resetUnapprovedWarnings(): void {
+  warnedUnapproved.clear();
+}
+
 /** Resolve a usable provider from options + env, enforcing the eval gate. */
 export async function getProvider(opts: GetProviderOptions = {}): Promise<LLMProvider> {
+  return createProvider(opts, true);
+}
+
+/**
+ * EVAL HARNESS ONLY (evals/run.ts). Same as getProvider but skips the eval
+ * gate, because the harness is what qualifies an ungated provider/model in the
+ * first place. Product code (pipeline_core, mcp, cli) must call getProvider;
+ * tests/eval-gate.test.ts fails if anything outside evals/ calls this.
+ */
+export async function getProviderUnchecked(opts: GetProviderOptions = {}): Promise<LLMProvider> {
+  return createProvider(opts, false);
+}
+
+async function createProvider(opts: GetProviderOptions, gated: boolean): Promise<LLMProvider> {
   const name = opts.provider ?? detectProvider();
   // Runtime check too: CLI/MCP callers pass untyped strings (e.g. a stale "google").
   if (!Object.hasOwn(KEY_ENV, name)) {
     throw new Error(`unknown provider "${String(name)}" (known: ${Object.keys(KEY_ENV).join(", ")})`);
   }
-  assertSupported(name);
+  if (gated) assertSupported(name);
   const model = opts.model ?? process.env.INTENT_OUTREACH_MODEL ?? DEFAULT_MODEL[name];
+  if (gated && SUPPORTED_PROVIDERS.has(name)) warnIfUnapproved(name, model);
   const languageModel = await resolveModel(name, model);
 
   return {
