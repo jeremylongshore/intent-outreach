@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-#!/usr/bin/env node
+import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -76018,9 +76018,17 @@ var originalGenerateCallId7 = createIdGenerator({
 var defaultDownload2 = createDownload();
 
 // pipeline_core/cost.ts
+var CACHE_READ_MULTIPLIER = 0.1;
+var CACHE_WRITE_MULTIPLIER = 1.25;
 var PRICING = {
   // Anthropic
-  "claude-opus-4-8": { in: 15, out: 75 },
+  "claude-opus-5-5": { in: 4, out: 20 },
+  "claude-sonnet-5-5": { in: 2, out: 10 },
+  "claude-opus-5": { in: 5, out: 25 },
+  "claude-sonnet-5": { in: 2, out: 10 },
+  "claude-opus-4-8": { in: 5, out: 25 },
+  "claude-opus-4-7": { in: 5, out: 25 },
+  "claude-opus-4-6": { in: 5, out: 25 },
   "claude-sonnet-4-6": { in: 3, out: 15 },
   "claude-haiku-4-5": { in: 1, out: 5 },
   // OpenAI
@@ -76033,22 +76041,54 @@ var PRICING = {
   "grok-2-latest": { in: 2, out: 10 }
 };
 var FALLBACK = { in: 3, out: 15 };
-function costFor(model, inputTokens, outputTokens) {
-  const p = PRICING[model] ?? FALLBACK;
-  return inputTokens / 1e6 * p.in + outputTokens / 1e6 * p.out;
+var warnedUnknown = /* @__PURE__ */ new Set();
+function normalizeModelId(model) {
+  let id = model.trim().toLowerCase();
+  const slash = id.lastIndexOf("/");
+  if (slash >= 0) id = id.slice(slash + 1);
+  return id.replace(/-\d{8}$/, "");
+}
+function priceFor(model) {
+  const exact = PRICING[model];
+  if (exact) return exact;
+  const id = normalizeModelId(model);
+  const normalized = PRICING[id];
+  if (normalized) return normalized;
+  let best;
+  for (const key of Object.keys(PRICING)) {
+    const k = key.toLowerCase();
+    if (id.startsWith(k + "-") && (best === void 0 || k.length > best.length)) best = key;
+  }
+  if (best !== void 0) return PRICING[best];
+  if (!warnedUnknown.has(model)) {
+    warnedUnknown.add(model);
+    process.stderr.write(
+      `[intent-outreach] cost: no pricing for model "${model}"; using fallback $${FALLBACK.in}/$${FALLBACK.out} per MTok (override with setPricing()).
+`
+    );
+  }
+  return FALLBACK;
+}
+function costFor(model, inputTokens, outputTokens, cache2 = {}) {
+  const p = priceFor(model);
+  const cacheRead = Math.max(0, cache2.cacheReadTokens ?? 0);
+  const cacheWrite = Math.max(0, cache2.cacheWriteTokens ?? 0);
+  const uncached = Math.max(0, inputTokens - cacheRead - cacheWrite);
+  const inputUsd = uncached * p.in + cacheRead * p.in * CACHE_READ_MULTIPLIER + cacheWrite * p.in * CACHE_WRITE_MULTIPLIER;
+  return (inputUsd + outputTokens * p.out) / 1e6;
 }
 var CostMeter = class {
   inTokens = 0;
   outTokens = 0;
   spent = 0;
   callCount = 0;
-  record(model, inputTokens, outputTokens) {
-    const costUsd = costFor(model, inputTokens, outputTokens);
+  record(model, inputTokens, outputTokens, cache2 = {}) {
+    const costUsd = costFor(model, inputTokens, outputTokens, cache2);
     this.inTokens += inputTokens;
     this.outTokens += outputTokens;
     this.spent += costUsd;
     this.callCount += 1;
-    return { inputTokens, outputTokens, costUsd };
+    return { inputTokens, outputTokens, costUsd, ...cache2 };
   }
   get spentUsd() {
     return this.spent;
@@ -76121,6 +76161,22 @@ async function resolveModel(provider, modelId) {
     }
   }
 }
+function usageFrom(model, u) {
+  const inputTokens = u.inputTokens ?? 0;
+  const outputTokens = u.outputTokens ?? 0;
+  const cacheReadTokens = u.inputTokenDetails?.cacheReadTokens ?? 0;
+  const cacheWriteTokens = u.inputTokenDetails?.cacheWriteTokens ?? 0;
+  const cache2 = {
+    ...cacheReadTokens > 0 ? { cacheReadTokens } : {},
+    ...cacheWriteTokens > 0 ? { cacheWriteTokens } : {}
+  };
+  return {
+    inputTokens,
+    outputTokens,
+    costUsd: costFor(model, inputTokens, outputTokens, cache2),
+    ...cache2
+  };
+}
 async function getProvider(opts = {}) {
   const name29 = opts.provider ?? detectProvider();
   assertSupported(name29);
@@ -76136,13 +76192,7 @@ async function getProvider(opts = {}) {
         prompt: args.prompt,
         ...args.system ? { system: args.system } : {}
       });
-      const u = res.usage;
-      const inputTokens = u.promptTokens ?? 0;
-      const outputTokens = u.completionTokens ?? 0;
-      return {
-        object: res.object,
-        usage: { inputTokens, outputTokens, costUsd: costFor(model, inputTokens, outputTokens) }
-      };
+      return { object: res.object, usage: usageFrom(model, res.usage) };
     }
   };
 }

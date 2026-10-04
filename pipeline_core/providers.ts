@@ -13,7 +13,11 @@
  * and dynamically imported, so a minimal install still works on Claude alone.
  */
 
-import { generateObject as aiGenerateObject, type LanguageModel } from "ai";
+import {
+  generateObject as aiGenerateObject,
+  type LanguageModel,
+  type LanguageModelUsage,
+} from "ai";
 import type { z } from "zod";
 import { getSecret, hasSecret } from "./secrets.js";
 import { costFor, type Usage } from "./cost.js";
@@ -103,6 +107,28 @@ async function resolveModel(provider: ProviderName, modelId: string): Promise<La
   }
 }
 
+/**
+ * Map AI SDK v7 LanguageModelUsage onto our Usage. `inputTokens` is the SDK's
+ * total (uncached + cache read + cache write); the cache split is priced
+ * separately in costFor. Fields a provider didn't report count as 0.
+ */
+export function usageFrom(model: string, u: LanguageModelUsage): Usage {
+  const inputTokens = u.inputTokens ?? 0;
+  const outputTokens = u.outputTokens ?? 0;
+  const cacheReadTokens = u.inputTokenDetails?.cacheReadTokens ?? 0;
+  const cacheWriteTokens = u.inputTokenDetails?.cacheWriteTokens ?? 0;
+  const cache = {
+    ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
+    ...(cacheWriteTokens > 0 ? { cacheWriteTokens } : {}),
+  };
+  return {
+    inputTokens,
+    outputTokens,
+    costUsd: costFor(model, inputTokens, outputTokens, cache),
+    ...cache,
+  };
+}
+
 export interface GetProviderOptions {
   provider?: ProviderName;
   model?: string;
@@ -127,13 +153,7 @@ export async function getProvider(opts: GetProviderOptions = {}): Promise<LLMPro
         prompt: args.prompt,
         ...(args.system ? { system: args.system } : {}),
       });
-      const u = res.usage;
-      const inputTokens = (u as { promptTokens?: number }).promptTokens ?? 0;
-      const outputTokens = (u as { completionTokens?: number }).completionTokens ?? 0;
-      return {
-        object: res.object as z.infer<S>,
-        usage: { inputTokens, outputTokens, costUsd: costFor(model, inputTokens, outputTokens) },
-      };
+      return { object: res.object as z.infer<S>, usage: usageFrom(model, res.usage) };
     },
   };
 }
