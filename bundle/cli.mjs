@@ -57618,6 +57618,10 @@ var APOLLO_ORG_ALLOW = [
   "latest_funding_round_date"
 ];
 var PERSONAL_PHONE = /mobile|home|personal/i;
+function contactNameOf(requested, p) {
+  const vendor = p.name?.trim() || [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+  return requested?.trim() || vendor || void 0;
+}
 function workPhone(p) {
   const hit = (p.phone_numbers ?? []).find(
     (n) => n.raw_number && !(n.type && PERSONAL_PHONE.test(n.type))
@@ -57663,10 +57667,11 @@ var apolloConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV);
   },
-  async research({ domain: domain2, icp }) {
+  async research({ domain: domain2, icp, signal }) {
     const orgRes = parseVendor(
       OrgSearchSchema,
       await httpJson(`${BASE}/organizations/api_search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { q_organization_domains: [domain2], per_page: 1 }
@@ -57677,6 +57682,7 @@ var apolloConnector = {
     const peopleRes = parseVendor(
       PeopleSearchSchema,
       await httpJson(`${BASE}/mixed_people/api_search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { q_organization_domains: [domain2], q_keywords: icp, per_page: 10 }
@@ -57690,7 +57696,7 @@ var apolloConnector = {
       raw: keepRawOptIn() ? { org: orgRes, people: peopleRes } : { org: pickAllowed(org, APOLLO_ORG_ALLOW), people: people.length }
     };
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const needy = eligibleContacts(contacts, 10, { filter: (c) => !c.email });
     if (needy.length === 0) return { enrichments: [] };
     const failures = [];
@@ -57699,6 +57705,7 @@ var apolloConnector = {
       const res = parseVendor(
         BulkMatchSchema,
         await httpJson(`${BASE}/people/bulk_match`, {
+          signal,
           method: "POST",
           headers: headers(),
           json: {
@@ -57712,15 +57719,22 @@ var apolloConnector = {
       if (isAuthFailure(err) || !isNotFound(err)) throw err;
     }
     const now2 = (/* @__PURE__ */ new Date()).toISOString();
-    const enrichments = matches.filter((m) => Boolean(m && m.email && m.email.includes("@"))).map((m) => ({
-      subjectType: "contact",
-      subjectKey: m.email,
-      provider: "apollo",
-      verifiedEmail: m.email,
-      phone: workPhone(m),
-      data: minimizePerson(m),
-      fetchedAt: now2
-    }));
+    const aligned = matches.length === needy.length;
+    const enrichments = matches.map((m, i) => ({ m, requested: aligned ? needy[i]?.name : void 0 })).filter(
+      (x) => Boolean(x.m && x.m.email && x.m.email.includes("@"))
+    ).map(({ m, requested }) => {
+      const contactName = contactNameOf(requested, m);
+      return {
+        subjectType: "contact",
+        subjectKey: m.email,
+        provider: "apollo",
+        verifiedEmail: m.email,
+        ...contactName ? { contactName } : {},
+        phone: workPhone(m),
+        data: minimizePerson(m),
+        fetchedAt: now2
+      };
+    });
     return {
       enrichments,
       failures,
@@ -57758,10 +57772,11 @@ var hunterConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV2);
   },
-  async research({ domain: domain2 }) {
+  async research({ domain: domain2, signal }) {
     const res = parseVendor(
       DomainSearchSchema,
       await httpJson(`${BASE2}/domain-search`, {
+        signal,
         query: { domain: domain2, api_key: useSecret(KEY_ENV2), limit: 10 }
       })
     );
@@ -57781,7 +57796,7 @@ var hunterConnector = {
     }));
     return { leads: [lead], contacts, raw: res };
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const now2 = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -57790,6 +57805,7 @@ var hunterConnector = {
         const res = parseVendor(
           FinderSchema,
           await httpJson(`${BASE2}/email-finder`, {
+            signal,
             query: { domain: lead.domain, full_name: c.name, api_key: useSecret(KEY_ENV2) }
           })
         );
@@ -57800,6 +57816,9 @@ var hunterConnector = {
           subjectKey: email3,
           provider: "hunter",
           verifiedEmail: email3,
+          // Back-reference to the contact this name-keyed lookup was for, so the
+          // pipeline folds the found email into the right contact.
+          contactName: c.name,
           data: res.data ?? {},
           fetchedAt: now2
         };
@@ -57874,12 +57893,13 @@ var peopledatalabsConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV3);
   },
-  async research({ domain: domain2 }) {
+  async research({ domain: domain2, signal }) {
     const failures = [];
     let companyRaw = void 0;
     let co = {};
     try {
       companyRaw = await httpJson(`${BASE3}/company/enrich`, {
+        signal,
         query: { website: domain2 },
         headers: headers2()
       });
@@ -57902,6 +57922,7 @@ var peopledatalabsConnector = {
       const personRes = parseVendor(
         PdlPersonSearchSchema,
         await httpJson(`${BASE3}/person/search`, {
+          signal,
           method: "POST",
           headers: headers2(),
           json: {
@@ -57934,7 +57955,7 @@ var peopledatalabsConnector = {
       failures
     };
   },
-  async enrich({ contacts }) {
+  async enrich({ contacts, signal }) {
     const now2 = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -57943,7 +57964,7 @@ var peopledatalabsConnector = {
         const email3 = contact.email;
         const res = parseVendor(
           PdlPersonEnrichSchema,
-          await httpJson(`${BASE3}/person/enrich`, { query: { email: email3 }, headers: headers2() })
+          await httpJson(`${BASE3}/person/enrich`, { query: { email: email3 }, headers: headers2(), signal })
         );
         const p = res.data ?? res;
         const verified = workEmail(p) ?? email3;
@@ -57952,6 +57973,7 @@ var peopledatalabsConnector = {
           subjectKey: email3,
           provider: "peopledatalabs",
           verifiedEmail: verified.includes("@") ? verified : void 0,
+          contactName: contact.name,
           data: pickAllowed(p, PDL_PERSON_ALLOW),
           fetchedAt: now2
         };
@@ -57990,10 +58012,11 @@ var exaConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV4);
   },
-  async research({ domain: domain2 }) {
+  async research({ domain: domain2, signal }) {
     const res = parseVendor(
       ExaSearchSchema,
       await httpJson(`${BASE4}/search`, {
+        signal,
         method: "POST",
         headers: headers3(),
         json: { query: "company at " + domain2, numResults: 5, type: "auto" }
@@ -58008,11 +58031,12 @@ var exaConnector = {
     };
     return { leads: [lead], contacts: [], raw: res };
   },
-  async enrich({ lead }) {
+  async enrich({ lead, signal }) {
     const year = clock().getUTCFullYear();
     const res = parseVendor(
       ExaSearchSchema,
       await httpJson(`${BASE4}/search`, {
+        signal,
         method: "POST",
         headers: headers3(),
         json: { query: `${lead.companyName} funding news ${year}`, numResults: 5 }
@@ -58065,10 +58089,11 @@ var crunchbaseConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV5);
   },
-  async enrich({ lead }) {
+  async enrich({ lead, signal }) {
     const res = parseVendor(
       CbSearchSchema,
       await httpJson(`${BASE5}/searches/organizations`, {
+        signal,
         method: "POST",
         headers: headers4(),
         json: {
@@ -58152,7 +58177,7 @@ var leadmagicConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV6);
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const now2 = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -58162,6 +58187,7 @@ var leadmagicConnector = {
         const res = parseVendor(
           EmailFinderSchema,
           await httpJson(`${BASE6}/email-finder`, {
+            signal,
             method: "POST",
             headers: headers5(),
             json: { first_name: first, last_name: last, domain: lead.domain }
@@ -58174,6 +58200,7 @@ var leadmagicConnector = {
           subjectKey: email3,
           provider: "leadmagic",
           verifiedEmail: email3,
+          contactName: c.name,
           data: pickAllowed(res, LEADMAGIC_ALLOW),
           fetchedAt: now2
         };
@@ -58203,9 +58230,10 @@ var clayConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV7) && hasSecret(WEBHOOK_ENV);
   },
-  async research({ domain: domain2, icp }) {
+  async research({ domain: domain2, icp, signal }) {
     try {
       await httpJson(useSecret(WEBHOOK_ENV), {
+        signal,
         method: "POST",
         headers: headers6(),
         json: { domain: domain2, icp },
@@ -58247,8 +58275,8 @@ function isClearbitPending(body) {
   const status = typeof o.status === "string" ? o.status.toLowerCase() : "";
   return status === "queued" || status === "pending";
 }
-async function tryFetch(schema, url2, query) {
-  const body = await httpJson(url2, { method: "GET", headers: headers7(), query });
+async function tryFetch(schema, url2, query, signal) {
+  const body = await httpJson(url2, { method: "GET", headers: headers7(), query, signal });
   if (isClearbitPending(body)) return null;
   return parseVendor(schema, body);
 }
@@ -58262,7 +58290,7 @@ var clearbitConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV8);
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const now2 = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -58270,7 +58298,7 @@ var clearbitConnector = {
       async (contact) => {
         const person = await tryFetch(ClearbitPersonSchema, `${PERSON_BASE}/people/find`, {
           email: contact.email
-        });
+        }, signal);
         if (!person) return null;
         return {
           subjectType: "contact",
@@ -58290,7 +58318,7 @@ var clearbitConnector = {
       try {
         const company = await tryFetch(ClearbitCompanySchema, `${COMPANY_BASE}/companies/find`, {
           domain: lead.domain
-        });
+        }, signal);
         if (company) {
           enrichments.push({
             subjectType: "lead",
@@ -58385,10 +58413,11 @@ var zoominfoConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV9);
   },
-  async research({ domain: domain2, icp }) {
+  async research({ domain: domain2, icp, signal }) {
     const companyRes = parseVendor(
       CompanyEnvelope,
       await httpJson(`${BASE7}/search/company`, {
+        signal,
         method: "POST",
         headers: headers8(),
         json: { companyWebsite: domain2 }
@@ -58399,6 +58428,7 @@ var zoominfoConnector = {
     const contactRes = parseVendor(
       ContactEnvelope,
       await httpJson(`${BASE7}/search/contact`, {
+        signal,
         method: "POST",
         headers: headers8(),
         json: { companyWebsite: domain2, keywords: icp, maxResults: 10 }
@@ -58414,7 +58444,7 @@ var zoominfoConnector = {
       raw: keepRawOptIn() ? { company: companyRes, contacts: contactRes } : { company: companyRes, contacts: people.length }
     };
   },
-  async enrich({ contacts }) {
+  async enrich({ contacts, signal }) {
     const now2 = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -58423,6 +58453,7 @@ var zoominfoConnector = {
         const res = parseVendor(
           ContactEnvelope,
           await httpJson(`${BASE7}/enrich/contact`, {
+            signal,
             method: "POST",
             headers: headers8(),
             json: { email: contact.email }
@@ -58435,6 +58466,7 @@ var zoominfoConnector = {
           subjectKey: contact.email,
           provider: "zoominfo",
           verifiedEmail: contact.email,
+          contactName: contact.name,
           phone: businessPhone(match),
           data: pickAllowed(match, ZI_CONTACT_ALLOW),
           fetchedAt: now2
@@ -58463,8 +58495,8 @@ function registerBuiltinConnectors() {
 }
 
 // pipeline_core/models.ts
-var SCHEMA_VERSION = 3;
-var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
+var SCHEMA_VERSION = 4;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4];
 var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
 var SchemaVersionSchema = external_exports.union([
   external_exports.literal(V_FIRST),
@@ -58528,9 +58560,18 @@ var MessageSchema = external_exports.object({
   /** Provenance: which model + prompt version produced this. */
   model: external_exports.string().min(1),
   promptVersion: external_exports.string().min(1),
-  createdAt: external_exports.string().datetime()
+  createdAt: external_exports.string().datetime(),
+  /**
+   * True when this is an EMAIL draft and no sender identity (name, company,
+   * postal address) was configured, so the CAN-SPAM footer could NOT be appended.
+   * Such a draft must not be sent as-is. Additive (v4); defaults false.
+   */
+  needsSenderIdentity: external_exports.boolean().default(false)
 });
 var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
+var LEGACY_RUN_STATUSES = ["pending", "drafted"];
+var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
+var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
 var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
 var RunErrorSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -58561,7 +58602,7 @@ var CampaignRunSchema = external_exports.object({
   /** Model + provider that ran the LLM seams. */
   provider: external_exports.string().min(1),
   model: external_exports.string().min(1),
-  status: RunStatusSchema,
+  status: StoredRunStatusSchema,
   leads: external_exports.array(LeadSchema).default([]),
   contacts: external_exports.array(ContactSchema).default([]),
   enrichments: external_exports.array(EnrichmentSchema).default([]),
@@ -58594,6 +58635,12 @@ var CampaignRunSchema = external_exports.object({
    * "not configured" only (v3).
    */
   failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
+  /**
+   * Run-level compliance warnings that did not block a contact but must be seen
+   * before anything is sent — e.g. email drafts produced without a configured
+   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
+   */
+  complianceWarnings: external_exports.array(external_exports.string()).default([]),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
@@ -70141,6 +70188,7 @@ function resolvePack(id) {
 var b2bSdrPack = {
   id: "b2b-sdr",
   displayName: "B2B SDR",
+  // Pack-specific checks only; the engine-wide suppression gate runs first.
   compliance: noopCompliance,
   // Exactly the files seam.ts loaded before packs existed — keeps output identical.
   prompts: {
@@ -70157,11 +70205,296 @@ function registerBuiltinPacks() {
   registered2 = true;
 }
 
+// pipeline_core/compliance/suppression.ts
+var EMPTY_SUPPRESSION_LIST = Object.freeze({
+  emails: /* @__PURE__ */ new Set(),
+  domains: /* @__PURE__ */ new Set()
+});
+var EMAIL_RE2 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+function normalizeSuppressionDomain(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) throw new Error("domain is empty");
+  let host = input2.trim().toLowerCase();
+  host = host.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
+  host = host.replace(/^[^@/]*@/, "");
+  host = host.split(/[/?#]/)[0] ?? "";
+  host = host.replace(/:\d+$/, "").replace(/\.$/, "");
+  const labels = host.split(".");
+  if (labels[0] === "www" && labels.length > 2) labels.shift();
+  const tld = labels[labels.length - 1] ?? "";
+  if (labels.length < 2 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
+    throw new Error(`${JSON.stringify(input2)} is not a valid domain`);
+  }
+  return labels.join(".");
+}
+function normalizeSuppressionEmail(input2) {
+  if (typeof input2 !== "string") throw new Error("email must be a string");
+  const e = input2.trim().toLowerCase();
+  if (!EMAIL_RE2.test(e)) throw new Error(`${JSON.stringify(input2)} is not a valid email`);
+  const at = e.lastIndexOf("@");
+  return `${e.slice(0, at)}@${normalizeSuppressionDomain(e.slice(at + 1))}`;
+}
+function parseSuppressionValue(input2) {
+  const raw = typeof input2 === "string" ? input2.trim() : "";
+  return raw.includes("@") ? { kind: "email", value: normalizeSuppressionEmail(raw) } : { kind: "domain", value: normalizeSuppressionDomain(raw) };
+}
+function buildSuppressionList(entries) {
+  const emails = /* @__PURE__ */ new Set();
+  const domains = /* @__PURE__ */ new Set();
+  for (const e of entries) {
+    if (e.kind === "email") emails.add(normalizeSuppressionEmail(e.value));
+    else if (e.kind === "domain") domains.add(normalizeSuppressionDomain(e.value));
+    else throw new Error(`unknown suppression kind ${JSON.stringify(e.kind)}`);
+  }
+  return { emails, domains };
+}
+function domainSuppressed(list, domain2) {
+  const labels = domain2.split(".");
+  for (let i = 0; i <= labels.length - 2; i++) {
+    if (list.domains.has(labels.slice(i).join("."))) return true;
+  }
+  return false;
+}
+function checkSuppression(list, subject) {
+  if (list.emails.size === 0 && list.domains.size === 0) return { status: "clean" };
+  if (subject.email !== void 0) {
+    let email3;
+    try {
+      email3 = normalizeSuppressionEmail(subject.email);
+    } catch {
+      return { status: "blocked", reason: "suppression:malformed-email" };
+    }
+    if (list.emails.has(email3)) return { status: "blocked", reason: "suppressed:email" };
+    if (domainSuppressed(list, email3.slice(email3.lastIndexOf("@") + 1))) {
+      return { status: "blocked", reason: "suppressed:domain" };
+    }
+  }
+  for (const d of subject.domains) {
+    let domain2;
+    try {
+      domain2 = normalizeSuppressionDomain(d);
+    } catch {
+      return { status: "blocked", reason: "suppression:malformed-domain" };
+    }
+    if (domainSuppressed(list, domain2)) return { status: "blocked", reason: "suppressed:domain" };
+  }
+  return { status: "clean" };
+}
+function suppressionGate(list) {
+  return {
+    check: (ctx) => checkSuppression(list, {
+      ...ctx.contact.email !== void 0 ? { email: ctx.contact.email } : {},
+      domains: [ctx.lead.domain, ctx.contact.leadDomain]
+    })
+  };
+}
+function composeGates(...gates) {
+  return {
+    check(ctx) {
+      for (const gate2 of gates) {
+        const verdict = gate2.check(ctx);
+        if (!verdict || verdict.status !== "clean") return verdict;
+      }
+      return { status: "clean" };
+    }
+  };
+}
+
+// pipeline_core/suppressions.ts
+import { constants, mkdir, open as open2, readFile, rename, stat, unlink } from "node:fs/promises";
+import { dirname as dirname2, join as join3 } from "node:path";
+function defaultSuppressionsPath() {
+  return join3(intentOutreachHome(), "suppressions.jsonl");
+}
+function parseEntry(raw, line, path) {
+  const fail = (why) => {
+    throw new Error(`suppressions: line ${line} of ${path} is invalid (${why}); fix or remove it`);
+  };
+  if (!raw || typeof raw !== "object") return fail("not an object");
+  const o = raw;
+  if (o.kind !== "email" && o.kind !== "domain") return fail("kind must be email|domain");
+  if (typeof o.value !== "string") return fail("value must be a string");
+  let value;
+  try {
+    value = o.kind === "email" ? normalizeSuppressionEmail(o.value) : normalizeSuppressionDomain(o.value);
+  } catch (err) {
+    return fail(err instanceof Error ? err.message : "unparseable value");
+  }
+  const addedAt = typeof o.addedAt === "string" ? o.addedAt : fail("addedAt must be a string");
+  return {
+    kind: o.kind,
+    value,
+    addedAt,
+    ...typeof o.reason === "string" && o.reason ? { reason: o.reason } : {}
+  };
+}
+async function readSuppressions(path = defaultSuppressionsPath()) {
+  let text2;
+  try {
+    text2 = await readFile(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+  const out = [];
+  const lines = text2.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (raw === void 0 || !raw.trim()) continue;
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error(`suppressions: line ${i + 1} of ${path} is not valid JSON; fix or remove it`);
+    }
+    out.push(parseEntry(parsed, i + 1, path));
+  }
+  return out;
+}
+async function loadSuppressionList(path = defaultSuppressionsPath()) {
+  return buildSuppressionList(await readSuppressions(path));
+}
+var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+async function withLock(path, fn, timeoutMs = 1e4, staleMs = 3e4) {
+  const lockPath = `${path}.lock`;
+  const deadline = Date.now() + timeoutMs;
+  let lock;
+  let delay3 = 5;
+  while (!lock) {
+    try {
+      lock = await open2(lockPath, "wx", 384);
+    } catch (err) {
+      if (err.code !== "EEXIST") throw err;
+      try {
+        if (Date.now() - (await stat(lockPath)).mtimeMs > staleMs) {
+          await unlink(lockPath).catch(() => void 0);
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      if (Date.now() >= deadline) throw new Error(`suppressions: timed out waiting for lock ${lockPath}`);
+      await sleep2(delay3);
+      delay3 = Math.min(delay3 * 2, 200);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await lock.close().catch(() => void 0);
+    await unlink(lockPath).catch(() => void 0);
+  }
+}
+async function writeAll(path, entries) {
+  await mkdir(dirname2(path), { recursive: true, mode: 448 });
+  const tmp = `${path}.${process.pid}.tmp`;
+  const fh = await open2(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC, 384);
+  try {
+    await fh.chmod(384);
+    await fh.write(entries.map((e) => JSON.stringify(e)).join("\n") + (entries.length ? "\n" : ""));
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await rename(tmp, path);
+}
+async function addSuppression(input2, opts = {}) {
+  const path = opts.path ?? defaultSuppressionsPath();
+  const { kind, value } = parseSuppressionValue(input2);
+  return withLockAt(path, async () => {
+    const entries = await readSuppressions(path);
+    const existing = entries.find((e) => e.kind === kind && e.value === value);
+    if (existing) return { entry: existing, added: false };
+    const entry = {
+      kind,
+      value,
+      addedAt: (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))(),
+      ...opts.reason?.trim() ? { reason: opts.reason.trim() } : {}
+    };
+    await writeAll(path, [...entries, entry]);
+    return { entry, added: true };
+  });
+}
+async function removeSuppression(input2, opts = {}) {
+  const path = opts.path ?? defaultSuppressionsPath();
+  const { kind, value } = parseSuppressionValue(input2);
+  return withLockAt(path, async () => {
+    const entries = await readSuppressions(path);
+    const kept = entries.filter((e) => !(e.kind === kind && e.value === value));
+    if (kept.length === entries.length) return false;
+    await writeAll(path, kept);
+    return true;
+  });
+}
+async function withLockAt(path, fn) {
+  await mkdir(dirname2(path), { recursive: true, mode: 448 });
+  return withLock(path, fn);
+}
+
+// pipeline_core/footer.ts
+var DEFAULT_OPT_OUT_TEXT = `Not the right person or not interested? Reply "unsubscribe" and I won't contact you again.`;
+var FOOTER_DELIMITER = "-- ";
+var nonBlank = external_exports.string().trim().min(1);
+var SenderIdentitySchema = external_exports.object({
+  /** The human the message is from, e.g. "Jeremy Longshore". */
+  name: nonBlank,
+  /** The sending company, e.g. "intentsolutions.io LLC". */
+  company: nonBlank,
+  /** A valid physical postal address (street or registered PO box). May be multi-line. */
+  postalAddress: nonBlank,
+  /** Optional reply-to address shown in the footer. */
+  replyToEmail: external_exports.string().trim().email().optional(),
+  /** Opt-out sentence. Defaults to DEFAULT_OPT_OUT_TEXT. */
+  optOutText: nonBlank.optional(),
+  /** Append the opt-out sentence to LinkedIn drafts too (no postal footer). Default false. */
+  optOutOnLinkedin: external_exports.boolean().optional()
+});
+var isBlank = (v) => typeof v !== "string" || v.trim() === "";
+function missingSenderFields(sender) {
+  const missing = [];
+  if (isBlank(sender?.name)) missing.push("name");
+  if (isBlank(sender?.company)) missing.push("company");
+  if (isBlank(sender?.postalAddress)) missing.push("postalAddress");
+  return missing;
+}
+var oneLine = (s) => s.replace(/\s*[\r\n]+\s*/g, " ").trim();
+function optOutOf(sender) {
+  return isBlank(sender?.optOutText) ? DEFAULT_OPT_OUT_TEXT : oneLine(sender.optOutText);
+}
+function emailFooter(sender) {
+  const address = sender.postalAddress.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join("\n");
+  return [
+    FOOTER_DELIMITER,
+    `${oneLine(sender.name)}, ${oneLine(sender.company)}`,
+    address,
+    ...sender.replyToEmail ? [`Reply-To: ${sender.replyToEmail.trim()}`] : [],
+    optOutOf(sender)
+  ].join("\n");
+}
+function appendBlock(body, block) {
+  const trimmed = body.replace(/\s+$/, "");
+  if (trimmed.endsWith(block)) return body;
+  return `${trimmed}
+
+${block}`;
+}
+function applyComplianceFooter(message, sender) {
+  if (message.channel === "linkedin") {
+    const body = sender?.optOutOnLinkedin === true ? appendBlock(message.body, optOutOf(sender)) : message.body;
+    return { ...message, body, needsSenderIdentity: false };
+  }
+  if (!sender || missingSenderFields(sender).length > 0) {
+    return { ...message, needsSenderIdentity: true };
+  }
+  return { ...message, body: appendBlock(message.body, emailFooter(sender)), needsSenderIdentity: false };
+}
+
 // pipeline_core/pipeline.ts
 var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
-var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
-var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+var LABEL_RE2 = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+var TLD_RE2 = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
 function normalizeDomain2(input2) {
   if (typeof input2 !== "string" || !input2.trim()) {
     throw new Error(`invalid domain ${JSON.stringify(input2)}: empty`);
@@ -70178,7 +70511,7 @@ function normalizeDomain2(input2) {
   const labels = host.split(".");
   if (labels[0] === "www" && labels.length > 2) labels.shift();
   const tld = labels[labels.length - 1] ?? "";
-  if (labels.length < 2 || labels.join(".").length > 253 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
+  if (labels.length < 2 || labels.join(".").length > 253 || !labels.every((l) => LABEL_RE2.test(l)) || !TLD_RE2.test(tld)) {
     throw new Error(`invalid domain ${JSON.stringify(input2)}: not a valid hostname`);
   }
   return labels.join(".");
@@ -70279,6 +70612,11 @@ function recordConnectorFailure(connector, phase, err, raw, failed) {
 function isPushOnly(name29) {
   return getConnector(name29)?.pushOnly === true;
 }
+function recordItemFailures(connector, phase, failures, failed) {
+  for (const f of failures ?? []) {
+    failed.push({ name: connector.name, phase, status: f.status ?? f.reason });
+  }
+}
 async function runResearch(domain2, icp, opts = {}) {
   registerBuiltinConnectors();
   const target = normalizeDomain2(domain2);
@@ -70301,6 +70639,7 @@ async function runResearch(domain2, icp, opts = {}) {
       contacts.push(...out.contacts);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      recordItemFailures(connector, "research", out.failures, failedConnectors);
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
@@ -70368,6 +70707,7 @@ async function runEnrich(lead, contacts, opts = {}) {
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
@@ -70381,21 +70721,35 @@ function sanitizeErrorMessage(err) {
   const redacted = msg.replace(/([?&](?:api[_-]?key|key|token|access_token|secret|password)=)[^&\s"']+/gi, "$1[redacted]").replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/g, "Bearer [redacted]").replace(/\b(sk|xai|gsk|pk)-[A-Za-z0-9_-]{8,}/g, "$1-[redacted]");
   return redacted.length > MAX_ERROR_MESSAGE ? `${redacted.slice(0, MAX_ERROR_MESSAGE)}\u2026` : redacted;
 }
+function cacheOf(u) {
+  const pos = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0;
+  const cacheReadTokens = pos(u.cacheReadTokens);
+  const cacheWriteTokens = pos(u.cacheWriteTokens);
+  return {
+    ...cacheReadTokens ? { cacheReadTokens } : {},
+    ...cacheWriteTokens ? { cacheWriteTokens } : {}
+  };
+}
 function usageFromError(err) {
   const u = err?.usage;
   if (!u || typeof u !== "object") return void 0;
   const num = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0;
   const inputTokens = num(u.inputTokens) || num(u.promptTokens);
   const outputTokens = num(u.outputTokens) || num(u.completionTokens);
-  return inputTokens || outputTokens ? { inputTokens, outputTokens } : void 0;
+  const details = u.inputTokenDetails ?? {};
+  const cache2 = cacheOf({
+    cacheReadTokens: num(u.cacheReadTokens) || num(details.cacheReadTokens),
+    cacheWriteTokens: num(u.cacheWriteTokens) || num(details.cacheWriteTokens)
+  });
+  return inputTokens || outputTokens ? { inputTokens, outputTokens, cache: cache2 } : void 0;
 }
 function finishReasonFromError(err) {
   const r = err?.finishReason;
   return typeof r === "string" && r ? r : void 0;
 }
-async function evaluateGate(pack, ctx) {
+async function evaluateGate(gate2, ctx) {
   try {
-    const verdict = await pack.compliance.check(ctx);
+    const verdict = await gate2.check(ctx);
     if (verdict && verdict.status === "clean") return { clean: true };
     const reason = verdict && typeof verdict.reason === "string" && verdict.reason ? verdict.reason : "non-clean-verdict";
     return { clean: false, reason };
@@ -70432,9 +70786,11 @@ async function runCampaign(input2) {
   const minScore = input2.minScore ?? 0;
   const maxContacts = input2.maxContactsPerLead ?? 1;
   const connectorOpts = input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {};
+  const suppressions = input2.suppressions ?? await loadSuppressionList();
   const provider = input2.provider ?? await getProvider();
   registerBuiltinPacks();
   const pack = resolvePack(input2.pack);
+  const gate2 = composeGates(suppressionGate(suppressions), pack.compliance);
   const promptVersion = pack.prompts.draft.replace(/\.md$/i, "");
   const meter = new CostMeter();
   const createdAt = now2();
@@ -70448,9 +70804,11 @@ async function runCampaign(input2) {
   const failedConnectors = [];
   const skipped = /* @__PURE__ */ new Set();
   let anyResearchRan = false;
+  let draftsMissingSender = 0;
+  const recordUsage = (u) => meter.record(provider.model, u.inputTokens, u.outputTokens, cacheOf(u));
   const recordError = (err, where) => {
     const usage = usageFromError(err);
-    if (usage) meter.record(provider.model, usage.inputTokens, usage.outputTokens);
+    if (usage) meter.record(provider.model, usage.inputTokens, usage.outputTokens, usage.cache);
     const finishReason = finishReasonFromError(err);
     errors.push({ ...where, message: sanitizeErrorMessage(err), ...finishReason ? { finishReason } : {} });
   };
@@ -70481,12 +70839,12 @@ async function runCampaign(input2) {
         recordError(err, { domain: lead.domain, stage: "score" });
         continue;
       }
-      meter.record(provider.model, scored.usage.inputTokens, scored.usage.outputTokens);
+      recordUsage(scored.usage);
       if (scored.object.fitScore < minScore) continue;
       const eligible = [];
       for (const contact of contacts) {
         const contactKey = contactKeyOf(contact);
-        const outcome = await evaluateGate(pack, {
+        const outcome = await evaluateGate(gate2, {
           lead,
           contact,
           now: new Date(now2()),
@@ -70518,7 +70876,7 @@ async function runCampaign(input2) {
           recordError(err, { domain: lead.domain, contactKey, stage: "draft" });
           continue;
         }
-        meter.record(provider.model, drafted.usage.inputTokens, drafted.usage.outputTokens);
+        recordUsage(drafted.usage);
         const candidate = {
           contactKey,
           channel,
@@ -70532,7 +70890,16 @@ async function runCampaign(input2) {
         };
         const validated = validateMessage(candidate);
         if (validated.ok) {
-          messages.push(validated.value);
+          const footed = validateMessage(applyComplianceFooter(validated.value, input2.sender));
+          if (footed.ok) {
+            if (footed.value.needsSenderIdentity) draftsMissingSender += 1;
+            messages.push(footed.value);
+          } else {
+            rejectedDrafts.push({
+              contactKey,
+              issues: footed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+            });
+          }
         } else {
           rejectedDrafts.push({
             contactKey,
@@ -70541,6 +70908,13 @@ async function runCampaign(input2) {
         }
       }
     }
+  }
+  const complianceWarnings = [];
+  if (draftsMissingSender > 0) {
+    const missing = missingSenderFields(input2.sender).join(", ");
+    complianceWarnings.push(
+      `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured (missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`
+    );
   }
   const status = deriveRunStatus({
     messages: messages.length,
@@ -70568,6 +70942,7 @@ async function runCampaign(input2) {
     errors,
     rejectedDrafts,
     failedConnectors,
+    complianceWarnings,
     createdAt,
     finishedAt: now2()
   });
@@ -70575,8 +70950,8 @@ async function runCampaign(input2) {
 }
 
 // pipeline_core/store.ts
-import { constants, mkdir, open as open2, readFile, stat, unlink } from "node:fs/promises";
-import { dirname as dirname2, join as join3 } from "node:path";
+import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { dirname as dirname3, join as join4 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
     super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
@@ -70594,10 +70969,10 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
-  return join3(intentOutreachHome(), "runs.jsonl");
+  return join4(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
-var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
 var JsonlRunStore = class {
   constructor(path = defaultStorePath(), opts = {}) {
     this.path = path;
@@ -70612,7 +70987,7 @@ var JsonlRunStore = class {
   async saveRun(run, opts = {}) {
     const checked = assertCampaignRun(run);
     const line = JSON.stringify(checked) + "\n";
-    await mkdir(dirname2(this.path), { recursive: true, mode: 448 });
+    await mkdir2(dirname3(this.path), { recursive: true, mode: 448 });
     await this.withLock(async () => {
       if (!opts.overwrite) {
         const { runs } = await this.scan();
@@ -70639,9 +71014,9 @@ var JsonlRunStore = class {
   // ── write path ──────────────────────────────────────────────────────────────
   /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
   async append(line) {
-    const fh = await open2(
+    const fh = await open3(
       this.path,
-      constants.O_RDWR | constants.O_APPEND | constants.O_CREAT,
+      constants2.O_RDWR | constants2.O_APPEND | constants2.O_CREAT,
       384
     );
     try {
@@ -70673,20 +71048,20 @@ var JsonlRunStore = class {
     let lock;
     while (!lock) {
       try {
-        lock = await open2(lockPath, "wx", 384);
+        lock = await open3(lockPath, "wx", 384);
       } catch (err) {
         if (err.code !== "EEXIST") throw err;
         try {
-          const st = await stat(lockPath);
+          const st = await stat2(lockPath);
           if (Date.now() - st.mtimeMs > this.staleLockMs) {
-            await unlink(lockPath).catch(() => void 0);
+            await unlink2(lockPath).catch(() => void 0);
             continue;
           }
         } catch {
           continue;
         }
         if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
-        await sleep2(delay3 + Math.floor(Math.random() * delay3));
+        await sleep3(delay3 + Math.floor(Math.random() * delay3));
         delay3 = Math.min(delay3 * 2, 200);
       }
     }
@@ -70696,14 +71071,14 @@ var JsonlRunStore = class {
       return await fn();
     } finally {
       await lock.close().catch(() => void 0);
-      await unlink(lockPath).catch(() => void 0);
+      await unlink2(lockPath).catch(() => void 0);
     }
   }
   // ── read path ───────────────────────────────────────────────────────────────
   async scan() {
     let text2;
     try {
-      text2 = await readFile(this.path, "utf8");
+      text2 = await readFile2(this.path, "utf8");
     } catch (err) {
       if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
@@ -70763,6 +71138,9 @@ function printHelp() {
       "  intent-outreach run --icp <text> --domains <a.com,b.com> [options]",
       "  intent-outreach connectors          list connectors + whether each is configured",
       "  intent-outreach providers           list model providers + gate status",
+      "  intent-outreach suppress add <email|domain> [--reason <text>]",
+      "  intent-outreach suppress remove <email|domain>",
+      "  intent-outreach suppress list       opt-outs honored by every run",
       "  intent-outreach help",
       "",
       "run options:",
@@ -70856,6 +71234,44 @@ async function cmdRun(args) {
     );
   }
 }
+var SUPPRESS_USAGE = "usage: intent-outreach suppress add <email|domain> [--reason <text>] | remove <email|domain> | list\n";
+async function cmdSuppress(args) {
+  const { values, positionals } = parseArgs({
+    args,
+    options: { reason: { type: "string" } },
+    allowPositionals: true
+  });
+  const [action, target, ...extra] = positionals;
+  const path = defaultSuppressionsPath();
+  if (action === "list" && target === void 0) {
+    const entries = await readSuppressions(path);
+    if (entries.length === 0) process.stdout.write(`no suppressions (${path})
+`);
+    for (const e of entries) {
+      process.stdout.write(
+        `${e.kind.padEnd(7)} ${e.value.padEnd(40)} ${e.addedAt}${e.reason ? `  ${e.reason}` : ""}
+`
+      );
+    }
+    return;
+  }
+  if ((action === "add" || action === "remove") && target && extra.length === 0) {
+    if (action === "add") {
+      const { entry, added } = await addSuppression(target, values.reason ? { reason: values.reason } : {});
+      process.stdout.write(
+        `${added ? "suppressed" : "already suppressed"}: ${entry.kind} ${entry.value} \u2192 ${path}
+`
+      );
+    } else {
+      const removed = await removeSuppression(target);
+      process.stdout.write(`${removed ? "removed" : "not on the list"}: ${target} (${path})
+`);
+    }
+    return;
+  }
+  process.stderr.write(SUPPRESS_USAGE);
+  process.exit(2);
+}
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   switch (cmd) {
@@ -70865,6 +71281,8 @@ async function main() {
       return cmdConnectors();
     case "providers":
       return void cmdProviders();
+    case "suppress":
+      return cmdSuppress(rest);
     case "help":
     case "--help":
     case "-h":

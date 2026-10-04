@@ -75,10 +75,20 @@ export type RenderResult =
 
 // ── Slack formatter ─────────────────────────────────────────────────────────
 
+/**
+ * Escape run data for Slack mrkdwn. Slack treats `<…>` as control sequences
+ * (`<!channel>`, `<@U123>`, `<https://evil|looks-safe>`), so every interpolated
+ * value — model output, connector data, user ICP — must have &, <, > encoded
+ * (Slack's documented escaping; & first so entities aren't double-decoded).
+ */
+export function escapeSlack(value: unknown): string {
+  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function toSlack(run: Validated<CampaignRun>): SlackMessage {
   const text = [
-    `*Intent Outreach — ${run.id}*`,
-    `ICP: ${run.icp} · Status: ${run.status}`,
+    `*Intent Outreach — ${escapeSlack(run.id)}*`,
+    `ICP: ${escapeSlack(run.icp)} · Status: ${escapeSlack(run.status)}`,
     `Leads: ${run.leads.length} · Contacts: ${run.contacts.length} · Messages drafted: ${run.messages.length}`,
     run.costUsd !== undefined ? `Cost: $${run.costUsd.toFixed(6)}` : "",
   ]
@@ -99,7 +109,8 @@ function toSlack(run: Validated<CampaignRun>): SlackMessage {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*First draft → ${preview.contactKey}*\n${preview.body.slice(0, 200)}${preview.body.length > 200 ? "…" : ""}`,
+          // Truncate BEFORE escaping so an entity is never cut in half.
+          text: `*First draft → ${escapeSlack(preview.contactKey)}*\n${escapeSlack(preview.body.slice(0, 200))}${preview.body.length > 200 ? "…" : ""}`,
         },
       });
     }

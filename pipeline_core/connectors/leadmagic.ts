@@ -70,7 +70,7 @@ export const leadmagicConnector: Connector = {
     return hasSecret(KEY_ENV);
   },
 
-  async enrich({ lead, contacts }: EnrichInput): Promise<EnrichOutput> {
+  async enrich({ lead, contacts, signal }: EnrichInput): Promise<EnrichOutput> {
     const now = new Date().toISOString();
     const { results, failures } = await forEachContact<Enrichment>(
       contacts,
@@ -80,6 +80,7 @@ export const leadmagicConnector: Connector = {
         const res = parseVendor(
           EmailFinderSchema,
           await httpJson(`${BASE}/email-finder`, {
+            signal,
             method: "POST",
             headers: headers(),
             json: { first_name: first, last_name: last, domain: lead.domain },
@@ -92,6 +93,7 @@ export const leadmagicConnector: Connector = {
           subjectKey: email,
           provider: "leadmagic",
           verifiedEmail: email,
+          contactName: c.name,
           data: pickAllowed(res as Record<string, unknown>, LEADMAGIC_ALLOW),
           fetchedAt: now,
         };

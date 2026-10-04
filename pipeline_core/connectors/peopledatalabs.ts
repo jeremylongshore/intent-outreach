@@ -117,7 +117,7 @@ export const peopledatalabsConnector: Connector = {
     return hasSecret(KEY_ENV);
   },
 
-  async research({ domain }: ResearchInput): Promise<ResearchOutput> {
+  async research({ domain, signal }: ResearchInput): Promise<ResearchOutput> {
     const failures: ConnectorItemFailure[] = [];
 
     // 1) Company enrichment by website domain. A 404/422 (PDL has no company
@@ -126,6 +126,7 @@ export const peopledatalabsConnector: Connector = {
     let co: z.infer<typeof PdlCompanySchema> = {};
     try {
       companyRaw = await httpJson(`${BASE}/company/enrich`, {
+        signal,
         query: { website: domain },
         headers: headers(),
       });
@@ -153,6 +154,7 @@ export const peopledatalabsConnector: Connector = {
       const personRes = parseVendor(
         PdlPersonSearchSchema,
         await httpJson(`${BASE}/person/search`, {
+          signal,
           method: "POST",
           headers: headers(),
           json: {
@@ -188,7 +190,7 @@ export const peopledatalabsConnector: Connector = {
     };
   },
 
-  async enrich({ contacts }: EnrichInput): Promise<EnrichOutput> {
+  async enrich({ contacts, signal }: EnrichInput): Promise<EnrichOutput> {
     const now = new Date().toISOString();
     // PDL person/enrich is email-keyed, so the contact's name doesn't gate it.
     const { results, failures } = await forEachContact<Enrichment>(
@@ -198,7 +200,7 @@ export const peopledatalabsConnector: Connector = {
         const email = contact.email!;
         const res = parseVendor(
           PdlPersonEnrichSchema,
-          await httpJson(`${BASE}/person/enrich`, { query: { email }, headers: headers() }),
+          await httpJson(`${BASE}/person/enrich`, { query: { email }, headers: headers(), signal }),
         );
         const p: PdlPerson = res.data ?? res;
         const verified = workEmail(p) ?? email;
@@ -207,6 +209,7 @@ export const peopledatalabsConnector: Connector = {
           subjectKey: email,
           provider: "peopledatalabs",
           verifiedEmail: verified.includes("@") ? verified : undefined,
+          contactName: contact.name,
           data: pickAllowed(p as Record<string, unknown>, PDL_PERSON_ALLOW),
           fetchedAt: now,
         };

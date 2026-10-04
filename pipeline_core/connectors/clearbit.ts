@@ -63,8 +63,9 @@ async function tryFetch<S extends z.ZodType>(
   schema: S,
   url: string,
   query: Record<string, string>,
+  signal?: AbortSignal,
 ): Promise<z.infer<S> | null> {
-  const body = await httpJson<unknown>(url, { method: "GET", headers: headers(), query });
+  const body = await httpJson<unknown>(url, { method: "GET", headers: headers(), query, signal });
   if (isClearbitPending(body)) return null;
   return parseVendor(schema, body);
 }
@@ -81,7 +82,7 @@ export const clearbitConnector: Connector = {
     return hasSecret(KEY_ENV);
   },
 
-  async enrich({ lead, contacts }: EnrichInput): Promise<EnrichOutput> {
+  async enrich({ lead, contacts, signal }: EnrichInput): Promise<EnrichOutput> {
     const now = new Date().toISOString();
 
     // Person lookups are email-keyed (name irrelevant); per-item isolation.
@@ -91,7 +92,7 @@ export const clearbitConnector: Connector = {
       async (contact) => {
         const person = await tryFetch(ClearbitPersonSchema, `${PERSON_BASE}/people/find`, {
           email: contact.email!,
-        });
+        }, signal);
         if (!person) return null;
         return {
           subjectType: "contact",
@@ -114,7 +115,7 @@ export const clearbitConnector: Connector = {
       try {
         const company = await tryFetch(ClearbitCompanySchema, `${COMPANY_BASE}/companies/find`, {
           domain: lead.domain,
-        });
+        }, signal);
         if (company) {
           enrichments.push({
             subjectType: "lead",

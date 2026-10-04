@@ -18,6 +18,12 @@ import {
   listProviderStatus,
   type ProviderName,
 } from "./pipeline_core/providers.js";
+import {
+  addSuppression,
+  defaultSuppressionsPath,
+  readSuppressions,
+  removeSuppression,
+} from "./pipeline_core/suppressions.js";
 
 function makeRunId(): string {
   return `run-${new Date().toISOString().replace(/[:.]/g, "-")}`;
@@ -32,6 +38,9 @@ function printHelp(): void {
       "  intent-outreach run --icp <text> --domains <a.com,b.com> [options]",
       "  intent-outreach connectors          list connectors + whether each is configured",
       "  intent-outreach providers           list model providers + gate status",
+      "  intent-outreach suppress add <email|domain> [--reason <text>]",
+      "  intent-outreach suppress remove <email|domain>",
+      "  intent-outreach suppress list       opt-outs honored by every run",
       "  intent-outreach help",
       "",
       "run options:",
@@ -139,6 +148,44 @@ async function cmdRun(args: string[]): Promise<void> {
   }
 }
 
+const SUPPRESS_USAGE =
+  "usage: intent-outreach suppress add <email|domain> [--reason <text>] | remove <email|domain> | list\n";
+
+/** `suppress add|remove|list` — manage the local opt-out list (suppressions.jsonl, mode 0600). */
+async function cmdSuppress(args: string[]): Promise<void> {
+  const { values, positionals } = parseArgs({
+    args,
+    options: { reason: { type: "string" } },
+    allowPositionals: true,
+  });
+  const [action, target, ...extra] = positionals;
+  const path = defaultSuppressionsPath();
+  if (action === "list" && target === undefined) {
+    const entries = await readSuppressions(path);
+    if (entries.length === 0) process.stdout.write(`no suppressions (${path})\n`);
+    for (const e of entries) {
+      process.stdout.write(
+        `${e.kind.padEnd(7)} ${e.value.padEnd(40)} ${e.addedAt}${e.reason ? `  ${e.reason}` : ""}\n`,
+      );
+    }
+    return;
+  }
+  if ((action === "add" || action === "remove") && target && extra.length === 0) {
+    if (action === "add") {
+      const { entry, added } = await addSuppression(target, values.reason ? { reason: values.reason } : {});
+      process.stdout.write(
+        `${added ? "suppressed" : "already suppressed"}: ${entry.kind} ${entry.value} → ${path}\n`,
+      );
+    } else {
+      const removed = await removeSuppression(target);
+      process.stdout.write(`${removed ? "removed" : "not on the list"}: ${target} (${path})\n`);
+    }
+    return;
+  }
+  process.stderr.write(SUPPRESS_USAGE);
+  process.exit(2);
+}
+
 async function main(): Promise<void> {
   const [cmd, ...rest] = process.argv.slice(2);
   switch (cmd) {
@@ -148,6 +195,8 @@ async function main(): Promise<void> {
       return cmdConnectors();
     case "providers":
       return void cmdProviders();
+    case "suppress":
+      return cmdSuppress(rest);
     case "help":
     case "--help":
     case "-h":
