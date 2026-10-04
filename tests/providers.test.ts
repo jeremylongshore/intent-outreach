@@ -19,9 +19,11 @@ import {
   detectProvider,
   getProvider,
   listProviderStatus,
+  SUPPORTED_PROVIDERS,
   supportsEffort,
   type ProviderName,
 } from "../pipeline_core/providers.js";
+import { APPROVED_MODELS } from "../evals/supported.js";
 
 // All provider key env-vars that might bleed between tests.
 const PROVIDER_KEYS = [
@@ -240,6 +242,12 @@ describe("listProviderStatus()", () => {
     const statuses = listProviderStatus();
     const supported = statuses.filter((s) => s.supported).map((s) => s.name);
     expect(supported.sort()).toEqual(["anthropic", "openai"]);
+  });
+
+  it("SUPPORTED_PROVIDERS is derived from evals/supported.ts (a provider with ≥1 approved pair)", () => {
+    const fromList = [...new Set(APPROVED_MODELS.map((e) => e.provider))].sort();
+    expect([...SUPPORTED_PROVIDERS].sort()).toEqual(fromList);
+    expect(SUPPORTED_PROVIDERS.has("xai")).toBe(false);
   });
 
   it("reports configured=false for all providers when no keys set", () => {

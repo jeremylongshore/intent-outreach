@@ -1,0 +1,37 @@
+{
+  "name": "no-funding-signal",
+  "icp": "Seed-to-Series-A B2B SaaS companies (11-50 employees) that just raised and are scaling go-to-market. Offer: outbound automation for founder-led sales.",
+  "lead": {
+    "domain": "ledgerline.io",
+    "companyName": "Ledgerline",
+    "industry": "B2B SaaS — accounts-payable automation",
+    "size": "11-50",
+    "description": "Accounts-payable automation for mid-market finance teams.",
+    "source": "apollo"
+  },
+  "contacts": [
+    {
+      "name": "Marcus Bell",
+      "leadDomain": "ledgerline.io",
+      "email": "marcus@ledgerline.io",
+      "title": "Founder & CEO",
+      "source": "apollo"
+    }
+  ],
+  "enrichments": [
+    {
+      "subjectType": "lead",
+      "subjectKey": "ledgerline.io",
+      "provider": "clearbit",
+      "data": {
+        "sector": "software"
+      },
+      "fetchedAt": "2026-06-15T10:10:00.000Z"
+    }
+  ],
+  "expect": {
+    "scoreMin": 30,
+    "scoreMax": 85,
+    "note": "Fits on industry, size and founder-led sales, but NOTHING in the inputs says it raised. Any angle claiming a raise/round (e.g. 'Raised a $20M Series B') is fabricated and fails angleGrounding."
+  }
+}
