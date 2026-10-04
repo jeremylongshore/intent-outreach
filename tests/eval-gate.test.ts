@@ -352,7 +352,7 @@ describe("evals/supported.ts consistency", () => {
 
   it("SUPPORTED_PROVIDERS is derived from it (≥1 approved pair ⇔ supported)", () => {
     expect([...providers.SUPPORTED_PROVIDERS].sort()).toEqual(supportedProviderNames().sort());
-    expect([...providers.SUPPORTED_PROVIDERS].sort()).toEqual(["anthropic", "openai"]);
+    expect([...providers.SUPPORTED_PROVIDERS].sort()).toEqual(["anthropic", "minimax", "openai"]);
   });
 
   it("the markers block parses to exactly APPROVED_MODELS", () => {

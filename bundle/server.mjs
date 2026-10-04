@@ -38786,6 +38786,13 @@ var APPROVED_MODELS = (
       "resultFile": null,
       "verified": false,
       "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M3",
+      "resultFile": "evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json",
+      "verified": true,
+      "evidence": "keyed eval gate passed: repeat 3, 9/9 fixtures in all runs (evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json)"
     }
   ]
 );

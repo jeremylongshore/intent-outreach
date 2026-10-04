@@ -19,7 +19,7 @@
  *                          end; it does NOT measure model quality (the stub is
  *                          grounded by construction) and never writes a record.
  *
- * Providers: anthropic, openai, xai. The harness is the qualifier, so it may run
+ * Providers: anthropic, openai, minimax, xai. The harness is the qualifier, so it may run
  * a provider/model that has not passed the gate yet (getProviderUnchecked);
  * product code cannot. Approval lives in evals/supported.ts (see evals/promote.ts).
  *

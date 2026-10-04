@@ -7,7 +7,7 @@
  * (pipeline_core/providers.ts SUPPORTED_PROVIDERS) iff it has ≥1 entry here.
  *
  * Fields:
- *   provider    — "anthropic" | "openai" | "xai".
+ *   provider    — "anthropic" | "openai" | "xai" | "minimax".
  *   model       — exact model id the record was produced with.
  *   resultFile  — path (repo-relative) of the passing result record, or null.
  *   verified    — true ONLY when resultFile exists and its verdict is "pass".
@@ -49,6 +49,13 @@ export const APPROVED_MODELS: readonly ApprovedModel[] =
     "resultFile": null,
     "verified": false,
     "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
+  },
+  {
+    "provider": "minimax",
+    "model": "MiniMax-M3",
+    "resultFile": "evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json",
+    "verified": true,
+    "evidence": "keyed eval gate passed: repeat 3, 9/9 fixtures in all runs (evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json)"
   }
 ]
 // END APPROVED_MODELS

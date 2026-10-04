@@ -33,6 +33,7 @@ const PROVIDER_KEYS = [
   "GEMINI_API_KEY",
   "GOOGLE_GENERATIVE_AI_API_KEY",
   "XAI_API_KEY",
+  "MINIMAX_API_KEY",
 ];
 const GATE_VAR = "INTENT_OUTREACH_ALLOW_UNGATED";
 
@@ -235,13 +236,13 @@ describe("listProviderStatus()", () => {
     expect(names).toContain("openai");
     expect(names).toContain("xai");
     expect(names).not.toContain("google");
-    expect(names).toEqual(["anthropic", "openai", "xai"]);
+    expect(names).toEqual(["anthropic", "openai", "xai", "minimax"]);
   });
 
-  it("marks exactly the gated-in providers as supported: anthropic + openai", () => {
+  it("marks exactly the gated-in providers as supported: anthropic + openai + minimax", () => {
     const statuses = listProviderStatus();
     const supported = statuses.filter((s) => s.supported).map((s) => s.name);
-    expect(supported.sort()).toEqual(["anthropic", "openai"]);
+    expect(supported.sort()).toEqual(["anthropic", "minimax", "openai"]);
   });
 
   it("SUPPORTED_PROVIDERS is derived from evals/supported.ts (a provider with ≥1 approved pair)", () => {
