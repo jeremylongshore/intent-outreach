@@ -444,14 +444,17 @@ describe("getProvider().generateObject forwards bounds to the AI SDK", () => {
     expect(lastCall().maxOutputTokens).toBe(2000);
   });
 
-  it("schema mismatch surfaces as an error that carries usage + finishReason", async () => {
+  it("schema mismatch is retried once, then surfaces an error carrying both attempts' usage + finishReason", async () => {
     mockState.text = JSON.stringify({ nope: true });
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     const p = await getProvider({ provider: "anthropic", model: "claude-sonnet-4-6" });
     const err = (await seam
       .scoreLead(p, { icp: "x", lead, contacts: [], enrichments: [] })
-      .catch((e: unknown) => e)) as { usage?: { inputTokens?: number }; finishReason?: string };
+      .catch((e: unknown) => e)) as { usage?: { inputTokens?: number }; finishReason?: string; retries?: number };
+    stderr.mockRestore();
     expect(err).toBeInstanceOf(Error);
-    expect(err.usage?.inputTokens).toBe(100);
+    expect(err.usage?.inputTokens).toBe(200); // 100 per attempt, both metered
+    expect(err.retries).toBe(1);
     expect(err.finishReason).toBe("stop");
   });
 });
