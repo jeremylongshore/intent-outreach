@@ -9,15 +9,21 @@
  * call registerPack(...), or call registerPack() at runtime from your own code.
  */
 
-import { registerPack, _clearPackRegistry } from "./registry.js";
+import { getPack, registerPack, _clearPackRegistry } from "./registry.js";
 import { b2bSdrPack } from "./b2b-sdr.js";
 
 let registered = false;
 
-/** Idempotently register all shipped packs. */
+/**
+ * Idempotently register all shipped packs. An id the user already registered
+ * (e.g. their own "b2b-sdr" override, wired before the first run) is never
+ * overwritten — the built-in only fills ids nobody claimed.
+ */
 export function registerBuiltinPacks(): void {
   if (registered) return;
-  registerPack(b2bSdrPack);
+  for (const pack of [b2bSdrPack]) {
+    if (getPack(pack.id) === undefined) registerPack(pack);
+  }
   registered = true;
 }
 

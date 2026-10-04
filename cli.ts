@@ -6,10 +6,15 @@
  * Same pipeline_core as the plugin/MCP surface — this is just a thin entrypoint.
  * Local-only: writes runs to your own JSONL store; no network beyond the
  * provider/connector APIs you opted into with your keys.
+ *
+ * Exit codes: 0 ok · 1 runtime failure · 2 usage error (bad/missing flags).
  */
 
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { runCampaign } from "./pipeline_core/pipeline.js";
+import { loadProfileRef, normalizeDomain, runCampaign } from "./pipeline_core/pipeline.js";
+import { applyProfileToCampaignInput } from "./pipeline_core/profiles.js";
 import { JsonlRunStore, defaultStorePath } from "./pipeline_core/store.js";
 import { getConnectors, registerBuiltinConnectors } from "./pipeline_core/connectors/index.js";
 import {
@@ -25,11 +30,78 @@ import {
   removeSuppression,
 } from "./pipeline_core/suppressions.js";
 
+/** A bad or missing flag: printed to stderr, exit code 2. */
+export class UsageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UsageError";
+  }
+}
+
+/** Upper bound for --max-contacts (a runaway value would burn LLM spend per lead). */
+export const MAX_CONTACTS_LIMIT = 50;
+
 function makeRunId(): string {
   return `run-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 }
 
-function printHelp(): void {
+/** Parse a numeric flag strictly: the whole string must be a finite number in [min, max]. */
+export function parseNumberFlag(
+  flag: string,
+  raw: string,
+  { min, max, integer = false }: { min: number; max: number; integer?: boolean },
+): number {
+  const trimmed = raw.trim();
+  const n = trimmed === "" ? Number.NaN : Number(trimmed);
+  if (!Number.isFinite(n)) throw new UsageError(`${flag} must be a number, got ${JSON.stringify(raw)}`);
+  if (integer && !Number.isInteger(n)) throw new UsageError(`${flag} must be a whole number, got ${JSON.stringify(raw)}`);
+  if (n < min || n > max) throw new UsageError(`${flag} must be between ${min} and ${max}, got ${n}`);
+  return n;
+}
+
+/** Split, normalize and dedupe --domains; any invalid entry is a usage error. */
+export function parseDomainsFlag(raw: string): string[] {
+  const parts = raw
+    .split(",")
+    .map((d) => d.trim())
+    .filter(Boolean);
+  if (parts.length === 0) throw new UsageError("--domains is empty");
+  const out: string[] = [];
+  for (const part of parts) {
+    let domain: string;
+    try {
+      domain = normalizeDomain(part);
+    } catch (err) {
+      throw new UsageError(`--domains: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    if (!out.includes(domain)) out.push(domain);
+  }
+  return out;
+}
+
+export function parseChannelFlag(raw: string): "email" | "linkedin" {
+  if (raw === "email" || raw === "linkedin") return raw;
+  throw new UsageError(`--channel must be "email" or "linkedin", got ${JSON.stringify(raw)}`);
+}
+
+/**
+ * Exit quietly when stdout's reader goes away (`intent-outreach connectors | head -1`):
+ * EPIPE is a normal end of a pipeline, not a crash. Any other stream error is rethrown.
+ */
+export function installEpipeHandler(
+  stream: NodeJS.EventEmitter = process.stdout,
+  exit: (code: number) => void = (code) => process.exit(code),
+): void {
+  stream.on("error", (err: NodeJS.ErrnoException) => {
+    if (err?.code === "EPIPE") {
+      exit(0);
+      return;
+    }
+    throw err;
+  });
+}
+
+export function printHelp(): void {
   process.stdout.write(
     [
       "intent-outreach — model-agnostic SDR orchestrator (local, BYO keys)",
@@ -46,11 +118,14 @@ function printHelp(): void {
       "run options:",
       "  --icp <text>            (required) ideal customer profile / offer",
       "  --domains <list>        (required) comma-separated company domains",
-      "  --provider <name>       anthropic | openai | google | xai (default: auto-detect)",
+      "  --profile <path|name>   Report Profile (sender identity for the CAN-SPAM footer, tone,",
+      "                          channel, min score); a name is looked up in ./profiles,",
+      "                          $INTENT_OUTREACH_HOME/profiles, then the bundled profiles",
+      "  --provider <name>       anthropic | openai | xai (default: auto-detect)",
       "  --model <id>            override the model id",
-      "  --channel <email|linkedin>   default: email",
+      "  --channel <email|linkedin>   default: email (or the profile's)",
       "  --min-score <0-100>     skip drafting below this fit score (default: 0)",
-      "  --max-contacts <n>      contacts to draft per lead (default: 1)",
+      `  --max-contacts <1-${MAX_CONTACTS_LIMIT}>   contacts to draft per lead (default: 1)`,
       "  --out <path>            JSONL store path (default: " + defaultStorePath() + ")",
       "  --json                  print the full run as JSON",
       "",
@@ -72,41 +147,73 @@ async function cmdConnectors(): Promise<void> {
 }
 
 function cmdProviders(): void {
-  for (const p of listProviderStatus()) {
+  const statuses = listProviderStatus();
+  for (const p of statuses) {
     const mark = p.configured ? "✓" : "·";
     const gate = p.supported ? "supported" : "ungated (run evals)";
     process.stdout.write(
       `${mark} ${p.name.padEnd(10)} ${gate.padEnd(20)} default=${p.defaultModel.padEnd(20)} keys=${p.keyEnvVars.join("|")}\n`,
     );
   }
-  process.stdout.write(`\nauto-detected provider: ${detectProvider()}\n`);
+  // detectProvider() falls back to "anthropic" with no keys at all — don't claim
+  // a provider was detected when none is configured.
+  const detected = statuses.some((p) => p.configured) ? detectProvider() : "none configured";
+  process.stdout.write(`\nauto-detected provider: ${detected}\n`);
 }
 
 async function cmdRun(args: string[]): Promise<void> {
-  const { values } = parseArgs({
-    args,
-    options: {
-      icp: { type: "string" },
-      domains: { type: "string" },
-      provider: { type: "string" },
-      model: { type: "string" },
-      channel: { type: "string" },
-      "min-score": { type: "string" },
-      "max-contacts": { type: "string" },
-      out: { type: "string" },
-      json: { type: "boolean" },
-    },
-    allowPositionals: false,
-  });
-
-  if (!values.icp || !values.domains) {
-    process.stderr.write("error: --icp and --domains are required\n\n");
-    printHelp();
-    process.exit(2);
+  let values;
+  try {
+    ({ values } = parseArgs({
+      args,
+      options: {
+        icp: { type: "string" },
+        domains: { type: "string" },
+        profile: { type: "string" },
+        provider: { type: "string" },
+        model: { type: "string" },
+        channel: { type: "string" },
+        "min-score": { type: "string" },
+        "max-contacts": { type: "string" },
+        out: { type: "string" },
+        json: { type: "boolean" },
+      },
+      allowPositionals: false,
+    }));
+  } catch (err) {
+    throw new UsageError(err instanceof Error ? err.message : String(err));
   }
 
-  const domains = values.domains.split(",").map((d) => d.trim()).filter(Boolean);
-  const channel = values.channel === "linkedin" ? "linkedin" : "email";
+  if (!values.icp || !values.domains) throw new UsageError("--icp and --domains are required");
+
+  // Validate every flag BEFORE spending anything (provider, connectors).
+  const domains = parseDomainsFlag(values.domains);
+  const minScore =
+    values["min-score"] !== undefined
+      ? parseNumberFlag("--min-score", values["min-score"], { min: 0, max: 100 })
+      : undefined;
+  const maxContacts =
+    values["max-contacts"] !== undefined
+      ? parseNumberFlag("--max-contacts", values["max-contacts"], { min: 1, max: MAX_CONTACTS_LIMIT, integer: true })
+      : undefined;
+  const channel = values.channel !== undefined ? parseChannelFlag(values.channel) : undefined;
+
+  const id = makeRunId();
+  let profileOverrides = {};
+  if (values.profile !== undefined) {
+    let profile;
+    try {
+      profile = loadProfileRef(values.profile);
+    } catch (err) {
+      throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    // Profile supplies defaults; explicit flags below win.
+    profileOverrides = Object.fromEntries(
+      Object.entries(applyProfileToCampaignInput(profile, { id, icp: values.icp, domains })).filter(
+        ([, v]) => v !== undefined,
+      ),
+    );
+  }
 
   // Resolve an explicit provider only when overridden; else core auto-detects from env.
   const provider =
@@ -118,13 +225,14 @@ async function cmdRun(args: string[]): Promise<void> {
       : undefined;
 
   const { run, cost } = await runCampaign({
-    id: makeRunId(),
+    id,
     icp: values.icp,
     domains,
-    channel,
+    ...profileOverrides,
+    ...(channel !== undefined ? { channel } : {}),
     ...(provider ? { provider } : {}),
-    ...(values["min-score"] ? { minScore: Number(values["min-score"]) } : {}),
-    ...(values["max-contacts"] ? { maxContactsPerLead: Number(values["max-contacts"]) } : {}),
+    ...(minScore !== undefined ? { minScore } : {}),
+    ...(maxContacts !== undefined ? { maxContactsPerLead: maxContacts } : {}),
   });
 
   const store = new JsonlRunStore(values.out);
@@ -138,7 +246,10 @@ async function cmdRun(args: string[]): Promise<void> {
         `run ${run.id} — ${run.status}`,
         `provider: ${run.provider} (${run.model})`,
         `leads: ${run.leads.length}  contacts: ${run.contacts.length}  messages: ${run.messages.length}`,
+        run.blockedContacts.length ? `blocked contacts: ${run.blockedContacts.length}` : "",
+        run.rejectedDrafts.length ? `rejected drafts: ${run.rejectedDrafts.length}` : "",
         run.skippedConnectors.length ? `skipped connectors: ${run.skippedConnectors.join(", ")}` : "",
+        ...run.complianceWarnings.map((w) => `WARNING: ${w}`),
         `cost: $${cost.spentUsd.toFixed(4)} over ${cost.calls} model calls`,
         `saved → ${values.out ?? defaultStorePath()}`,
       ]
@@ -149,15 +260,17 @@ async function cmdRun(args: string[]): Promise<void> {
 }
 
 const SUPPRESS_USAGE =
-  "usage: intent-outreach suppress add <email|domain> [--reason <text>] | remove <email|domain> | list\n";
+  "usage: intent-outreach suppress add <email|domain> [--reason <text>] | remove <email|domain> | list";
 
 /** `suppress add|remove|list` — manage the local opt-out list (suppressions.jsonl, mode 0600). */
 async function cmdSuppress(args: string[]): Promise<void> {
-  const { values, positionals } = parseArgs({
-    args,
-    options: { reason: { type: "string" } },
-    allowPositionals: true,
-  });
+  let parsed;
+  try {
+    parsed = parseArgs({ args, options: { reason: { type: "string" } }, allowPositionals: true });
+  } catch {
+    throw new UsageError(SUPPRESS_USAGE);
+  }
+  const { values, positionals } = parsed;
   const [action, target, ...extra] = positionals;
   const path = defaultSuppressionsPath();
   if (action === "list" && target === undefined) {
@@ -182,12 +295,11 @@ async function cmdSuppress(args: string[]): Promise<void> {
     }
     return;
   }
-  process.stderr.write(SUPPRESS_USAGE);
-  process.exit(2);
+  throw new UsageError(SUPPRESS_USAGE);
 }
 
-async function main(): Promise<void> {
-  const [cmd, ...rest] = process.argv.slice(2);
+export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+  const [cmd, ...rest] = argv;
   switch (cmd) {
     case "run":
       return cmdRun(rest);
@@ -203,13 +315,30 @@ async function main(): Promise<void> {
     case undefined:
       return void printHelp();
     default:
-      process.stderr.write(`unknown command: ${cmd}\n\n`);
-      printHelp();
-      process.exit(2);
+      throw new UsageError(`unknown command: ${cmd}`);
   }
 }
 
-main().catch((err) => {
-  process.stderr.write(`intent-outreach: ${err instanceof Error ? err.message : String(err)}\n`);
-  process.exit(1);
-});
+/** True when this module is the process entrypoint (node bundle/cli.mjs, the npm bin symlink, tsx cli.ts). */
+function isEntrypoint(): boolean {
+  const argv1 = process.argv[1];
+  if (!argv1) return false;
+  try {
+    return realpathSync(argv1) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isEntrypoint()) {
+  installEpipeHandler();
+  main().catch((err) => {
+    if (err instanceof UsageError) {
+      process.stderr.write(`error: ${err.message}\n\n`);
+      if (!err.message.startsWith("usage:")) process.stderr.write("run `intent-outreach help` for usage\n");
+      process.exit(2);
+    }
+    process.stderr.write(`intent-outreach: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+  });
+}

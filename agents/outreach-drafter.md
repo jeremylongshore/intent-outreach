@@ -51,7 +51,9 @@ available.
 
 - **fitScore** + **fitReason**
 - **angles[]**
-- **messages[]** — `{ contactKey, channel, subject?, body, cta }` (the orchestrator stamps `model`,
-  `promptVersion`, `createdAt` and runs them through `save_run`'s validator)
+- **messages[]** — `{ contactKey, channel, subject?, body, cta }` (the orchestrator passes them to
+  `save_run`, which stamps `createdAt`, re-runs compliance and the draft guard, appends the CAN-SPAM
+  footer, and validates them; never add a footer, url, email, or phone number yourself unless it
+  appears in the supplied data)
 
 If you skipped drafting (off-ICP), return the score + reason and an empty messages list.

@@ -5,7 +5,9 @@ description: >-
   Use when a user wants a grounded lead/contact discovery pass before a campaign. Trigger with
   "/outreach-research", "research these domains", or "find contacts for these companies".
 allowed-tools:
+  - mcp__plugin_intent-outreach_intent-outreach__list_connectors
   - mcp__intent-outreach__list_connectors
+  - mcp__plugin_intent-outreach_intent-outreach__research_domain
   - mcp__intent-outreach__research_domain
 version: 0.2.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>

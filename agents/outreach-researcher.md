@@ -2,7 +2,9 @@
 name: outreach-researcher
 description: Intent Outreach Phase-1 worker. Researches ONE company domain against an ICP via the deterministic research_domain MCP tool and returns its leads + contacts as structured data. Dispatched by the intent-outreach orchestrator (one per domain, so domains fan out in parallel). Does not enrich, score, draft, or save. Use as the research stage of a campaign.
 tools:
+  - mcp__plugin_intent-outreach_intent-outreach__list_connectors
   - mcp__intent-outreach__list_connectors
+  - mcp__plugin_intent-outreach_intent-outreach__research_domain
   - mcp__intent-outreach__research_domain
 model: inherit
 color: cyan
@@ -29,7 +31,7 @@ one from context and state it in your result.
 ## Rules
 
 - **Determinism lives in the tool, not in you.** Call
-  `mcp__intent-outreach__research_domain(domain, icp)` — it runs the
+  `research_domain(domain, icp)` — it runs the
   configured connectors in fixed registration order. You never choose which provider API to call or
   re-order them.
 - **Report only what the tool returns.** Never invent companies, people, titles, or emails. Empty
@@ -39,9 +41,9 @@ one from context and state it in your result.
 
 ## Procedure
 
-1. (Optional) call `mcp__intent-outreach__list_connectors` — if nothing is configured, return
+1. (Optional) call `list_connectors` — if nothing is configured, return
    immediately and name the relevant environment variables without requesting their values.
-2. Call `mcp__intent-outreach__research_domain(domain, icp)`.
+2. Call `research_domain(domain, icp)`.
 3. Return the aggregated **leads** and **contacts** for this domain.
 
 ## Output (return to the orchestrator)
