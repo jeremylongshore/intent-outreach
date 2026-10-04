@@ -1,5 +1,7 @@
 # PipelinePilot: Current Project Status & Go-Live Roadmap
 
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
 **Last Updated:** 2025-10-31T23:59:00Z
 **Project:** PipelinePilot ADK-based SDR Orchestration System
 **Repository:** https://github.com/jeremylongshore/pipelinepilot

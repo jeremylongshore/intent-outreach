@@ -102,17 +102,17 @@ Successfully migrated PipelinePilot from YAML-based agent configurations to Pyth
 
 **Location:** `000-docs/`
 
-1. **`adr/ADR-0001-adopt-vertex-adk.md`** - Architectural Decision Record
+1. **`archive/ADR-0001-adopt-vertex-adk.md`** - Architectural Decision Record
    - Decision: Use Vertex AI Agent Engine + Python ADK
    - Rationale: Managed platform, type safety, Google Cloud native
    - Migration mapping: YAML → Python ADK
 
-2. **`reports/adk_migration_audit.md`** - Migration Audit
+2. **`archive/adk_migration_audit.md`** - Migration Audit
    - Pre/post-migration state
    - Forbidden patterns scan results
    - Validation results (ADK Guard + ARV Gate)
 
-3. **`reports/adk_migration_AAR.md`** - This document
+3. **`archive/adk_migration_AAR.md`** - This document
    - What was built
    - Deployment instructions
    - Next steps
@@ -182,9 +182,9 @@ Successfully migrated PipelinePilot from YAML-based agent configurations to Pyth
    - ✅ Runs black + ruff
 
 3. **Create Documentation** ✅
-   - ✅ ADR: `000-docs/adr/ADR-0001-adopt-vertex-adk.md`
-   - ✅ Audit: `000-docs/reports/adk_migration_audit.md`
-   - ✅ AAR: `000-docs/reports/adk_migration_AAR.md` (this file)
+   - ✅ ADR: `000-docs/archive/ADR-0001-adopt-vertex-adk.md`
+   - ✅ Audit: `000-docs/archive/adk_migration_audit.md`
+   - ✅ AAR: `000-docs/archive/adk_migration_AAR.md` (this file)
 
 ---
 

@@ -285,9 +285,9 @@ research_agent_config = {
 
 ## Related Documentation
 
-- **Technical Report:** `000-docs/004-DR-TECH-google-agent-frameworks-comparison.md`
-- **Migration Audit:** `000-docs/reports/adk_migration_audit.md`
-- **Migration AAR:** `000-docs/reports/adk_migration_AAR.md`
+- **Technical Report:** `000-docs/026-DR-TECH-google-agent-frameworks-comparison.md`
+- **Migration Audit:** `000-docs/archive/adk_migration_audit.md`
+- **Migration AAR:** `000-docs/archive/adk_migration_AAR.md`
 - **Google ADK Docs:** https://cloud.google.com/vertex-ai/docs/generative-ai/agent-builder/adk
 - **Vertex AI Agent Engine:** https://cloud.google.com/vertex-ai/docs/generative-ai/reasoning-engine
 

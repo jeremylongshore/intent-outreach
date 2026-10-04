@@ -1,6 +1,8 @@
 # System Architecture: PipelinePilot
 
-**Document ID:** 002-AT-ARCH-system-architecture
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
+**Document ID:** 025-AT-ARCH-system-architecture
 **Created:** 2025-10-31
 **Status:** Draft v0.2
 
@@ -384,7 +386,7 @@ Client → POST /exports/{tenant}/generate
 ## Appendix
 
 - **API Reference:** [003-DR-APIM-api-reference.md](./003-DR-APIM-api-reference.md)
-- **Deployment Guide:** [006-OD-CICD-deployment-guide.md](./006-OD-CICD-deployment-guide.md)
+- **Deployment Guide:** [028-OD-CICD-deployment-guide.md](./028-OD-CICD-deployment-guide.md)
 - **JSON Schemas:** [004-DR-SCHM-json-schemas.md](./004-DR-SCHM-json-schemas.md)
 
 ---

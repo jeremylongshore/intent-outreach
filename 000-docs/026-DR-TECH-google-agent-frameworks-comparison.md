@@ -1,6 +1,8 @@
 # Google Cloud Agent Frameworks: Technical Comparison & Educational Guide
 
-**Document ID:** 004-DR-TECH-google-agent-frameworks-comparison
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
+**Document ID:** 026-DR-TECH-google-agent-frameworks-comparison
 **Date:** 2025-11-01
 **Status:** Educational Reference
 **Category:** Technical Documentation

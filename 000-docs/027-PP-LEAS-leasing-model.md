@@ -1,6 +1,8 @@
 # Leasing Model: PipelinePilot
 
-**Document ID:** 007-PP-LEAS-leasing-model
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
+**Document ID:** 027-PP-LEAS-leasing-model
 **Created:** 2025-10-31
 **Status:** Draft v0.2
 
@@ -317,7 +319,7 @@ PATCH /tenants/:id
 
 - **Lease Contract Schema:** [004-DR-SCHM-json-schemas.md](./004-DR-SCHM-json-schemas.md)
 - **Billing API:** [003-DR-APIM-api-reference.md](./003-DR-APIM-api-reference.md)
-- **PRD:** [001-PP-PROD-pipelinepilot-prd.md](./001-PP-PROD-pipelinepilot-prd.md)
+- **PRD:** [024-PP-PROD-pipelinepilot-prd.md](./024-PP-PROD-pipelinepilot-prd.md)
 
 ---
 
