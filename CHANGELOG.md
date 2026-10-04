@@ -6,6 +6,18 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- **MiniMax-M3 provider** (`--provider minimax`, `MINIMAX_API_KEY`). It runs over MiniMax's
+  OpenAI-compatible endpoint through the optional `@ai-sdk/openai-compatible`. M3 ignores
+  `json_schema`, so the adapter uses JSON mode, and a provider-local middleware
+  (`pipeline_core/minimax.ts`) puts the schema in the prompt, strips `<think>` blocks and fences,
+  coerces `""` to `[]` for array fields and raises the output-token floor. Qualified by a keyed
+  eval run (repeat 3, 9/9 fixtures, 27/27 runs,
+  `evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json`). Auto-detect order is
+  now anthropic, openai, minimax, xai, and Anthropic stays the default. Costs are metered at
+  MiniMax's published $0.30/$1.20 per MTok (#67).
+
 ## [0.3.0] - 2026-10-04
 
 Hardening release after the October 2026 six-lens audit (epic #51; plan and review in

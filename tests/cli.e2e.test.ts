@@ -35,7 +35,7 @@ describe("shipped CLI", () => {
   it("providers lists the providers and an auto-detected one", () => {
     const r = cli("providers");
     expect(r.code).toBe(0);
-    for (const p of ["anthropic", "openai", "xai"]) expect(r.out).toContain(p);
+    for (const p of ["anthropic", "openai", "xai", "minimax"]) expect(r.out).toContain(p);
     expect(r.out).toContain("auto-detected provider:");
   });
 

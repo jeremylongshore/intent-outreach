@@ -126,7 +126,7 @@ if (invokedDirectly) {
   const provider = arg(argv, "--provider") as ProviderName | undefined;
   const model = arg(argv, "--model");
   if (!provider || !model) {
-    console.error("usage: npm run evals:promote -- --provider <anthropic|openai|xai> --model <id> [--repeat 3] [--judge]");
+    console.error("usage: npm run evals:promote -- --provider <anthropic|openai|minimax|xai> --model <id> [--repeat 3] [--judge]");
     process.exit(2);
   }
   const repeatRaw = arg(argv, "--repeat");

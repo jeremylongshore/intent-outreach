@@ -57,6 +57,7 @@
   },
   "optionalDependencies": {
     "@ai-sdk/openai": "^4.0.75",
+    "@ai-sdk/openai-compatible": "^3.0.62",
     "@ai-sdk/xai": "^4.0.59"
   },
   "engines": {

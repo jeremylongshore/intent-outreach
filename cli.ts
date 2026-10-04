@@ -121,7 +121,7 @@ export function printHelp(): void {
       "  --profile <path|name>   Report Profile (sender identity for the CAN-SPAM footer, tone,",
       "                          channel, min score); a name is looked up in ./profiles,",
       "                          $INTENT_OUTREACH_HOME/profiles, then the bundled profiles",
-      "  --provider <name>       anthropic | openai | xai (default: auto-detect)",
+      "  --provider <name>       anthropic | openai | minimax | xai (default: auto-detect)",
       "  --model <id>            override the model id",
       "  --channel <email|linkedin>   default: email (or the profile's)",
       "  --min-score <0-100>     skip drafting below this fit score (default: 0)",
