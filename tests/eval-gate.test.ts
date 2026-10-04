@@ -314,6 +314,33 @@ describe("--judge", () => {
     expect(JSON.parse(readFileSync(p.recordPath!, "utf8")).judge.pass).toBe(false);
   });
 
+  it("judges each fixture against its own judgeMin (thin/weak 3, strong 4)", async () => {
+    // "Generic but not false" (3) on the thin and weak-fit leads, 4 on strong-fit.
+    const thinOrWeak = (p: string) => p.includes("Quiet Labs") || p.includes("Harbor Freight Coffee Roasters");
+    mock.respond = (c) =>
+      c.kind === "judge"
+        ? { grounded: true, hasCta: true, hallucinatedFacts: [], rating: thinOrWeak(c.prompt) ? 3 : 4, rationale: "ok" }
+        : goodModel(c);
+    const p = (await keyed({ repeat: 1, judge: true })).providers[0]!;
+    expect(p.judge?.meanRating).toBe(3.5); // below the old global floor of 4…
+    expect(p.judge?.perFixture.every((f) => f.pass)).toBe(true); // …but every fixture meets its own minimum
+    expect(p.judge?.pass).toBe(true);
+    expect(p.supported).toBe(true);
+    expect(p.judge?.perFixture.find((f) => f.fixture.includes("thin-data"))?.min).toBe(3);
+  });
+
+  it("fails when a strong-fit fixture drops to generic, even if the mean looks fine", async () => {
+    mock.respond = (c) =>
+      c.kind === "judge"
+        ? { grounded: true, hasCta: true, hallucinatedFacts: [], rating: c.prompt.includes("linkedin") ? 3 : 5, rationale: "ok" }
+        : goodModel(c);
+    const p = (await keyed({ repeat: 1, judge: true })).providers[0]!;
+    const linkedin = p.judge?.perFixture.find((f) => f.fixture.includes("strong-fit-linkedin"));
+    expect(linkedin).toMatchObject({ min: 4, meanRating: 3, pass: false });
+    expect(p.judge?.pass).toBe(false);
+    expect(p.supported).toBe(false);
+  });
+
   it("passes at the floor, and cannot run offline", async () => {
     const r = await keyed({ repeat: 1, judge: true, judgeFloor: 4 });
     expect(r.providers[0]!.judge?.meanRating).toBe(5);

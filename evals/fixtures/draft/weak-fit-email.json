@@ -16,5 +16,6 @@
     "source": "clearbit"
   },
   "angles": [],
-  "channel": "email"
+  "channel": "email",
+  "judgeMin": 3
 }

@@ -81,6 +81,13 @@ export interface ScoreFixture extends ScoreContext {
 }
 export interface DraftFixture extends DraftContext {
   name: string;
+  /**
+   * Minimum mean judge rating (1-5) for this fixture's drafts. A fixture with a
+   * thin or weak-fit lead has nothing specific to personalise with, so its honest
+   * ceiling is "generic but not false" (3); strong-fit fixtures expect 4. Falls
+   * back to --judge-floor / DEFAULT_JUDGE_FLOOR when unset.
+   */
+  judgeMin?: number;
 }
 
 export function loadFixtures<T>(kind: "score" | "draft", fixturesDir = FIXTURES_DIR): T[] {
@@ -163,8 +170,11 @@ export interface FixtureResult {
 }
 
 export interface JudgeSummary {
+  /** Default minimum for fixtures without their own judgeMin. */
   floor: number;
   meanRating: number;
+  /** Per-fixture verdicts: the gate passes only if every judged fixture meets its own minimum. */
+  perFixture: { fixture: string; min: number; meanRating: number; pass: boolean }[];
   ratings: { fixture: string; run: number; rating: number; grounded: boolean; hallucinatedFacts: string[] }[];
   errors: string[];
   pass: boolean;
@@ -353,7 +363,12 @@ async function evalOneProvider(name: ProviderName, opts: RunEvalsOptions): Promi
     fixtures.push(aggregate(fx.name, "draft", runs));
   }
 
-  const judge = opts.judge ? await runJudge(provider, judged, opts.judgeFloor ?? DEFAULT_JUDGE_FLOOR) : null;
+  const judgeMins = new Map(
+    draftFixtures.flatMap((fx) => (typeof fx.judgeMin === "number" ? [[fx.name, fx.judgeMin] as const] : [])),
+  );
+  const judge = opts.judge
+    ? await runJudge(provider, judged, opts.judgeFloor ?? DEFAULT_JUDGE_FLOOR, judgeMins)
+    : null;
 
   const allRuns = fixtures.flatMap((f) => f.runs);
   const fixturesPass = fixtures.length > 0 && fixtures.every((f) => f.pass);
@@ -383,6 +398,7 @@ async function runJudge(
   provider: LLMProvider,
   drafts: { fixture: string; run: number; ctx: DraftContext; output: DraftOutput }[],
   floor: number,
+  mins: ReadonlyMap<string, number> = new Map(),
 ): Promise<JudgeSummary> {
   const ratings: JudgeSummary["ratings"] = [];
   const errors: string[] = [];
@@ -406,10 +422,17 @@ async function runJudge(
       errors.push(`${d.fixture}#${d.run}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  const meanRating = ratings.length === 0 ? 0 : ratings.reduce((a, r) => a + r.rating, 0) / ratings.length;
-  // Fail closed: a judge error or an empty judgment is not a pass.
-  const pass = errors.length === 0 && ratings.length > 0 && meanRating >= floor;
-  return { floor, meanRating, ratings, errors, pass, costUsd };
+  const mean = (xs: number[]) => (xs.length === 0 ? 0 : xs.reduce((a, x) => a + x, 0) / xs.length);
+  const meanRating = mean(ratings.map((r) => r.rating));
+  const perFixture = [...new Set(ratings.map((r) => r.fixture))].map((fixture) => {
+    const min = mins.get(fixture) ?? floor;
+    const m = mean(ratings.filter((r) => r.fixture === fixture).map((r) => r.rating));
+    return { fixture, min, meanRating: m, pass: m >= min };
+  });
+  // Fail closed: a judge error or an empty judgment is not a pass; every judged
+  // fixture must meet its own minimum.
+  const pass = errors.length === 0 && ratings.length > 0 && perFixture.every((f) => f.pass);
+  return { floor, meanRating, perFixture, ratings, errors, pass, costUsd };
 }
 
 // ─────────────────────────────── result records ──────────────────────────────
@@ -562,8 +585,11 @@ export function formatReport(result: EvalRunResult): string {
     }
     if (p.judge) {
       lines.push(
-        `  judge: mean rating ${p.judge.meanRating.toFixed(2)} (floor ${p.judge.floor}) → ${p.judge.pass ? "PASS" : "FAIL"}` +
-          (p.judge.errors.length ? `; ${p.judge.errors.length} judge error(s)` : ""),
+        `  judge: mean rating ${p.judge.meanRating.toFixed(2)} → ${p.judge.pass ? "PASS" : "FAIL"}` +
+          (p.judge.errors.length ? `; ${p.judge.errors.length} judge error(s)` : "") +
+          p.judge.perFixture
+            .map((f) => `\n        ${f.pass ? "✓" : "✗"} ${f.fixture}: ${f.meanRating.toFixed(2)} (min ${f.min})`)
+            .join(""),
       );
     }
     lines.push(`  fixtures passing all runs: ${pct(p.passRate)}  run pass rate: ${pct(p.runPassRate)}`);
