@@ -27,10 +27,20 @@
         "lastRound": "Series A",
         "totalRaisedUsd": 15000000,
         "lastRoundDate": "2026-03-01",
-        "investors": ["Craft Ventures", "Y Combinator"]
+        "investors": [
+          "Craft Ventures",
+          "Y Combinator"
+        ]
       },
-      "data": { "headcountGrowth90d": 0.28 },
+      "data": {
+        "headcountGrowth90d": 0.28
+      },
       "fetchedAt": "2026-06-15T10:00:00.000Z"
     }
-  ]
+  ],
+  "expect": {
+    "scoreMin": 65,
+    "scoreMax": 100,
+    "note": "B2B SaaS, 11-50, fresh Series A, VP Sales contact: squarely in the ICP."
+  }
 }
