@@ -6,7 +6,7 @@ tools:
   - mcp__intent-outreach__enrich_lead
 model: inherit
 color: blue
-version: 0.2.0
+version: 0.3.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 tags:
   - sdr

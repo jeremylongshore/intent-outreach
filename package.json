@@ -1,6 +1,6 @@
 {
   "name": "intent-outreach",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Intent Outreach — a model-agnostic, Claude-Code-native SDR orchestrator (research → enrich → outreach). Local-only, BYO keys, zero Google dependency.",
@@ -24,7 +24,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('prompts','dist/prompts',{recursive:true})\"",
-    "bundle": "esbuild mcp/server.ts --bundle --platform=node --format=esm --outfile=bundle/server.mjs && esbuild cli.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=bundle/cli.mjs",
+    "bundle": "esbuild mcp/server.ts --bundle --platform=node --format=esm --define:__INTENT_OUTREACH_VERSION__=\\\"$npm_package_version\\\" --outfile=bundle/server.mjs && esbuild cli.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=bundle/cli.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

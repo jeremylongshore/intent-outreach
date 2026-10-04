@@ -5,7 +5,7 @@ tools:
   - Read
 model: inherit
 color: green
-version: 0.2.0
+version: 0.3.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 tags:
   - sdr
