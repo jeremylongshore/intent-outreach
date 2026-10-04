@@ -46,7 +46,6 @@
     "vitest": "^5.0.0"
   },
   "optionalDependencies": {
-    "@ai-sdk/google": "^4.0.80",
     "@ai-sdk/openai": "^4.0.75",
     "@ai-sdk/xai": "^4.0.59"
   },
