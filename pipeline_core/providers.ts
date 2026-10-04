@@ -19,6 +19,7 @@
 import {
   extractReasoningMiddleware,
   generateText,
+  NoObjectGeneratedError,
   Output,
   wrapLanguageModel,
   type LanguageModel,
@@ -183,6 +184,19 @@ export function supportsEffort(modelId: string): boolean {
  * total (uncached + cache read + cache write); the cache split is priced
  * separately in costFor. Fields a provider didn't report count as 0.
  */
+/** Sum two attempts' usage (tokens, cost and cache counts). */
+export function addUsage(a: Usage, b: Usage): Usage {
+  const cacheReadTokens = (a.cacheReadTokens ?? 0) + (b.cacheReadTokens ?? 0);
+  const cacheWriteTokens = (a.cacheWriteTokens ?? 0) + (b.cacheWriteTokens ?? 0);
+  return {
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    costUsd: a.costUsd + b.costUsd,
+    ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
+    ...(cacheWriteTokens > 0 ? { cacheWriteTokens } : {}),
+  };
+}
+
 export function usageFrom(model: string, u: LanguageModelUsage): Usage {
   const inputTokens = u.inputTokens ?? 0;
   const outputTokens = u.outputTokens ?? 0;
@@ -265,29 +279,57 @@ async function createProvider(opts: GetProviderOptions, gated: boolean): Promise
         name === "anthropic" && opts.effort && supportsEffort(model)
           ? { anthropic: { effort: opts.effort } }
           : undefined;
-      const res = await generateText({
-        model: languageModel,
-        output: Output.object({ schema: args.schema }),
-        prompt: args.prompt,
-        ...(args.system ? { system: args.system } : {}),
-        ...(opts.maxOutputTokens !== undefined ? { maxOutputTokens: opts.maxOutputTokens } : {}),
-        ...(opts.abortSignal ? { abortSignal: opts.abortSignal } : {}),
-        ...(providerOptions ? { providerOptions } : {}),
-      });
-      const usage = usageFrom(model, res.usage);
-      let object: z.infer<S>;
-      try {
-        object = res.output as z.infer<S>;
-      } catch (err) {
-        // NoOutputGeneratedError (e.g. the token cap hit before any text) carries
-        // neither usage nor finishReason; attach both so the pipeline's error
-        // path still meters the spend and records why.
-        throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
-          usage: res.usage,
-          finishReason: res.finishReason,
+      const attempt = async (): Promise<{ object: z.infer<S>; usage: Usage }> => {
+        const res = await generateText({
+          model: languageModel,
+          output: Output.object({ schema: args.schema }),
+          prompt: args.prompt,
+          ...(args.system ? { system: args.system } : {}),
+          ...(opts.maxOutputTokens !== undefined ? { maxOutputTokens: opts.maxOutputTokens } : {}),
+          ...(opts.abortSignal ? { abortSignal: opts.abortSignal } : {}),
+          ...(providerOptions ? { providerOptions } : {}),
         });
+        const usage = usageFrom(model, res.usage);
+        try {
+          return { object: res.output as z.infer<S>, usage };
+        } catch (err) {
+          // NoOutputGeneratedError (e.g. the token cap hit before any text) carries
+          // neither usage nor finishReason; attach both so the pipeline's error
+          // path still meters the spend and records why.
+          throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
+            usage: res.usage,
+            finishReason: res.finishReason,
+          });
+        }
+      };
+
+      try {
+        return await attempt();
+      } catch (first) {
+        // One retry, only for a response that came back but could not be parsed or
+        // validated against the schema (an intermittent model glitch; ~2.5% of
+        // MiniMax-M3 calls in the 2026-10-04 gate runs). Transport errors, refusals,
+        // aborts and empty/truncated output (NoOutputGeneratedError) are not retried.
+        if (!NoObjectGeneratedError.isInstance(first) || opts.abortSignal?.aborted) throw first;
+        const firstUsage = usageFrom(model, first.usage ?? ({} as LanguageModelUsage));
+        process.stderr.write(
+          `[intent-outreach] ${name}/${model}: unparseable structured response, retrying once (${first.message})\n`,
+        );
+        try {
+          const second = await attempt();
+          return { object: second.object, usage: { ...addUsage(firstUsage, second.usage), retries: 1 } };
+        } catch (err) {
+          // Both attempts failed: surface the second error with the spend of both,
+          // so the pipeline meters everything the user paid for.
+          const e = err as Error & { usage?: LanguageModelUsage };
+          const secondUsage = usageFrom(model, e.usage ?? ({} as LanguageModelUsage));
+          const both = addUsage(firstUsage, secondUsage);
+          throw Object.assign(e instanceof Error ? e : new Error(String(e)), {
+            usage: { inputTokens: both.inputTokens, outputTokens: both.outputTokens, costUsd: both.costUsd },
+            retries: 1,
+          });
+        }
       }
-      return { object, usage };
     },
   };
 }

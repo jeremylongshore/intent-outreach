@@ -16,6 +16,8 @@ export interface Usage {
   cacheReadTokens?: number;
   /** Input tokens written to the prompt cache (subset of inputTokens). */
   cacheWriteTokens?: number;
+  /** Set when the call was retried once after an unparseable structured response; usage covers both attempts. */
+  retries?: number;
 }
 
 /** Cache multipliers relative to the base input price (Anthropic's published ratios). */

@@ -74433,6 +74433,17 @@ function supportsEffort(modelId) {
   const id = modelId.replace(/^.*\//, "").replace(/^(?:anthropic\.|us\.anthropic\.)/, "").replace(/^claude-/, "");
   return /^(?:opus-4-[5-9]|opus-[5-9]|sonnet-4-[6-9]|sonnet-[5-9]|fable|mythos)/.test(id);
 }
+function addUsage(a, b) {
+  const cacheReadTokens = (a.cacheReadTokens ?? 0) + (b.cacheReadTokens ?? 0);
+  const cacheWriteTokens = (a.cacheWriteTokens ?? 0) + (b.cacheWriteTokens ?? 0);
+  return {
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    costUsd: a.costUsd + b.costUsd,
+    ...cacheReadTokens > 0 ? { cacheReadTokens } : {},
+    ...cacheWriteTokens > 0 ? { cacheWriteTokens } : {}
+  };
+}
 function usageFrom(model, u) {
   const inputTokens = u.inputTokens ?? 0;
   const outputTokens = u.outputTokens ?? 0;
@@ -74478,26 +74489,48 @@ async function createProvider(opts, gated) {
     async generateObject(args) {
       const opts2 = args.options ?? {};
       const providerOptions = name31 === "anthropic" && opts2.effort && supportsEffort(model) ? { anthropic: { effort: opts2.effort } } : void 0;
-      const res = await generateText({
-        model: languageModel,
-        output: output_exports.object({ schema: args.schema }),
-        prompt: args.prompt,
-        ...args.system ? { system: args.system } : {},
-        ...opts2.maxOutputTokens !== void 0 ? { maxOutputTokens: opts2.maxOutputTokens } : {},
-        ...opts2.abortSignal ? { abortSignal: opts2.abortSignal } : {},
-        ...providerOptions ? { providerOptions } : {}
-      });
-      const usage = usageFrom(model, res.usage);
-      let object3;
-      try {
-        object3 = res.output;
-      } catch (err) {
-        throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
-          usage: res.usage,
-          finishReason: res.finishReason
+      const attempt = async () => {
+        const res = await generateText({
+          model: languageModel,
+          output: output_exports.object({ schema: args.schema }),
+          prompt: args.prompt,
+          ...args.system ? { system: args.system } : {},
+          ...opts2.maxOutputTokens !== void 0 ? { maxOutputTokens: opts2.maxOutputTokens } : {},
+          ...opts2.abortSignal ? { abortSignal: opts2.abortSignal } : {},
+          ...providerOptions ? { providerOptions } : {}
         });
+        const usage = usageFrom(model, res.usage);
+        try {
+          return { object: res.output, usage };
+        } catch (err) {
+          throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
+            usage: res.usage,
+            finishReason: res.finishReason
+          });
+        }
+      };
+      try {
+        return await attempt();
+      } catch (first) {
+        if (!NoObjectGeneratedError.isInstance(first) || opts2.abortSignal?.aborted) throw first;
+        const firstUsage = usageFrom(model, first.usage ?? {});
+        process.stderr.write(
+          `[intent-outreach] ${name31}/${model}: unparseable structured response, retrying once (${first.message})
+`
+        );
+        try {
+          const second = await attempt();
+          return { object: second.object, usage: { ...addUsage(firstUsage, second.usage), retries: 1 } };
+        } catch (err) {
+          const e = err;
+          const secondUsage = usageFrom(model, e.usage ?? {});
+          const both = addUsage(firstUsage, secondUsage);
+          throw Object.assign(e instanceof Error ? e : new Error(String(e)), {
+            usage: { inputTokens: both.inputTokens, outputTokens: both.outputTokens, costUsd: both.costUsd },
+            retries: 1
+          });
+        }
       }
-      return { object: object3, usage };
     }
   };
 }
