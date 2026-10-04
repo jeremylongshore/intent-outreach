@@ -8,6 +8,15 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **The drafter declines leads that clearly sit outside the ICP.** Draft output gains `decline` and
+  `declineReason`. A decline is never sent: it is recorded in `run.rejectedDrafts` as
+  `"declined: <reason>"` and metered. Prompt `outreach.v3.md` adds the rule (thin data is not a reason
+  to decline) and the b2b-sdr pack uses it; the plugin's drafter agent and orchestrator skill record
+  declines the same way through `save_run`. The eval gate treats a decline as correct on out-of-ICP
+  fixtures (`expectDecline`) and as a failure (a false decline) everywhere else.
+- **Per-fixture judge minimums** (`judgeMin`) and **one logged retry on an unparseable structured
+  response** for every provider, with both attempts metered (#71).
+
 - **MiniMax-M3 provider** (`--provider minimax`, `MINIMAX_API_KEY`). It runs over MiniMax's
   OpenAI-compatible endpoint through the optional `@ai-sdk/openai-compatible`. M3 ignores
   `json_schema`, so the adapter uses JSON mode, and a provider-local middleware

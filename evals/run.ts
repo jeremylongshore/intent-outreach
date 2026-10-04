@@ -39,6 +39,7 @@ import {
   DEFAULT_SCORE_PROMPTS,
   DraftRejectedError,
   draftMessage,
+  isDecline,
   scoreLead,
   type DraftContext,
   type DraftOutput,
@@ -88,6 +89,13 @@ export interface DraftFixture extends DraftContext {
    * back to --judge-floor / DEFAULT_JUDGE_FLOOR when unset.
    */
   judgeMin?: number;
+  /**
+   * The lead clearly sits outside the ICP, so declining is the right answer: a
+   * decline passes the run. If the model drafts anyway, the draft must still pass
+   * every scorer and the judge minimum. Fixtures without this flag treat a decline
+   * as a failure (a false decline on a lead worth contacting).
+   */
+  expectDecline?: boolean;
 }
 
 export function loadFixtures<T>(kind: "score" | "draft", fixturesDir = FIXTURES_DIR): T[] {
@@ -124,6 +132,8 @@ function makeStubProvider(name: ProviderName): StubProvider {
       fitScore: 50,
       fitReason: "Stub score (offline wiring check; not a judgment).",
       angles: ctx ? ctx.angles.slice(0, 3) : [],
+      decline: false,
+      declineReason: null,
       subject: channel === "email" ? `An idea for ${lead}` : null,
       body,
       cta: "Open to a 15-minute call next week?",
@@ -356,7 +366,24 @@ async function evalOneProvider(name: ProviderName, opts: RunEvalsOptions): Promi
         });
         judged.push({ fixture: fx.name, run: i, ctx, output: res.object });
       } catch (err) {
-        // A DraftRejectedError is the product guard firing: a failed run, with its spend metered.
+        if (isDecline(err)) {
+          // The model declined: correct for an out-of-ICP fixture, a false decline otherwise.
+          const issues = (err as DraftRejectedError).issues;
+          if (fx.expectDecline) {
+            const u = (err as DraftRejectedError).usage;
+            runs.push({
+              pass: true,
+              scorers: { expectedDecline: { pass: true, findings: issues } },
+              costUsd: u.costUsd,
+              inputTokens: u.inputTokens,
+              outputTokens: u.outputTokens,
+            });
+          } else {
+            runs.push(failedRun(err, "falseDecline"));
+          }
+          continue;
+        }
+        // Any other DraftRejectedError is the product guard firing: a failed run, with its spend metered.
         runs.push(failedRun(err, err instanceof DraftRejectedError ? "draftGuard" : "draftCall"));
       }
     }
@@ -464,7 +491,15 @@ export interface ResultRecord {
     runs: number;
     passRate: number;
     costUsd: number;
-    outcomes: { pass: boolean; costUsd: number; failures: Record<string, string[]>; output?: unknown; error?: string }[];
+    outcomes: {
+      pass: boolean;
+      costUsd: number;
+      failures: Record<string, string[]>;
+      /** Present when the model declined an out-of-ICP lead: the reason it gave. */
+      declined?: string[];
+      output?: unknown;
+      error?: string;
+    }[];
   }[];
   judge: JudgeSummary | null;
   cost: { totalUsd: number; inputTokens: number; outputTokens: number };
@@ -503,6 +538,7 @@ export function buildRecord(r: ProviderResult, date: Date): ResultRecord {
             .filter(([, s]) => !s.pass)
             .map(([k, s]) => [k, s.findings]),
         ),
+        ...(o.scorers.expectedDecline ? { declined: o.scorers.expectedDecline.findings } : {}),
         ...(o.output !== undefined ? { output: o.output } : {}),
         ...(o.error !== undefined ? { error: o.error } : {}),
       })),

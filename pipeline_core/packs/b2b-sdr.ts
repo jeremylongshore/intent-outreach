@@ -25,6 +25,6 @@ export const b2bSdrPack: Pack = {
   // Exactly the files seam.ts loaded before packs existed — keeps output identical.
   prompts: {
     score: ["research.v2.md", "enrich.v2.md"],
-    draft: "outreach.v2.md",
+    draft: "outreach.v3.md",
   },
 };
