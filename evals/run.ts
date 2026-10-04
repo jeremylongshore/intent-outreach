@@ -30,7 +30,7 @@
  * Exit code: 0 if all requested providers pass, 1 otherwise.
  */
 
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -236,6 +236,10 @@ function usageOf(err: unknown): Partial<Usage> & { inputTokens?: number; outputT
 function failedRun(err: unknown, scorerName: string): RunOutcome {
   const u = usageOf(err);
   const message = err instanceof DraftRejectedError ? err.issues : [err instanceof Error ? err.message : String(err)];
+  // AI SDK NoObjectGeneratedError carries the raw model text; keep a short snippet
+  // so a parse failure can be told apart from an adapter bug after the fact.
+  const raw = (err as { text?: unknown } | null)?.text;
+  if (typeof raw === "string") message.push(`raw output (first 400 chars): ${JSON.stringify(raw.slice(0, 400))}`);
   return {
     pass: false,
     scorers: { [scorerName]: { pass: false, findings: message } },
@@ -385,7 +389,11 @@ async function runJudge(
   let costUsd = 0;
   for (const d of drafts) {
     try {
-      const { object, usage } = await llmJudge(provider, { icp: d.ctx.icp, angles: d.ctx.angles }, d.output);
+      const { object, usage } = await llmJudge(
+        provider,
+        { icp: d.ctx.icp, angles: d.ctx.angles, lead: d.ctx.lead, contact: d.ctx.contact, channel: d.ctx.channel },
+        d.output,
+      );
       costUsd += usage.costUsd;
       ratings.push({
         fixture: d.fixture,
@@ -492,9 +500,20 @@ export function buildRecord(r: ProviderResult, date: Date): ResultRecord {
   };
 }
 
+/**
+ * Never overwrite an existing record: a second run on the same day with the same
+ * model and prompt gets "-2", "-3", … so earlier evidence (including the record
+ * evals/supported.ts points at) stays intact.
+ */
+export function uniqueRecordPath(dir: string, base: string): string {
+  let path = join(dir, base);
+  for (let n = 2; existsSync(path); n++) path = join(dir, base.replace(/\.json$/, `-${n}.json`));
+  return path;
+}
+
 function writeRecord(r: ProviderResult, dir: string, date: Date): string {
   mkdirSync(dir, { recursive: true });
-  const path = join(dir, recordFileName(r.provider, r.model, r.promptRefs.draft, date));
+  const path = uniqueRecordPath(dir, recordFileName(r.provider, r.model, r.promptRefs.draft, date));
   writeFileSync(path, `${JSON.stringify(buildRecord(r, date), null, 2)}\n`, "utf8");
   return path;
 }
