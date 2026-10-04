@@ -1,5 +1,7 @@
 # ADK Migration Audit Report
 
+> **Historical (pre-rebuild).** This document describes the retired PipelinePilot system (Gemini on Vertex AI Agent Engine, Firebase). It is kept for history only and is not current; see `000-INDEX.md` and `017-AT-DECR-rebuild-intent-outreach.md`.
+
 **Date:** 2025-11-01 06:45 UTC
 **Branch:** migration/adk-python
 **Migration Captain:** Claude Code

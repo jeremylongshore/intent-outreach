@@ -7,6 +7,11 @@
 **Supersedes (in spirit):** `003-AT-ADEC-adopt-vertex-adk.md`, `008-TQ-KNOW-agent-engine-limitations.md` (the Vertex/Gemini-locked design)
 **Decision owner / acting head of board:** Jeremy Longshore
 
+> **Status note (2026-10-04).** D4 below lists Gemini among the providers to add behind the eval gate.
+> That option was withdrawn by owner decision on 2026-10-04: the Google adapter and `@ai-sdk/google` were
+> removed (PR #58), and approval is now recorded per model in `evals/supported.ts`. See
+> `021-AT-PLAN-hardening-after-six-lens-audit.md`. The rest of this record stands as written.
+
 ---
 
 ## 0. One-paragraph decision
