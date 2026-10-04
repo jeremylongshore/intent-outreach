@@ -26,14 +26,15 @@
  */
 
 import { httpJson, HttpError } from "../http.js";
-import { getSecret, hasSecret } from "../secrets.js";
+import { hasSecret } from "../secrets.js";
+import { useSecret } from "./_shared.js";
 import type { Connector, ResearchInput, ResearchOutput } from "./types.js";
 
 const KEY_ENV = "CLAY_API_KEY";
 const WEBHOOK_ENV = "CLAY_WEBHOOK_URL";
 
 function headers(): Record<string, string> {
-  return { Authorization: `Bearer ${getSecret(KEY_ENV)}` };
+  return { Authorization: `Bearer ${useSecret(KEY_ENV)}` };
 }
 
 export const clayConnector: Connector = {
@@ -42,6 +43,9 @@ export const clayConnector: Connector = {
   tier: "paid",
   keyEnvVar: KEY_ENV,
   phases: ["research"],
+  // Push-only: a successful call returns no records, so it must not count as
+  // evidence that "research ran" (pipeline wiring for this flag is a separate change).
+  pushOnly: true,
   note: "Middleware, not a direct data source. Push-only: requires a configured Clay table webhook (CLAY_WEBHOOK_URL); results return asynchronously into the user's Clay workspace, not synchronously here.",
 
   isConfigured() {
@@ -55,10 +59,13 @@ export const clayConnector: Connector = {
     // Clay will kick off its configured enrichment workflow asynchronously.
     // There is no synchronous response that contains lead or contact records.
     try {
-      await httpJson<unknown>(getSecret(WEBHOOK_ENV), {
+      await httpJson<unknown>(useSecret(WEBHOOK_ENV), {
         method: "POST",
         headers: headers(),
         json: { domain, icp },
+        // A push is not idempotent (a retried 5xx can create a duplicate, billable
+        // row in the Clay table), so no automatic retries here.
+        retries: 0,
       });
     } catch (err) {
       // The webhook URL can itself be the secret (token in the path). Never let it
