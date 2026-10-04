@@ -33,6 +33,12 @@ jobs:
         with:
           languages: javascript-typescript
           build-mode: none
+          # bundle/ is esbuild output that inlines third-party packages (zod, ai,
+          # @ai-sdk/*); those are scanned upstream, and our own sources are scanned
+          # here before bundling. Scanning the bundle only re-reports vendor code.
+          config: |
+            paths-ignore:
+              - bundle/**
       - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
         with:
           category: "/language:javascript-typescript"

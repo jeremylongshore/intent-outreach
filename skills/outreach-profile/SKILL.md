@@ -9,7 +9,7 @@ allowed-tools:
   - Glob
   - Write
   - AskUserQuestion
-version: 0.2.0
+version: 0.3.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 license: SEE LICENSE IN LICENSE
 compatibility: Claude Code; local filesystem access required
