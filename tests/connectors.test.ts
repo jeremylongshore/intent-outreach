@@ -868,7 +868,7 @@ describe("exaConnector", () => {
     // Query uses the injected clock's year, never a hardcoded one.
     const f = vi.mocked(globalThis.fetch);
     expect(String(f.mock.calls[0]?.[0])).toBe("https://api.exa.ai/search");
-    const sent = JSON.parse(String((f.mock.calls[0]?.[1] as RequestInit).body)) as { query: string };
+    const sent = JSON.parse(String((f.mock.calls[0]![1] as RequestInit).body)) as { query: string };
     expect(sent.query).toBe("Acme funding news 2031");
 
     expect(enrichments).toHaveLength(1);
@@ -1164,7 +1164,7 @@ describe("httpJson resilience", () => {
     expect(f).toHaveBeenCalledTimes(3);
     await expect(p).resolves.toEqual({ ok: 1 });
     expect(String(f.mock.calls[0]?.[0])).toBe(URL_);
-    expect((f.mock.calls[0]?.[1] as RequestInit).redirect).toBe("manual");
+    expect((f.mock.calls[0]![1] as RequestInit).redirect).toBe("manual");
   });
 
   it("gives up after 2 retries and throws HttpError with status + retryAfterMs", async () => {
@@ -1238,7 +1238,7 @@ describe("httpJson resilience", () => {
     expect(f).toHaveBeenCalledTimes(1);
     expect(err).toBeDefined();
     // The combined signal handed to fetch is aborted too.
-    expect(((f.mock.calls[0]?.[1] as RequestInit).signal as AbortSignal).aborted).toBe(true);
+    expect(((f.mock.calls[0]![1] as RequestInit).signal as AbortSignal).aborted).toBe(true);
   });
 
   it("follows a same-origin redirect", async () => {
