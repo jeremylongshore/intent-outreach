@@ -8,7 +8,9 @@ allowed-tools:
   - Agent
   - AskUserQuestion
   - Read
+  - mcp__plugin_intent-outreach_intent-outreach__list_connectors
   - mcp__intent-outreach__list_connectors
+  - mcp__plugin_intent-outreach_intent-outreach__save_run
   - mcp__intent-outreach__save_run
 version: 0.2.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
@@ -63,10 +65,16 @@ runs before writing them to the local JSONL store.
 5. **Score and draft.** Dispatch `outreach-drafter` once per kept lead with the ICP, lead, contacts,
    enrichments, channel, limit, and applicable style override. Require every claim to be supported by
    the supplied data. Show every draft and ask the user to approve, edit, reject, or stop.
-6. **Save only after approval.** Assemble the exact `save_run` input: `id`, `icp`, `domains`,
-   `provider`, `model`, `leads`, `contacts`, `enrichments`, `messages`, and `skippedConnectors`. Each
-   message must include `contactKey`, `channel`, `body`, `cta`, `model`, `promptVersion`, and
-   `createdAt`; `subject` and `fitScore` are optional. Call `save_run` only after the approval checkpoint.
+6. **Save only after approval.** Assemble the `save_run` input: `id`, `icp`, `domains`, `provider`,
+   `model`, `leads`, `contacts`, `enrichments`, `messages`, `skippedConnectors`, and, when known,
+   `failedConnectors`, `errors`, `pack`, and `profile` (the Report Profile path or name whose `sender`
+   identity supplies the CAN-SPAM footer). Each message needs `contactKey` (the contact's email, or
+   `name@domain` when it has none, matching an entry in `contacts`), `channel`, `body`, and `cta`;
+   `subject`, `fitScore`, and `promptVersion` are optional. The server stamps `createdAt`, derives the
+   status, re-applies the suppression list and the pack's compliance gate, runs the send-safety draft
+   guard, and appends the footer. Report any `blockedContacts`, `rejectedDrafts`, or
+   `complianceWarnings` it returns. If it says the run id already exists, ask before retrying with
+   `overwrite: true`. Call `save_run` only after the approval checkpoint.
 7. **Report the receipt.** Return the run id, status, local path, record counts, connector failures, and
    confirmation that nothing was sent.
 
@@ -77,6 +85,11 @@ runs before writing them to the local JSONL store.
   the corresponding provider API by that connector.
 - `save_run` writes locally to `$INTENT_OUTREACH_HOME/runs.jsonl`, or
   `~/.intent-outreach/runs.jsonl` when that variable is unset. It does not send outreach.
+- An email draft saved without a configured sender identity is flagged `needsSenderIdentity` and must
+  not be sent as-is; tell the user to add `sender` to their profile.
+- Tool names: installed as a plugin, the MCP tools are `mcp__plugin_intent-outreach_intent-outreach__<tool>`;
+  from a repository checkout using its own `.mcp.json` they are `mcp__intent-outreach__<tool>`. Both
+  forms are allowlisted.
 - This repository's license permits only the uses stated in `LICENSE`; do not describe it as open source.
 
 ## Output

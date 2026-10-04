@@ -37,12 +37,18 @@ import type {
 import { assertCampaignRun, validateMessage, type Validated } from "./validator.js";
 import { getProvider, type LLMProvider } from "./providers.js";
 import { CostMeter, type CacheTokens, type Usage } from "./cost.js";
-import { draftMessage, scoreLead } from "./seam.js";
+import { draftMessage, DraftRejectedError, scoreLead } from "./seam.js";
 import { registerBuiltinPacks, resolvePack } from "./packs/index.js";
 import type { ComplianceContext, ComplianceGate } from "./packs/types.js";
 import { composeGates, suppressionGate, type SuppressionList } from "./compliance/suppression.js";
 import { loadSuppressionList } from "./suppressions.js";
 import { applyComplianceFooter, missingSenderFields, type SenderIdentity } from "./footer.js";
+import { guardDraft } from "./draft-guard.js";
+import { loadProfile, type ReportProfile } from "./profiles.js";
+import { intentOutreachHome } from "./secrets.js";
+import { existsSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /** Default ceiling on domains per campaign (override with `allowLarge`). */
 export const DEFAULT_MAX_DOMAINS = 25;
@@ -146,7 +152,7 @@ export function normalizeDomains(domains: readonly string[]): string[] {
 }
 
 /** The FK a Message / blocked / error record uses for a contact. */
-function contactKeyOf(c: Contact): string {
+export function contactKeyOf(c: Contact): string {
   return c.email ?? `${c.name}@${normalizeDomainLenient(c.leadDomain)}`;
 }
 
@@ -455,14 +461,14 @@ function finishReasonFromError(err: unknown): string | undefined {
   return typeof r === "string" && r ? r : undefined;
 }
 
-type GateOutcome = { clean: true } | { clean: false; reason: string; error?: string };
+export type GateOutcome = { clean: true } | { clean: false; reason: string; error?: string };
 
 /**
  * Run a pack's gate FAIL-CLOSED: only an explicit `{ status: "clean" }` passes.
  * Any other verdict (including typos like "BLOCKED", undefined, null) blocks; a
  * throwing (or rejecting) gate blocks with reason "gate-error: <msg>".
  */
-async function evaluateGate(gate: ComplianceGate, ctx: ComplianceContext): Promise<GateOutcome> {
+export async function evaluateGate(gate: ComplianceGate, ctx: ComplianceContext): Promise<GateOutcome> {
   try {
     const verdict = await gate.check(ctx);
     if (verdict && verdict.status === "clean") return { clean: true };
@@ -476,7 +482,7 @@ async function evaluateGate(gate: ComplianceGate, ctx: ComplianceContext): Promi
 }
 
 /** Enrichments attached to this lead (by domain) or this contact (by email). */
-function enrichmentsFor(lead: Lead, contact: Contact, all: Enrichment[]): Enrichment[] {
+export function enrichmentsFor(lead: Lead, contact: Contact, all: Enrichment[]): Enrichment[] {
   const email = contact.email?.toLowerCase();
   return all.filter((e) =>
     e.subjectType === "lead"
@@ -515,6 +521,235 @@ export function deriveRunStatus(s: RunStatusInput): RunStatus {
   if (s.leads > 0) return "enriched";
   if (s.researchRan) return "researched";
   return "failed";
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Shared message-compliance helpers (runCampaign + the MCP save_run path)
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * The gate every run applies: the suppression list FIRST (an unsubscribe is not
+ * vertical-specific — swapping packs must never drop it), then the pack's own
+ * gate. Run it through `evaluateGate` so it fails closed.
+ */
+export function campaignGate(pack: { compliance: ComplianceGate }, suppressions: SuppressionList): ComplianceGate {
+  return composeGates(suppressionGate(suppressions), pack.compliance);
+}
+
+const zodIssues = (issues: readonly { path: PropertyKey[]; message: string }[]) =>
+  issues.map((i) => `${i.path.map(String).join(".") || "(root)"}: ${i.message}`);
+
+/**
+ * Validate a drafted message, append the CAN-SPAM footer IN CODE (never by the
+ * model), and re-validate — so only gate-checked values are ever recorded.
+ */
+export function finalizeDraft(
+  candidate: unknown,
+  sender: SenderIdentity | undefined,
+): { ok: true; message: Message } | { ok: false; issues: string[] } {
+  const validated = validateMessage(candidate);
+  if (!validated.ok) return { ok: false, issues: zodIssues(validated.error.issues) };
+  const footed = validateMessage(applyComplianceFooter(validated.value, sender));
+  if (!footed.ok) return { ok: false, issues: zodIssues(footed.error.issues) };
+  return { ok: true, message: footed.value as Message };
+}
+
+/** The run-level warning for email drafts that could not carry a CAN-SPAM footer. */
+export function senderComplianceWarnings(draftsMissingSender: number, sender: SenderIdentity | undefined): string[] {
+  if (draftsMissingSender <= 0) return [];
+  const missing = missingSenderFields(sender).join(", ");
+  return [
+    `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured ` +
+      `(missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`,
+  ];
+}
+
+/**
+ * Identifier allowlist for `guardDraft` on a draft the SEAM did not produce (an
+ * agent-written draft saved via MCP). Mirrors the seam's rule: structured
+ * identifier fields + the user's own text only — never connector free text, so
+ * an injected link cannot vouch for itself.
+ */
+export function draftIdentifiers(p: {
+  icp: string;
+  lead: Lead;
+  contact: Contact;
+  enrichments?: readonly Enrichment[];
+  userText?: readonly (string | undefined)[];
+}): string[] {
+  const out: (string | undefined)[] = [p.icp, ...(p.userText ?? []), p.lead.domain, p.contact.email, p.contact.linkedin];
+  for (const e of p.enrichments ?? []) out.push(e.verifiedEmail, e.phone);
+  return out.filter((s): s is string => typeof s === "string" && s.length > 0);
+}
+
+/** A draft written outside the seam (e.g. by the Claude Code agent) awaiting the gates. */
+export interface ExternalDraft {
+  contactKey: string;
+  channel: "email" | "linkedin";
+  subject?: string | null | undefined;
+  body: string;
+  cta: string;
+  fitScore?: number | undefined;
+  /** Caller-claimed; defaults to the run's model. */
+  model?: string | undefined;
+  /** Caller-claimed; defaults to "agent". */
+  promptVersion?: string | undefined;
+}
+
+export interface MessageComplianceInput {
+  icp: string;
+  leads: readonly Lead[];
+  contacts: readonly Contact[];
+  enrichments: readonly Enrichment[];
+  drafts: readonly ExternalDraft[];
+  /** Usually `campaignGate(pack, suppressions)`. */
+  gate: ComplianceGate;
+  sender?: SenderIdentity | undefined;
+  /** Default `Message.model` when a draft does not claim one. */
+  model: string;
+  now: () => string;
+  /** User-owned text (profile style override) whose identifiers a draft may repeat. */
+  userText?: readonly (string | undefined)[];
+}
+
+export interface MessageComplianceResult {
+  messages: Message[];
+  blockedContacts: { contactKey: string; reason: string }[];
+  rejectedDrafts: { contactKey: string; issues: string[] }[];
+  errors: RunError[];
+  complianceWarnings: string[];
+}
+
+/**
+ * Run externally written drafts through EXACTLY the gates runCampaign applies:
+ * suppression + pack compliance (fail-closed), the send-safety draft guard,
+ * schema validation, and the code-appended CAN-SPAM footer.
+ *
+ *   unknown contactKey        → rejectedDrafts (never guessed onto a contact)
+ *   gate blocks               → blockedContacts (never saved as a message)
+ *   guard / schema fails      → rejectedDrafts
+ *   email + no sender         → saved, flagged needsSenderIdentity + warning
+ */
+export async function applyMessageCompliance(input: MessageComplianceInput): Promise<MessageComplianceResult> {
+  const messages: Message[] = [];
+  const blockedContacts: { contactKey: string; reason: string }[] = [];
+  const rejectedDrafts: { contactKey: string; issues: string[] }[] = [];
+  const errors: RunError[] = [];
+  let draftsMissingSender = 0;
+
+  const contactsByKey = new Map<string, Contact>();
+  for (const c of input.contacts) {
+    const key = contactKeyOf(c).toLowerCase();
+    if (!contactsByKey.has(key)) contactsByKey.set(key, c);
+  }
+  const leadsByDomain = new Map<string, Lead>();
+  for (const l of input.leads) {
+    const domain = normalizeDomainLenient(l.domain);
+    if (!leadsByDomain.has(domain)) leadsByDomain.set(domain, { ...l, domain });
+  }
+
+  for (const draft of input.drafts) {
+    const contact = contactsByKey.get(draft.contactKey.toLowerCase());
+    if (!contact) {
+      rejectedDrafts.push({
+        contactKey: draft.contactKey,
+        issues: [
+          "contactKey: no matching contact in `contacts` (use the contact's email, or name@domain when it has none)",
+        ],
+      });
+      continue;
+    }
+    const contactKey = contactKeyOf(contact);
+    const leadDomain = normalizeDomainLenient(contact.leadDomain);
+    const lead: Lead = leadsByDomain.get(leadDomain) ?? { domain: leadDomain, companyName: leadDomain, source: "agent" };
+    const enrichments = enrichmentsFor(lead, contact, [...input.enrichments]);
+
+    const outcome = await evaluateGate(input.gate, { lead, contact, now: new Date(input.now()), enrichments });
+    if (!outcome.clean) {
+      if (!blockedContacts.some((b) => b.contactKey === contactKey)) {
+        blockedContacts.push({ contactKey, reason: outcome.reason });
+      }
+      if (outcome.error !== undefined) {
+        errors.push({ domain: lead.domain, contactKey, stage: "gate", message: outcome.error });
+      }
+      continue;
+    }
+
+    // LinkedIn has no subject line: normalize rather than reject (as the seam does).
+    const subject = draft.channel === "linkedin" ? null : (draft.subject ?? null);
+    const verdict = guardDraft(
+      { subject, body: draft.body, cta: draft.cta },
+      { allowedText: draftIdentifiers({ icp: input.icp, lead, contact, enrichments, userText: input.userText ?? [] }) },
+    );
+    if (!verdict.ok) {
+      rejectedDrafts.push({ contactKey, issues: verdict.issues });
+      continue;
+    }
+
+    const finalized = finalizeDraft(
+      {
+        contactKey,
+        channel: draft.channel,
+        subject: subject ?? undefined,
+        body: draft.body,
+        cta: draft.cta,
+        ...(draft.fitScore !== undefined ? { fitScore: draft.fitScore } : {}),
+        model: draft.model ?? input.model,
+        promptVersion: draft.promptVersion ?? "agent",
+        createdAt: input.now(),
+      },
+      input.sender,
+    );
+    if (!finalized.ok) {
+      rejectedDrafts.push({ contactKey, issues: finalized.issues });
+      continue;
+    }
+    if (finalized.message.needsSenderIdentity) draftsMissingSender += 1;
+    messages.push(finalized.message);
+  }
+
+  return {
+    messages,
+    blockedContacts,
+    rejectedDrafts,
+    errors,
+    complianceWarnings: senderComplianceWarnings(draftsMissingSender, input.sender),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Report Profile references (CLI --profile, MCP save_run `profile`)
+// ──────────────────────────────────────────────────────────────────────────
+
+const PROFILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+/**
+ * Resolve a profile reference to a file path. A ref containing a path
+ * separator or ending in `.json` is a PATH (relative to `cwd`). Anything else
+ * is a bare NAME, looked up as `<name>.json` in, in order:
+ * `<cwd>/profiles/`, `${INTENT_OUTREACH_HOME}/profiles/`, then the profiles
+ * shipped with the package. Names are restricted to `[A-Za-z0-9_-]` so a name
+ * can never traverse out of those roots.
+ */
+export function resolveProfilePath(ref: string, cwd: string = process.cwd()): string {
+  const trimmed = ref.trim();
+  if (!trimmed) throw new Error("profile: empty reference");
+  if (/[\\/]/.test(trimmed) || trimmed.toLowerCase().endsWith(".json")) {
+    return isAbsolute(trimmed) ? trimmed : resolve(cwd, trimmed);
+  }
+  if (!PROFILE_NAME_RE.test(trimmed)) throw new Error(`profile: invalid name ${JSON.stringify(trimmed)}`);
+  const here = dirname(fileURLToPath(import.meta.url));
+  const roots = [join(cwd, "profiles"), join(intentOutreachHome(), "profiles"), join(here, "..", "profiles")];
+  for (const root of roots) {
+    const candidate = join(root, `${trimmed}.json`);
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(`profile not found: ${trimmed} (looked in: ${roots.join(", ")})`);
+}
+
+/** Load + validate a profile by path or name (see resolveProfilePath). */
+export function loadProfileRef(ref: string, cwd?: string): ReportProfile {
+  return loadProfile(resolveProfilePath(ref, cwd));
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -591,9 +826,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   // The suppression gate runs FIRST for EVERY pack (an unsubscribe is not
   // vertical-specific — swapping packs must never drop it), then the pack's own
   // gate. Both run under evaluateGate's fail-closed handling.
-  const gate = composeGates(suppressionGate(suppressions), pack.compliance);
-  // Provenance comes from the prompt file that actually drafted (pack-supplied).
-  const promptVersion = pack.prompts.draft.replace(/\.md$/i, "");
+  const gate = campaignGate(pack, suppressions);
   const meter = new CostMeter();
   const createdAt = now();
 
@@ -607,6 +840,8 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const failedConnectors: FailedConnector[] = [];
   const skipped = new Set<string>();
   let anyResearchRan = false;
+  const droppedAngles: { domain: string; angle: string; reason: string }[] = [];
+  const promptRefs: { score?: string[]; draft?: string } = {};
   let draftsMissingSender = 0;
 
   // Cache-aware: the run total uses the same costFor split as the per-call Usage.
@@ -653,6 +888,8 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
         continue;
       }
       recordUsage(scored.usage);
+      promptRefs.score ??= scored.promptRefs;
+      for (const d of scored.droppedAngles ?? []) droppedAngles.push({ domain: lead.domain, ...d });
       if (scored.object.fitScore < minScore) continue;
 
       // COMPLIANCE gate (pack-supplied, FAIL-CLOSED) — runs BEFORE drafting so a
@@ -690,57 +927,51 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
             angles: scored.object.angles,
             channel,
             draftPrompt: pack.prompts.draft,
+            // Never shown to the model; widens the guard allowlist to verified emails/phones.
+            enrichments: enrichmentsFor(lead, contact, enrich.enrichments),
             ...(input.styleOverride ? { styleOverride: input.styleOverride } : {}),
           });
         } catch (err) {
-          recordError(err, { domain: lead.domain, contactKey, stage: "draft" });
+          if (err instanceof DraftRejectedError) {
+            // A structurally valid draft that failed the send-safety guard: an audit
+            // record of what the model tried, not a pipeline failure. Still metered.
+            recordUsage(err.usage);
+            rejectedDrafts.push({ contactKey, issues: err.issues });
+          } else {
+            recordError(err, { domain: lead.domain, contactKey, stage: "draft" });
+          }
           continue;
         }
         recordUsage(drafted.usage);
+        promptRefs.draft ??= drafted.promptRef;
 
-        const candidate = {
-          contactKey,
-          channel,
-          subject: drafted.object.subject ?? undefined,
-          body: drafted.object.body,
-          cta: drafted.object.cta,
-          fitScore: scored.object.fitScore,
-          model: provider.model,
-          promptVersion,
-          createdAt: now(),
-        };
-        const validated = validateMessage(candidate);
-        if (validated.ok) {
-          // CAN-SPAM footer appended by CODE after the draft passed validation —
-          // never by the LLM. Re-validated so only gate-checked values are recorded.
-          const footed = validateMessage(applyComplianceFooter(validated.value, input.sender));
-          if (footed.ok) {
-            if (footed.value.needsSenderIdentity) draftsMissingSender += 1;
-            messages.push(footed.value);
-          } else {
-            rejectedDrafts.push({
-              contactKey,
-              issues: footed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
-            });
-          }
-        } else {
-          rejectedDrafts.push({
+        // Validate → CAN-SPAM footer appended by CODE → re-validate (finalizeDraft).
+        const finalized = finalizeDraft(
+          {
             contactKey,
-            issues: validated.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
-          });
+            channel,
+            subject: drafted.object.subject ?? undefined,
+            body: drafted.object.body,
+            cta: drafted.object.cta,
+            fitScore: scored.object.fitScore,
+            model: provider.model,
+            // Provenance: the exact prompt file + content hash that drafted this.
+            promptVersion: drafted.promptRef,
+            createdAt: now(),
+          },
+          input.sender,
+        );
+        if (finalized.ok) {
+          if (finalized.message.needsSenderIdentity) draftsMissingSender += 1;
+          messages.push(finalized.message);
+        } else {
+          rejectedDrafts.push({ contactKey, issues: finalized.issues });
         }
       }
     }
   }
 
-  const complianceWarnings: string[] = [];
-  if (draftsMissingSender > 0) {
-    const missing = missingSenderFields(input.sender).join(", ");
-    complianceWarnings.push(
-      `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured ` +
-        `(missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`,
-    );
-  }
+  const complianceWarnings = senderComplianceWarnings(draftsMissingSender, input.sender);
 
   const status = deriveRunStatus({
     messages: messages.length,
@@ -771,6 +1002,9 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     rejectedDrafts,
     failedConnectors,
     complianceWarnings,
+    promptRefs,
+    droppedAngles,
+    origin: "pipeline",
     createdAt,
     finishedAt: now(),
   });

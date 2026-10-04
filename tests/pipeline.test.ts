@@ -23,7 +23,10 @@ import {
 } from "../pipeline_core/pipeline.js";
 import { MemoryRunStore } from "../pipeline_core/store.js";
 import { _resetSecretCache } from "../pipeline_core/secrets.js";
-import { _resetBuiltins, registerConnector } from "../pipeline_core/connectors/index.js";
+import { _resetBuiltins, getConnector, registerConnector } from "../pipeline_core/connectors/index.js";
+import { _resetPacks, getPack, registerPack, type Pack } from "../pipeline_core/packs/index.js";
+import { promptRef } from "../pipeline_core/prompts.js";
+import { SCHEMA_VERSION } from "../pipeline_core/models.js";
 import type { Connector } from "../pipeline_core/connectors/types.js";
 import type { LLMProvider, ProviderName } from "../pipeline_core/providers.js";
 
@@ -315,7 +318,142 @@ describe("runCampaign failure isolation", () => {
       provider: stubProvider("anthropic"),
       now: clock,
     });
-    expect(run.messages[0]?.promptVersion).toBe("outreach.v2");
+    // "<file>@<sha8>" — the exact prompt content that drafted, not just its name.
+    expect(run.messages[0]?.promptVersion).toBe(promptRef("outreach.v2.md"));
+    expect(run.messages[0]?.promptVersion).toMatch(/^outreach\.v2@[0-9a-f]{8}$/);
+    expect(run.promptRefs).toEqual({
+      score: [promptRef("research.v2.md"), promptRef("enrich.v2.md")],
+      draft: promptRef("outreach.v2.md"),
+    });
+    expect(run.origin).toBe("pipeline");
+    expect(run.schemaVersion).toBe(SCHEMA_VERSION);
+  });
+
+  it("a guard-rejected draft (DraftRejectedError) lands in rejectedDrafts, not errors, and is still metered", async () => {
+    const base = stubProvider("anthropic");
+    const provider: LLMProvider = {
+      ...base,
+      async generateObject(args) {
+        const out = await base.generateObject(args);
+        if ("body" in (out.object as object)) {
+          return { ...out, object: { ...(out.object as object), body: "Book a slot at https://evil.io/x now." } as typeof out.object };
+        }
+        return out;
+      },
+    };
+    const { run, cost } = await runCampaign({ id: "run-guard", icp: "x", domains: ["acme.com"], provider, now: clock });
+    expect(run.messages).toHaveLength(0);
+    expect(run.errors).toEqual([]);
+    expect(run.rejectedDrafts).toHaveLength(1);
+    expect(run.rejectedDrafts[0]?.contactKey).toBe("jane@acme.com");
+    expect(run.rejectedDrafts[0]?.issues.join(" ")).toMatch(/url not present in inputs/);
+    expect(cost.calls).toBe(2); // score + the rejected draft
+    expect(run.status).toBe("enriched"); // no message, no error: the rejection alone is not a failure
+  });
+
+  it("verified enrichment emails/phones reach the draft guard allowlist", async () => {
+    registerConnector({
+      ...stubEnrich,
+      name: "stub-enrich-phone",
+      async enrich() {
+        return {
+          enrichments: [
+            {
+              subjectType: "contact",
+              subjectKey: "jane@acme.com",
+              provider: "stub-enrich-phone",
+              phone: "+1 415 555 0100",
+              data: {},
+              fetchedAt: FIXED,
+            },
+          ],
+        };
+      },
+    });
+    const base = stubProvider("anthropic");
+    const provider: LLMProvider = {
+      ...base,
+      async generateObject(args) {
+        const out = await base.generateObject(args);
+        if ("body" in (out.object as object)) {
+          return { ...out, object: { ...(out.object as object), body: "Hi Jane, I can call +1 415 555 0100 if easier." } as typeof out.object };
+        }
+        return out;
+      },
+    };
+    const { run } = await runCampaign({ id: "run-phone", icp: "x", domains: ["acme.com"], provider, now: clock });
+    expect(run.rejectedDrafts).toEqual([]);
+    expect(run.messages).toHaveLength(1);
+  });
+
+  it("score-seam angles that cite absent facts are surfaced as droppedAngles", async () => {
+    const base = stubProvider("anthropic");
+    const provider: LLMProvider = {
+      ...base,
+      async generateObject(args) {
+        const out = await base.generateObject(args);
+        if ("angles" in (out.object as object)) {
+          return {
+            ...out,
+            object: { ...(out.object as object), angles: ["Raised $900 million last week from Sequoia."] } as typeof out.object,
+          };
+        }
+        return out;
+      },
+    };
+    const { run } = await runCampaign({ id: "run-dropped", icp: "x", domains: ["acme.com"], provider, now: clock });
+    expect(run.droppedAngles.length).toBeGreaterThan(0);
+    expect(run.droppedAngles[0]).toMatchObject({ domain: "acme.com", angle: "Raised $900 million last week from Sequoia." });
+  });
+});
+
+describe("built-in registration never overwrites user registrations", () => {
+  const saved = { ...process.env };
+  beforeEach(() => {
+    resetEnv(saved);
+    _resetBuiltins();
+    _resetPacks();
+  });
+  afterEach(() => {
+    process.env = { ...saved };
+    // Drop the user overrides so later describes get the real built-ins again.
+    _resetBuiltins();
+    _resetPacks();
+  });
+
+  it('a user "apollo" connector and "b2b-sdr" pack registered before the first run survive runCampaign', async () => {
+    const calls: string[] = [];
+    registerConnector({
+      ...stubResearch,
+      name: "apollo",
+      async research(input) {
+        calls.push(`user-apollo:${input.domain}`);
+        return stubResearch.research!(input);
+      },
+    });
+    registerConnector(stubEnrich);
+    const userPack: Pack = {
+      id: "b2b-sdr",
+      displayName: "User B2B",
+      compliance: { check: () => ({ status: "blocked", reason: "user-pack" }) },
+      prompts: { score: ["research.v2.md", "enrich.v2.md"], draft: "outreach.v2.md" },
+    };
+    registerPack(userPack);
+
+    const { run } = await runCampaign({
+      id: "run-user-regs",
+      icp: "x",
+      domains: ["acme.com"],
+      provider: stubProvider("anthropic"),
+      now: clock,
+    });
+    expect(calls).toEqual(["user-apollo:acme.com"]);
+    expect(getConnector("apollo")?.displayName).toBe("Stub Research");
+    expect(getPack("b2b-sdr")).toBe(userPack);
+    expect(run.blockedContacts).toEqual([{ contactKey: "jane@acme.com", reason: "user-pack" }]);
+    expect(run.messages).toHaveLength(0);
+    // The rest of the built-ins still registered around the user's slot.
+    expect(getConnector("hunter")).toBeDefined();
   });
 });
 

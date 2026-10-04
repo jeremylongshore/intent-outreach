@@ -37,9 +37,6 @@ const PRICING: Record<string, { in: number; out: number }> = {
   // OpenAI
   "gpt-4o": { in: 2.5, out: 10 },
   "gpt-4.1": { in: 2, out: 8 },
-  // Google
-  "gemini-2.0-flash": { in: 0.1, out: 0.4 },
-  "gemini-1.5-pro": { in: 1.25, out: 5 },
   // xAI
   "grok-2-latest": { in: 2, out: 10 },
 };

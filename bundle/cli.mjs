@@ -4544,7 +4544,7 @@ function isRef(value) {
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
-function isRecursive(inst, stack, resolve4) {
+function isRecursive(inst, stack, resolve5) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -4554,7 +4554,7 @@ function isRecursive(inst, stack, resolve4) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve4);
+      const answer = isRecursive(child, stack, resolve5);
       if (answer > result)
         result = answer;
     }
@@ -4565,7 +4565,7 @@ function isRecursive(inst, stack, resolve4) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve4) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve5) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -4629,7 +4629,7 @@ function isRecursive(inst, stack, resolve4) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve4 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve5 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -35705,8 +35705,8 @@ async function raceWithTimeout(promise2, timeoutMs) {
   try {
     const raced = await Promise.race([
       wrapped,
-      new Promise((resolve4) => {
-        timer = setTimeout(() => resolve4({ timedOut: true }), timeoutMs);
+      new Promise((resolve5) => {
+        timer = setTimeout(() => resolve5({ timedOut: true }), timeoutMs);
       })
     ]);
     if (raced.timedOut) {
@@ -57134,6 +57134,8 @@ var init_dist9 = __esm({
 });
 
 // cli.ts
+import { realpathSync } from "node:fs";
+import { fileURLToPath as fileURLToPath3 } from "node:url";
 import { parseArgs } from "node:util";
 
 // pipeline_core/connectors/registry.ts
@@ -57258,11 +57260,11 @@ function backoffMs(attempt) {
   return Math.min(MAX_RETRY_WAIT_MS, Math.round(ceiling * (0.5 + Math.random() * 0.5)));
 }
 function sleep(ms, signal) {
-  return new Promise((resolve4, reject) => {
+  return new Promise((resolve5, reject) => {
     if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
     const t = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
-      resolve4();
+      resolve5();
     }, ms);
     const onAbort = () => {
       clearTimeout(t);
@@ -58480,23 +58482,32 @@ var zoominfoConnector = {
 
 // pipeline_core/connectors/index.ts
 var registered = false;
+var BUILTIN_CONNECTORS = [
+  // free
+  apolloConnector,
+  hunterConnector,
+  peopledatalabsConnector,
+  exaConnector,
+  // paid
+  crunchbaseConnector,
+  leadmagicConnector,
+  clayConnector,
+  // legacy
+  clearbitConnector,
+  // enterprise
+  zoominfoConnector
+];
 function registerBuiltinConnectors() {
   if (registered) return;
-  registerConnector(apolloConnector);
-  registerConnector(hunterConnector);
-  registerConnector(peopledatalabsConnector);
-  registerConnector(exaConnector);
-  registerConnector(crunchbaseConnector);
-  registerConnector(leadmagicConnector);
-  registerConnector(clayConnector);
-  registerConnector(clearbitConnector);
-  registerConnector(zoominfoConnector);
+  for (const connector of BUILTIN_CONNECTORS) {
+    if (getConnector(connector.name) === void 0) registerConnector(connector);
+  }
   registered = true;
 }
 
 // pipeline_core/models.ts
-var SCHEMA_VERSION = 4;
-var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4];
+var SCHEMA_VERSION = 5;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5];
 var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
 var SchemaVersionSchema = external_exports.union([
   external_exports.literal(V_FIRST),
@@ -58641,6 +58652,26 @@ var CampaignRunSchema = external_exports.object({
    * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
    */
   complianceWarnings: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Prompt provenance for the run's LLM seams (v5, additive): each entry is
+   * "<prompt-file>@<sha8>". `score` lists the joined score-seam files; `draft` is
+   * the draft-seam file. Empty for agent-saved runs (the agent drafted, not a seam).
+   */
+  promptRefs: external_exports.object({
+    score: external_exports.array(external_exports.string().min(1)).optional(),
+    draft: external_exports.string().min(1).optional()
+  }).default({}),
+  /**
+   * Score-seam angles removed because they cited a fact absent from the inputs
+   * (groundAngles) — kept so an operator can see what the model tried (v5).
+   */
+  droppedAngles: external_exports.array(external_exports.object({ domain: external_exports.string().min(1), angle: external_exports.string(), reason: external_exports.string() })).default([]),
+  /**
+   * Who assembled the record (v5, optional so older lines stay unlabeled rather
+   * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
+   * where the drafts and the `model` field are caller-claimed.
+   */
+  origin: external_exports.enum(["pipeline", "agent"]).optional(),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
@@ -69521,9 +69552,6 @@ var PRICING = {
   // OpenAI
   "gpt-4o": { in: 2.5, out: 10 },
   "gpt-4.1": { in: 2, out: 8 },
-  // Google
-  "gemini-2.0-flash": { in: 0.1, out: 0.4 },
-  "gemini-1.5-pro": { in: 1.25, out: 5 },
   // xAI
   "grok-2-latest": { in: 2, out: 10 }
 };
@@ -70215,6 +70243,9 @@ var REGISTRY2 = /* @__PURE__ */ new Map();
 function registerPack(pack) {
   REGISTRY2.set(pack.id, pack);
 }
+function getPack(id) {
+  return REGISTRY2.get(id);
+}
 function resolvePack(id) {
   const wanted = id ?? DEFAULT_PACK_ID;
   const pack = REGISTRY2.get(wanted);
@@ -70243,7 +70274,9 @@ var b2bSdrPack = {
 var registered2 = false;
 function registerBuiltinPacks() {
   if (registered2) return;
-  registerPack(b2bSdrPack);
+  for (const pack of [b2bSdrPack]) {
+    if (getPack(pack.id) === void 0) registerPack(pack);
+  }
   registered2 = true;
 }
 
@@ -70532,7 +70565,118 @@ function applyComplianceFooter(message, sender) {
   return { ...message, body: appendBlock(message.body, emailFooter(sender)), needsSenderIdentity: false };
 }
 
+// pipeline_core/profiles.ts
+import { readFileSync as readFileSync3 } from "node:fs";
+var IntakeSchema = external_exports.object({
+  /** Connector names to include for this run (subset of KNOWN_SOURCES). */
+  connectors: external_exports.array(external_exports.string().min(1)).optional(),
+  /** Extra lead/contact fields to surface in the rendered report. */
+  extraFields: external_exports.array(external_exports.string().min(1)).optional()
+});
+var FilteringSchema = external_exports.object({
+  /** Minimum fit score (0–100) to include a lead in outreach drafting. */
+  minScore: external_exports.number().min(0).max(100).optional(),
+  /** Plain-English company-type filters, e.g. ["Series A", "bootstrapped"]. */
+  companyFilters: external_exports.array(external_exports.string()).optional(),
+  /** Contact title substrings to prefer, e.g. ["CEO", "Founder", "VP Sales"]. */
+  contactTitles: external_exports.array(external_exports.string()).optional()
+});
+var OutreachSchema = external_exports.object({
+  /** Outreach channel for drafted messages. */
+  channel: external_exports.enum(["email", "linkedin"]).optional(),
+  /** Tone descriptor, injected into the styleOverride for the draft seam. */
+  tone: external_exports.string().optional(),
+  /** Approximate maximum character length for the message body. */
+  maxLength: external_exports.number().positive().optional(),
+  /** Maximum contacts to draft per lead. */
+  maxContactsPerLead: external_exports.number().int().positive().optional(),
+  /** Free-text template notes injected into the styleOverride. */
+  templateNotes: external_exports.string().optional()
+});
+var StructureSchema = external_exports.object({
+  /**
+   * Ordered list of sections to include in the rendered report.
+   * Recognised values: "summary" | "leads" | "contacts" | "messages" | "cost".
+   * Unknown values are silently passed through to custom renderers.
+   */
+  sections: external_exports.array(external_exports.string().min(1)).default(["summary", "leads", "contacts", "messages", "cost"])
+});
+var OUTPUT_FORMATS = [
+  "markdown",
+  "csv",
+  "json",
+  "html",
+  "slack",
+  "email-draft",
+  "pdf"
+];
+var OutputSchema = external_exports.object({
+  formats: external_exports.array(external_exports.enum(OUTPUT_FORMATS)).min(1)
+});
+var DELIVERY_TARGETS = ["console", "file", "email-draft", "slack"];
+var DeliverySchema = external_exports.object({
+  targets: external_exports.array(external_exports.enum(DELIVERY_TARGETS)).min(1),
+  /**
+   * Local directory for "file" target. Required when "file" is in targets.
+   * Defaults to process.cwd() at deliver-time when omitted.
+   */
+  dir: external_exports.string().optional()
+});
+var ReportProfileSchema = external_exports.object({
+  /** Human-readable profile name, used in report headers. */
+  name: external_exports.string().min(1),
+  /** Short description of the profile's purpose. */
+  description: external_exports.string().min(1),
+  intake: IntakeSchema.optional(),
+  filtering: FilteringSchema.optional(),
+  outreach: OutreachSchema.optional(),
+  structure: StructureSchema.optional(),
+  output: OutputSchema,
+  delivery: DeliverySchema,
+  /**
+   * Sender identity for the CAN-SPAM footer the CODE appends to email drafts:
+   * { name, company, postalAddress, replyToEmail?, optOutText?, optOutOnLinkedin? }.
+   * Optional — when absent, email drafts are flagged `needsSenderIdentity` and the
+   * run records a compliance warning; nothing is ever fabricated.
+   */
+  sender: SenderIdentitySchema.optional()
+});
+function loadProfile(path) {
+  let raw;
+  try {
+    raw = JSON.parse(readFileSync3(path, "utf8"));
+  } catch (err) {
+    throw new Error(`loadProfile: cannot read "${path}": ${String(err)}`);
+  }
+  const result = ReportProfileSchema.safeParse(raw);
+  if (!result.success) {
+    const issues = result.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+    throw new Error(`loadProfile: invalid profile at "${path}": ${issues}`);
+  }
+  return result.data;
+}
+function applyProfileToCampaignInput(profile, _base) {
+  const { outreach, filtering } = profile;
+  const styleParts = [];
+  if (outreach?.tone) styleParts.push(`Tone: ${outreach.tone}.`);
+  if (outreach?.maxLength) styleParts.push(`Keep the body under ${outreach.maxLength} characters.`);
+  if (outreach?.templateNotes) styleParts.push(outreach.templateNotes);
+  const styleOverride = styleParts.length > 0 ? styleParts.join(" ") : void 0;
+  return {
+    channel: outreach?.channel,
+    minScore: filtering?.minScore,
+    maxContactsPerLead: outreach?.maxContactsPerLead,
+    ...styleOverride !== void 0 ? { styleOverride } : {},
+    // Deterministic, operator-owned: passed straight through to the footer, never
+    // to the LLM (it must not be paraphrased or invented by the model).
+    ...profile.sender !== void 0 ? { sender: profile.sender } : {}
+  };
+}
+
 // pipeline_core/pipeline.ts
+import { existsSync } from "node:fs";
+import { dirname as dirname3, isAbsolute as isAbsolute2, join as join4, resolve as resolve4 } from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
 var LABEL_RE2 = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
@@ -70814,6 +70958,43 @@ function deriveRunStatus(s) {
   if (s.researchRan) return "researched";
   return "failed";
 }
+function campaignGate(pack, suppressions) {
+  return composeGates(suppressionGate(suppressions), pack.compliance);
+}
+var zodIssues = (issues) => issues.map((i) => `${i.path.map(String).join(".") || "(root)"}: ${i.message}`);
+function finalizeDraft(candidate, sender) {
+  const validated = validateMessage(candidate);
+  if (!validated.ok) return { ok: false, issues: zodIssues(validated.error.issues) };
+  const footed = validateMessage(applyComplianceFooter(validated.value, sender));
+  if (!footed.ok) return { ok: false, issues: zodIssues(footed.error.issues) };
+  return { ok: true, message: footed.value };
+}
+function senderComplianceWarnings(draftsMissingSender, sender) {
+  if (draftsMissingSender <= 0) return [];
+  const missing = missingSenderFields(sender).join(", ");
+  return [
+    `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured (missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`
+  ];
+}
+var PROFILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+function resolveProfilePath(ref, cwd = process.cwd()) {
+  const trimmed = ref.trim();
+  if (!trimmed) throw new Error("profile: empty reference");
+  if (/[\\/]/.test(trimmed) || trimmed.toLowerCase().endsWith(".json")) {
+    return isAbsolute2(trimmed) ? trimmed : resolve4(cwd, trimmed);
+  }
+  if (!PROFILE_NAME_RE.test(trimmed)) throw new Error(`profile: invalid name ${JSON.stringify(trimmed)}`);
+  const here = dirname3(fileURLToPath2(import.meta.url));
+  const roots = [join4(cwd, "profiles"), join4(intentOutreachHome(), "profiles"), join4(here, "..", "profiles")];
+  for (const root of roots) {
+    const candidate = join4(root, `${trimmed}.json`);
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(`profile not found: ${trimmed} (looked in: ${roots.join(", ")})`);
+}
+function loadProfileRef(ref, cwd) {
+  return loadProfile(resolveProfilePath(ref, cwd));
+}
 async function runCampaign(input2) {
   const { icp } = input2;
   const domains = normalizeDomains(input2.domains);
@@ -70832,8 +71013,7 @@ async function runCampaign(input2) {
   const provider = input2.provider ?? await getProvider();
   registerBuiltinPacks();
   const pack = resolvePack(input2.pack);
-  const gate2 = composeGates(suppressionGate(suppressions), pack.compliance);
-  const promptVersion = pack.prompts.draft.replace(/\.md$/i, "");
+  const gate2 = campaignGate(pack, suppressions);
   const meter = new CostMeter();
   const createdAt = now2();
   const allLeads = [];
@@ -70846,6 +71026,8 @@ async function runCampaign(input2) {
   const failedConnectors = [];
   const skipped = /* @__PURE__ */ new Set();
   let anyResearchRan = false;
+  const droppedAngles = [];
+  const promptRefs = {};
   let draftsMissingSender = 0;
   const recordUsage = (u) => meter.record(provider.model, u.inputTokens, u.outputTokens, cacheOf(u));
   const recordError = (err, where) => {
@@ -70882,6 +71064,8 @@ async function runCampaign(input2) {
         continue;
       }
       recordUsage(scored.usage);
+      promptRefs.score ??= scored.promptRefs;
+      for (const d of scored.droppedAngles ?? []) droppedAngles.push({ domain: lead.domain, ...d });
       if (scored.object.fitScore < minScore) continue;
       const eligible = [];
       for (const contact of contacts) {
@@ -70912,52 +71096,46 @@ async function runCampaign(input2) {
             angles: scored.object.angles,
             channel,
             draftPrompt: pack.prompts.draft,
+            // Never shown to the model; widens the guard allowlist to verified emails/phones.
+            enrichments: enrichmentsFor(lead, contact, enrich.enrichments),
             ...input2.styleOverride ? { styleOverride: input2.styleOverride } : {}
           });
         } catch (err) {
-          recordError(err, { domain: lead.domain, contactKey, stage: "draft" });
+          if (err instanceof DraftRejectedError) {
+            recordUsage(err.usage);
+            rejectedDrafts.push({ contactKey, issues: err.issues });
+          } else {
+            recordError(err, { domain: lead.domain, contactKey, stage: "draft" });
+          }
           continue;
         }
         recordUsage(drafted.usage);
-        const candidate = {
-          contactKey,
-          channel,
-          subject: drafted.object.subject ?? void 0,
-          body: drafted.object.body,
-          cta: drafted.object.cta,
-          fitScore: scored.object.fitScore,
-          model: provider.model,
-          promptVersion,
-          createdAt: now2()
-        };
-        const validated = validateMessage(candidate);
-        if (validated.ok) {
-          const footed = validateMessage(applyComplianceFooter(validated.value, input2.sender));
-          if (footed.ok) {
-            if (footed.value.needsSenderIdentity) draftsMissingSender += 1;
-            messages.push(footed.value);
-          } else {
-            rejectedDrafts.push({
-              contactKey,
-              issues: footed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
-            });
-          }
-        } else {
-          rejectedDrafts.push({
+        promptRefs.draft ??= drafted.promptRef;
+        const finalized = finalizeDraft(
+          {
             contactKey,
-            issues: validated.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
-          });
+            channel,
+            subject: drafted.object.subject ?? void 0,
+            body: drafted.object.body,
+            cta: drafted.object.cta,
+            fitScore: scored.object.fitScore,
+            model: provider.model,
+            // Provenance: the exact prompt file + content hash that drafted this.
+            promptVersion: drafted.promptRef,
+            createdAt: now2()
+          },
+          input2.sender
+        );
+        if (finalized.ok) {
+          if (finalized.message.needsSenderIdentity) draftsMissingSender += 1;
+          messages.push(finalized.message);
+        } else {
+          rejectedDrafts.push({ contactKey, issues: finalized.issues });
         }
       }
     }
   }
-  const complianceWarnings = [];
-  if (draftsMissingSender > 0) {
-    const missing = missingSenderFields(input2.sender).join(", ");
-    complianceWarnings.push(
-      `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured (missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`
-    );
-  }
+  const complianceWarnings = senderComplianceWarnings(draftsMissingSender, input2.sender);
   const status = deriveRunStatus({
     messages: messages.length,
     leads: allLeads.length,
@@ -70985,6 +71163,9 @@ async function runCampaign(input2) {
     rejectedDrafts,
     failedConnectors,
     complianceWarnings,
+    promptRefs,
+    droppedAngles,
+    origin: "pipeline",
     createdAt,
     finishedAt: now2()
   });
@@ -70993,7 +71174,7 @@ async function runCampaign(input2) {
 
 // pipeline_core/store.ts
 import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, stat as stat2, unlink as unlink2 } from "node:fs/promises";
-import { dirname as dirname3, join as join4 } from "node:path";
+import { dirname as dirname4, join as join5 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
     super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
@@ -71011,7 +71192,7 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
-  return join4(intentOutreachHome(), "runs.jsonl");
+  return join5(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
 var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -71029,7 +71210,7 @@ var JsonlRunStore = class {
   async saveRun(run, opts = {}) {
     const checked = assertCampaignRun(run);
     const line = JSON.stringify(checked) + "\n";
-    await mkdir2(dirname3(this.path), { recursive: true, mode: 448 });
+    await mkdir2(dirname4(this.path), { recursive: true, mode: 448 });
     await this.withLock(async () => {
       if (!opts.overwrite) {
         const { runs } = await this.scan();
@@ -71168,8 +71349,51 @@ var JsonlRunStore = class {
 };
 
 // cli.ts
+var UsageError = class extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "UsageError";
+  }
+};
+var MAX_CONTACTS_LIMIT = 50;
 function makeRunId() {
   return `run-${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}`;
+}
+function parseNumberFlag(flag, raw, { min, max, integer: integer2 = false }) {
+  const trimmed = raw.trim();
+  const n = trimmed === "" ? Number.NaN : Number(trimmed);
+  if (!Number.isFinite(n)) throw new UsageError(`${flag} must be a number, got ${JSON.stringify(raw)}`);
+  if (integer2 && !Number.isInteger(n)) throw new UsageError(`${flag} must be a whole number, got ${JSON.stringify(raw)}`);
+  if (n < min || n > max) throw new UsageError(`${flag} must be between ${min} and ${max}, got ${n}`);
+  return n;
+}
+function parseDomainsFlag(raw) {
+  const parts = raw.split(",").map((d) => d.trim()).filter(Boolean);
+  if (parts.length === 0) throw new UsageError("--domains is empty");
+  const out = [];
+  for (const part of parts) {
+    let domain2;
+    try {
+      domain2 = normalizeDomain2(part);
+    } catch (err) {
+      throw new UsageError(`--domains: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    if (!out.includes(domain2)) out.push(domain2);
+  }
+  return out;
+}
+function parseChannelFlag(raw) {
+  if (raw === "email" || raw === "linkedin") return raw;
+  throw new UsageError(`--channel must be "email" or "linkedin", got ${JSON.stringify(raw)}`);
+}
+function installEpipeHandler(stream = process.stdout, exit = (code) => process.exit(code)) {
+  stream.on("error", (err) => {
+    if (err?.code === "EPIPE") {
+      exit(0);
+      return;
+    }
+    throw err;
+  });
 }
 function printHelp() {
   process.stdout.write(
@@ -71188,11 +71412,14 @@ function printHelp() {
       "run options:",
       "  --icp <text>            (required) ideal customer profile / offer",
       "  --domains <list>        (required) comma-separated company domains",
-      "  --provider <name>       anthropic | openai | google | xai (default: auto-detect)",
+      "  --profile <path|name>   Report Profile (sender identity for the CAN-SPAM footer, tone,",
+      "                          channel, min score); a name is looked up in ./profiles,",
+      "                          $INTENT_OUTREACH_HOME/profiles, then the bundled profiles",
+      "  --provider <name>       anthropic | openai | xai (default: auto-detect)",
       "  --model <id>            override the model id",
-      "  --channel <email|linkedin>   default: email",
+      "  --channel <email|linkedin>   default: email (or the profile's)",
       "  --min-score <0-100>     skip drafting below this fit score (default: 0)",
-      "  --max-contacts <n>      contacts to draft per lead (default: 1)",
+      `  --max-contacts <1-${MAX_CONTACTS_LIMIT}>   contacts to draft per lead (default: 1)`,
       "  --out <path>            JSONL store path (default: " + defaultStorePath() + ")",
       "  --json                  print the full run as JSON",
       "",
@@ -71211,7 +71438,8 @@ async function cmdConnectors() {
   }
 }
 function cmdProviders() {
-  for (const p of listProviderStatus()) {
+  const statuses = listProviderStatus();
+  for (const p of statuses) {
     const mark = p.configured ? "\u2713" : "\xB7";
     const gate2 = p.supported ? "supported" : "ungated (run evals)";
     process.stdout.write(
@@ -71219,45 +71447,66 @@ function cmdProviders() {
 `
     );
   }
+  const detected = statuses.some((p) => p.configured) ? detectProvider() : "none configured";
   process.stdout.write(`
-auto-detected provider: ${detectProvider()}
+auto-detected provider: ${detected}
 `);
 }
 async function cmdRun(args) {
-  const { values } = parseArgs({
-    args,
-    options: {
-      icp: { type: "string" },
-      domains: { type: "string" },
-      provider: { type: "string" },
-      model: { type: "string" },
-      channel: { type: "string" },
-      "min-score": { type: "string" },
-      "max-contacts": { type: "string" },
-      out: { type: "string" },
-      json: { type: "boolean" }
-    },
-    allowPositionals: false
-  });
-  if (!values.icp || !values.domains) {
-    process.stderr.write("error: --icp and --domains are required\n\n");
-    printHelp();
-    process.exit(2);
+  let values;
+  try {
+    ({ values } = parseArgs({
+      args,
+      options: {
+        icp: { type: "string" },
+        domains: { type: "string" },
+        profile: { type: "string" },
+        provider: { type: "string" },
+        model: { type: "string" },
+        channel: { type: "string" },
+        "min-score": { type: "string" },
+        "max-contacts": { type: "string" },
+        out: { type: "string" },
+        json: { type: "boolean" }
+      },
+      allowPositionals: false
+    }));
+  } catch (err) {
+    throw new UsageError(err instanceof Error ? err.message : String(err));
   }
-  const domains = values.domains.split(",").map((d) => d.trim()).filter(Boolean);
-  const channel = values.channel === "linkedin" ? "linkedin" : "email";
+  if (!values.icp || !values.domains) throw new UsageError("--icp and --domains are required");
+  const domains = parseDomainsFlag(values.domains);
+  const minScore = values["min-score"] !== void 0 ? parseNumberFlag("--min-score", values["min-score"], { min: 0, max: 100 }) : void 0;
+  const maxContacts = values["max-contacts"] !== void 0 ? parseNumberFlag("--max-contacts", values["max-contacts"], { min: 1, max: MAX_CONTACTS_LIMIT, integer: true }) : void 0;
+  const channel = values.channel !== void 0 ? parseChannelFlag(values.channel) : void 0;
+  const id = makeRunId();
+  let profileOverrides = {};
+  if (values.profile !== void 0) {
+    let profile;
+    try {
+      profile = loadProfileRef(values.profile);
+    } catch (err) {
+      throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    profileOverrides = Object.fromEntries(
+      Object.entries(applyProfileToCampaignInput(profile, { id, icp: values.icp, domains })).filter(
+        ([, v]) => v !== void 0
+      )
+    );
+  }
   const provider = values.provider || values.model ? await getProvider({
     ...values.provider ? { provider: values.provider } : {},
     ...values.model ? { model: values.model } : {}
   }) : void 0;
   const { run, cost } = await runCampaign({
-    id: makeRunId(),
+    id,
     icp: values.icp,
     domains,
-    channel,
+    ...profileOverrides,
+    ...channel !== void 0 ? { channel } : {},
     ...provider ? { provider } : {},
-    ...values["min-score"] ? { minScore: Number(values["min-score"]) } : {},
-    ...values["max-contacts"] ? { maxContactsPerLead: Number(values["max-contacts"]) } : {}
+    ...minScore !== void 0 ? { minScore } : {},
+    ...maxContacts !== void 0 ? { maxContactsPerLead: maxContacts } : {}
   });
   const store = new JsonlRunStore(values.out);
   await store.saveRun(run);
@@ -71269,20 +71518,25 @@ async function cmdRun(args) {
         `run ${run.id} \u2014 ${run.status}`,
         `provider: ${run.provider} (${run.model})`,
         `leads: ${run.leads.length}  contacts: ${run.contacts.length}  messages: ${run.messages.length}`,
+        run.blockedContacts.length ? `blocked contacts: ${run.blockedContacts.length}` : "",
+        run.rejectedDrafts.length ? `rejected drafts: ${run.rejectedDrafts.length}` : "",
         run.skippedConnectors.length ? `skipped connectors: ${run.skippedConnectors.join(", ")}` : "",
+        ...run.complianceWarnings.map((w) => `WARNING: ${w}`),
         `cost: $${cost.spentUsd.toFixed(4)} over ${cost.calls} model calls`,
         `saved \u2192 ${values.out ?? defaultStorePath()}`
       ].filter(Boolean).join("\n") + "\n"
     );
   }
 }
-var SUPPRESS_USAGE = "usage: intent-outreach suppress add <email|domain> [--reason <text>] | remove <email|domain> | list\n";
+var SUPPRESS_USAGE = "usage: intent-outreach suppress add <email|domain> [--reason <text>] | remove <email|domain> | list";
 async function cmdSuppress(args) {
-  const { values, positionals } = parseArgs({
-    args,
-    options: { reason: { type: "string" } },
-    allowPositionals: true
-  });
+  let parsed;
+  try {
+    parsed = parseArgs({ args, options: { reason: { type: "string" } }, allowPositionals: true });
+  } catch {
+    throw new UsageError(SUPPRESS_USAGE);
+  }
+  const { values, positionals } = parsed;
   const [action, target, ...extra] = positionals;
   const path = defaultSuppressionsPath();
   if (action === "list" && target === void 0) {
@@ -71311,11 +71565,10 @@ async function cmdSuppress(args) {
     }
     return;
   }
-  process.stderr.write(SUPPRESS_USAGE);
-  process.exit(2);
+  throw new UsageError(SUPPRESS_USAGE);
 }
-async function main() {
-  const [cmd, ...rest] = process.argv.slice(2);
+async function main(argv = process.argv.slice(2)) {
+  const [cmd, ...rest] = argv;
   switch (cmd) {
     case "run":
       return cmdRun(rest);
@@ -71331,15 +71584,40 @@ async function main() {
     case void 0:
       return void printHelp();
     default:
-      process.stderr.write(`unknown command: ${cmd}
-
-`);
-      printHelp();
-      process.exit(2);
+      throw new UsageError(`unknown command: ${cmd}`);
   }
 }
-main().catch((err) => {
-  process.stderr.write(`intent-outreach: ${err instanceof Error ? err.message : String(err)}
+function isEntrypoint() {
+  const argv1 = process.argv[1];
+  if (!argv1) return false;
+  try {
+    return realpathSync(argv1) === realpathSync(fileURLToPath3(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+if (isEntrypoint()) {
+  installEpipeHandler();
+  main().catch((err) => {
+    if (err instanceof UsageError) {
+      process.stderr.write(`error: ${err.message}
+
 `);
-  process.exit(1);
-});
+      if (!err.message.startsWith("usage:")) process.stderr.write("run `intent-outreach help` for usage\n");
+      process.exit(2);
+    }
+    process.stderr.write(`intent-outreach: ${err instanceof Error ? err.message : String(err)}
+`);
+    process.exit(1);
+  });
+}
+export {
+  MAX_CONTACTS_LIMIT,
+  UsageError,
+  installEpipeHandler,
+  main,
+  parseChannelFlag,
+  parseDomainsFlag,
+  parseNumberFlag,
+  printHelp
+};

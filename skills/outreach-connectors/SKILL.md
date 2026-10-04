@@ -5,6 +5,7 @@ description: >-
   when a user asks which providers are configured or wants a campaign preflight. Trigger with
   "/outreach-connectors", "connector status", or "which data providers are configured?".
 allowed-tools:
+  - mcp__plugin_intent-outreach_intent-outreach__list_connectors
   - mcp__intent-outreach__list_connectors
 version: 0.2.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
