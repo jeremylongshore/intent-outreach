@@ -3,8 +3,11 @@
  *
  * Because connector calls are deterministic glue (pipeline.ts), the hard
  * cross-provider TOOL-CALLING problem collapses to the easy cross-provider
- * STRUCTURED-OUTPUT problem — which the Vercel AI SDK's generateObject solves
- * uniformly across Anthropic / OpenAI / Google / xAI.
+ * STRUCTURED-OUTPUT problem — which the Vercel AI SDK's generateText +
+ * Output.object solves uniformly across Anthropic / OpenAI / xAI.
+ *
+ * Google was dropped entirely (owner decision, 2026-10): no adapter, no key
+ * lookup, no optional dependency. Intent Outreach is zero-Google.
  *
  * D4 (Claude-first): only providers in SUPPORTED_PROVIDERS may run. A provider
  * earns its place by passing the eval gate (Epic 4/6). Until then it throws —
@@ -13,43 +16,57 @@
  * and dynamically imported, so a minimal install still works on Claude alone.
  */
 
-import {
-  generateObject as aiGenerateObject,
-  type LanguageModel,
-  type LanguageModelUsage,
-} from "ai";
+import { generateText, Output, type LanguageModel, type LanguageModelUsage } from "ai";
 import type { z } from "zod";
 import { getSecret, hasSecret } from "./secrets.js";
 import { costFor, type Usage } from "./cost.js";
+import { approvedEntry, supportedProviderNames } from "../evals/supported.js";
 
-export type ProviderName = "anthropic" | "openai" | "google" | "xai";
+export type ProviderName = "anthropic" | "openai" | "xai";
 
 /**
- * Providers that have passed the eval gate and may run unguarded.
- * openai gated in 2026-08-20: gpt-4o passed all 7 golden fixtures
- * (evals/run.ts --providers openai). google/xai adapters ship ready but stay
- * gated until an eval run with a real key passes.
+ * Providers that may run unguarded: DERIVED from evals/supported.ts. A provider
+ * is supported iff it has at least one approved {provider, model} pair there;
+ * a pair is approved by a passing keyed run of the eval harness (`npm run
+ * evals:promote`). anthropic + openai are carried as legacy claims
+ * (verified: false) until re-run with a key. The xai adapter ships ready but
+ * stays gated until an eval run with a real key passes.
  */
-export const SUPPORTED_PROVIDERS = new Set<ProviderName>(["anthropic", "openai"]);
+export const SUPPORTED_PROVIDERS: ReadonlySet<ProviderName> = new Set<ProviderName>(supportedProviderNames());
 
 const DEFAULT_MODEL: Record<ProviderName, string> = {
   anthropic: "claude-sonnet-4-6",
   openai: "gpt-4o",
-  google: "gemini-2.0-flash",
   xai: "grok-2-latest",
 };
 
 const KEY_ENV: Record<ProviderName, string[]> = {
   anthropic: ["ANTHROPIC_API_KEY"],
   openai: ["OPENAI_API_KEY"],
-  google: ["GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"],
   xai: ["XAI_API_KEY"],
 };
+
+/** Anthropic effort levels the seams use (thinking depth + overall token spend). */
+export type Effort = "low" | "medium" | "high";
+
+/**
+ * Per-call bounds. All optional so stubs and older callers keep compiling.
+ * `effort` is forwarded ONLY to Anthropic models that accept it (see
+ * `supportsEffort`); other providers ignore it.
+ */
+export interface GenerateOptions {
+  /** Hard ceiling on generated tokens. On thinking models, thinking counts toward it. */
+  maxOutputTokens?: number;
+  /** Cancels the request (e.g. AbortSignal.timeout(60_000)). */
+  abortSignal?: AbortSignal;
+  effort?: Effort;
+}
 
 export interface GenerateObjectArgs<S extends z.ZodTypeAny> {
   schema: S;
   prompt: string;
   system?: string;
+  options?: GenerateOptions;
 }
 
 export interface LLMProvider {
@@ -62,7 +79,7 @@ export interface LLMProvider {
 
 /** First provider with a configured key, in Claude-first preference order. */
 export function detectProvider(): ProviderName {
-  const order: ProviderName[] = ["anthropic", "openai", "xai", "google"];
+  const order: ProviderName[] = ["anthropic", "openai", "xai"];
   for (const p of order) {
     if (KEY_ENV[p].some((k) => hasSecret(k))) return p;
   }
@@ -96,15 +113,21 @@ async function resolveModel(provider: ProviderName, modelId: string): Promise<La
       const { createOpenAI } = await import("@ai-sdk/openai");
       return createOpenAI({ apiKey: firstKey("openai") })(modelId);
     }
-    case "google": {
-      const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
-      return createGoogleGenerativeAI({ apiKey: firstKey("google") })(modelId);
-    }
     case "xai": {
       const { createXai } = await import("@ai-sdk/xai");
       return createXai({ apiKey: firstKey("xai") })(modelId);
     }
   }
+}
+
+/**
+ * Does this Anthropic model accept `output_config.effort`? Effort is GA on Opus
+ * 4.5+, Sonnet 4.6+ and every 5.x model; Sonnet 4.5 / Haiku 4.5 and older reject
+ * it with a 400, so it is only sent where it is known to work.
+ */
+export function supportsEffort(modelId: string): boolean {
+  const id = modelId.replace(/^.*\//, "").replace(/^(?:anthropic\.|us\.anthropic\.)/, "").replace(/^claude-/, "");
+  return /^(?:opus-4-[5-9]|opus-[5-9]|sonnet-4-[6-9]|sonnet-[5-9]|fable|mythos)/.test(id);
 }
 
 /**
@@ -134,11 +157,53 @@ export interface GetProviderOptions {
   model?: string;
 }
 
+const warnedUnapproved = new Set<string>();
+
+/**
+ * Warn (stderr, once per pair per process) when a supported provider runs a
+ * model with no approved record in evals/supported.ts: the provider passed the
+ * gate, this model has not.
+ */
+function warnIfUnapproved(provider: ProviderName, model: string): void {
+  if (approvedEntry(provider, model)) return;
+  const key = `${provider}:${model}`;
+  if (warnedUnapproved.has(key)) return;
+  warnedUnapproved.add(key);
+  process.stderr.write(
+    `intent-outreach: warning: ${provider} model "${model}" has no approved eval record (evals/supported.ts); ` +
+      `qualify it with: npm run evals:promote -- --provider ${provider} --model ${model}\n`,
+  );
+}
+
+/** Reset the once-per-pair warning memory. Tests only. */
+export function _resetUnapprovedWarnings(): void {
+  warnedUnapproved.clear();
+}
+
 /** Resolve a usable provider from options + env, enforcing the eval gate. */
 export async function getProvider(opts: GetProviderOptions = {}): Promise<LLMProvider> {
+  return createProvider(opts, true);
+}
+
+/**
+ * EVAL HARNESS ONLY (evals/run.ts). Same as getProvider but skips the eval
+ * gate, because the harness is what qualifies an ungated provider/model in the
+ * first place. Product code (pipeline_core, mcp, cli) must call getProvider;
+ * tests/eval-gate.test.ts fails if anything outside evals/ calls this.
+ */
+export async function getProviderUnchecked(opts: GetProviderOptions = {}): Promise<LLMProvider> {
+  return createProvider(opts, false);
+}
+
+async function createProvider(opts: GetProviderOptions, gated: boolean): Promise<LLMProvider> {
   const name = opts.provider ?? detectProvider();
-  assertSupported(name);
+  // Runtime check too: CLI/MCP callers pass untyped strings (e.g. a stale "google").
+  if (!Object.hasOwn(KEY_ENV, name)) {
+    throw new Error(`unknown provider "${String(name)}" (known: ${Object.keys(KEY_ENV).join(", ")})`);
+  }
+  if (gated) assertSupported(name);
   const model = opts.model ?? process.env.INTENT_OUTREACH_MODEL ?? DEFAULT_MODEL[name];
+  if (gated && SUPPORTED_PROVIDERS.has(name)) warnIfUnapproved(name, model);
   const languageModel = await resolveModel(name, model);
 
   return {
@@ -147,13 +212,34 @@ export async function getProvider(opts: GetProviderOptions = {}): Promise<LLMPro
     async generateObject<S extends z.ZodTypeAny>(
       args: GenerateObjectArgs<S>,
     ): Promise<{ object: z.infer<S>; usage: Usage }> {
-      const res = await aiGenerateObject({
+      const opts = args.options ?? {};
+      const providerOptions =
+        name === "anthropic" && opts.effort && supportsEffort(model)
+          ? { anthropic: { effort: opts.effort } }
+          : undefined;
+      const res = await generateText({
         model: languageModel,
-        schema: args.schema,
+        output: Output.object({ schema: args.schema }),
         prompt: args.prompt,
         ...(args.system ? { system: args.system } : {}),
+        ...(opts.maxOutputTokens !== undefined ? { maxOutputTokens: opts.maxOutputTokens } : {}),
+        ...(opts.abortSignal ? { abortSignal: opts.abortSignal } : {}),
+        ...(providerOptions ? { providerOptions } : {}),
       });
-      return { object: res.object as z.infer<S>, usage: usageFrom(model, res.usage) };
+      const usage = usageFrom(model, res.usage);
+      let object: z.infer<S>;
+      try {
+        object = res.output as z.infer<S>;
+      } catch (err) {
+        // NoOutputGeneratedError (e.g. the token cap hit before any text) carries
+        // neither usage nor finishReason; attach both so the pipeline's error
+        // path still meters the spend and records why.
+        throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
+          usage: res.usage,
+          finishReason: res.finishReason,
+        });
+      }
+      return { object, usage };
     },
   };
 }

@@ -70,10 +70,11 @@ export const exaConnector: Connector = {
     return hasSecret(KEY_ENV);
   },
 
-  async research({ domain }: ResearchInput): Promise<ResearchOutput> {
+  async research({ domain, signal }: ResearchInput): Promise<ResearchOutput> {
     const res = parseVendor(
       ExaSearchSchema,
       await httpJson(`${BASE}/search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { query: "company at " + domain, numResults: 5, type: "auto" },
@@ -91,11 +92,12 @@ export const exaConnector: Connector = {
     return { leads: [lead], contacts: [], raw: res };
   },
 
-  async enrich({ lead }: EnrichInput): Promise<EnrichOutput> {
+  async enrich({ lead, signal }: EnrichInput): Promise<EnrichOutput> {
     const year = clock().getUTCFullYear();
     const res = parseVendor(
       ExaSearchSchema,
       await httpJson(`${BASE}/search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { query: `${lead.companyName} funding news ${year}`, numResults: 5 },

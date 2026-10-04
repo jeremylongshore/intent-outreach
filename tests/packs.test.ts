@@ -11,6 +11,9 @@
  * tests/pipeline.test.ts.
  */
 
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runCampaign } from "../pipeline_core/pipeline.js";
 import { validateCampaignRun } from "../pipeline_core/validator.js";
@@ -30,6 +33,11 @@ import { DncList } from "../pipeline_core/compliance/index.js";
 import { SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSIONS } from "../pipeline_core/models.js";
 import type { Connector } from "../pipeline_core/connectors/types.js";
 import type { LLMProvider, ProviderName } from "../pipeline_core/providers.js";
+
+// runCampaign loads ${INTENT_OUTREACH_HOME}/suppressions.jsonl. Point it at an
+// empty tmp dir at MODULE load (before any describe snapshots process.env) so
+// these tests never read the real ~/.intent-outreach.
+process.env.INTENT_OUTREACH_HOME = mkdtempSync(join(tmpdir(), "io-packs-home-"));
 
 const FIXED = "2026-06-16T12:00:00.000Z";
 const clock = () => FIXED;
@@ -401,7 +409,8 @@ describe("compliance gate fails CLOSED", () => {
       now: clock,
       pack: "alt-prompt",
     });
-    expect(run.messages[0]?.promptVersion).toBe("research.v1");
+    expect(run.messages[0]?.promptVersion).toMatch(/^research\.v1@[0-9a-f]{8}$/);
+    expect(run.promptRefs.draft).toBe(run.messages[0]?.promptVersion);
   });
 });
 
@@ -459,5 +468,55 @@ describe("CampaignRun schema v3 (additive)", () => {
       expect(r.value.errors[0]?.stage).toBe("score");
       expect(r.value.failedConnectors[0]?.status).toBe(401);
     }
+  });
+});
+
+// ── schema v5 back-compat ──────────────────────────────────────────────────
+
+describe("CampaignRun schema v5 (additive: promptRefs, droppedAngles, origin)", () => {
+  it("v5 is the current version and every older version is still supported", () => {
+    expect(SCHEMA_VERSION).toBe(5);
+    expect([...SUPPORTED_SCHEMA_VERSIONS]).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("every line of the legacy golden fixture parses with the v5 defaults applied", () => {
+    const lines = readFileSync(resolve("tests/fixtures/runs.legacy.jsonl"), "utf8").split("\n").filter(Boolean);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      const r = validateCampaignRun(JSON.parse(line));
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        expect(r.value.schemaVersion).toBeLessThan(5);
+        expect(r.value.promptRefs).toEqual({});
+        expect(r.value.droppedAngles).toEqual([]);
+        expect(r.value.origin).toBeUndefined(); // old lines stay unlabeled, never mislabeled
+      }
+    }
+  });
+
+  it("a v5 line round-trips its new fields; a bad origin is rejected", () => {
+    const base = {
+      id: "r5",
+      schemaVersion: 5,
+      icp: "x",
+      domains: ["acme.com"],
+      provider: "anthropic",
+      model: "claude",
+      status: "complete",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    const r = validateCampaignRun({
+      ...base,
+      promptRefs: { score: ["research.v2@deadbeef"], draft: "outreach.v2@cafef00d" },
+      droppedAngles: [{ domain: "acme.com", angle: "raised $9B", reason: "ungrounded money" }],
+      origin: "agent",
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.promptRefs.draft).toBe("outreach.v2@cafef00d");
+      expect(r.value.droppedAngles).toHaveLength(1);
+      expect(r.value.origin).toBe("agent");
+    }
+    expect(validateCampaignRun({ ...base, origin: "model" }).ok).toBe(false);
   });
 });

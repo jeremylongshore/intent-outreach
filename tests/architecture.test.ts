@@ -128,8 +128,7 @@ describe("invariant: zero Google dependency in pipeline_core/ and mcp/", () => {
   const GOOGLE = /google|firebase|firestore|vertex|@google-cloud|secretmanager|aiplatform/i;
   const files = [...listTs(abs("pipeline_core")), ...listTs(abs("mcp"))];
 
-  // unskip after #52 merges: pipeline_core/providers.ts still dynamically imports @ai-sdk/google on main.
-  it.skip("no import specifier mentions google/firebase/firestore/vertex/@google-cloud/secretmanager/aiplatform", () => {
+  it("no import specifier mentions google/firebase/firestore/vertex/@google-cloud/secretmanager/aiplatform", () => {
     const offenders = files.flatMap((f) =>
       importsOf(f)
         .filter((e) => GOOGLE.test(e.specifier))

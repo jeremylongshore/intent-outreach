@@ -13,7 +13,8 @@ export default defineConfig({
       provider: "v8",
       include: ["pipeline_core/**/*.ts", "mcp/**/*.ts", "cli.ts"],
       reporter: ["text-summary", "lcov"],
-      thresholds: { statements: 0, branches: 0, functions: 0, lines: 0 },
+      // Floors = measured baseline (88.6 / 79.47 / 89.49 / 90.76) rounded down. Never lower; raise as coverage grows.
+      thresholds: { statements: 88, branches: 79, functions: 89, lines: 90 },
     },
   },
 });

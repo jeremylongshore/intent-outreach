@@ -146,11 +146,12 @@ export const zoominfoConnector: Connector = {
     return hasSecret(KEY_ENV);
   },
 
-  async research({ domain, icp }: ResearchInput): Promise<ResearchOutput> {
+  async research({ domain, icp, signal }: ResearchInput): Promise<ResearchOutput> {
     // Company search — expect one result keyed by domain.
     const companyRes = parseVendor(
       CompanyEnvelope,
       await httpJson(`${BASE}/search/company`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { companyWebsite: domain },
@@ -166,6 +167,7 @@ export const zoominfoConnector: Connector = {
     const contactRes = parseVendor(
       ContactEnvelope,
       await httpJson(`${BASE}/search/contact`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { companyWebsite: domain, keywords: icp, maxResults: 10 },
@@ -185,7 +187,7 @@ export const zoominfoConnector: Connector = {
     };
   },
 
-  async enrich({ contacts }: EnrichInput): Promise<EnrichOutput> {
+  async enrich({ contacts, signal }: EnrichInput): Promise<EnrichOutput> {
     // Enrich contacts that already have an email — ZoomInfo's enrich endpoint
     // matches on email, so the contact name does not gate the lookup.
     const now = new Date().toISOString();
@@ -196,6 +198,7 @@ export const zoominfoConnector: Connector = {
         const res = parseVendor(
           ContactEnvelope,
           await httpJson(`${BASE}/enrich/contact`, {
+            signal,
             method: "POST",
             headers: headers(),
             json: { email: contact.email },
@@ -208,6 +211,7 @@ export const zoominfoConnector: Connector = {
           subjectKey: contact.email!,
           provider: "zoominfo",
           verifiedEmail: contact.email,
+          contactName: contact.name,
           phone: businessPhone(match),
           data: pickAllowed(match as Record<string, unknown>, ZI_CONTACT_ALLOW),
           fetchedAt: now,

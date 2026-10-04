@@ -11,7 +11,8 @@
  * registerConnector() at runtime from your own code. No other core edits.
  */
 
-import { registerConnector, _clearRegistry } from "./registry.js";
+import { getConnector, registerConnector, _clearRegistry } from "./registry.js";
+import type { Connector } from "./types.js";
 import { apolloConnector } from "./apollo.js";
 import { hunterConnector } from "./hunter.js";
 import { peopledatalabsConnector } from "./peopledatalabs.js";
@@ -24,22 +25,35 @@ import { zoominfoConnector } from "./zoominfo.js";
 
 let registered = false;
 
-/** Idempotently register all shipped connectors in deterministic order. */
+/** The shipped connectors, in deterministic call order: free → paid → legacy → enterprise. */
+const BUILTIN_CONNECTORS: readonly Connector[] = [
+  // free
+  apolloConnector,
+  hunterConnector,
+  peopledatalabsConnector,
+  exaConnector,
+  // paid
+  crunchbaseConnector,
+  leadmagicConnector,
+  clayConnector,
+  // legacy
+  clearbitConnector,
+  // enterprise
+  zoominfoConnector,
+];
+
+/**
+ * Idempotently register all shipped connectors in deterministic order.
+ *
+ * A name the user ALREADY registered (e.g. their own "apollo" adapter, wired
+ * before the first run) is never overwritten: the built-in is skipped and the
+ * user's connector keeps its slot. Built-ins only fill names nobody claimed.
+ */
 export function registerBuiltinConnectors(): void {
   if (registered) return;
-  // free
-  registerConnector(apolloConnector);
-  registerConnector(hunterConnector);
-  registerConnector(peopledatalabsConnector);
-  registerConnector(exaConnector);
-  // paid
-  registerConnector(crunchbaseConnector);
-  registerConnector(leadmagicConnector);
-  registerConnector(clayConnector);
-  // legacy
-  registerConnector(clearbitConnector);
-  // enterprise
-  registerConnector(zoominfoConnector);
+  for (const connector of BUILTIN_CONNECTORS) {
+    if (getConnector(connector.name) === undefined) registerConnector(connector);
+  }
   registered = true;
 }
 

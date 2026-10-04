@@ -23,8 +23,16 @@
       "subjectType": "lead",
       "subjectKey": "harborfreightcoffee.com",
       "provider": "clearbit",
-      "data": { "sector": "retail", "publiclyTraded": false },
+      "data": {
+        "sector": "retail",
+        "publiclyTraded": false
+      },
       "fetchedAt": "2026-06-15T10:05:00.000Z"
     }
-  ]
+  ],
+  "expect": {
+    "scoreMin": 0,
+    "scoreMax": 30,
+    "note": "Retail coffee chain, 1001-5000 people: outside the ICP on industry and size."
+  }
 }

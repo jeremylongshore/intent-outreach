@@ -4536,7 +4536,7 @@ function isRef(value) {
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
-function isRecursive(inst, stack, resolve2) {
+function isRecursive(inst, stack, resolve3) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -4546,7 +4546,7 @@ function isRecursive(inst, stack, resolve2) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve2);
+      const answer = isRecursive(child, stack, resolve3);
       if (answer > result)
         result = answer;
     }
@@ -4557,7 +4557,7 @@ function isRecursive(inst, stack, resolve2) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve2) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve3) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -4621,7 +4621,7 @@ function isRecursive(inst, stack, resolve2) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve2 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve3 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -20782,11 +20782,11 @@ var require_codegen = __commonJS({
         const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
         return `${varKind} ${this.name}${rhs};` + _n;
       }
-      optimizeNames(names, constants2) {
+      optimizeNames(names, constants3) {
         if (!names[this.name.str])
           return;
         if (this.rhs)
-          this.rhs = optimizeExpr(this.rhs, names, constants2);
+          this.rhs = optimizeExpr(this.rhs, names, constants3);
         return this;
       }
       get names() {
@@ -20803,10 +20803,10 @@ var require_codegen = __commonJS({
       render({ _n }) {
         return `${this.lhs} = ${this.rhs};` + _n;
       }
-      optimizeNames(names, constants2) {
+      optimizeNames(names, constants3) {
         if (this.lhs instanceof code_1.Name && !names[this.lhs.str] && !this.sideEffects)
           return;
-        this.rhs = optimizeExpr(this.rhs, names, constants2);
+        this.rhs = optimizeExpr(this.rhs, names, constants3);
         return this;
       }
       get names() {
@@ -20867,8 +20867,8 @@ var require_codegen = __commonJS({
       optimizeNodes() {
         return `${this.code}` ? this : void 0;
       }
-      optimizeNames(names, constants2) {
-        this.code = optimizeExpr(this.code, names, constants2);
+      optimizeNames(names, constants3) {
+        this.code = optimizeExpr(this.code, names, constants3);
         return this;
       }
       get names() {
@@ -20897,12 +20897,12 @@ var require_codegen = __commonJS({
         }
         return nodes.length > 0 ? this : void 0;
       }
-      optimizeNames(names, constants2) {
+      optimizeNames(names, constants3) {
         const { nodes } = this;
         let i = nodes.length;
         while (i--) {
           const n = nodes[i];
-          if (n.optimizeNames(names, constants2))
+          if (n.optimizeNames(names, constants3))
             continue;
           subtractNames(names, n.names);
           nodes.splice(i, 1);
@@ -20955,12 +20955,12 @@ var require_codegen = __commonJS({
           return void 0;
         return this;
       }
-      optimizeNames(names, constants2) {
+      optimizeNames(names, constants3) {
         var _a3;
-        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants2);
-        if (!(super.optimizeNames(names, constants2) || this.else))
+        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants3);
+        if (!(super.optimizeNames(names, constants3) || this.else))
           return;
-        this.condition = optimizeExpr(this.condition, names, constants2);
+        this.condition = optimizeExpr(this.condition, names, constants3);
         return this;
       }
       get names() {
@@ -20983,10 +20983,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.iteration})` + super.render(opts);
       }
-      optimizeNames(names, constants2) {
-        if (!super.optimizeNames(names, constants2))
+      optimizeNames(names, constants3) {
+        if (!super.optimizeNames(names, constants3))
           return;
-        this.iteration = optimizeExpr(this.iteration, names, constants2);
+        this.iteration = optimizeExpr(this.iteration, names, constants3);
         return this;
       }
       get names() {
@@ -21022,10 +21022,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
       }
-      optimizeNames(names, constants2) {
-        if (!super.optimizeNames(names, constants2))
+      optimizeNames(names, constants3) {
+        if (!super.optimizeNames(names, constants3))
           return;
-        this.iterable = optimizeExpr(this.iterable, names, constants2);
+        this.iterable = optimizeExpr(this.iterable, names, constants3);
         return this;
       }
       get names() {
@@ -21067,11 +21067,11 @@ var require_codegen = __commonJS({
         (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
         return this;
       }
-      optimizeNames(names, constants2) {
+      optimizeNames(names, constants3) {
         var _a3, _b;
-        super.optimizeNames(names, constants2);
-        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants2);
-        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants2);
+        super.optimizeNames(names, constants3);
+        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants3);
+        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants3);
         return this;
       }
       get names() {
@@ -21372,7 +21372,7 @@ var require_codegen = __commonJS({
     function addExprNames(names, from) {
       return from instanceof code_1._CodeOrName ? addNames(names, from.names) : names;
     }
-    function optimizeExpr(expr, names, constants2) {
+    function optimizeExpr(expr, names, constants3) {
       if (expr instanceof code_1.Name)
         return replaceName(expr);
       if (!canOptimize(expr))
@@ -21387,14 +21387,14 @@ var require_codegen = __commonJS({
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants2[n.str];
+        const c = constants3[n.str];
         if (c === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
         return c;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants2[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants3[c.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -23356,7 +23356,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve2.call(this, root, ref);
+      let _sch = resolve3.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -23383,7 +23383,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve2(root, ref) {
+    function resolve3(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -24213,7 +24213,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve2(baseURI, relativeURI, options) {
+    function resolve3(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -24582,7 +24582,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve2,
+      resolve: resolve3,
       resolveComponent,
       equal,
       serialize,
@@ -35067,7 +35067,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
+        await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error62) {
@@ -35084,7 +35084,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       const earlyReject = (error62) => {
         reject(error62);
       };
@@ -35162,7 +35162,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve2(parseResult.data);
+            resolve3(parseResult.data);
           }
         } catch (error62) {
           reject(error62);
@@ -35423,12 +35423,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve2, interval);
+      const timeoutId = setTimeout(resolve3, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -36523,7 +36523,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
+      await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -37187,12 +37187,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve2) => {
+    return new Promise((resolve3) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve2();
+        resolve3();
       } else {
-        this._stdout.once("drain", resolve2);
+        this._stdout.once("drain", resolve3);
       }
     });
   }
@@ -37205,6 +37205,9 @@ function registerConnector(connector) {
 }
 function getConnectors() {
   return [...REGISTRY.values()];
+}
+function getConnector(name) {
+  return REGISTRY.get(name);
 }
 function getConfiguredConnectors(phase) {
   return getConnectors().filter(
@@ -37313,11 +37316,11 @@ function backoffMs(attempt) {
   return Math.min(MAX_RETRY_WAIT_MS, Math.round(ceiling * (0.5 + Math.random() * 0.5)));
 }
 function sleep(ms, signal) {
-  return new Promise((resolve2, reject) => {
+  return new Promise((resolve3, reject) => {
     if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
     const t = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
-      resolve2();
+      resolve3();
     }, ms);
     const onAbort = () => {
       clearTimeout(t);
@@ -37673,6 +37676,10 @@ var APOLLO_ORG_ALLOW = [
   "latest_funding_round_date"
 ];
 var PERSONAL_PHONE = /mobile|home|personal/i;
+function contactNameOf(requested, p) {
+  const vendor = p.name?.trim() || [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+  return requested?.trim() || vendor || void 0;
+}
 function workPhone(p) {
   const hit = (p.phone_numbers ?? []).find(
     (n) => n.raw_number && !(n.type && PERSONAL_PHONE.test(n.type))
@@ -37718,10 +37725,11 @@ var apolloConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV);
   },
-  async research({ domain: domain2, icp }) {
+  async research({ domain: domain2, icp, signal }) {
     const orgRes = parseVendor(
       OrgSearchSchema,
       await httpJson(`${BASE}/organizations/api_search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { q_organization_domains: [domain2], per_page: 1 }
@@ -37732,6 +37740,7 @@ var apolloConnector = {
     const peopleRes = parseVendor(
       PeopleSearchSchema,
       await httpJson(`${BASE}/mixed_people/api_search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { q_organization_domains: [domain2], q_keywords: icp, per_page: 10 }
@@ -37745,7 +37754,7 @@ var apolloConnector = {
       raw: keepRawOptIn() ? { org: orgRes, people: peopleRes } : { org: pickAllowed(org, APOLLO_ORG_ALLOW), people: people.length }
     };
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const needy = eligibleContacts(contacts, 10, { filter: (c) => !c.email });
     if (needy.length === 0) return { enrichments: [] };
     const failures = [];
@@ -37754,6 +37763,7 @@ var apolloConnector = {
       const res = parseVendor(
         BulkMatchSchema,
         await httpJson(`${BASE}/people/bulk_match`, {
+          signal,
           method: "POST",
           headers: headers(),
           json: {
@@ -37767,15 +37777,22 @@ var apolloConnector = {
       if (isAuthFailure(err) || !isNotFound(err)) throw err;
     }
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const enrichments = matches.filter((m) => Boolean(m && m.email && m.email.includes("@"))).map((m) => ({
-      subjectType: "contact",
-      subjectKey: m.email,
-      provider: "apollo",
-      verifiedEmail: m.email,
-      phone: workPhone(m),
-      data: minimizePerson(m),
-      fetchedAt: now
-    }));
+    const aligned = matches.length === needy.length;
+    const enrichments = matches.map((m, i) => ({ m, requested: aligned ? needy[i]?.name : void 0 })).filter(
+      (x) => Boolean(x.m && x.m.email && x.m.email.includes("@"))
+    ).map(({ m, requested }) => {
+      const contactName = contactNameOf(requested, m);
+      return {
+        subjectType: "contact",
+        subjectKey: m.email,
+        provider: "apollo",
+        verifiedEmail: m.email,
+        ...contactName ? { contactName } : {},
+        phone: workPhone(m),
+        data: minimizePerson(m),
+        fetchedAt: now
+      };
+    });
     return {
       enrichments,
       failures,
@@ -37813,10 +37830,11 @@ var hunterConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV2);
   },
-  async research({ domain: domain2 }) {
+  async research({ domain: domain2, signal }) {
     const res = parseVendor(
       DomainSearchSchema,
       await httpJson(`${BASE2}/domain-search`, {
+        signal,
         query: { domain: domain2, api_key: useSecret(KEY_ENV2), limit: 10 }
       })
     );
@@ -37836,7 +37854,7 @@ var hunterConnector = {
     }));
     return { leads: [lead], contacts, raw: res };
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -37845,6 +37863,7 @@ var hunterConnector = {
         const res = parseVendor(
           FinderSchema,
           await httpJson(`${BASE2}/email-finder`, {
+            signal,
             query: { domain: lead.domain, full_name: c.name, api_key: useSecret(KEY_ENV2) }
           })
         );
@@ -37855,6 +37874,9 @@ var hunterConnector = {
           subjectKey: email3,
           provider: "hunter",
           verifiedEmail: email3,
+          // Back-reference to the contact this name-keyed lookup was for, so the
+          // pipeline folds the found email into the right contact.
+          contactName: c.name,
           data: res.data ?? {},
           fetchedAt: now
         };
@@ -37929,12 +37951,13 @@ var peopledatalabsConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV3);
   },
-  async research({ domain: domain2 }) {
+  async research({ domain: domain2, signal }) {
     const failures = [];
     let companyRaw = void 0;
     let co = {};
     try {
       companyRaw = await httpJson(`${BASE3}/company/enrich`, {
+        signal,
         query: { website: domain2 },
         headers: headers2()
       });
@@ -37957,6 +37980,7 @@ var peopledatalabsConnector = {
       const personRes = parseVendor(
         PdlPersonSearchSchema,
         await httpJson(`${BASE3}/person/search`, {
+          signal,
           method: "POST",
           headers: headers2(),
           json: {
@@ -37989,7 +38013,7 @@ var peopledatalabsConnector = {
       failures
     };
   },
-  async enrich({ contacts }) {
+  async enrich({ contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -37998,7 +38022,7 @@ var peopledatalabsConnector = {
         const email3 = contact.email;
         const res = parseVendor(
           PdlPersonEnrichSchema,
-          await httpJson(`${BASE3}/person/enrich`, { query: { email: email3 }, headers: headers2() })
+          await httpJson(`${BASE3}/person/enrich`, { query: { email: email3 }, headers: headers2(), signal })
         );
         const p = res.data ?? res;
         const verified = workEmail(p) ?? email3;
@@ -38007,6 +38031,7 @@ var peopledatalabsConnector = {
           subjectKey: email3,
           provider: "peopledatalabs",
           verifiedEmail: verified.includes("@") ? verified : void 0,
+          contactName: contact.name,
           data: pickAllowed(p, PDL_PERSON_ALLOW),
           fetchedAt: now
         };
@@ -38045,10 +38070,11 @@ var exaConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV4);
   },
-  async research({ domain: domain2 }) {
+  async research({ domain: domain2, signal }) {
     const res = parseVendor(
       ExaSearchSchema,
       await httpJson(`${BASE4}/search`, {
+        signal,
         method: "POST",
         headers: headers3(),
         json: { query: "company at " + domain2, numResults: 5, type: "auto" }
@@ -38063,11 +38089,12 @@ var exaConnector = {
     };
     return { leads: [lead], contacts: [], raw: res };
   },
-  async enrich({ lead }) {
+  async enrich({ lead, signal }) {
     const year = clock().getUTCFullYear();
     const res = parseVendor(
       ExaSearchSchema,
       await httpJson(`${BASE4}/search`, {
+        signal,
         method: "POST",
         headers: headers3(),
         json: { query: `${lead.companyName} funding news ${year}`, numResults: 5 }
@@ -38120,10 +38147,11 @@ var crunchbaseConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV5);
   },
-  async enrich({ lead }) {
+  async enrich({ lead, signal }) {
     const res = parseVendor(
       CbSearchSchema,
       await httpJson(`${BASE5}/searches/organizations`, {
+        signal,
         method: "POST",
         headers: headers4(),
         json: {
@@ -38207,7 +38235,7 @@ var leadmagicConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV6);
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -38217,6 +38245,7 @@ var leadmagicConnector = {
         const res = parseVendor(
           EmailFinderSchema,
           await httpJson(`${BASE6}/email-finder`, {
+            signal,
             method: "POST",
             headers: headers5(),
             json: { first_name: first, last_name: last, domain: lead.domain }
@@ -38229,6 +38258,7 @@ var leadmagicConnector = {
           subjectKey: email3,
           provider: "leadmagic",
           verifiedEmail: email3,
+          contactName: c.name,
           data: pickAllowed(res, LEADMAGIC_ALLOW),
           fetchedAt: now
         };
@@ -38258,9 +38288,10 @@ var clayConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV7) && hasSecret(WEBHOOK_ENV);
   },
-  async research({ domain: domain2, icp }) {
+  async research({ domain: domain2, icp, signal }) {
     try {
       await httpJson(useSecret(WEBHOOK_ENV), {
+        signal,
         method: "POST",
         headers: headers6(),
         json: { domain: domain2, icp },
@@ -38302,8 +38333,8 @@ function isClearbitPending(body) {
   const status = typeof o.status === "string" ? o.status.toLowerCase() : "";
   return status === "queued" || status === "pending";
 }
-async function tryFetch(schema, url2, query) {
-  const body = await httpJson(url2, { method: "GET", headers: headers7(), query });
+async function tryFetch(schema, url2, query, signal) {
+  const body = await httpJson(url2, { method: "GET", headers: headers7(), query, signal });
   if (isClearbitPending(body)) return null;
   return parseVendor(schema, body);
 }
@@ -38317,7 +38348,7 @@ var clearbitConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV8);
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -38325,7 +38356,7 @@ var clearbitConnector = {
       async (contact) => {
         const person = await tryFetch(ClearbitPersonSchema, `${PERSON_BASE}/people/find`, {
           email: contact.email
-        });
+        }, signal);
         if (!person) return null;
         return {
           subjectType: "contact",
@@ -38345,7 +38376,7 @@ var clearbitConnector = {
       try {
         const company = await tryFetch(ClearbitCompanySchema, `${COMPANY_BASE}/companies/find`, {
           domain: lead.domain
-        });
+        }, signal);
         if (company) {
           enrichments.push({
             subjectType: "lead",
@@ -38440,10 +38471,11 @@ var zoominfoConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV9);
   },
-  async research({ domain: domain2, icp }) {
+  async research({ domain: domain2, icp, signal }) {
     const companyRes = parseVendor(
       CompanyEnvelope,
       await httpJson(`${BASE7}/search/company`, {
+        signal,
         method: "POST",
         headers: headers8(),
         json: { companyWebsite: domain2 }
@@ -38454,6 +38486,7 @@ var zoominfoConnector = {
     const contactRes = parseVendor(
       ContactEnvelope,
       await httpJson(`${BASE7}/search/contact`, {
+        signal,
         method: "POST",
         headers: headers8(),
         json: { companyWebsite: domain2, keywords: icp, maxResults: 10 }
@@ -38469,7 +38502,7 @@ var zoominfoConnector = {
       raw: keepRawOptIn() ? { company: companyRes, contacts: contactRes } : { company: companyRes, contacts: people.length }
     };
   },
-  async enrich({ contacts }) {
+  async enrich({ contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -38478,6 +38511,7 @@ var zoominfoConnector = {
         const res = parseVendor(
           ContactEnvelope,
           await httpJson(`${BASE7}/enrich/contact`, {
+            signal,
             method: "POST",
             headers: headers8(),
             json: { email: contact.email }
@@ -38490,6 +38524,7 @@ var zoominfoConnector = {
           subjectKey: contact.email,
           provider: "zoominfo",
           verifiedEmail: contact.email,
+          contactName: contact.name,
           phone: businessPhone(match),
           data: pickAllowed(match, ZI_CONTACT_ALLOW),
           fetchedAt: now
@@ -38503,23 +38538,32 @@ var zoominfoConnector = {
 
 // pipeline_core/connectors/index.ts
 var registered = false;
+var BUILTIN_CONNECTORS = [
+  // free
+  apolloConnector,
+  hunterConnector,
+  peopledatalabsConnector,
+  exaConnector,
+  // paid
+  crunchbaseConnector,
+  leadmagicConnector,
+  clayConnector,
+  // legacy
+  clearbitConnector,
+  // enterprise
+  zoominfoConnector
+];
 function registerBuiltinConnectors() {
   if (registered) return;
-  registerConnector(apolloConnector);
-  registerConnector(hunterConnector);
-  registerConnector(peopledatalabsConnector);
-  registerConnector(exaConnector);
-  registerConnector(crunchbaseConnector);
-  registerConnector(leadmagicConnector);
-  registerConnector(clayConnector);
-  registerConnector(clearbitConnector);
-  registerConnector(zoominfoConnector);
+  for (const connector of BUILTIN_CONNECTORS) {
+    if (getConnector(connector.name) === void 0) registerConnector(connector);
+  }
   registered = true;
 }
 
 // pipeline_core/models.ts
-var SCHEMA_VERSION = 3;
-var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
+var SCHEMA_VERSION = 5;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5];
 var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
 var SchemaVersionSchema = external_exports.union([
   external_exports.literal(V_FIRST),
@@ -38583,9 +38627,18 @@ var MessageSchema = external_exports.object({
   /** Provenance: which model + prompt version produced this. */
   model: external_exports.string().min(1),
   promptVersion: external_exports.string().min(1),
-  createdAt: external_exports.string().datetime()
+  createdAt: external_exports.string().datetime(),
+  /**
+   * True when this is an EMAIL draft and no sender identity (name, company,
+   * postal address) was configured, so the CAN-SPAM footer could NOT be appended.
+   * Such a draft must not be sent as-is. Additive (v4); defaults false.
+   */
+  needsSenderIdentity: external_exports.boolean().default(false)
 });
 var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
+var LEGACY_RUN_STATUSES = ["pending", "drafted"];
+var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
+var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
 var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
 var RunErrorSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -38616,7 +38669,7 @@ var CampaignRunSchema = external_exports.object({
   /** Model + provider that ran the LLM seams. */
   provider: external_exports.string().min(1),
   model: external_exports.string().min(1),
-  status: RunStatusSchema,
+  status: StoredRunStatusSchema,
   leads: external_exports.array(LeadSchema).default([]),
   contacts: external_exports.array(ContactSchema).default([]),
   enrichments: external_exports.array(EnrichmentSchema).default([]),
@@ -38649,6 +38702,32 @@ var CampaignRunSchema = external_exports.object({
    * "not configured" only (v3).
    */
   failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
+  /**
+   * Run-level compliance warnings that did not block a contact but must be seen
+   * before anything is sent — e.g. email drafts produced without a configured
+   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
+   */
+  complianceWarnings: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Prompt provenance for the run's LLM seams (v5, additive): each entry is
+   * "<prompt-file>@<sha8>". `score` lists the joined score-seam files; `draft` is
+   * the draft-seam file. Empty for agent-saved runs (the agent drafted, not a seam).
+   */
+  promptRefs: external_exports.object({
+    score: external_exports.array(external_exports.string().min(1)).optional(),
+    draft: external_exports.string().min(1).optional()
+  }).default({}),
+  /**
+   * Score-seam angles removed because they cited a fact absent from the inputs
+   * (groundAngles) — kept so an operator can see what the model tried (v5).
+   */
+  droppedAngles: external_exports.array(external_exports.object({ domain: external_exports.string().min(1), angle: external_exports.string(), reason: external_exports.string() })).default([]),
+  /**
+   * Who assembled the record (v5, optional so older lines stay unlabeled rather
+   * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
+   * where the drafts and the `model` field are caller-claimed.
+   */
+  origin: external_exports.enum(["pipeline", "agent"]).optional(),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
@@ -38686,12 +38765,175 @@ function gateOrThrow(kind, schema, raw) {
   if (!r.ok) throw r.error;
   return r.value;
 }
+var validateMessage = (raw) => gate("Message", MessageSchema, raw);
 var validateCampaignRun = (raw) => gate("CampaignRun", CampaignRunSchema, raw);
 var assertCampaignRun = (raw) => gateOrThrow("CampaignRun", CampaignRunSchema, raw);
 
+// evals/supported.ts
+var APPROVED_MODELS = (
+  // BEGIN APPROVED_MODELS (generated by evals/promote.ts — JSON only)
+  [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-6",
+      "resultFile": null,
+      "verified": false,
+      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "resultFile": null,
+      "verified": false,
+      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
+    }
+  ]
+);
+function supportedProviderNames(entries = APPROVED_MODELS) {
+  return [...new Set(entries.map((e) => e.provider))];
+}
+
+// pipeline_core/providers.ts
+var SUPPORTED_PROVIDERS = new Set(supportedProviderNames());
+
+// pipeline_core/draft-guard.ts
+var MAX_BODY_WORDS = 120;
+var MAX_SUBJECT_WORDS = 10;
+var BANNED_PHRASES = [
+  "quick question",
+  "i hope this email finds you well",
+  "hope this email finds you well",
+  "i hope this finds you well",
+  "hope you're doing well",
+  "hope you are doing well",
+  "i hope you're doing well",
+  "i hope you are doing well"
+];
+var EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)*\.[A-Z]{2,}/gi;
+var URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"'`)\]]+/gi;
+var BARE_HOST_RE = /\b(?:[a-z0-9-]+\.)+(?:com|io|ai|co|net|org|app|dev|xyz|me|so|gg|ly|link|info|biz|us|uk|tech|site|online|page|to|sh|cc)\b(?:\/[^\s<>"'`)\]]*)?/gi;
+var PHONE_RE = /(?:\+?\d[\d\s().-]{7,}\d)/g;
+function normApostrophes(s) {
+  return s.replace(/[‘’ʼ]/g, "'");
+}
+function trimTrailingPunct(s) {
+  return s.replace(/[.,;:!?]+$/, "");
+}
+function extractEmails(text) {
+  return (text.match(EMAIL_RE) ?? []).map((e) => e.toLowerCase());
+}
+function extractUrls(text) {
+  const withoutEmails = text.replace(EMAIL_RE, " ");
+  const found = /* @__PURE__ */ new Set();
+  for (const m of withoutEmails.match(URL_RE) ?? []) found.add(normalizeUrl(m));
+  const withoutUrls = withoutEmails.replace(URL_RE, " ");
+  for (const m of withoutUrls.match(BARE_HOST_RE) ?? []) found.add(normalizeUrl(m));
+  found.delete("");
+  return [...found];
+}
+function normalizeUrl(raw) {
+  let s = trimTrailingPunct(raw.trim());
+  s = s.replace(/^https?:\/\//i, "").replace(/^www\./i, "");
+  const slash = s.indexOf("/");
+  const host = (slash === -1 ? s : s.slice(0, slash)).toLowerCase();
+  const path = slash === -1 ? "" : s.slice(slash).replace(/\/+$/, "");
+  return host + path;
+}
+function hostOf(normalizedUrl) {
+  const slash = normalizedUrl.indexOf("/");
+  return slash === -1 ? normalizedUrl : normalizedUrl.slice(0, slash);
+}
+function extractPhones(text) {
+  const out = [];
+  for (const m of text.match(PHONE_RE) ?? []) {
+    const digits = m.replace(/\D/g, "");
+    if (digits.length >= 10 && digits.length <= 15) out.push(digits.slice(-10));
+  }
+  return out;
+}
+function wordCount(s) {
+  const t = s.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+function buildAllowlist(allowedText) {
+  const emails = /* @__PURE__ */ new Set();
+  const urls = /* @__PURE__ */ new Set();
+  const hosts = /* @__PURE__ */ new Set();
+  const phones = /* @__PURE__ */ new Set();
+  for (const t of allowedText) {
+    if (!t) continue;
+    for (const e of extractEmails(t)) {
+      emails.add(e);
+      hosts.add(e.slice(e.indexOf("@") + 1));
+    }
+    for (const u of extractUrls(t)) {
+      urls.add(u);
+      hosts.add(hostOf(u));
+    }
+    for (const p of extractPhones(t)) phones.add(p);
+  }
+  return { emails, urls, hosts, phones };
+}
+function guardDraft(draft, inputs) {
+  const issues = [];
+  const allow = buildAllowlist(inputs.allowedText);
+  const fields = [
+    ["subject", draft.subject ?? ""],
+    ["body", draft.body],
+    ["cta", draft.cta]
+  ];
+  for (const [field, text] of fields) {
+    for (const e of new Set(extractEmails(text))) {
+      if (!allow.emails.has(e)) issues.push(`${field}: email address not present in inputs (${e})`);
+    }
+    for (const u of new Set(extractUrls(text))) {
+      const hasPath = u.includes("/");
+      const ok = allow.urls.has(u) || !hasPath && allow.hosts.has(u);
+      if (!ok) issues.push(`${field}: url not present in inputs (${u})`);
+    }
+    for (const p of new Set(extractPhones(text))) {
+      if (!allow.phones.has(p)) issues.push(`${field}: phone number not present in inputs`);
+    }
+  }
+  const bodyWords = wordCount(draft.body);
+  if (bodyWords > MAX_BODY_WORDS) issues.push(`body: ${bodyWords} words exceeds the ${MAX_BODY_WORDS}-word cap`);
+  if (draft.subject !== null) {
+    if (/[\r\n]/.test(draft.subject)) issues.push("subject: contains a line break (header injection risk)");
+    const subjectWords = wordCount(draft.subject);
+    if (subjectWords > MAX_SUBJECT_WORDS) {
+      issues.push(`subject: ${subjectWords} words exceeds the ${MAX_SUBJECT_WORDS}-word cap`);
+    }
+    if (/^\s*(?:re|fwd?|fw)\s*:/i.test(draft.subject)) issues.push('subject: fake reply/forward prefix ("Re:"/"Fwd:")');
+  }
+  for (const [field, text] of fields) {
+    const lower = normApostrophes(text).toLowerCase();
+    for (const phrase of BANNED_PHRASES) {
+      if (lower.includes(phrase)) {
+        issues.push(`${field}: banned stock phrase ("${phrase}")`);
+        break;
+      }
+    }
+  }
+  if (/^\s*(?:re|fwd?)\s*:/i.test(draft.body)) issues.push('body: fake reply prefix ("Re:")');
+  return issues.length === 0 ? { ok: true } : { ok: false, issues };
+}
+var PROPER_STOPWORDS = new Set(
+  [
+    "a an the this that these those it its they their there here we our you your i he she his her",
+    "just recently recent new now likely probably possibly may might could would should will can",
+    "raised raising hiring hired scaling growing launched launching announced expanding building",
+    "series seed round funding company team teams sales marketing engineering product customers",
+    "and or but so if when while with without for from to of in on at by as after before since",
+    "january february march april may june july august september october november december",
+    "monday tuesday wednesday thursday friday saturday sunday",
+    "b2b b2c saas ceo cto cfo coo cro vp head director founder founders cofounder",
+    "north south east west american european us uk eu"
+  ].join(" ").split(/\s+/)
+);
+
 // pipeline_core/seam.ts
 var ScoreOutputSchema = external_exports.object({
-  fitScore: external_exports.number().min(0).max(100),
+  fitScore: external_exports.number().int().min(0).max(100),
   fitReason: external_exports.string(),
   angles: external_exports.array(external_exports.string()).max(3)
 });
@@ -38702,10 +38944,375 @@ var DraftOutputSchema = external_exports.object({
   cta: external_exports.string().min(1)
 });
 
-// pipeline_core/pipeline.ts
-var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
+// pipeline_core/packs/types.ts
+var DEFAULT_PACK_ID = "b2b-sdr";
+var noopCompliance = {
+  check: () => ({ status: "clean" })
+};
+
+// pipeline_core/packs/registry.ts
+var REGISTRY2 = /* @__PURE__ */ new Map();
+function registerPack(pack) {
+  REGISTRY2.set(pack.id, pack);
+}
+function getPack(id) {
+  return REGISTRY2.get(id);
+}
+function resolvePack(id) {
+  const wanted = id ?? DEFAULT_PACK_ID;
+  const pack = REGISTRY2.get(wanted);
+  if (!pack) {
+    throw new Error(
+      `pack not registered: ${wanted} (registered: ${[...REGISTRY2.keys()].join(", ") || "none"})`
+    );
+  }
+  return pack;
+}
+
+// pipeline_core/packs/b2b-sdr.ts
+var b2bSdrPack = {
+  id: "b2b-sdr",
+  displayName: "B2B SDR",
+  // Pack-specific checks only; the engine-wide suppression gate runs first.
+  compliance: noopCompliance,
+  // Exactly the files seam.ts loaded before packs existed — keeps output identical.
+  prompts: {
+    score: ["research.v2.md", "enrich.v2.md"],
+    draft: "outreach.v2.md"
+  }
+};
+
+// pipeline_core/packs/index.ts
+var registered2 = false;
+function registerBuiltinPacks() {
+  if (registered2) return;
+  for (const pack of [b2bSdrPack]) {
+    if (getPack(pack.id) === void 0) registerPack(pack);
+  }
+  registered2 = true;
+}
+
+// pipeline_core/compliance/suppression.ts
+var EMPTY_SUPPRESSION_LIST = Object.freeze({
+  emails: /* @__PURE__ */ new Set(),
+  domains: /* @__PURE__ */ new Set()
+});
+var EMAIL_RE2 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
 var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+function normalizeSuppressionDomain(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) throw new Error("domain is empty");
+  let host = input2.trim().toLowerCase();
+  host = host.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
+  host = host.replace(/^[^@/]*@/, "");
+  host = host.split(/[/?#]/)[0] ?? "";
+  host = host.replace(/:\d+$/, "").replace(/\.$/, "");
+  const labels = host.split(".");
+  if (labels[0] === "www" && labels.length > 2) labels.shift();
+  const tld = labels[labels.length - 1] ?? "";
+  if (labels.length < 2 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
+    throw new Error(`${JSON.stringify(input2)} is not a valid domain`);
+  }
+  return labels.join(".");
+}
+function normalizeSuppressionEmail(input2) {
+  if (typeof input2 !== "string") throw new Error("email must be a string");
+  const e = input2.trim().toLowerCase();
+  if (!EMAIL_RE2.test(e)) throw new Error(`${JSON.stringify(input2)} is not a valid email`);
+  const at = e.lastIndexOf("@");
+  return `${e.slice(0, at)}@${normalizeSuppressionDomain(e.slice(at + 1))}`;
+}
+function buildSuppressionList(entries) {
+  const emails = /* @__PURE__ */ new Set();
+  const domains = /* @__PURE__ */ new Set();
+  for (const e of entries) {
+    if (e.kind === "email") emails.add(normalizeSuppressionEmail(e.value));
+    else if (e.kind === "domain") domains.add(normalizeSuppressionDomain(e.value));
+    else throw new Error(`unknown suppression kind ${JSON.stringify(e.kind)}`);
+  }
+  return { emails, domains };
+}
+function domainSuppressed(list, domain2) {
+  const labels = domain2.split(".");
+  for (let i = 0; i <= labels.length - 2; i++) {
+    if (list.domains.has(labels.slice(i).join("."))) return true;
+  }
+  return false;
+}
+function checkSuppression(list, subject) {
+  if (list.emails.size === 0 && list.domains.size === 0) return { status: "clean" };
+  if (subject.email !== void 0) {
+    let email3;
+    try {
+      email3 = normalizeSuppressionEmail(subject.email);
+    } catch {
+      return { status: "blocked", reason: "suppression:malformed-email" };
+    }
+    if (list.emails.has(email3)) return { status: "blocked", reason: "suppressed:email" };
+    if (domainSuppressed(list, email3.slice(email3.lastIndexOf("@") + 1))) {
+      return { status: "blocked", reason: "suppressed:domain" };
+    }
+  }
+  for (const d of subject.domains) {
+    let domain2;
+    try {
+      domain2 = normalizeSuppressionDomain(d);
+    } catch {
+      return { status: "blocked", reason: "suppression:malformed-domain" };
+    }
+    if (domainSuppressed(list, domain2)) return { status: "blocked", reason: "suppressed:domain" };
+  }
+  return { status: "clean" };
+}
+function suppressionGate(list) {
+  return {
+    check: (ctx) => checkSuppression(list, {
+      ...ctx.contact.email !== void 0 ? { email: ctx.contact.email } : {},
+      domains: [ctx.lead.domain, ctx.contact.leadDomain]
+    })
+  };
+}
+function composeGates(...gates) {
+  return {
+    check(ctx) {
+      for (const gate2 of gates) {
+        const verdict = gate2.check(ctx);
+        if (!verdict || verdict.status !== "clean") return verdict;
+      }
+      return { status: "clean" };
+    }
+  };
+}
+
+// pipeline_core/suppressions.ts
+import { constants, mkdir, open as open2, readFile, rename, stat, unlink } from "node:fs/promises";
+import { dirname, join as join2 } from "node:path";
+function defaultSuppressionsPath() {
+  return join2(intentOutreachHome(), "suppressions.jsonl");
+}
+function parseEntry(raw, line, path) {
+  const fail = (why) => {
+    throw new Error(`suppressions: line ${line} of ${path} is invalid (${why}); fix or remove it`);
+  };
+  if (!raw || typeof raw !== "object") return fail("not an object");
+  const o = raw;
+  if (o.kind !== "email" && o.kind !== "domain") return fail("kind must be email|domain");
+  if (typeof o.value !== "string") return fail("value must be a string");
+  let value;
+  try {
+    value = o.kind === "email" ? normalizeSuppressionEmail(o.value) : normalizeSuppressionDomain(o.value);
+  } catch (err) {
+    return fail(err instanceof Error ? err.message : "unparseable value");
+  }
+  const addedAt = typeof o.addedAt === "string" ? o.addedAt : fail("addedAt must be a string");
+  return {
+    kind: o.kind,
+    value,
+    addedAt,
+    ...typeof o.reason === "string" && o.reason ? { reason: o.reason } : {}
+  };
+}
+async function readSuppressions(path = defaultSuppressionsPath()) {
+  let text;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+  const out = [];
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (raw === void 0 || !raw.trim()) continue;
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error(`suppressions: line ${i + 1} of ${path} is not valid JSON; fix or remove it`);
+    }
+    out.push(parseEntry(parsed, i + 1, path));
+  }
+  return out;
+}
+async function loadSuppressionList(path = defaultSuppressionsPath()) {
+  return buildSuppressionList(await readSuppressions(path));
+}
+
+// pipeline_core/footer.ts
+var DEFAULT_OPT_OUT_TEXT = `Not the right person or not interested? Reply "unsubscribe" and I won't contact you again.`;
+var FOOTER_DELIMITER = "-- ";
+var nonBlank = external_exports.string().trim().min(1);
+var SenderIdentitySchema = external_exports.object({
+  /** The human the message is from, e.g. "Jeremy Longshore". */
+  name: nonBlank,
+  /** The sending company, e.g. "intentsolutions.io LLC". */
+  company: nonBlank,
+  /** A valid physical postal address (street or registered PO box). May be multi-line. */
+  postalAddress: nonBlank,
+  /** Optional reply-to address shown in the footer. */
+  replyToEmail: external_exports.string().trim().email().optional(),
+  /** Opt-out sentence. Defaults to DEFAULT_OPT_OUT_TEXT. */
+  optOutText: nonBlank.optional(),
+  /** Append the opt-out sentence to LinkedIn drafts too (no postal footer). Default false. */
+  optOutOnLinkedin: external_exports.boolean().optional()
+});
+var isBlank = (v) => typeof v !== "string" || v.trim() === "";
+function missingSenderFields(sender) {
+  const missing = [];
+  if (isBlank(sender?.name)) missing.push("name");
+  if (isBlank(sender?.company)) missing.push("company");
+  if (isBlank(sender?.postalAddress)) missing.push("postalAddress");
+  return missing;
+}
+var oneLine = (s) => s.replace(/\s*[\r\n]+\s*/g, " ").trim();
+function optOutOf(sender) {
+  return isBlank(sender?.optOutText) ? DEFAULT_OPT_OUT_TEXT : oneLine(sender.optOutText);
+}
+function emailFooter(sender) {
+  const address = sender.postalAddress.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join("\n");
+  return [
+    FOOTER_DELIMITER,
+    `${oneLine(sender.name)}, ${oneLine(sender.company)}`,
+    address,
+    ...sender.replyToEmail ? [`Reply-To: ${sender.replyToEmail.trim()}`] : [],
+    optOutOf(sender)
+  ].join("\n");
+}
+function appendBlock(body, block) {
+  const trimmed = body.replace(/\s+$/, "");
+  if (trimmed.endsWith(block)) return body;
+  return `${trimmed}
+
+${block}`;
+}
+function applyComplianceFooter(message, sender) {
+  if (message.channel === "linkedin") {
+    const body = sender?.optOutOnLinkedin === true ? appendBlock(message.body, optOutOf(sender)) : message.body;
+    return { ...message, body, needsSenderIdentity: false };
+  }
+  if (!sender || missingSenderFields(sender).length > 0) {
+    return { ...message, needsSenderIdentity: true };
+  }
+  return { ...message, body: appendBlock(message.body, emailFooter(sender)), needsSenderIdentity: false };
+}
+
+// pipeline_core/profiles.ts
+import { readFileSync as readFileSync2 } from "node:fs";
+var IntakeSchema = external_exports.object({
+  /** Connector names to include for this run (subset of KNOWN_SOURCES). */
+  connectors: external_exports.array(external_exports.string().min(1)).optional(),
+  /** Extra lead/contact fields to surface in the rendered report. */
+  extraFields: external_exports.array(external_exports.string().min(1)).optional()
+});
+var FilteringSchema = external_exports.object({
+  /** Minimum fit score (0–100) to include a lead in outreach drafting. */
+  minScore: external_exports.number().min(0).max(100).optional(),
+  /** Plain-English company-type filters, e.g. ["Series A", "bootstrapped"]. */
+  companyFilters: external_exports.array(external_exports.string()).optional(),
+  /** Contact title substrings to prefer, e.g. ["CEO", "Founder", "VP Sales"]. */
+  contactTitles: external_exports.array(external_exports.string()).optional()
+});
+var OutreachSchema = external_exports.object({
+  /** Outreach channel for drafted messages. */
+  channel: external_exports.enum(["email", "linkedin"]).optional(),
+  /** Tone descriptor, injected into the styleOverride for the draft seam. */
+  tone: external_exports.string().optional(),
+  /** Approximate maximum character length for the message body. */
+  maxLength: external_exports.number().positive().optional(),
+  /** Maximum contacts to draft per lead. */
+  maxContactsPerLead: external_exports.number().int().positive().optional(),
+  /** Free-text template notes injected into the styleOverride. */
+  templateNotes: external_exports.string().optional()
+});
+var StructureSchema = external_exports.object({
+  /**
+   * Ordered list of sections to include in the rendered report.
+   * Recognised values: "summary" | "leads" | "contacts" | "messages" | "cost".
+   * Unknown values are silently passed through to custom renderers.
+   */
+  sections: external_exports.array(external_exports.string().min(1)).default(["summary", "leads", "contacts", "messages", "cost"])
+});
+var OUTPUT_FORMATS = [
+  "markdown",
+  "csv",
+  "json",
+  "html",
+  "slack",
+  "email-draft",
+  "pdf"
+];
+var OutputSchema = external_exports.object({
+  formats: external_exports.array(external_exports.enum(OUTPUT_FORMATS)).min(1)
+});
+var DELIVERY_TARGETS = ["console", "file", "email-draft", "slack"];
+var DeliverySchema = external_exports.object({
+  targets: external_exports.array(external_exports.enum(DELIVERY_TARGETS)).min(1),
+  /**
+   * Local directory for "file" target. Required when "file" is in targets.
+   * Defaults to process.cwd() at deliver-time when omitted.
+   */
+  dir: external_exports.string().optional()
+});
+var ReportProfileSchema = external_exports.object({
+  /** Human-readable profile name, used in report headers. */
+  name: external_exports.string().min(1),
+  /** Short description of the profile's purpose. */
+  description: external_exports.string().min(1),
+  intake: IntakeSchema.optional(),
+  filtering: FilteringSchema.optional(),
+  outreach: OutreachSchema.optional(),
+  structure: StructureSchema.optional(),
+  output: OutputSchema,
+  delivery: DeliverySchema,
+  /**
+   * Sender identity for the CAN-SPAM footer the CODE appends to email drafts:
+   * { name, company, postalAddress, replyToEmail?, optOutText?, optOutOnLinkedin? }.
+   * Optional — when absent, email drafts are flagged `needsSenderIdentity` and the
+   * run records a compliance warning; nothing is ever fabricated.
+   */
+  sender: SenderIdentitySchema.optional()
+});
+function loadProfile(path) {
+  let raw;
+  try {
+    raw = JSON.parse(readFileSync2(path, "utf8"));
+  } catch (err) {
+    throw new Error(`loadProfile: cannot read "${path}": ${String(err)}`);
+  }
+  const result = ReportProfileSchema.safeParse(raw);
+  if (!result.success) {
+    const issues = result.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+    throw new Error(`loadProfile: invalid profile at "${path}": ${issues}`);
+  }
+  return result.data;
+}
+function applyProfileToCampaignInput(profile, _base) {
+  const { outreach, filtering } = profile;
+  const styleParts = [];
+  if (outreach?.tone) styleParts.push(`Tone: ${outreach.tone}.`);
+  if (outreach?.maxLength) styleParts.push(`Keep the body under ${outreach.maxLength} characters.`);
+  if (outreach?.templateNotes) styleParts.push(outreach.templateNotes);
+  const styleOverride = styleParts.length > 0 ? styleParts.join(" ") : void 0;
+  return {
+    channel: outreach?.channel,
+    minScore: filtering?.minScore,
+    maxContactsPerLead: outreach?.maxContactsPerLead,
+    ...styleOverride !== void 0 ? { styleOverride } : {},
+    // Deterministic, operator-owned: passed straight through to the footer, never
+    // to the LLM (it must not be paraphrased or invented by the model).
+    ...profile.sender !== void 0 ? { sender: profile.sender } : {}
+  };
+}
+
+// pipeline_core/pipeline.ts
+import { existsSync } from "node:fs";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join3, resolve as resolve2 } from "node:path";
+import { fileURLToPath } from "node:url";
+var DEFAULT_MAX_DOMAINS = 25;
+var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
+var LABEL_RE2 = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+var TLD_RE2 = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
 function normalizeDomain2(input2) {
   if (typeof input2 !== "string" || !input2.trim()) {
     throw new Error(`invalid domain ${JSON.stringify(input2)}: empty`);
@@ -38722,7 +39329,7 @@ function normalizeDomain2(input2) {
   const labels = host.split(".");
   if (labels[0] === "www" && labels.length > 2) labels.shift();
   const tld = labels[labels.length - 1] ?? "";
-  if (labels.length < 2 || labels.join(".").length > 253 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
+  if (labels.length < 2 || labels.join(".").length > 253 || !labels.every((l) => LABEL_RE2.test(l)) || !TLD_RE2.test(tld)) {
     throw new Error(`invalid domain ${JSON.stringify(input2)}: not a valid hostname`);
   }
   return labels.join(".");
@@ -38733,6 +39340,21 @@ function normalizeDomainLenient(domain2) {
   } catch {
     return String(domain2 ?? "").trim().toLowerCase();
   }
+}
+function normalizeDomains(domains) {
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const d of domains) {
+    const n = normalizeDomain2(d);
+    if (!seen.has(n)) {
+      seen.add(n);
+      out.push(n);
+    }
+  }
+  return out;
+}
+function contactKeyOf(c) {
+  return c.email ?? `${c.name}@${normalizeDomainLenient(c.leadDomain)}`;
 }
 function dedupeLeads(leads) {
   const byDomain = /* @__PURE__ */ new Map();
@@ -38805,6 +39427,11 @@ function recordConnectorFailure(connector, phase, err, raw, failed) {
   raw[connector.name] = { failed: true, status };
   failed.push({ name: connector.name, phase, status });
 }
+function recordItemFailures(connector, phase, failures, failed) {
+  for (const f of failures ?? []) {
+    failed.push({ name: connector.name, phase, status: f.status ?? f.reason });
+  }
+}
 async function runResearch(domain2, icp, opts = {}) {
   registerBuiltinConnectors();
   const target = normalizeDomain2(domain2);
@@ -38827,6 +39454,7 @@ async function runResearch(domain2, icp, opts = {}) {
       contacts.push(...out.contacts);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      recordItemFailures(connector, "research", out.failures, failedConnectors);
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
@@ -38894,6 +39522,7 @@ async function runEnrich(lead, contacts, opts = {}) {
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
@@ -38901,10 +39530,162 @@ async function runEnrich(lead, contacts, opts = {}) {
   }
   return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
 }
+var MAX_ERROR_MESSAGE = 500;
+function sanitizeErrorMessage(err) {
+  const msg = err instanceof Error ? err.message : typeof err === "string" ? err : "unknown error";
+  const redacted = msg.replace(/([?&](?:api[_-]?key|key|token|access_token|secret|password)=)[^&\s"']+/gi, "$1[redacted]").replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/g, "Bearer [redacted]").replace(/\b(sk|xai|gsk|pk)-[A-Za-z0-9_-]{8,}/g, "$1-[redacted]");
+  return redacted.length > MAX_ERROR_MESSAGE ? `${redacted.slice(0, MAX_ERROR_MESSAGE)}\u2026` : redacted;
+}
+async function evaluateGate(gate2, ctx) {
+  try {
+    const verdict = await gate2.check(ctx);
+    if (verdict && verdict.status === "clean") return { clean: true };
+    const reason = verdict && typeof verdict.reason === "string" && verdict.reason ? verdict.reason : "non-clean-verdict";
+    return { clean: false, reason };
+  } catch (err) {
+    const message = sanitizeErrorMessage(err);
+    return { clean: false, reason: `gate-error: ${message}`, error: message };
+  }
+}
+function enrichmentsFor(lead, contact, all) {
+  const email3 = contact.email?.toLowerCase();
+  return all.filter(
+    (e) => e.subjectType === "lead" ? normalizeDomainLenient(e.subjectKey) === lead.domain : !!email3 && (e.subjectKey.toLowerCase() === email3 || e.verifiedEmail?.toLowerCase() === email3)
+  );
+}
+function deriveRunStatus(s) {
+  const degraded = s.errors > 0 || (s.rejectedDrafts ?? 0) > 0;
+  if (s.messages > 0) return degraded ? "partial" : "complete";
+  if (s.errors > 0) return "failed";
+  if (s.leads > 0) return "enriched";
+  if (s.researchRan) return "researched";
+  return "failed";
+}
+function campaignGate(pack, suppressions) {
+  return composeGates(suppressionGate(suppressions), pack.compliance);
+}
+var zodIssues = (issues) => issues.map((i) => `${i.path.map(String).join(".") || "(root)"}: ${i.message}`);
+function finalizeDraft(candidate, sender) {
+  const validated = validateMessage(candidate);
+  if (!validated.ok) return { ok: false, issues: zodIssues(validated.error.issues) };
+  const footed = validateMessage(applyComplianceFooter(validated.value, sender));
+  if (!footed.ok) return { ok: false, issues: zodIssues(footed.error.issues) };
+  return { ok: true, message: footed.value };
+}
+function senderComplianceWarnings(draftsMissingSender, sender) {
+  if (draftsMissingSender <= 0) return [];
+  const missing = missingSenderFields(sender).join(", ");
+  return [
+    `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured (missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`
+  ];
+}
+function draftIdentifiers(p) {
+  const out = [p.icp, ...p.userText ?? [], p.lead.domain, p.contact.email, p.contact.linkedin];
+  for (const e of p.enrichments ?? []) out.push(e.verifiedEmail, e.phone);
+  return out.filter((s) => typeof s === "string" && s.length > 0);
+}
+async function applyMessageCompliance(input2) {
+  const messages = [];
+  const blockedContacts = [];
+  const rejectedDrafts = [];
+  const errors = [];
+  let draftsMissingSender = 0;
+  const contactsByKey = /* @__PURE__ */ new Map();
+  for (const c of input2.contacts) {
+    const key = contactKeyOf(c).toLowerCase();
+    if (!contactsByKey.has(key)) contactsByKey.set(key, c);
+  }
+  const leadsByDomain = /* @__PURE__ */ new Map();
+  for (const l of input2.leads) {
+    const domain2 = normalizeDomainLenient(l.domain);
+    if (!leadsByDomain.has(domain2)) leadsByDomain.set(domain2, { ...l, domain: domain2 });
+  }
+  for (const draft of input2.drafts) {
+    const contact = contactsByKey.get(draft.contactKey.toLowerCase());
+    if (!contact) {
+      rejectedDrafts.push({
+        contactKey: draft.contactKey,
+        issues: [
+          "contactKey: no matching contact in `contacts` (use the contact's email, or name@domain when it has none)"
+        ]
+      });
+      continue;
+    }
+    const contactKey = contactKeyOf(contact);
+    const leadDomain = normalizeDomainLenient(contact.leadDomain);
+    const lead = leadsByDomain.get(leadDomain) ?? { domain: leadDomain, companyName: leadDomain, source: "agent" };
+    const enrichments = enrichmentsFor(lead, contact, [...input2.enrichments]);
+    const outcome = await evaluateGate(input2.gate, { lead, contact, now: new Date(input2.now()), enrichments });
+    if (!outcome.clean) {
+      if (!blockedContacts.some((b) => b.contactKey === contactKey)) {
+        blockedContacts.push({ contactKey, reason: outcome.reason });
+      }
+      if (outcome.error !== void 0) {
+        errors.push({ domain: lead.domain, contactKey, stage: "gate", message: outcome.error });
+      }
+      continue;
+    }
+    const subject = draft.channel === "linkedin" ? null : draft.subject ?? null;
+    const verdict = guardDraft(
+      { subject, body: draft.body, cta: draft.cta },
+      { allowedText: draftIdentifiers({ icp: input2.icp, lead, contact, enrichments, userText: input2.userText ?? [] }) }
+    );
+    if (!verdict.ok) {
+      rejectedDrafts.push({ contactKey, issues: verdict.issues });
+      continue;
+    }
+    const finalized = finalizeDraft(
+      {
+        contactKey,
+        channel: draft.channel,
+        subject: subject ?? void 0,
+        body: draft.body,
+        cta: draft.cta,
+        ...draft.fitScore !== void 0 ? { fitScore: draft.fitScore } : {},
+        model: draft.model ?? input2.model,
+        promptVersion: draft.promptVersion ?? "agent",
+        createdAt: input2.now()
+      },
+      input2.sender
+    );
+    if (!finalized.ok) {
+      rejectedDrafts.push({ contactKey, issues: finalized.issues });
+      continue;
+    }
+    if (finalized.message.needsSenderIdentity) draftsMissingSender += 1;
+    messages.push(finalized.message);
+  }
+  return {
+    messages,
+    blockedContacts,
+    rejectedDrafts,
+    errors,
+    complianceWarnings: senderComplianceWarnings(draftsMissingSender, input2.sender)
+  };
+}
+var PROFILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+function resolveProfilePath(ref, cwd = process.cwd()) {
+  const trimmed = ref.trim();
+  if (!trimmed) throw new Error("profile: empty reference");
+  if (/[\\/]/.test(trimmed) || trimmed.toLowerCase().endsWith(".json")) {
+    return isAbsolute2(trimmed) ? trimmed : resolve2(cwd, trimmed);
+  }
+  if (!PROFILE_NAME_RE.test(trimmed)) throw new Error(`profile: invalid name ${JSON.stringify(trimmed)}`);
+  const here = dirname2(fileURLToPath(import.meta.url));
+  const roots = [join3(cwd, "profiles"), join3(intentOutreachHome(), "profiles"), join3(here, "..", "profiles")];
+  for (const root of roots) {
+    const candidate = join3(root, `${trimmed}.json`);
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(`profile not found: ${trimmed} (looked in: ${roots.join(", ")})`);
+}
+function loadProfileRef(ref, cwd) {
+  return loadProfile(resolveProfilePath(ref, cwd));
+}
 
 // pipeline_core/store.ts
-import { constants, mkdir, open as open2, readFile, stat, unlink } from "node:fs/promises";
-import { dirname, join as join2 } from "node:path";
+import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { dirname as dirname3, join as join4 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
     super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
@@ -38922,7 +39703,7 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
-  return join2(intentOutreachHome(), "runs.jsonl");
+  return join4(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
 var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38940,7 +39721,7 @@ var JsonlRunStore = class {
   async saveRun(run, opts = {}) {
     const checked = assertCampaignRun(run);
     const line = JSON.stringify(checked) + "\n";
-    await mkdir(dirname(this.path), { recursive: true, mode: 448 });
+    await mkdir2(dirname3(this.path), { recursive: true, mode: 448 });
     await this.withLock(async () => {
       if (!opts.overwrite) {
         const { runs } = await this.scan();
@@ -38967,9 +39748,9 @@ var JsonlRunStore = class {
   // ── write path ──────────────────────────────────────────────────────────────
   /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
   async append(line) {
-    const fh = await open2(
+    const fh = await open3(
       this.path,
-      constants.O_RDWR | constants.O_APPEND | constants.O_CREAT,
+      constants2.O_RDWR | constants2.O_APPEND | constants2.O_CREAT,
       384
     );
     try {
@@ -39001,13 +39782,13 @@ var JsonlRunStore = class {
     let lock;
     while (!lock) {
       try {
-        lock = await open2(lockPath, "wx", 384);
+        lock = await open3(lockPath, "wx", 384);
       } catch (err) {
         if (err.code !== "EEXIST") throw err;
         try {
-          const st = await stat(lockPath);
+          const st = await stat2(lockPath);
           if (Date.now() - st.mtimeMs > this.staleLockMs) {
-            await unlink(lockPath).catch(() => void 0);
+            await unlink2(lockPath).catch(() => void 0);
             continue;
           }
         } catch {
@@ -39024,14 +39805,14 @@ var JsonlRunStore = class {
       return await fn();
     } finally {
       await lock.close().catch(() => void 0);
-      await unlink(lockPath).catch(() => void 0);
+      await unlink2(lockPath).catch(() => void 0);
     }
   }
   // ── read path ───────────────────────────────────────────────────────────────
   async scan() {
     let text;
     try {
-      text = await readFile(this.path, "utf8");
+      text = await readFile2(this.path, "utf8");
     } catch (err) {
       if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
@@ -39078,20 +39859,21 @@ var JsonlRunStore = class {
   }
 };
 
-// mcp/server.ts
-registerBuiltinConnectors();
-var server = new McpServer({ name: "intent-outreach", version: "0.2.0" });
+// mcp/tools.ts
 function asText(value) {
   return { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] };
 }
-server.registerTool(
-  "list_connectors",
-  {
-    title: "List data connectors",
-    description: "List every registered connector with its tier (free/paid/enterprise/legacy), the phases it serves, and whether it is currently configured (has its key).",
-    inputSchema: {}
-  },
-  async () => asText(
+function toolError(text) {
+  return { isError: true, content: [{ type: "text", text }] };
+}
+var errMsg = (err) => err instanceof Error ? err.message : String(err);
+var MAX_SAVE_RUN_BYTES = 2e6;
+var MAX_DOMAINS_PER_SAVE = Math.max(DEFAULT_MAX_DOMAINS, 100);
+var SHORT = 200;
+var MEDIUM = 2e3;
+function handleListConnectors() {
+  registerBuiltinConnectors();
+  return asText(
     getConnectors().map((c) => ({
       name: c.name,
       displayName: c.displayName,
@@ -39101,93 +39883,249 @@ server.registerTool(
       configured: c.isConfigured(),
       note: c.note
     }))
-  )
+  );
+}
+var ResearchDomainInput = {
+  domain: external_exports.string().min(1).max(253).describe("Company domain, e.g. acme.com"),
+  icp: external_exports.string().min(1).max(MEDIUM).describe("Ideal customer profile / target persona keywords"),
+  debug: external_exports.boolean().default(false).describe("Include each connector's raw vendor payload (may contain personal data). Default false.")
+};
+async function handleResearchDomain(args) {
+  let domain2;
+  try {
+    domain2 = normalizeDomain2(args.domain);
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+  const { raw, ...normalized } = await runResearch(domain2, args.icp);
+  return asText(args.debug ? { ...normalized, raw } : normalized);
+}
+var EnrichLeadInput = {
+  domain: external_exports.string().min(1).max(253),
+  companyName: external_exports.string().min(1).max(SHORT).optional(),
+  contacts: external_exports.array(
+    external_exports.object({
+      name: external_exports.string().min(1).max(SHORT),
+      email: external_exports.string().email().max(320).optional(),
+      title: external_exports.string().max(SHORT).optional(),
+      linkedin: external_exports.string().max(500).optional()
+    })
+  ).max(100).default([]),
+  debug: external_exports.boolean().default(false).describe("Include each connector's raw vendor payload (may contain personal data). Default false.")
+};
+async function handleEnrichLead(args) {
+  let domain2;
+  try {
+    domain2 = normalizeDomain2(args.domain);
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+  const lead = { domain: domain2, companyName: args.companyName ?? domain2, source: "manual" };
+  const contacts = (args.contacts ?? []).map((c) => ({
+    name: c.name,
+    leadDomain: domain2,
+    ...c.email !== void 0 ? { email: c.email } : {},
+    ...c.title !== void 0 ? { title: c.title } : {},
+    ...c.linkedin !== void 0 ? { linkedin: c.linkedin } : {},
+    source: "manual"
+  }));
+  const { raw, ...normalized } = await runEnrich(lead, contacts);
+  return asText(args.debug ? { ...normalized, raw } : normalized);
+}
+var AgentMessageSchema = external_exports.object({
+  contactKey: external_exports.string().min(1).max(400),
+  channel: external_exports.enum(["email", "linkedin"]),
+  subject: external_exports.string().max(300).nullish(),
+  body: external_exports.string().min(1).max(5e3),
+  cta: external_exports.string().min(1).max(500),
+  fitScore: external_exports.number().min(0).max(100).optional(),
+  model: external_exports.string().min(1).max(SHORT).optional(),
+  promptVersion: external_exports.string().min(1).max(SHORT).optional(),
+  /** Accepted for backward compatibility and IGNORED — the server stamps createdAt. */
+  createdAt: external_exports.string().max(64).optional()
+});
+var SaveRunInput = {
+  id: external_exports.string().min(1).max(SHORT),
+  icp: external_exports.string().min(1).max(MEDIUM),
+  domains: external_exports.array(external_exports.string().min(1).max(253)).min(1).max(MAX_DOMAINS_PER_SAVE),
+  provider: external_exports.string().min(1).max(SHORT),
+  model: external_exports.string().min(1).max(SHORT).describe("Caller-claimed model id that drafted the messages"),
+  pack: external_exports.string().min(1).max(SHORT).optional().describe('Vertical pack whose compliance gate applies (default "b2b-sdr")'),
+  profile: external_exports.string().min(1).max(1e3).optional().describe(
+    "Report Profile path or name; its sender identity drives the CAN-SPAM footer (default: $INTENT_OUTREACH_PROFILE)"
+  ),
+  leads: external_exports.array(LeadSchema).max(500).default([]),
+  contacts: external_exports.array(ContactSchema).max(2e3).default([]),
+  enrichments: external_exports.array(EnrichmentSchema).max(5e3).default([]),
+  messages: external_exports.array(AgentMessageSchema).max(500).default([]),
+  skippedConnectors: external_exports.array(external_exports.string().min(1).max(SHORT)).max(100).default([]),
+  blockedContacts: external_exports.array(external_exports.object({ contactKey: external_exports.string().min(1).max(400), reason: external_exports.string().min(1).max(500) })).max(2e3).default([]),
+  errors: external_exports.array(RunErrorSchema).max(2e3).default([]),
+  rejectedDrafts: external_exports.array(external_exports.object({ contactKey: external_exports.string().min(1).max(400), issues: external_exports.array(external_exports.string().max(1e3)).max(50) })).max(2e3).default([]),
+  failedConnectors: external_exports.array(FailedConnectorSchema).max(500).default([]),
+  overwrite: external_exports.boolean().default(false).describe("Replace an existing run with the same id (the old snapshot stays in the append-only log)")
+};
+var SaveRunArgsSchema = external_exports.object(SaveRunInput);
+async function handleSaveRun(rawArgs, deps = {}) {
+  const parsedArgs = SaveRunArgsSchema.safeParse(rawArgs);
+  if (!parsedArgs.success) {
+    const issues = parsedArgs.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+    return toolError(`validation failed (run NOT saved): ${issues}`);
+  }
+  const args = parsedArgs.data;
+  if (JSON.stringify(args).length > MAX_SAVE_RUN_BYTES) {
+    return toolError(`run NOT saved: payload exceeds ${MAX_SAVE_RUN_BYTES} bytes; drop raw enrichment data or split the run`);
+  }
+  const now = deps.now ?? (() => (/* @__PURE__ */ new Date()).toISOString());
+  let domains;
+  let leads;
+  try {
+    domains = normalizeDomains(args.domains);
+    leads = args.leads.map((l) => ({ ...l, domain: normalizeDomain2(l.domain) }));
+  } catch (err) {
+    return toolError(`run NOT saved: ${errMsg(err)}`);
+  }
+  let pack;
+  try {
+    registerBuiltinPacks();
+    pack = resolvePack(args.pack);
+  } catch (err) {
+    return toolError(`run NOT saved: ${errMsg(err)}`);
+  }
+  let suppressions;
+  try {
+    suppressions = deps.suppressions ?? await loadSuppressionList();
+  } catch (err) {
+    return toolError(`run NOT saved: cannot read the suppression list: ${errMsg(err)}`);
+  }
+  let sender;
+  let styleOverride;
+  const profileRef = args.profile ?? (process.env.INTENT_OUTREACH_PROFILE?.trim() || void 0);
+  if (profileRef) {
+    try {
+      const profile = loadProfileRef(profileRef, deps.cwd);
+      sender = profile.sender;
+      styleOverride = applyProfileToCampaignInput(profile, { id: args.id, icp: args.icp, domains }).styleOverride;
+    } catch (err) {
+      return toolError(`run NOT saved: ${errMsg(err)}`);
+    }
+  }
+  const gated = await applyMessageCompliance({
+    icp: args.icp,
+    leads,
+    contacts: args.contacts,
+    enrichments: args.enrichments,
+    drafts: args.messages,
+    gate: campaignGate(pack, suppressions),
+    sender,
+    model: args.model,
+    now,
+    userText: [styleOverride]
+  });
+  const errors = [...args.errors, ...gated.errors];
+  const rejectedDrafts = [...args.rejectedDrafts, ...gated.rejectedDrafts];
+  const blockedContacts = [...args.blockedContacts];
+  for (const b of gated.blockedContacts) {
+    if (!blockedContacts.some((x) => x.contactKey === b.contactKey)) blockedContacts.push(b);
+  }
+  const status = deriveRunStatus({
+    messages: gated.messages.length,
+    leads: leads.length,
+    // The agent reached save_run after its research phase; an empty result is an
+    // honest "researched", not a failure.
+    researchRan: true,
+    errors: errors.length,
+    rejectedDrafts: rejectedDrafts.length
+  });
+  const stamped = now();
+  try {
+    const run = assertCampaignRun({
+      id: args.id,
+      schemaVersion: SCHEMA_VERSION,
+      icp: args.icp,
+      domains,
+      vertical: pack.id,
+      provider: args.provider,
+      model: args.model,
+      status,
+      leads,
+      contacts: args.contacts,
+      enrichments: args.enrichments,
+      messages: gated.messages,
+      skippedConnectors: args.skippedConnectors,
+      blockedContacts,
+      errors,
+      rejectedDrafts,
+      failedConnectors: args.failedConnectors,
+      complianceWarnings: gated.complianceWarnings,
+      origin: "agent",
+      createdAt: stamped,
+      finishedAt: stamped
+    });
+    const store = deps.store ?? new JsonlRunStore(deps.storePath);
+    await store.saveRun(run, { overwrite: args.overwrite });
+    return asText({
+      saved: run.id,
+      status,
+      path: deps.storePath ?? (deps.store ? void 0 : defaultStorePath()),
+      messages: run.messages.length,
+      needsSenderIdentity: run.messages.filter((m) => m.needsSenderIdentity).length,
+      blockedContacts: run.blockedContacts,
+      rejectedDrafts: gated.rejectedDrafts,
+      complianceWarnings: run.complianceWarnings
+    });
+  } catch (err) {
+    if (err instanceof DuplicateRunError) {
+      return toolError(`run ${err.runId} already exists; pass overwrite: true to replace`);
+    }
+    if (err instanceof ValidationError) {
+      return toolError(`validation failed (run NOT saved): ${err.message}`);
+    }
+    if (err instanceof StoreLockTimeoutError) {
+      return toolError(`run NOT saved: ${err.message}; retry in a moment`);
+    }
+    throw err;
+  }
+}
+
+// mcp/server.ts
+registerBuiltinConnectors();
+var server = new McpServer({ name: "intent-outreach", version: "0.2.0" });
+server.registerTool(
+  "list_connectors",
+  {
+    title: "List data connectors",
+    description: "List every registered connector with its tier (free/paid/enterprise/legacy), the phases it serves, and whether it is currently configured (has its key).",
+    inputSchema: {}
+  },
+  async () => handleListConnectors()
 );
 server.registerTool(
   "research_domain",
   {
     title: "Research a company domain",
-    description: "Run every CONFIGURED research connector (in deterministic order) against a company domain and return aggregated, de-duplicated leads + contacts. Connectors without a key are skipped silently.",
-    inputSchema: {
-      domain: external_exports.string().describe("Company domain, e.g. acme.com"),
-      icp: external_exports.string().describe("Ideal customer profile / target persona keywords")
-    }
+    description: "Run every CONFIGURED research connector (in deterministic order) against a company domain and return aggregated, de-duplicated leads + contacts. Connectors without a key are skipped. Raw vendor payloads are omitted unless debug: true.",
+    inputSchema: ResearchDomainInput
   },
-  async ({ domain: domain2, icp }) => asText(await runResearch(domain2, icp))
+  async (args) => handleResearchDomain(args)
 );
 server.registerTool(
   "enrich_lead",
   {
     title: "Enrich a lead and its contacts",
-    description: "Run every CONFIGURED enrich connector (in deterministic order) against a lead and its contacts; returns enrichments (funding, verified emails, phones, web context).",
-    inputSchema: {
-      domain: external_exports.string(),
-      companyName: external_exports.string().optional(),
-      contacts: external_exports.array(
-        external_exports.object({
-          name: external_exports.string(),
-          email: external_exports.string().optional(),
-          title: external_exports.string().optional(),
-          linkedin: external_exports.string().optional()
-        })
-      ).default([])
-    }
+    description: "Run every CONFIGURED enrich connector (in deterministic order) against a lead and its contacts; returns enrichments (funding, verified emails, phones, web context). Raw vendor payloads are omitted unless debug: true.",
+    inputSchema: EnrichLeadInput
   },
-  async ({ domain: domain2, companyName, contacts }) => {
-    const lead = { domain: domain2, companyName: companyName ?? domain2, source: "manual" };
-    const normalized = contacts.map((c) => ({
-      name: c.name,
-      leadDomain: domain2,
-      email: c.email,
-      title: c.title,
-      linkedin: c.linkedin,
-      source: "manual"
-    }));
-    return asText(await runEnrich(lead, normalized));
-  }
+  async (args) => handleEnrichLead(args)
 );
 server.registerTool(
   "save_run",
   {
     title: "Save a validated campaign run",
-    description: "Validate an assembled campaign run and append it to the LOCAL run store (JSONL under the user's home, never the cloud). This is the gate: the run is checked against the schema before it is persisted \u2014 un-validated model output is rejected here, not stored. Returns the saved run id + path, or a validation error describing what to fix.",
-    inputSchema: {
-      id: external_exports.string(),
-      icp: external_exports.string(),
-      domains: external_exports.array(external_exports.string()),
-      provider: external_exports.string(),
-      model: external_exports.string(),
-      leads: external_exports.array(LeadSchema).default([]),
-      contacts: external_exports.array(ContactSchema).default([]),
-      enrichments: external_exports.array(EnrichmentSchema).default([]),
-      messages: external_exports.array(MessageSchema).default([]),
-      skippedConnectors: external_exports.array(external_exports.string()).default([])
-    }
+    description: "Gate and append an assembled campaign run to the LOCAL run store (JSONL under the user's home, never the cloud). The same compliance as a CLI run applies: suppressed or pack-blocked contacts move to blockedContacts (never saved as messages), each draft must pass the send-safety guard (failures go to rejectedDrafts), and email drafts get the CAN-SPAM footer from the profile's sender identity (or are flagged needsSenderIdentity). The whole record is schema-validated before it is persisted. Returns the saved run id + path, or an error describing what to fix.",
+    inputSchema: SaveRunInput
   },
-  async (args) => {
-    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-    const status = args.messages.length ? "complete" : args.contacts.length ? "enriched" : "researched";
-    try {
-      const run = assertCampaignRun({
-        ...args,
-        schemaVersion: SCHEMA_VERSION,
-        status,
-        createdAt: nowIso,
-        finishedAt: nowIso
-      });
-      const store = new JsonlRunStore();
-      await store.saveRun(run);
-      return asText({ saved: run.id, status, path: defaultStorePath(), messages: run.messages.length });
-    } catch (err) {
-      if (err instanceof ValidationError) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `validation failed (run NOT saved): ${err.message}` }]
-        };
-      }
-      throw err;
-    }
-  }
+  async (args) => handleSaveRun(args)
 );
 async function main() {
   const transport = new StdioServerTransport();

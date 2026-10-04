@@ -12,7 +12,7 @@
       "recommended": true,
       "nursery": { "noFloatingPromises": "error" },
       "correctness": { "noUnsafeOptionalChaining": "warn" },
-      "suspicious": { "noControlCharactersInRegex": "warn", "useIterableCallbackReturn": "warn" },
+      "suspicious": { "noControlCharactersInRegex": "warn", "useIterableCallbackReturn": "warn", "noImplicitAnyLet": "warn" },
       "style": { "useTemplate": "off" }
     }
   },

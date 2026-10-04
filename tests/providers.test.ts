@@ -4,7 +4,8 @@
  * Guards:
  *   - provider eval-gate (assertSupported fires BEFORE resolveModel/getSecret)
  *   - INTENT_OUTREACH_ALLOW_UNGATED bypass path
- *   - detectProvider() preference order (anthropic → openai → xai → google)
+ *   - detectProvider() preference order (anthropic → openai → xai)
+ *   - Google is gone entirely (owner decision): no provider name, no key lookup
  *   - listProviderStatus() reporting (configured + supported flags)
  *
  * No network calls — @ai-sdk/* constructors build a client object from the
@@ -18,12 +19,17 @@ import {
   detectProvider,
   getProvider,
   listProviderStatus,
+  SUPPORTED_PROVIDERS,
+  supportsEffort,
+  type ProviderName,
 } from "../pipeline_core/providers.js";
+import { APPROVED_MODELS } from "../evals/supported.js";
 
 // All provider key env-vars that might bleed between tests.
 const PROVIDER_KEYS = [
   "ANTHROPIC_API_KEY",
   "OPENAI_API_KEY",
+  // Former Google key vars: kept here so a stray value proves they are ignored.
   "GEMINI_API_KEY",
   "GOOGLE_GENERATIVE_AI_API_KEY",
   "XAI_API_KEY",
@@ -72,10 +78,12 @@ describe("eval-gate invariant", () => {
     expect(p.name).toBe("openai");
   });
 
-  it('rejects getProvider({provider:"google"}) with "eval gate" message', async () => {
-    await expect(getProvider({ provider: "google" })).rejects.toThrow(
-      /eval gate/i,
-    );
+  it('rejects getProvider({provider:"google"}): the adapter no longer exists', async () => {
+    process.env.INTENT_OUTREACH_ALLOW_UNGATED = "1";
+    process.env.GEMINI_API_KEY = "gemini-test-key";
+    await expect(
+      getProvider({ provider: "google" as unknown as ProviderName }),
+    ).rejects.toThrow();
   });
 
   it('rejects getProvider({provider:"xai"}) with "eval gate" message before key resolution', async () => {
@@ -113,13 +121,6 @@ describe("ALLOW_UNGATED bypass", () => {
     const p = await getProvider({ provider: "openai", model: "gpt-3.5-turbo" });
     expect(p.name).toBe("openai");
     expect(p.model).toBe("gpt-3.5-turbo");
-  });
-
-  it("resolves getProvider({provider:'google'}) with a dummy key", async () => {
-    process.env.GEMINI_API_KEY = "gemini-test-key";
-    const p = await getProvider({ provider: "google" });
-    expect(p.name).toBe("google");
-    expect(p.model).toBe("gemini-2.0-flash");
   });
 
   it("resolves getProvider({provider:'xai'}) with a dummy key", async () => {
@@ -203,24 +204,20 @@ describe("detectProvider() preference order", () => {
     expect(detectProvider()).toBe("xai");
   });
 
-  it("falls back to 'google' when only GEMINI_API_KEY is present", () => {
+  it("ignores Google key vars entirely (falls back to the anthropic default)", () => {
     process.env.GEMINI_API_KEY = "gemini-test";
-    expect(detectProvider()).toBe("google");
-  });
-
-  it("falls back to 'google' when only GOOGLE_GENERATIVE_AI_API_KEY is present", () => {
     process.env.GOOGLE_GENERATIVE_AI_API_KEY = "google-alt-test";
-    expect(detectProvider()).toBe("google");
+    expect(detectProvider()).toBe("anthropic");
   });
 
-  it("openai beats xai beats google (no anthropic key)", () => {
+  it("openai beats xai (no anthropic key; Google vars ignored)", () => {
     process.env.OPENAI_API_KEY = "sk-openai-test";
     process.env.XAI_API_KEY = "xai-test";
     process.env.GEMINI_API_KEY = "gemini-test";
     expect(detectProvider()).toBe("openai");
   });
 
-  it("xai beats google (no anthropic or openai key)", () => {
+  it("xai wins when it is the only real key (Google vars ignored)", () => {
     process.env.XAI_API_KEY = "xai-test";
     process.env.GEMINI_API_KEY = "gemini-test";
     expect(detectProvider()).toBe("xai");
@@ -236,14 +233,21 @@ describe("listProviderStatus()", () => {
     const names = statuses.map((s) => s.name);
     expect(names).toContain("anthropic");
     expect(names).toContain("openai");
-    expect(names).toContain("google");
     expect(names).toContain("xai");
+    expect(names).not.toContain("google");
+    expect(names).toEqual(["anthropic", "openai", "xai"]);
   });
 
   it("marks exactly the gated-in providers as supported: anthropic + openai", () => {
     const statuses = listProviderStatus();
     const supported = statuses.filter((s) => s.supported).map((s) => s.name);
     expect(supported.sort()).toEqual(["anthropic", "openai"]);
+  });
+
+  it("SUPPORTED_PROVIDERS is derived from evals/supported.ts (a provider with ≥1 approved pair)", () => {
+    const fromList = [...new Set(APPROVED_MODELS.map((e) => e.provider))].sort();
+    expect([...SUPPORTED_PROVIDERS].sort()).toEqual(fromList);
+    expect(SUPPORTED_PROVIDERS.has("xai")).toBe(false);
   });
 
   it("reports configured=false for all providers when no keys set", () => {
@@ -267,17 +271,10 @@ describe("listProviderStatus()", () => {
     expect(entry.supported).toBe(true);
   });
 
-  it("reports configured=true for google when GEMINI_API_KEY is set", () => {
-    process.env.GEMINI_API_KEY = "gemini-test";
-    const entry = listProviderStatus().find((s) => s.name === "google")!;
-    expect(entry.configured).toBe(true);
-    expect(entry.supported).toBe(false);
-  });
-
-  it("reports configured=true for google when GOOGLE_GENERATIVE_AI_API_KEY is set", () => {
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY = "google-alt-test";
-    const entry = listProviderStatus().find((s) => s.name === "google")!;
-    expect(entry.configured).toBe(true);
+  it("no listed provider reads a Google key var", () => {
+    for (const s of listProviderStatus()) {
+      expect(s.keyEnvVars.join(",")).not.toMatch(/GEMINI|GOOGLE/);
+    }
   });
 
   it("reports configured=true for xai when XAI_API_KEY is set", () => {
@@ -307,4 +304,28 @@ describe("listProviderStatus()", () => {
       expect(s.keyEnvVars.length).toBeGreaterThan(0);
     }
   });
+});
+
+// ---------------------------------------------------------------------------
+// 6. supportsEffort(): effort is only sent where the API accepts it
+// ---------------------------------------------------------------------------
+describe("supportsEffort()", () => {
+  it.each([
+    "claude-sonnet-4-6",
+    "claude-opus-4-5",
+    "claude-opus-4-8",
+    "claude-opus-5-5",
+    "claude-sonnet-5-5",
+    "claude-fable-5-1",
+    "anthropic/claude-sonnet-5",
+  ])("accepts %s", (id) => {
+    expect(supportsEffort(id)).toBe(true);
+  });
+
+  it.each(["claude-haiku-4-5", "claude-sonnet-4-5", "claude-sonnet-4-0", "claude-opus-4-1", "claude-3-haiku-20240307"])(
+    "rejects %s (the API would 400)",
+    (id) => {
+      expect(supportsEffort(id)).toBe(false);
+    },
+  );
 });

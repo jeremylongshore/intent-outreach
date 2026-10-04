@@ -52,29 +52,52 @@ describe("shipped MCP server", () => {
     expect(rows.every((c) => c.configured === false)).toBe(true);
   });
 
-  it("save_run rejects an invalid run and persists nothing", async () => {
-    // Passes the tool input schema but fails the validator gate (icp must be non-empty).
-    const gate = await client.callTool({ name: "save_run", arguments: { ...validRun, id: "bad-1", icp: "" } });
-    expect(gate.isError).toBe(true);
-    expect(text(gate)).toContain("NOT saved");
-    // Fails the tool input schema itself (domains must be an array).
-    const schema = await client.callTool({ name: "save_run", arguments: { ...validRun, id: "bad-2", domains: "example.com" } }).catch((e: unknown) => ({ isError: true, thrown: String(e) }));
-    expect(schema.isError).toBe(true);
+  it("save_run rejects invalid input and persists nothing", async () => {
+    // Fails the tool input schema (icp must be non-empty): the SDK rejects it before the handler.
+    const empty = await client
+      .callTool({ name: "save_run", arguments: { ...validRun, id: "bad-1", icp: "" } })
+      .catch((e: unknown) => ({ isError: true, thrown: String(e) }));
+    expect(empty.isError).toBe(true);
+    // Wrong type for domains.
+    const wrongType = await client
+      .callTool({ name: "save_run", arguments: { ...validRun, id: "bad-2", domains: "example.com" } })
+      .catch((e: unknown) => ({ isError: true, thrown: String(e) }));
+    expect(wrongType.isError).toBe(true);
     expect(existsSync(runsFile())).toBe(false);
+  });
+
+  it("save_run refuses a draft whose contactKey matches no contact (recorded as rejected, never stored as a message)", async () => {
+    const r = await client.callTool({
+      name: "save_run",
+      arguments: {
+        ...validRun,
+        id: "orphan-draft",
+        messages: [{ contactKey: "nobody@nowhere.example", channel: "email", subject: "Hi", body: "Hello there", cta: "Reply" }],
+      },
+    });
+    const out = JSON.parse(text(r)) as { messages: number; rejectedDrafts: { contactKey: string }[] };
+    expect(out.messages).toBe(0);
+    expect(out.rejectedDrafts.map((d) => d.contactKey)).toEqual(["nobody@nowhere.example"]);
+    const saved = readFileSync(runsFile(), "utf8").trim().split("\n").map((l) => JSON.parse(l) as { id: string; messages: unknown[] });
+    expect(saved.find((x) => x.id === "orphan-draft")?.messages).toEqual([]);
   });
 
   it("save_run accepts a valid run and it is readable from the JSONL store", async () => {
     const r = await client.callTool({ name: "save_run", arguments: validRun });
     expect(r.isError).toBeFalsy();
-    expect(JSON.parse(text(r))).toMatchObject({ saved: "e2e-run-1", status: "researched" });
+    expect(JSON.parse(text(r))).toMatchObject({ saved: "e2e-run-1" });
     const lines = readFileSync(runsFile(), "utf8").trim().split("\n");
-    expect(lines).toHaveLength(1);
-    expect(JSON.parse(lines[0] as string)).toMatchObject({ id: "e2e-run-1", icp: "Series A fintechs", provider: "anthropic" });
+    const stored = lines.map((l) => JSON.parse(l) as { id: string });
+    expect(stored.filter((x) => x.id === "e2e-run-1")).toHaveLength(1);
+    expect(stored.find((x) => x.id === "e2e-run-1")).toMatchObject({ id: "e2e-run-1", icp: "Series A fintechs", provider: "anthropic" });
   });
 
-  it("save_run refuses a duplicate id instead of silently appending", async () => {
-    const r = await client.callTool({ name: "save_run", arguments: validRun }).catch((e: unknown) => ({ isError: true, thrown: String(e) }));
+  it("save_run answers a duplicate id with a friendly error and does not append", async () => {
+    const before = readFileSync(runsFile(), "utf8");
+    const r = await client.callTool({ name: "save_run", arguments: validRun });
     expect(r.isError).toBe(true);
-    expect(readFileSync(runsFile(), "utf8").trim().split("\n")).toHaveLength(1);
+    expect(text(r)).toContain("already exists");
+    expect(text(r)).toContain("overwrite");
+    expect(readFileSync(runsFile(), "utf8")).toBe(before);
   });
 });

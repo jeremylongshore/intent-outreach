@@ -72,10 +72,11 @@ export const hunterConnector: Connector = {
     return hasSecret(KEY_ENV);
   },
 
-  async research({ domain }: ResearchInput): Promise<ResearchOutput> {
+  async research({ domain, signal }: ResearchInput): Promise<ResearchOutput> {
     const res = parseVendor(
       DomainSearchSchema,
       await httpJson(`${BASE}/domain-search`, {
+        signal,
         query: { domain, api_key: useSecret(KEY_ENV), limit: 10 },
       }),
     );
@@ -96,7 +97,7 @@ export const hunterConnector: Connector = {
     return { leads: [lead], contacts, raw: res };
   },
 
-  async enrich({ lead, contacts }: EnrichInput): Promise<EnrichOutput> {
+  async enrich({ lead, contacts, signal }: EnrichInput): Promise<EnrichOutput> {
     const now = new Date().toISOString();
     const { results, failures } = await forEachContact<Enrichment>(
       contacts,
@@ -105,6 +106,7 @@ export const hunterConnector: Connector = {
         const res = parseVendor(
           FinderSchema,
           await httpJson(`${BASE}/email-finder`, {
+            signal,
             query: { domain: lead.domain, full_name: c.name, api_key: useSecret(KEY_ENV) },
           }),
         );
@@ -115,6 +117,9 @@ export const hunterConnector: Connector = {
           subjectKey: email,
           provider: "hunter",
           verifiedEmail: email,
+          // Back-reference to the contact this name-keyed lookup was for, so the
+          // pipeline folds the found email into the right contact.
+          contactName: c.name,
           data: (res.data ?? {}) as Record<string, unknown>,
           fetchedAt: now,
         };

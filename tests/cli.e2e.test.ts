@@ -53,9 +53,9 @@ describe("shipped CLI", () => {
     expect(r.err).toContain("unknown command: frobnicate");
   });
 
-  it("an unknown flag exits non-zero and names the flag", () => {
+  it("an unknown flag exits 2 and names the flag", () => {
     const r = cli("run", "--bogus");
-    expect(r.code).not.toBe(0);
+    expect(r.code).toBe(2);
     expect(r.err).toContain("--bogus");
   });
 
