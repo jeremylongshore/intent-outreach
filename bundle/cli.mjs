@@ -66483,6 +66483,9 @@ function registerConnector(connector) {
 function getConnectors() {
   return [...REGISTRY.values()];
 }
+function getConnector(name29) {
+  return REGISTRY.get(name29);
+}
 function getConfiguredConnectors(phase) {
   return getConnectors().filter(
     (c) => c.phases.includes(phase) && c.isConfigured()
@@ -67294,8 +67297,14 @@ init_external();
 init_external();
 
 // pipeline_core/models.ts
-var SCHEMA_VERSION = 2;
-var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
+var SCHEMA_VERSION = 3;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
+var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
+var SchemaVersionSchema = external_exports.union([
+  external_exports.literal(V_FIRST),
+  external_exports.literal(V_SECOND),
+  ...V_REST.map((v) => external_exports.literal(v))
+]);
 var SourceSchema = external_exports.string().min(1);
 var LeadSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -67330,6 +67339,12 @@ var EnrichmentSchema = external_exports.object({
     investors: external_exports.array(external_exports.string()).optional()
   }).optional(),
   verifiedEmail: external_exports.string().email().optional(),
+  /**
+   * Optional back-reference to the Contact's `name` when the enrichment found an
+   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
+   * pipeline fold the found email into the working contact list. Optional/additive.
+   */
+  contactName: external_exports.string().min(1).optional(),
   phone: external_exports.string().optional(),
   /** Raw provider payload, retained for audit; never trusted as schema. */
   data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
@@ -67349,14 +67364,30 @@ var MessageSchema = external_exports.object({
   promptVersion: external_exports.string().min(1),
   createdAt: external_exports.string().datetime()
 });
-var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "failed"]);
+var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
+var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
+var RunErrorSchema = external_exports.object({
+  domain: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1).optional(),
+  stage: RunErrorStageSchema,
+  /** Sanitized, truncated error message (secrets redacted). */
+  message: external_exports.string(),
+  /** AI SDK finish reason when the error carried one (e.g. "length"). */
+  finishReason: external_exports.string().optional()
+});
+var FailedConnectorSchema = external_exports.object({
+  name: external_exports.string().min(1),
+  phase: external_exports.enum(["research", "enrich"]),
+  /** HTTP status, "timeout", or "error". */
+  status: external_exports.union([external_exports.number().int(), external_exports.string().min(1)])
+});
 var CampaignRunSchema = external_exports.object({
   /** Caller-supplied or generated run id (no Date.now/random inside core). */
   id: external_exports.string().min(1),
   // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
   // existing v1 line on read (store.ts re-validates each line). New writes emit
   // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
-  schemaVersion: external_exports.union([external_exports.literal(1), external_exports.literal(2)]),
+  schemaVersion: SchemaVersionSchema,
   icp: external_exports.string().min(1),
   domains: external_exports.array(external_exports.string().min(1)),
   /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
@@ -67384,6 +67415,19 @@ var CampaignRunSchema = external_exports.object({
       reason: external_exports.string().min(1)
     })
   ).default([]),
+  /**
+   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
+   * A provider error on domain 2 no longer loses domain 1's drafts.
+   */
+  errors: external_exports.array(RunErrorSchema).default([]),
+  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
+  rejectedDrafts: external_exports.array(external_exports.object({ contactKey: external_exports.string().min(1), issues: external_exports.array(external_exports.string()) })).default([]),
+  /**
+   * Configured connectors that threw (sanitized status only — never the error
+   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
+   * "not configured" only (v3).
+   */
+  failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
@@ -76373,19 +76417,69 @@ function registerBuiltinPacks() {
 }
 
 // pipeline_core/pipeline.ts
+var DEFAULT_MAX_DOMAINS = 25;
+var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
+var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+function normalizeDomain(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) {
+    throw new Error(`invalid domain ${JSON.stringify(input2)}: empty`);
+  }
+  const trimmed = input2.trim();
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  let host;
+  try {
+    host = new URL(withScheme).hostname.toLowerCase();
+  } catch {
+    throw new Error(`invalid domain ${JSON.stringify(input2)}: not a hostname`);
+  }
+  host = host.replace(/\.$/, "");
+  const labels = host.split(".");
+  if (labels[0] === "www" && labels.length > 2) labels.shift();
+  const tld = labels[labels.length - 1] ?? "";
+  if (labels.length < 2 || labels.join(".").length > 253 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
+    throw new Error(`invalid domain ${JSON.stringify(input2)}: not a valid hostname`);
+  }
+  return labels.join(".");
+}
+function normalizeDomainLenient(domain2) {
+  try {
+    return normalizeDomain(domain2);
+  } catch {
+    return String(domain2 ?? "").trim().toLowerCase();
+  }
+}
+function normalizeDomains(domains) {
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const d of domains) {
+    const n = normalizeDomain(d);
+    if (!seen.has(n)) {
+      seen.add(n);
+      out.push(n);
+    }
+  }
+  return out;
+}
+function contactKeyOf(c) {
+  return c.email ?? `${c.name}@${normalizeDomainLenient(c.leadDomain)}`;
+}
 function dedupeLeads(leads) {
   const byDomain = /* @__PURE__ */ new Map();
-  for (const lead of leads) {
+  for (const raw of leads) {
+    const lead = { ...raw, domain: normalizeDomainLenient(raw.domain) };
     const existing = byDomain.get(lead.domain);
     if (!existing) {
-      byDomain.set(lead.domain, { ...lead });
+      byDomain.set(lead.domain, lead);
     } else {
+      const sources = existing.source.split(",");
       byDomain.set(lead.domain, {
         ...existing,
         companyName: existing.companyName || lead.companyName,
         industry: existing.industry ?? lead.industry,
         size: existing.size ?? lead.size,
-        description: existing.description ?? lead.description
+        description: existing.description ?? lead.description,
+        source: sources.includes(lead.source) ? existing.source : `${existing.source},${lead.source}`
       });
     }
   }
@@ -76393,11 +76487,12 @@ function dedupeLeads(leads) {
 }
 function dedupeContacts(contacts) {
   const byKey = /* @__PURE__ */ new Map();
-  for (const c of contacts) {
+  for (const raw of contacts) {
+    const c = { ...raw, leadDomain: normalizeDomainLenient(raw.leadDomain) };
     const key = c.email ?? `${c.name.toLowerCase()}@${c.leadDomain}`;
     const existing = byKey.get(key);
     if (!existing) {
-      byKey.set(key, { ...c });
+      byKey.set(key, c);
     } else {
       byKey.set(key, {
         ...existing,
@@ -76409,65 +76504,197 @@ function dedupeContacts(contacts) {
   }
   return [...byKey.values()];
 }
-async function runResearch(domain2, icp) {
+var ConnectorTimeoutError = class extends Error {
+  constructor(ms) {
+    super(`connector exceeded ${ms}ms deadline`);
+    this.name = "ConnectorTimeoutError";
+  }
+};
+async function callWithDeadline(fn, timeoutMs) {
+  const signal = AbortSignal.timeout(timeoutMs);
+  let onAbort = () => {
+  };
+  const deadline = new Promise((_, reject) => {
+    onAbort = () => reject(new ConnectorTimeoutError(timeoutMs));
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([fn(signal), deadline]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
+}
+function failureStatus(err) {
+  if (err instanceof HttpError) return err.status;
+  const name29 = err?.name;
+  if (err instanceof ConnectorTimeoutError || name29 === "TimeoutError" || name29 === "AbortError") return "timeout";
+  return "error";
+}
+function recordConnectorFailure(connector, phase, err, raw, failed) {
+  const status = failureStatus(err);
+  raw[connector.name] = { failed: true, status };
+  failed.push({ name: connector.name, phase, status });
+}
+function isPushOnly(name29) {
+  return getConnector(name29)?.pushOnly === true;
+}
+async function runResearch(domain2, icp, opts = {}) {
   registerBuiltinConnectors();
+  const target = normalizeDomain(domain2);
+  const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const connectors = getConfiguredConnectors("research");
   const leads = [];
   const contacts = [];
   const raw = {};
   const ran = [];
   const skipped = getSkippedConnectors("research").map((c) => c.name);
+  const failedConnectors = [];
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
-      const out = await connector.research({ domain: domain2, icp });
+      const out = await callWithDeadline(
+        (signal) => connector.research({ domain: target, icp, signal }),
+        timeoutMs
+      );
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
     } catch (err) {
-      raw[connector.name] = {
-        failed: true,
-        status: err instanceof HttpError ? err.status : "error"
-      };
-      skipped.push(connector.name);
+      recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
   }
-  return { leads: dedupeLeads(leads), contacts: dedupeContacts(contacts), ran, skipped, raw };
+  return {
+    leads: dedupeLeads(leads),
+    contacts: dedupeContacts(contacts),
+    ran,
+    skipped,
+    failedConnectors,
+    raw
+  };
 }
-async function runEnrich(lead, contacts) {
+function payloadName(data) {
+  const str = (v) => typeof v === "string" && v.trim() ? v.trim() : void 0;
+  const direct = str(data.full_name) ?? str(data.fullName) ?? str(data.name);
+  if (direct) return direct;
+  const parts = [str(data.first_name) ?? str(data.firstName), str(data.last_name) ?? str(data.lastName)].filter(Boolean).join(" ");
+  return parts || void 0;
+}
+var sameName = (a, b) => a.trim().toLowerCase().replace(/\s+/g, " ") === b.trim().toLowerCase().replace(/\s+/g, " ");
+function foldVerifiedEmails(working, found) {
+  const known = new Set(working.filter((c) => c.email).map((c) => c.email.toLowerCase()));
+  const candidates = found.filter(
+    (e) => e.subjectType === "contact" && typeof e.verifiedEmail === "string" && ContactSchema.shape.email.safeParse(e.verifiedEmail).success && !known.has(e.verifiedEmail.toLowerCase())
+  );
+  if (candidates.length === 0) return working;
+  const next = working.map((c) => ({ ...c }));
+  const needy = () => next.filter((c) => !c.email);
+  const unattributed = [];
+  for (const e of candidates) {
+    const name29 = e.contactName ?? payloadName(e.data ?? {});
+    const match = name29 ? needy().find((c) => sameName(c.name, name29)) : void 0;
+    if (match) {
+      match.email = e.verifiedEmail;
+      known.add(e.verifiedEmail.toLowerCase());
+    } else {
+      unattributed.push(e);
+    }
+  }
+  const stillNeedy = needy();
+  if (unattributed.length === 1 && stillNeedy.length === 1) {
+    stillNeedy[0].email = unattributed[0].verifiedEmail;
+  }
+  return next;
+}
+async function runEnrich(lead, contacts, opts = {}) {
   registerBuiltinConnectors();
+  const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const connectors = getConfiguredConnectors("enrich");
   const enrichments = [];
   const raw = {};
   const ran = [];
   const skipped = getSkippedConnectors("enrich").map((c) => c.name);
+  const failedConnectors = [];
+  let working = contacts.map((c) => ({ ...c }));
   for (const connector of connectors) {
     if (!connector.enrich) continue;
     try {
-      const out = await connector.enrich({ lead, contacts });
+      const current = working;
+      const out = await callWithDeadline(
+        (signal) => connector.enrich({ lead, contacts: current, signal }),
+        timeoutMs
+      );
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      working = foldVerifiedEmails(working, out.enrichments);
     } catch (err) {
-      raw[connector.name] = {
-        failed: true,
-        status: err instanceof HttpError ? err.status : "error"
-      };
-      skipped.push(connector.name);
+      recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }
   }
-  return { enrichments, ran, skipped, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
+}
+var MAX_ERROR_MESSAGE = 500;
+function sanitizeErrorMessage(err) {
+  const msg = err instanceof Error ? err.message : typeof err === "string" ? err : "unknown error";
+  const redacted = msg.replace(/([?&](?:api[_-]?key|key|token|access_token|secret|password)=)[^&\s"']+/gi, "$1[redacted]").replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/g, "Bearer [redacted]").replace(/\b(sk|xai|gsk|pk)-[A-Za-z0-9_-]{8,}/g, "$1-[redacted]");
+  return redacted.length > MAX_ERROR_MESSAGE ? `${redacted.slice(0, MAX_ERROR_MESSAGE)}\u2026` : redacted;
+}
+function usageFromError(err) {
+  const u = err?.usage;
+  if (!u || typeof u !== "object") return void 0;
+  const num = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0;
+  const inputTokens = num(u.inputTokens) || num(u.promptTokens);
+  const outputTokens = num(u.outputTokens) || num(u.completionTokens);
+  return inputTokens || outputTokens ? { inputTokens, outputTokens } : void 0;
+}
+function finishReasonFromError(err) {
+  const r = err?.finishReason;
+  return typeof r === "string" && r ? r : void 0;
+}
+async function evaluateGate(pack, ctx) {
+  try {
+    const verdict = await pack.compliance.check(ctx);
+    if (verdict && verdict.status === "clean") return { clean: true };
+    const reason = verdict && typeof verdict.reason === "string" && verdict.reason ? verdict.reason : "non-clean-verdict";
+    return { clean: false, reason };
+  } catch (err) {
+    const message = sanitizeErrorMessage(err);
+    return { clean: false, reason: `gate-error: ${message}`, error: message };
+  }
+}
+function enrichmentsFor(lead, contact, all) {
+  const email3 = contact.email?.toLowerCase();
+  return all.filter(
+    (e) => e.subjectType === "lead" ? normalizeDomainLenient(e.subjectKey) === lead.domain : !!email3 && (e.subjectKey.toLowerCase() === email3 || e.verifiedEmail?.toLowerCase() === email3)
+  );
+}
+function deriveRunStatus(s) {
+  const degraded = s.errors > 0 || (s.rejectedDrafts ?? 0) > 0;
+  if (s.messages > 0) return degraded ? "partial" : "complete";
+  if (s.errors > 0) return "failed";
+  if (s.leads > 0) return "enriched";
+  if (s.researchRan) return "researched";
+  return "failed";
 }
 async function runCampaign(input2) {
-  const { icp, domains } = input2;
+  const { icp } = input2;
+  const domains = normalizeDomains(input2.domains);
+  const maxDomains = input2.maxDomains ?? DEFAULT_MAX_DOMAINS;
+  if (domains.length > maxDomains && !input2.allowLarge) {
+    throw new Error(
+      `runCampaign: ${domains.length} domains exceeds maxDomains=${maxDomains}; split the list or pass allowLarge: true to run it anyway`
+    );
+  }
   const now = input2.now ?? (() => (/* @__PURE__ */ new Date()).toISOString());
   const channel = input2.channel ?? "email";
   const minScore = input2.minScore ?? 0;
   const maxContacts = input2.maxContactsPerLead ?? 1;
+  const connectorOpts = input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {};
   const provider = input2.provider ?? await getProvider();
   registerBuiltinPacks();
   const pack = resolvePack(input2.pack);
+  const promptVersion = pack.prompts.draft.replace(/\.md$/i, "");
   const meter = new CostMeter();
   const createdAt = now();
   const allLeads = [];
@@ -76475,68 +76702,112 @@ async function runCampaign(input2) {
   const allEnrichments = [];
   const messages = [];
   const blockedContacts = [];
+  const errors = [];
+  const rejectedDrafts = [];
+  const failedConnectors = [];
   const skipped = /* @__PURE__ */ new Set();
   let anyResearchRan = false;
+  const recordError = (err, where) => {
+    const usage = usageFromError(err);
+    if (usage) meter.record(provider.model, usage.inputTokens, usage.outputTokens);
+    const finishReason = finishReasonFromError(err);
+    errors.push({ ...where, message: sanitizeErrorMessage(err), ...finishReason ? { finishReason } : {} });
+  };
   for (const domain2 of domains) {
-    const research = await runResearch(domain2, icp);
+    const research = await runResearch(domain2, icp, connectorOpts);
     research.skipped.forEach((s) => skipped.add(s));
-    if (research.ran.length > 0) anyResearchRan = true;
+    failedConnectors.push(...research.failedConnectors);
+    if (research.ran.some((name29) => !isPushOnly(name29))) anyResearchRan = true;
     for (const lead of research.leads) {
       const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
-      const enrich = await runEnrich(lead, leadContacts);
+      const enrich = await runEnrich(lead, leadContacts, connectorOpts);
       enrich.skipped.forEach((s) => skipped.add(s));
+      failedConnectors.push(...enrich.failedConnectors);
+      const contacts = enrich.contacts;
       allLeads.push(lead);
-      allContacts.push(...leadContacts);
+      allContacts.push(...contacts);
       allEnrichments.push(...enrich.enrichments);
-      const scored = await scoreLead(provider, {
-        icp,
-        lead,
-        contacts: leadContacts,
-        enrichments: enrich.enrichments,
-        scorePrompts: pack.prompts.score
-      });
+      let scored;
+      try {
+        scored = await scoreLead(provider, {
+          icp,
+          lead,
+          contacts,
+          enrichments: enrich.enrichments,
+          scorePrompts: pack.prompts.score
+        });
+      } catch (err) {
+        recordError(err, { domain: lead.domain, stage: "score" });
+        continue;
+      }
       meter.record(provider.model, scored.usage.inputTokens, scored.usage.outputTokens);
       if (scored.object.fitScore < minScore) continue;
       const eligible = [];
-      for (const contact of leadContacts) {
-        const verdict = pack.compliance.check({ lead, contact, now: new Date(now()) });
-        if (verdict.status === "blocked") {
-          blockedContacts.push({
-            contactKey: contact.email ?? `${contact.name}@${lead.domain}`,
-            reason: verdict.reason ?? "blocked"
-          });
-        } else {
+      for (const contact of contacts) {
+        const contactKey = contactKeyOf(contact);
+        const outcome = await evaluateGate(pack, {
+          lead,
+          contact,
+          now: new Date(now()),
+          enrichments: enrichmentsFor(lead, contact, enrich.enrichments)
+        });
+        if (outcome.clean) {
           eligible.push(contact);
+        } else {
+          blockedContacts.push({ contactKey, reason: outcome.reason });
+          if (outcome.error !== void 0) {
+            errors.push({ domain: lead.domain, contactKey, stage: "gate", message: outcome.error });
+          }
         }
       }
       for (const contact of eligible.slice(0, maxContacts)) {
-        const drafted = await draftMessage(provider, {
-          icp,
-          lead,
-          contact,
-          angles: scored.object.angles,
-          channel,
-          draftPrompt: pack.prompts.draft,
-          ...input2.styleOverride ? { styleOverride: input2.styleOverride } : {}
-        });
+        const contactKey = contactKeyOf(contact);
+        let drafted;
+        try {
+          drafted = await draftMessage(provider, {
+            icp,
+            lead,
+            contact,
+            angles: scored.object.angles,
+            channel,
+            draftPrompt: pack.prompts.draft,
+            ...input2.styleOverride ? { styleOverride: input2.styleOverride } : {}
+          });
+        } catch (err) {
+          recordError(err, { domain: lead.domain, contactKey, stage: "draft" });
+          continue;
+        }
         meter.record(provider.model, drafted.usage.inputTokens, drafted.usage.outputTokens);
         const candidate = {
-          contactKey: contact.email ?? `${contact.name}@${lead.domain}`,
+          contactKey,
           channel,
           subject: drafted.object.subject ?? void 0,
           body: drafted.object.body,
           cta: drafted.object.cta,
           fitScore: scored.object.fitScore,
           model: provider.model,
-          promptVersion: "outreach.v1",
+          promptVersion,
           createdAt: now()
         };
         const validated = validateMessage(candidate);
-        if (validated.ok) messages.push(validated.value);
+        if (validated.ok) {
+          messages.push(validated.value);
+        } else {
+          rejectedDrafts.push({
+            contactKey,
+            issues: validated.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+          });
+        }
       }
     }
   }
-  const status = messages.length ? "complete" : allLeads.length ? "enriched" : anyResearchRan ? "researched" : "failed";
+  const status = deriveRunStatus({
+    messages: messages.length,
+    leads: allLeads.length,
+    researchRan: anyResearchRan,
+    errors: errors.length,
+    rejectedDrafts: rejectedDrafts.length
+  });
   const run = assertCampaignRun({
     id: input2.id,
     schemaVersion: SCHEMA_VERSION,
@@ -76553,6 +76824,9 @@ async function runCampaign(input2) {
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],
     blockedContacts,
+    errors,
+    rejectedDrafts,
+    failedConnectors,
     createdAt,
     finishedAt: now()
   });

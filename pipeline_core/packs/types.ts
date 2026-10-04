@@ -12,7 +12,7 @@
  * vertical prompts WITHOUT touching this engine.
  */
 
-import type { Contact, Lead } from "../models.js";
+import type { Contact, Enrichment, Lead } from "../models.js";
 
 /** A compliance verdict for a single contact. Fail-closed: ambiguity → blocked. */
 export type ComplianceStatus = "clean" | "blocked";
@@ -29,11 +29,24 @@ export interface ComplianceContext {
   /** Injected instant — the same clock `runCampaign` threads through, so the
    *  gate stays pure and deterministic (no `Date.now()` inside a gate). */
   now: Date;
+  /**
+   * Enrichments attached to THIS lead (subjectKey = domain) or THIS contact
+   * (subjectKey / verifiedEmail = the contact's email). Carries the phone /
+   * address data a DNC, TCPA or service-area gate needs.
+   */
+  enrichments: Enrichment[];
 }
 
 /**
  * The per-pack compliance gate. Returns "clean" to allow drafting a contact,
- * "blocked" to skip it (recorded, never drafted/delivered). `b2b-sdr` returns
+ * "blocked" to skip it (recorded, never drafted/delivered).
+ *
+ * The ENGINE enforces fail-closed regardless of what a gate returns: anything
+ * other than exactly `{ status: "clean" }` (a typo like "BLOCKED", `undefined`,
+ * a missing object) blocks the contact with reason `verdict.reason ??
+ * "non-clean-verdict"`, and a gate that THROWS blocks it with reason
+ * `"gate-error: <message>"` (also recorded in `run.errors`). A gate cannot
+ * accidentally let a contact through. `b2b-sdr` returns
  * "clean" for everything; residential-re composes the real DNC/TCPA/geofence
  * checks from `../compliance`.
  */

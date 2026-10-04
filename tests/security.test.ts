@@ -60,7 +60,9 @@ describe("secret redaction (blocker)", () => {
       const res = await runResearch("acme.com", "B2B SaaS founders");
       expect(JSON.stringify(res)).not.toContain("HUNTERSECRET_abc123xyz");
       expect(res.raw.hunter).toMatchObject({ failed: true, status: 401 });
-      expect(res.skipped).toContain("hunter");
+      // A configured-but-failed connector is a FAILURE, not a skip (skipped = no key).
+      expect(res.failedConnectors).toContainEqual({ name: "hunter", phase: "research", status: 401 });
+      expect(res.skipped).not.toContain("hunter");
     });
 
     it("a Clay webhook failure never surfaces the webhook token", async () => {
