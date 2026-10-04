@@ -20,7 +20,7 @@ import { z } from "zod";
  * old v1 JSONL still passes re-validation on read (store.ts re-validates every
  * line). New writes emit the latest version; never narrow this back to one literal.
  */
-export const SCHEMA_VERSION = 4 as const;
+export const SCHEMA_VERSION = 5 as const;
 /**
  * Every schema version a stored record may legitimately carry. The CampaignRun
  * `schemaVersion` union is DERIVED from this list (see SchemaVersionSchema), so
@@ -31,8 +31,12 @@ export const SCHEMA_VERSION = 4 as const;
  *
  * v4 added `complianceWarnings` on CampaignRun and `needsSenderIdentity` on
  * Message (both defaulted) for the code-appended CAN-SPAM footer. Additive.
+ *
+ * v5 added `promptRefs` (score + draft prompt provenance, defaulted {}),
+ * `droppedAngles` (defaulted []) and the optional `origin` ("pipeline" for
+ * runCampaign, "agent" for the MCP save_run path). Additive: v1–v4 still parse.
  */
-export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4] as const;
+export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5] as const;
 export type SchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
 
 /** z.union of one literal per supported version — never a single literal. */
@@ -264,6 +268,30 @@ export const CampaignRunSchema = z.object({
    * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
    */
   complianceWarnings: z.array(z.string()).default([]),
+  /**
+   * Prompt provenance for the run's LLM seams (v5, additive): each entry is
+   * "<prompt-file>@<sha8>". `score` lists the joined score-seam files; `draft` is
+   * the draft-seam file. Empty for agent-saved runs (the agent drafted, not a seam).
+   */
+  promptRefs: z
+    .object({
+      score: z.array(z.string().min(1)).optional(),
+      draft: z.string().min(1).optional(),
+    })
+    .default({}),
+  /**
+   * Score-seam angles removed because they cited a fact absent from the inputs
+   * (groundAngles) — kept so an operator can see what the model tried (v5).
+   */
+  droppedAngles: z
+    .array(z.object({ domain: z.string().min(1), angle: z.string(), reason: z.string() }))
+    .default([]),
+  /**
+   * Who assembled the record (v5, optional so older lines stay unlabeled rather
+   * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
+   * where the drafts and the `model` field are caller-claimed.
+   */
+  origin: z.enum(["pipeline", "agent"]).optional(),
   createdAt: z.string().datetime(),
   finishedAt: z.string().datetime().optional(),
 });
