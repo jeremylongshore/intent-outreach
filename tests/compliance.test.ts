@@ -83,10 +83,13 @@ describe("DncList", () => {
     expect(dnc.size).toBe(1);
   });
 
-  it("has() returns false for garbage", () => {
+  it("has() fails CLOSED on garbage (unknown number is treated as listed)", () => {
     const dnc = new DncList(["+12515550100"]);
-    expect(dnc.has("not-a-phone")).toBe(false);
-    expect(dnc.has("")).toBe(false);
+    expect(dnc.has("not-a-phone")).toBe(true);
+    expect(dnc.has("")).toBe(true);
+    expect(dnc.has(undefined as unknown as string)).toBe(true);
+    // An empty list still refuses what it cannot check.
+    expect(new DncList().has("garbage")).toBe(true);
   });
 });
 

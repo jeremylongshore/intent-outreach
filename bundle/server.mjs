@@ -4536,7 +4536,7 @@ function isRef(value) {
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
-function isRecursive(inst, stack, resolve) {
+function isRecursive(inst, stack, resolve2) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -4546,7 +4546,7 @@ function isRecursive(inst, stack, resolve) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve);
+      const answer = isRecursive(child, stack, resolve2);
       if (answer > result)
         result = answer;
     }
@@ -4557,7 +4557,7 @@ function isRecursive(inst, stack, resolve) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve2) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -4621,7 +4621,7 @@ function isRecursive(inst, stack, resolve) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve2 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -20782,11 +20782,11 @@ var require_codegen = __commonJS({
         const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
         return `${varKind} ${this.name}${rhs};` + _n;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         if (!names[this.name.str])
           return;
         if (this.rhs)
-          this.rhs = optimizeExpr(this.rhs, names, constants);
+          this.rhs = optimizeExpr(this.rhs, names, constants2);
         return this;
       }
       get names() {
@@ -20803,10 +20803,10 @@ var require_codegen = __commonJS({
       render({ _n }) {
         return `${this.lhs} = ${this.rhs};` + _n;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         if (this.lhs instanceof code_1.Name && !names[this.lhs.str] && !this.sideEffects)
           return;
-        this.rhs = optimizeExpr(this.rhs, names, constants);
+        this.rhs = optimizeExpr(this.rhs, names, constants2);
         return this;
       }
       get names() {
@@ -20867,8 +20867,8 @@ var require_codegen = __commonJS({
       optimizeNodes() {
         return `${this.code}` ? this : void 0;
       }
-      optimizeNames(names, constants) {
-        this.code = optimizeExpr(this.code, names, constants);
+      optimizeNames(names, constants2) {
+        this.code = optimizeExpr(this.code, names, constants2);
         return this;
       }
       get names() {
@@ -20897,12 +20897,12 @@ var require_codegen = __commonJS({
         }
         return nodes.length > 0 ? this : void 0;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         const { nodes } = this;
         let i = nodes.length;
         while (i--) {
           const n = nodes[i];
-          if (n.optimizeNames(names, constants))
+          if (n.optimizeNames(names, constants2))
             continue;
           subtractNames(names, n.names);
           nodes.splice(i, 1);
@@ -20955,12 +20955,12 @@ var require_codegen = __commonJS({
           return void 0;
         return this;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         var _a3;
-        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants);
-        if (!(super.optimizeNames(names, constants) || this.else))
+        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants2);
+        if (!(super.optimizeNames(names, constants2) || this.else))
           return;
-        this.condition = optimizeExpr(this.condition, names, constants);
+        this.condition = optimizeExpr(this.condition, names, constants2);
         return this;
       }
       get names() {
@@ -20983,10 +20983,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.iteration})` + super.render(opts);
       }
-      optimizeNames(names, constants) {
-        if (!super.optimizeNames(names, constants))
+      optimizeNames(names, constants2) {
+        if (!super.optimizeNames(names, constants2))
           return;
-        this.iteration = optimizeExpr(this.iteration, names, constants);
+        this.iteration = optimizeExpr(this.iteration, names, constants2);
         return this;
       }
       get names() {
@@ -21022,10 +21022,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
       }
-      optimizeNames(names, constants) {
-        if (!super.optimizeNames(names, constants))
+      optimizeNames(names, constants2) {
+        if (!super.optimizeNames(names, constants2))
           return;
-        this.iterable = optimizeExpr(this.iterable, names, constants);
+        this.iterable = optimizeExpr(this.iterable, names, constants2);
         return this;
       }
       get names() {
@@ -21067,11 +21067,11 @@ var require_codegen = __commonJS({
         (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
         return this;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         var _a3, _b;
-        super.optimizeNames(names, constants);
-        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants);
-        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants);
+        super.optimizeNames(names, constants2);
+        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants2);
+        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants2);
         return this;
       }
       get names() {
@@ -21372,7 +21372,7 @@ var require_codegen = __commonJS({
     function addExprNames(names, from) {
       return from instanceof code_1._CodeOrName ? addNames(names, from.names) : names;
     }
-    function optimizeExpr(expr, names, constants) {
+    function optimizeExpr(expr, names, constants2) {
       if (expr instanceof code_1.Name)
         return replaceName(expr);
       if (!canOptimize(expr))
@@ -21387,14 +21387,14 @@ var require_codegen = __commonJS({
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants[n.str];
+        const c = constants2[n.str];
         if (c === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
         return c;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants2[c.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -23356,7 +23356,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -23383,7 +23383,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -24014,7 +24014,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options) {
+    function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -24272,7 +24272,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -34757,7 +34757,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error62) {
@@ -34774,7 +34774,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const earlyReject = (error62) => {
         reject(error62);
       };
@@ -34852,7 +34852,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve(parseResult.data);
+            resolve2(parseResult.data);
           }
         } catch (error62) {
           reject(error62);
@@ -35113,12 +35113,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve, interval);
+      const timeoutId = setTimeout(resolve2, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -36213,7 +36213,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -36877,12 +36877,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve();
+        resolve2();
       } else {
-        this._stdout.once("drain", resolve);
+        this._stdout.once("drain", resolve2);
       }
     });
   }
@@ -37133,44 +37133,86 @@ async function attemptOnce(start, opts) {
 }
 
 // pipeline_core/secrets.ts
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, statSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 import { homedir } from "node:os";
 var MissingSecretError = class extends Error {
   constructor(name) {
+    let where;
+    try {
+      where = localSecretsPath();
+    } catch {
+      where = "the local secrets file";
+    }
     super(
-      `secret "${name}" not found. Set the ${name} environment variable, or add it to ${localSecretsPath()}. Intent Outreach never stores keys in the cloud.`
+      `secret "${name}" not found. Set the ${name} environment variable, or add it to ${where}. Intent Outreach never stores keys in the cloud.`
     );
     this.name = name;
     this.name = "MissingSecretError";
   }
   name;
 };
+var PLACEHOLDER = /^\$\{.*\}$/;
+function isUnsetValue(v) {
+  if (typeof v !== "string") return true;
+  const t = v.trim();
+  return t.length === 0 || PLACEHOLDER.test(t);
+}
+function envPath(name) {
+  const raw = process.env[name];
+  if (isUnsetValue(raw)) return void 0;
+  const p = raw.trim();
+  if (!isAbsolute(p)) {
+    throw new Error(`${name} must be an absolute path (got "${p}")`);
+  }
+  return p;
+}
+function intentOutreachHome() {
+  return envPath("INTENT_OUTREACH_HOME") ?? join(homedir(), ".intent-outreach");
+}
 function localSecretsPath() {
-  return process.env.INTENT_OUTREACH_SECRETS_FILE ?? join(process.env.INTENT_OUTREACH_HOME ?? join(homedir(), ".intent-outreach"), "secrets.json");
+  return envPath("INTENT_OUTREACH_SECRETS_FILE") ?? join(intentOutreachHome(), "secrets.json");
 }
 var fileCache = null;
+function warnIfBroadPermissions(path) {
+  try {
+    const mode = statSync(path).mode & 511;
+    if (mode & 63) {
+      process.stderr.write(
+        `intent-outreach: warning: secrets file ${path} is readable by group/other (mode ${mode.toString(8).padStart(3, "0")}); run: chmod 600 ${path}
+`
+      );
+    }
+  } catch {
+  }
+}
 function loadLocalFile() {
   if (fileCache) return fileCache;
+  const path = localSecretsPath();
   try {
-    const text = readFileSync(localSecretsPath(), "utf8");
+    const text = readFileSync(path, "utf8");
+    warnIfBroadPermissions(path);
     const parsed = JSON.parse(text);
-    fileCache = parsed && typeof parsed === "object" ? parsed : {};
+    fileCache = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
   } catch {
     fileCache = {};
   }
   return fileCache;
 }
-function getSecret(name) {
+function resolve(name) {
   const fromEnv = process.env[name];
-  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  if (!isUnsetValue(fromEnv)) return fromEnv;
   const fromFile = loadLocalFile()[name];
-  if (fromFile && fromFile.length > 0) return fromFile;
-  throw new MissingSecretError(name);
+  if (!isUnsetValue(fromFile)) return fromFile;
+  return void 0;
+}
+function getSecret(name) {
+  const v = resolve(name);
+  if (v === void 0) throw new MissingSecretError(name);
+  return v;
 }
 function hasSecret(name) {
-  if (process.env[name]) return true;
-  return Boolean(loadLocalFile()[name]);
+  return resolve(name) !== void 0;
 }
 
 // pipeline_core/connectors/_domain.ts
@@ -38166,7 +38208,14 @@ function registerBuiltinConnectors() {
 }
 
 // pipeline_core/models.ts
-var SCHEMA_VERSION = 2;
+var SCHEMA_VERSION = 3;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
+var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
+var SchemaVersionSchema = external_exports.union([
+  external_exports.literal(V_FIRST),
+  external_exports.literal(V_SECOND),
+  ...V_REST.map((v) => external_exports.literal(v))
+]);
 var SourceSchema = external_exports.string().min(1);
 var LeadSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -38201,6 +38250,12 @@ var EnrichmentSchema = external_exports.object({
     investors: external_exports.array(external_exports.string()).optional()
   }).optional(),
   verifiedEmail: external_exports.string().email().optional(),
+  /**
+   * Optional back-reference to the Contact's `name` when the enrichment found an
+   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
+   * pipeline fold the found email into the working contact list. Optional/additive.
+   */
+  contactName: external_exports.string().min(1).optional(),
   phone: external_exports.string().optional(),
   /** Raw provider payload, retained for audit; never trusted as schema. */
   data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
@@ -38220,14 +38275,30 @@ var MessageSchema = external_exports.object({
   promptVersion: external_exports.string().min(1),
   createdAt: external_exports.string().datetime()
 });
-var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "failed"]);
+var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
+var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
+var RunErrorSchema = external_exports.object({
+  domain: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1).optional(),
+  stage: RunErrorStageSchema,
+  /** Sanitized, truncated error message (secrets redacted). */
+  message: external_exports.string(),
+  /** AI SDK finish reason when the error carried one (e.g. "length"). */
+  finishReason: external_exports.string().optional()
+});
+var FailedConnectorSchema = external_exports.object({
+  name: external_exports.string().min(1),
+  phase: external_exports.enum(["research", "enrich"]),
+  /** HTTP status, "timeout", or "error". */
+  status: external_exports.union([external_exports.number().int(), external_exports.string().min(1)])
+});
 var CampaignRunSchema = external_exports.object({
   /** Caller-supplied or generated run id (no Date.now/random inside core). */
   id: external_exports.string().min(1),
   // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
   // existing v1 line on read (store.ts re-validates each line). New writes emit
   // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
-  schemaVersion: external_exports.union([external_exports.literal(1), external_exports.literal(2)]),
+  schemaVersion: SchemaVersionSchema,
   icp: external_exports.string().min(1),
   domains: external_exports.array(external_exports.string().min(1)),
   /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
@@ -38255,11 +38326,32 @@ var CampaignRunSchema = external_exports.object({
       reason: external_exports.string().min(1)
     })
   ).default([]),
+  /**
+   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
+   * A provider error on domain 2 no longer loses domain 1's drafts.
+   */
+  errors: external_exports.array(RunErrorSchema).default([]),
+  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
+  rejectedDrafts: external_exports.array(external_exports.object({ contactKey: external_exports.string().min(1), issues: external_exports.array(external_exports.string()) })).default([]),
+  /**
+   * Configured connectors that threw (sanitized status only — never the error
+   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
+   * "not configured" only (v3).
+   */
+  failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
 
 // pipeline_core/validator.ts
+function deepFreeze(value, seen = /* @__PURE__ */ new WeakSet()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const key of Reflect.ownKeys(value)) {
+    deepFreeze(value[key], seen);
+  }
+  return Object.freeze(value);
+}
 var ValidationError = class extends Error {
   constructor(kind, issues) {
     super(
@@ -38275,7 +38367,7 @@ var ValidationError = class extends Error {
 function gate(kind, schema, raw) {
   const parsed = schema.safeParse(raw);
   if (parsed.success) {
-    return { ok: true, value: parsed.data };
+    return { ok: true, value: deepFreeze(parsed.data) };
   }
   return { ok: false, error: new ValidationError(kind, parsed.error.issues) };
 }
@@ -38301,19 +38393,53 @@ var DraftOutputSchema = external_exports.object({
 });
 
 // pipeline_core/pipeline.ts
+var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
+var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+function normalizeDomain(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) {
+    throw new Error(`invalid domain ${JSON.stringify(input2)}: empty`);
+  }
+  const trimmed = input2.trim();
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  let host;
+  try {
+    host = new URL(withScheme).hostname.toLowerCase();
+  } catch {
+    throw new Error(`invalid domain ${JSON.stringify(input2)}: not a hostname`);
+  }
+  host = host.replace(/\.$/, "");
+  const labels = host.split(".");
+  if (labels[0] === "www" && labels.length > 2) labels.shift();
+  const tld = labels[labels.length - 1] ?? "";
+  if (labels.length < 2 || labels.join(".").length > 253 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
+    throw new Error(`invalid domain ${JSON.stringify(input2)}: not a valid hostname`);
+  }
+  return labels.join(".");
+}
+function normalizeDomainLenient(domain2) {
+  try {
+    return normalizeDomain(domain2);
+  } catch {
+    return String(domain2 ?? "").trim().toLowerCase();
+  }
+}
 function dedupeLeads(leads) {
   const byDomain = /* @__PURE__ */ new Map();
-  for (const lead of leads) {
+  for (const raw of leads) {
+    const lead = { ...raw, domain: normalizeDomainLenient(raw.domain) };
     const existing = byDomain.get(lead.domain);
     if (!existing) {
-      byDomain.set(lead.domain, { ...lead });
+      byDomain.set(lead.domain, lead);
     } else {
+      const sources = existing.source.split(",");
       byDomain.set(lead.domain, {
         ...existing,
         companyName: existing.companyName || lead.companyName,
         industry: existing.industry ?? lead.industry,
         size: existing.size ?? lead.size,
-        description: existing.description ?? lead.description
+        description: existing.description ?? lead.description,
+        source: sources.includes(lead.source) ? existing.source : `${existing.source},${lead.source}`
       });
     }
   }
@@ -38321,11 +38447,12 @@ function dedupeLeads(leads) {
 }
 function dedupeContacts(contacts) {
   const byKey = /* @__PURE__ */ new Map();
-  for (const c of contacts) {
+  for (const raw of contacts) {
+    const c = { ...raw, leadDomain: normalizeDomainLenient(raw.leadDomain) };
     const key = c.email ?? `${c.name.toLowerCase()}@${c.leadDomain}`;
     const existing = byKey.get(key);
     if (!existing) {
-      byKey.set(key, { ...c });
+      byKey.set(key, c);
     } else {
       byKey.set(key, {
         ...existing,
@@ -38337,112 +38464,307 @@ function dedupeContacts(contacts) {
   }
   return [...byKey.values()];
 }
-async function runResearch(domain2, icp) {
+var ConnectorTimeoutError = class extends Error {
+  constructor(ms) {
+    super(`connector exceeded ${ms}ms deadline`);
+    this.name = "ConnectorTimeoutError";
+  }
+};
+async function callWithDeadline(fn, timeoutMs) {
+  const signal = AbortSignal.timeout(timeoutMs);
+  let onAbort = () => {
+  };
+  const deadline = new Promise((_, reject) => {
+    onAbort = () => reject(new ConnectorTimeoutError(timeoutMs));
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([fn(signal), deadline]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
+}
+function failureStatus(err) {
+  if (err instanceof HttpError) return err.status;
+  const name = err?.name;
+  if (err instanceof ConnectorTimeoutError || name === "TimeoutError" || name === "AbortError") return "timeout";
+  return "error";
+}
+function recordConnectorFailure(connector, phase, err, raw, failed) {
+  const status = failureStatus(err);
+  raw[connector.name] = { failed: true, status };
+  failed.push({ name: connector.name, phase, status });
+}
+async function runResearch(domain2, icp, opts = {}) {
   registerBuiltinConnectors();
+  const target = normalizeDomain(domain2);
+  const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const connectors = getConfiguredConnectors("research");
   const leads = [];
   const contacts = [];
   const raw = {};
   const ran = [];
   const skipped = getSkippedConnectors("research").map((c) => c.name);
+  const failedConnectors = [];
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
-      const out = await connector.research({ domain: domain2, icp });
+      const out = await callWithDeadline(
+        (signal) => connector.research({ domain: target, icp, signal }),
+        timeoutMs
+      );
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
     } catch (err) {
-      raw[connector.name] = {
-        failed: true,
-        status: err instanceof HttpError ? err.status : "error"
-      };
-      skipped.push(connector.name);
+      recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
   }
-  return { leads: dedupeLeads(leads), contacts: dedupeContacts(contacts), ran, skipped, raw };
+  return {
+    leads: dedupeLeads(leads),
+    contacts: dedupeContacts(contacts),
+    ran,
+    skipped,
+    failedConnectors,
+    raw
+  };
 }
-async function runEnrich(lead, contacts) {
+function payloadName(data) {
+  const str = (v) => typeof v === "string" && v.trim() ? v.trim() : void 0;
+  const direct = str(data.full_name) ?? str(data.fullName) ?? str(data.name);
+  if (direct) return direct;
+  const parts = [str(data.first_name) ?? str(data.firstName), str(data.last_name) ?? str(data.lastName)].filter(Boolean).join(" ");
+  return parts || void 0;
+}
+var sameName = (a, b) => a.trim().toLowerCase().replace(/\s+/g, " ") === b.trim().toLowerCase().replace(/\s+/g, " ");
+function foldVerifiedEmails(working, found) {
+  const known = new Set(working.filter((c) => c.email).map((c) => c.email.toLowerCase()));
+  const candidates = found.filter(
+    (e) => e.subjectType === "contact" && typeof e.verifiedEmail === "string" && ContactSchema.shape.email.safeParse(e.verifiedEmail).success && !known.has(e.verifiedEmail.toLowerCase())
+  );
+  if (candidates.length === 0) return working;
+  const next = working.map((c) => ({ ...c }));
+  const needy = () => next.filter((c) => !c.email);
+  const unattributed = [];
+  for (const e of candidates) {
+    const name = e.contactName ?? payloadName(e.data ?? {});
+    const match = name ? needy().find((c) => sameName(c.name, name)) : void 0;
+    if (match) {
+      match.email = e.verifiedEmail;
+      known.add(e.verifiedEmail.toLowerCase());
+    } else {
+      unattributed.push(e);
+    }
+  }
+  const stillNeedy = needy();
+  if (unattributed.length === 1 && stillNeedy.length === 1) {
+    stillNeedy[0].email = unattributed[0].verifiedEmail;
+  }
+  return next;
+}
+async function runEnrich(lead, contacts, opts = {}) {
   registerBuiltinConnectors();
+  const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const connectors = getConfiguredConnectors("enrich");
   const enrichments = [];
   const raw = {};
   const ran = [];
   const skipped = getSkippedConnectors("enrich").map((c) => c.name);
+  const failedConnectors = [];
+  let working = contacts.map((c) => ({ ...c }));
   for (const connector of connectors) {
     if (!connector.enrich) continue;
     try {
-      const out = await connector.enrich({ lead, contacts });
+      const current = working;
+      const out = await callWithDeadline(
+        (signal) => connector.enrich({ lead, contacts: current, signal }),
+        timeoutMs
+      );
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      working = foldVerifiedEmails(working, out.enrichments);
     } catch (err) {
-      raw[connector.name] = {
-        failed: true,
-        status: err instanceof HttpError ? err.status : "error"
-      };
-      skipped.push(connector.name);
+      recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }
   }
-  return { enrichments, ran, skipped, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
 }
 
 // pipeline_core/store.ts
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { constants, mkdir, open as open2, readFile, stat, unlink } from "node:fs/promises";
 import { dirname, join as join2 } from "node:path";
-import { homedir as homedir2 } from "node:os";
+var DuplicateRunError = class extends Error {
+  constructor(runId) {
+    super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
+    this.runId = runId;
+    this.name = "DuplicateRunError";
+  }
+  runId;
+};
+var StoreLockTimeoutError = class extends Error {
+  constructor(lockPath) {
+    super(`timed out waiting for run-store lock ${lockPath} (another intent-outreach process is writing)`);
+    this.lockPath = lockPath;
+    this.name = "StoreLockTimeoutError";
+  }
+  lockPath;
+};
 function defaultStorePath() {
-  const base = process.env.INTENT_OUTREACH_HOME ?? join2(homedir2(), ".intent-outreach");
-  return join2(base, "runs.jsonl");
+  return join2(intentOutreachHome(), "runs.jsonl");
 }
+var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
+var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 var JsonlRunStore = class {
-  constructor(path = defaultStorePath()) {
+  constructor(path = defaultStorePath(), opts = {}) {
     this.path = path;
+    this.lockTimeoutMs = opts.lockTimeoutMs ?? 1e4;
+    this.staleLockMs = opts.staleLockMs ?? 3e4;
   }
   path;
-  async saveRun(run) {
-    await mkdir(dirname(this.path), { recursive: true });
-    await appendFile(this.path, JSON.stringify(run) + "\n", "utf8");
+  lockTimeoutMs;
+  staleLockMs;
+  permsChecked = false;
+  warnedKey = "";
+  async saveRun(run, opts = {}) {
+    const checked = assertCampaignRun(run);
+    const line = JSON.stringify(checked) + "\n";
+    await mkdir(dirname(this.path), { recursive: true, mode: 448 });
+    await this.withLock(async () => {
+      if (!opts.overwrite) {
+        const { runs } = await this.scan();
+        if (runs.some((r) => r.run.id === checked.id)) throw new DuplicateRunError(checked.id);
+      }
+      await this.append(line);
+    });
   }
   async getRun(id) {
-    const lines = await this.readLines();
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i];
-      if (line === void 0) continue;
-      const parsed = this.tryParseLine(line);
-      if (parsed && parsed.id === id) return parsed;
+    const { runs } = await this.scan();
+    for (let i = runs.length - 1; i >= 0; i--) {
+      const r = runs[i];
+      if (r && r.run.id === id) return r.run;
     }
     return null;
   }
   async listRunIds() {
-    const lines = await this.readLines();
-    const ids = /* @__PURE__ */ new Set();
-    for (const line of lines) {
-      const parsed = this.tryParseLine(line);
-      if (parsed) ids.add(parsed.id);
-    }
-    return [...ids];
+    const { runs } = await this.scan();
+    return [...new Set(runs.map((r) => r.run.id))];
   }
-  async readLines() {
+  async corruptLines() {
+    return (await this.scan()).corrupt;
+  }
+  // ── write path ──────────────────────────────────────────────────────────────
+  /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
+  async append(line) {
+    const fh = await open2(
+      this.path,
+      constants.O_RDWR | constants.O_APPEND | constants.O_CREAT,
+      384
+    );
     try {
-      const text = await readFile(this.path, "utf8");
-      return text.split("\n").filter((l) => l.trim().length > 0);
+      const st = await fh.stat();
+      if (!this.permsChecked) {
+        if ((st.mode & 63) !== 0) await fh.chmod(384);
+        this.permsChecked = true;
+      }
+      let payload = line;
+      if (st.size > 0) {
+        const last = Buffer.alloc(1);
+        await fh.read(last, 0, 1, st.size - 1);
+        if (last[0] !== 10) payload = "\n" + line;
+      }
+      await fh.write(payload);
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  }
+  /**
+   * Cross-process mutual exclusion via an exclusive-create lockfile. A lock older
+   * than `staleLockMs` (writer crashed mid-save) is broken. Backoff is bounded.
+   */
+  async withLock(fn) {
+    const lockPath = `${this.path}.lock`;
+    const deadline = Date.now() + this.lockTimeoutMs;
+    let delay = 5;
+    let lock;
+    while (!lock) {
+      try {
+        lock = await open2(lockPath, "wx", 384);
+      } catch (err) {
+        if (err.code !== "EEXIST") throw err;
+        try {
+          const st = await stat(lockPath);
+          if (Date.now() - st.mtimeMs > this.staleLockMs) {
+            await unlink(lockPath).catch(() => void 0);
+            continue;
+          }
+        } catch {
+          continue;
+        }
+        if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
+        await sleep(delay + Math.floor(Math.random() * delay));
+        delay = Math.min(delay * 2, 200);
+      }
+    }
+    try {
+      await lock.write(`${process.pid} ${(/* @__PURE__ */ new Date()).toISOString()}
+`);
+      return await fn();
+    } finally {
+      await lock.close().catch(() => void 0);
+      await unlink(lockPath).catch(() => void 0);
+    }
+  }
+  // ── read path ───────────────────────────────────────────────────────────────
+  async scan() {
+    let text;
+    try {
+      text = await readFile(this.path, "utf8");
     } catch (err) {
-      if (err.code === "ENOENT") return [];
+      if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
     }
-  }
-  /** Re-validate on read so a hand-edited/corrupt line can never poison a result. */
-  tryParseLine(line) {
-    let raw;
-    try {
-      raw = JSON.parse(line);
-    } catch {
-      return null;
+    const runs = [];
+    const corrupt = [];
+    const lines = text.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      if (raw === void 0 || raw.trim().length === 0) continue;
+      const lineNo = i + 1;
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        corrupt.push({ line: lineNo, reason: "invalid-json" });
+        continue;
+      }
+      const r = validateCampaignRun(parsed);
+      if (r.ok) {
+        runs.push({ line: lineNo, run: r.value });
+        continue;
+      }
+      const version2 = parsed && typeof parsed === "object" ? parsed.schemaVersion : void 0;
+      corrupt.push({
+        line: lineNo,
+        reason: SUPPORTED_VERSIONS.includes(version2) ? "schema-invalid" : "unknown-schema-version"
+      });
     }
-    const r = validateCampaignRun(raw);
-    return r.ok ? r.value : null;
+    this.warnCorrupt(corrupt);
+    return { runs, corrupt };
+  }
+  /** One stderr warning per distinct set of bad lines (not one per read). */
+  warnCorrupt(corrupt) {
+    if (corrupt.length === 0) return;
+    const key = corrupt.map((c) => `${c.line}:${c.reason}`).join(",");
+    if (key === this.warnedKey) return;
+    this.warnedKey = key;
+    const detail = corrupt.map((c) => `${c.line} (${c.reason})`).join(", ");
+    process.stderr.write(
+      `intent-outreach: warning: ${corrupt.length} unreadable line(s) in ${this.path} were skipped: line ${detail}
+`
+    );
   }
 };
 

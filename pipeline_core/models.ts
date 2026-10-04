@@ -20,9 +20,25 @@ import { z } from "zod";
  * old v1 JSONL still passes re-validation on read (store.ts re-validates every
  * line). New writes emit the latest version; never narrow this back to one literal.
  */
-export const SCHEMA_VERSION = 2 as const;
-/** Every schema version a stored record may legitimately carry. */
-export const SUPPORTED_SCHEMA_VERSIONS = [1, 2] as const;
+export const SCHEMA_VERSION = 3 as const;
+/**
+ * Every schema version a stored record may legitimately carry. The CampaignRun
+ * `schemaVersion` union is DERIVED from this list (see SchemaVersionSchema), so
+ * adding a version here is the one edit — the two can never drift.
+ *
+ * v3 added `errors`, `rejectedDrafts`, `failedConnectors` (all defaulted) and the
+ * "partial" run status. Additive: every v1/v2 line still parses.
+ */
+export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3] as const;
+export type SchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
+
+/** z.union of one literal per supported version — never a single literal. */
+const [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
+export const SchemaVersionSchema = z.union([
+  z.literal(V_FIRST),
+  z.literal(V_SECOND),
+  ...V_REST.map((v) => z.literal(v)),
+]) as unknown as z.ZodType<SchemaVersion>;
 
 /**
  * Where a piece of data came from. OPEN-ENDED by design: `source` is any
@@ -100,6 +116,12 @@ export const EnrichmentSchema = z.object({
     })
     .optional(),
   verifiedEmail: z.string().email().optional(),
+  /**
+   * Optional back-reference to the Contact's `name` when the enrichment found an
+   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
+   * pipeline fold the found email into the working contact list. Optional/additive.
+   */
+  contactName: z.string().min(1).optional(),
   phone: z.string().optional(),
   /** Raw provider payload, retained for audit; never trusted as schema. */
   data: z.record(z.string(), z.unknown()).default({}),
@@ -130,9 +152,34 @@ export type Message = z.infer<typeof MessageSchema>;
 
 // Every value here is actually produced by runCampaign (no dead states):
 // researched (research ran, no leads/enrichment beyond), enriched (leads+enrichment,
-// no drafts), complete (drafts produced), failed (no connector ran at all).
-export const RunStatusSchema = z.enum(["researched", "enriched", "complete", "failed"]);
+// no drafts), complete (drafts produced, nothing errored), partial (≥1 draft, but
+// some lead/contact errored or a draft was rejected — v3, additive), failed (no
+// connector ran at all, or every LLM/gate step errored and nothing drafted).
+// Extending this enum is additive: every older value still parses.
+export const RunStatusSchema = z.enum(["researched", "enriched", "complete", "partial", "failed"]);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
+
+/** Pipeline stage a per-lead failure happened in. */
+export const RunErrorStageSchema = z.enum(["score", "gate", "draft"]);
+
+export const RunErrorSchema = z.object({
+  domain: z.string().min(1),
+  contactKey: z.string().min(1).optional(),
+  stage: RunErrorStageSchema,
+  /** Sanitized, truncated error message (secrets redacted). */
+  message: z.string(),
+  /** AI SDK finish reason when the error carried one (e.g. "length"). */
+  finishReason: z.string().optional(),
+});
+export type RunError = z.infer<typeof RunErrorSchema>;
+
+export const FailedConnectorSchema = z.object({
+  name: z.string().min(1),
+  phase: z.enum(["research", "enrich"]),
+  /** HTTP status, "timeout", or "error". */
+  status: z.union([z.number().int(), z.string().min(1)]),
+});
+export type FailedConnector = z.infer<typeof FailedConnectorSchema>;
 
 /**
  * CampaignRun — THE system of record. One run of research → enrich → outreach
@@ -144,7 +191,7 @@ export const CampaignRunSchema = z.object({
   // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
   // existing v1 line on read (store.ts re-validates each line). New writes emit
   // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
-  schemaVersion: z.union([z.literal(1), z.literal(2)]),
+  schemaVersion: SchemaVersionSchema,
   icp: z.string().min(1),
   domains: z.array(z.string().min(1)),
   /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
@@ -174,6 +221,21 @@ export const CampaignRunSchema = z.object({
       }),
     )
     .default([]),
+  /**
+   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
+   * A provider error on domain 2 no longer loses domain 1's drafts.
+   */
+  errors: z.array(RunErrorSchema).default([]),
+  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
+  rejectedDrafts: z
+    .array(z.object({ contactKey: z.string().min(1), issues: z.array(z.string()) }))
+    .default([]),
+  /**
+   * Configured connectors that threw (sanitized status only — never the error
+   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
+   * "not configured" only (v3).
+   */
+  failedConnectors: z.array(FailedConnectorSchema).default([]),
   createdAt: z.string().datetime(),
   finishedAt: z.string().datetime().optional(),
 });

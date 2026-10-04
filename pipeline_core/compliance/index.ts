@@ -111,12 +111,19 @@ export class DncList {
     }
   }
 
-  /** True if `phone` (in any accepted format) is on the list. Garbage → false. */
+  /**
+   * True if `phone` (in any accepted format) is on the list.
+   *
+   * FAIL-CLOSED: input that cannot be normalized to E.164 (garbage, empty, a
+   * non-string) is treated as LISTED (returns true). A caller that writes
+   * `if (!dnc.has(phone)) send()` must never send to a number we could not
+   * check — "unknown" means "do not contact", never "clean".
+   */
   has(phone: string): boolean {
     try {
       return this.phones.has(normalizePhone(phone));
     } catch {
-      return false;
+      return true;
     }
   }
 

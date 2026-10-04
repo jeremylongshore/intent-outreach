@@ -25,6 +25,9 @@ import {
   resolvePack,
   type Pack,
 } from "../pipeline_core/packs/index.js";
+import type { ComplianceResult } from "../pipeline_core/packs/types.js";
+import { DncList } from "../pipeline_core/compliance/index.js";
+import { SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSIONS } from "../pipeline_core/models.js";
 import type { Connector } from "../pipeline_core/connectors/types.js";
 import type { LLMProvider, ProviderName } from "../pipeline_core/providers.js";
 
@@ -252,6 +255,209 @@ describe("CampaignRun schema v1 -> v2 back-compat", () => {
       expect(r.value.schemaVersion).toBe(2);
       expect(r.value.vertical).toBe("test-residential");
       expect(r.value.blockedContacts).toHaveLength(1);
+    }
+  });
+});
+
+// ── fail-closed gate ───────────────────────────────────────────────────────
+
+describe("compliance gate fails CLOSED", () => {
+  const saved = { ...process.env };
+  beforeEach(() => {
+    _resetPacks();
+    _resetBuiltins();
+    _resetSecretCache();
+    for (const k of Object.keys(process.env)) {
+      if (k.endsWith("_API_KEY") || k === "ZOOMINFO_JWT" || k === "CLAY_WEBHOOK_URL") delete process.env[k];
+    }
+    registerConnector(stubTwoContacts);
+    registerConnector(stubEnrich);
+  });
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  const packWith = (id: string, check: Pack["compliance"]["check"], draft = "outreach.v1.md"): Pack => ({
+    id,
+    displayName: id,
+    compliance: { check },
+    prompts: { score: ["research.v1.md", "enrich.v1.md"], draft },
+  });
+
+  it('a gate returning {status:"BLOCKED"} (wrong case) blocks every contact — nothing drafted', async () => {
+    registerPack(packWith("typo-gate", () => ({ status: "BLOCKED" }) as unknown as ComplianceResult));
+    const { run, cost } = await runCampaign({
+      id: "run-typo",
+      icp: "x",
+      domains: ["acme.com"],
+      provider: stubProvider("anthropic"),
+      now: clock,
+      maxContactsPerLead: 5,
+      pack: "typo-gate",
+    });
+    expect(run.messages).toEqual([]);
+    expect(run.blockedContacts).toEqual([
+      { contactKey: "dnc@acme.com", reason: "non-clean-verdict" },
+      { contactKey: "ok@acme.com", reason: "non-clean-verdict" },
+    ]);
+    expect(cost.calls).toBe(1); // score only — no draft tokens burned
+    expect(run.status).toBe("enriched");
+  });
+
+  it("a non-clean verdict keeps its own reason; undefined/null verdicts block too", async () => {
+    registerPack(
+      packWith("odd-gate", ({ contact }) =>
+        (contact.email === "dnc@acme.com" ? { status: "maybe", reason: "unsure" } : undefined) as unknown as ComplianceResult,
+      ),
+    );
+    const { run } = await runCampaign({
+      id: "run-odd",
+      icp: "x",
+      domains: ["acme.com"],
+      provider: stubProvider("anthropic"),
+      now: clock,
+      maxContactsPerLead: 5,
+      pack: "odd-gate",
+    });
+    expect(run.messages).toEqual([]);
+    expect(run.blockedContacts).toEqual([
+      { contactKey: "dnc@acme.com", reason: "unsure" },
+      { contactKey: "ok@acme.com", reason: "non-clean-verdict" },
+    ]);
+  });
+
+  it("a THROWING gate blocks (gate-error) and records the error — the run is not aborted", async () => {
+    registerPack(
+      packWith("throwing-gate", ({ contact }) => {
+        if (contact.email === "dnc@acme.com") throw new Error("dnc source unavailable");
+        return { status: "clean" };
+      }),
+    );
+    const { run } = await runCampaign({
+      id: "run-throwing-gate",
+      icp: "x",
+      domains: ["acme.com"],
+      provider: stubProvider("anthropic"),
+      now: clock,
+      maxContactsPerLead: 5,
+      pack: "throwing-gate",
+    });
+    expect(run.messages.map((m) => m.contactKey)).toEqual(["ok@acme.com"]);
+    expect(run.blockedContacts).toEqual([{ contactKey: "dnc@acme.com", reason: "gate-error: dnc source unavailable" }]);
+    expect(run.errors).toEqual([
+      { domain: "acme.com", contactKey: "dnc@acme.com", stage: "gate", message: "dnc source unavailable" },
+    ]);
+    expect(run.status).toBe("partial");
+  });
+
+  it("the gate receives this lead's + this contact's enrichments (for DNC/phone/zip)", async () => {
+    _resetBuiltins();
+    registerConnector(stubTwoContacts);
+    registerConnector({
+      ...stubEnrich,
+      name: "phone-enrich",
+      async enrich({ lead }) {
+        return {
+          enrichments: [
+            { subjectType: "lead" as const, subjectKey: lead.domain, provider: "p", data: { zip: "36542" }, fetchedAt: FIXED },
+            { subjectType: "contact" as const, subjectKey: "dnc@acme.com", provider: "p", phone: "251-555-0100", data: {}, fetchedAt: FIXED },
+            { subjectType: "contact" as const, subjectKey: "ok@acme.com", provider: "p", phone: "251-555-0199", data: {}, fetchedAt: FIXED },
+          ],
+        };
+      },
+    });
+    const dnc = new DncList(["2515550100"]);
+    const seen: Record<string, string[]> = {};
+    registerPack(
+      packWith("dnc-gate", ({ contact, enrichments }) => {
+        seen[contact.email!] = enrichments.map((e) => `${e.subjectType}:${e.subjectKey}`);
+        const phone = enrichments.find((e) => e.subjectType === "contact" && e.phone)?.phone;
+        if (!phone || dnc.has(phone)) return { status: "blocked", reason: "dnc" };
+        return { status: "clean" };
+      }),
+    );
+    const { run } = await runCampaign({
+      id: "run-dnc",
+      icp: "x",
+      domains: ["acme.com"],
+      provider: stubProvider("anthropic"),
+      now: clock,
+      maxContactsPerLead: 5,
+      pack: "dnc-gate",
+    });
+    expect(seen["dnc@acme.com"]).toEqual(["lead:acme.com", "contact:dnc@acme.com"]);
+    expect(seen["ok@acme.com"]).toEqual(["lead:acme.com", "contact:ok@acme.com"]);
+    expect(run.blockedContacts).toEqual([{ contactKey: "dnc@acme.com", reason: "dnc" }]);
+    expect(run.messages.map((m) => m.contactKey)).toEqual(["ok@acme.com"]);
+  });
+
+  it("promptVersion follows the pack's draft prompt file name", async () => {
+    registerPack(packWith("alt-prompt", () => ({ status: "clean" }), "research.v1.md"));
+    const { run } = await runCampaign({
+      id: "run-alt-pv",
+      icp: "x",
+      domains: ["acme.com"],
+      provider: stubProvider("anthropic"),
+      now: clock,
+      pack: "alt-prompt",
+    });
+    expect(run.messages[0]?.promptVersion).toBe("research.v1");
+  });
+});
+
+// ── schema v3 back-compat ──────────────────────────────────────────────────
+
+describe("CampaignRun schema v3 (additive)", () => {
+  const base = {
+    id: "r",
+    icp: "x",
+    domains: ["acme.com"],
+    provider: "anthropic",
+    model: "claude",
+    leads: [],
+    contacts: [],
+    enrichments: [],
+    messages: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+  };
+
+  it.each([1, 2])("an old v%i line without errors/rejectedDrafts/failedConnectors still parses", (v) => {
+    const r = validateCampaignRun({ ...base, schemaVersion: v, status: "complete" });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.schemaVersion).toBe(v);
+      expect(r.value.errors).toEqual([]);
+      expect(r.value.rejectedDrafts).toEqual([]);
+      expect(r.value.failedConnectors).toEqual([]);
+    }
+  });
+
+  it.each(["researched", "enriched", "complete", "failed", "partial"])("status %s parses", (status) => {
+    expect(validateCampaignRun({ ...base, schemaVersion: SCHEMA_VERSION, status }).ok).toBe(true);
+  });
+
+  it("every SUPPORTED_SCHEMA_VERSIONS entry parses and an unknown version is rejected", () => {
+    for (const v of SUPPORTED_SCHEMA_VERSIONS) {
+      expect(validateCampaignRun({ ...base, schemaVersion: v, status: "complete" }).ok).toBe(true);
+    }
+    expect(SUPPORTED_SCHEMA_VERSIONS).toContain(SCHEMA_VERSION);
+    const next = Math.max(...SUPPORTED_SCHEMA_VERSIONS) + 1;
+    expect(validateCampaignRun({ ...base, schemaVersion: next, status: "complete" }).ok).toBe(false);
+  });
+
+  it("a v3 line round-trips its new fields", () => {
+    const r = validateCampaignRun({
+      ...base,
+      schemaVersion: 3,
+      status: "partial",
+      errors: [{ domain: "acme.com", stage: "score", message: "boom", finishReason: "length" }],
+      rejectedDrafts: [{ contactKey: "a@acme.com", issues: ["body: too short"] }],
+      failedConnectors: [{ name: "hunter", phase: "research", status: 401 }],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.errors[0]?.stage).toBe("score");
+      expect(r.value.failedConnectors[0]?.status).toBe(401);
     }
   });
 });
