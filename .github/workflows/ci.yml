@@ -28,3 +28,15 @@ jobs:
           npm run bundle
           git diff --exit-code -- bundle/ \
             || { echo "❌ bundle/ is stale — run 'npm run bundle' and commit the result"; exit 1; }
+      - name: Smoke — shipped CLI binary runs
+        run: |
+          node bundle/cli.mjs --help
+          node bundle/cli.mjs providers
+      - name: Smoke — MCP server answers initialize (no CLAUDE_PLUGIN_ROOT)
+        run: |
+          unset CLAUDE_PLUGIN_ROOT
+          out=$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            | timeout 10 node bundle/server.mjs || true)
+          echo "$out"
+          echo "$out" | grep -q '"serverInfo"' \
+            || { echo "❌ bundle/server.mjs did not answer MCP initialize"; exit 1; }
