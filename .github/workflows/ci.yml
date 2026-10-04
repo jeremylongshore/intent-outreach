@@ -1,42 +1,118 @@
 name: CI
-on: [pull_request, push]
 
-# Complements policy.yml (which enforces the architectural invariants). This is
-# the build/test gate: typecheck, unit tests, the free offline eval gate, and a
-# build (which also confirms prompts/ get copied into dist/).
+# One workflow, parallel jobs. Job names are the required-check names for branch protection:
+#   build-test, invariants, e2e, security   (and mutation, see mutation.yml)
+# Architectural invariants (storage/provider separation, zero Google, no Validated casts, no
+# framework bloat, connectors never read process.env) live in tests/architecture.test.ts and
+# tests/types/, so they run locally under `npm test` and `npm run typecheck`, not only here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # A newer push to a PR/branch supersedes the old run; never cancel a run on main (every main
+  # commit keeps its own verdict).
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build-test:
+    name: build-test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
-          cache: "npm"
+          cache: npm
       - run: npm ci
-      - name: Typecheck
+      - name: Typecheck (includes the compile-time storage-invariant proofs in tests/types)
         run: npm run typecheck
-      - name: Tests
-        run: npm test
-      - name: Eval gate (offline, deterministic)
-        run: npx tsx evals/run.ts --offline
-      - name: Build
-        run: npm run build
+      - name: Lint
+        run: npm run lint
       - name: Bundle is fresh (committed bundle/ matches source)
         run: |
           npm run bundle
           git diff --exit-code -- bundle/ \
-            || { echo "❌ bundle/ is stale — run 'npm run bundle' and commit the result"; exit 1; }
-      - name: Smoke — shipped CLI binary runs
+            || { echo "::error::bundle/ is stale. Run npm run bundle and commit the result."; exit 1; }
+      - name: Unit + integration tests with coverage thresholds
+        run: npx vitest run --coverage --exclude "tests/*.e2e.test.ts"
+      - name: Eval gate (offline, deterministic)
+        run: npx tsx evals/run.ts --offline
+      - name: Build (also confirms prompts/ are copied into dist/)
+        run: npm run build
+
+  invariants:
+    name: invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: "Invariant: no un-validated output reaches storage (type-level proof)"
+        run: npm run typecheck
+      - name: "Invariants: store/provider separation, zero Google, no Validated casts, no framework bloat, connectors never read process.env"
+        run: npm run test:architecture
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Smoke - shipped CLI binary runs
         run: |
           node bundle/cli.mjs --help
           node bundle/cli.mjs providers
-      - name: Smoke — MCP server answers initialize (no CLAUDE_PLUGIN_ROOT)
+      - name: Smoke - MCP server answers initialize (no CLAUDE_PLUGIN_ROOT)
         run: |
           unset CLAUDE_PLUGIN_ROOT
-          out=$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+          out=$(printf "%s\n" "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"ci\",\"version\":\"0\"}}}" \
             | timeout 10 node bundle/server.mjs || true)
           echo "$out"
-          echo "$out" | grep -q '"serverInfo"' \
-            || { echo "❌ bundle/server.mjs did not answer MCP initialize"; exit 1; }
+          echo "$out" | grep -q "\"serverInfo\"" \
+            || { echo "::error::bundle/server.mjs did not answer MCP initialize"; exit 1; }
+      - name: E2E - real MCP client over stdio and the shipped CLI, against the committed bundle
+        run: npm run test:e2e
+
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+      - name: Dependency audit (production deps, high+critical, explicit allowlist)
+        run: npm run audit:gate

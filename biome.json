@@ -1,0 +1,25 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": { "enabled": false },
+  "files": {
+    "includes": ["pipeline_core/**", "mcp/**", "evals/**/*.ts", "tests/**", "cli.ts", "vitest.config.ts", "biome.json", "package.json"]
+  },
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "nursery": { "noFloatingPromises": "error" },
+      "correctness": { "noUnsafeOptionalChaining": "warn" },
+      "suspicious": { "noControlCharactersInRegex": "warn", "useIterableCallbackReturn": "warn", "noImplicitAnyLet": "warn" },
+      "style": { "useTemplate": "off" }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["tests/**"],
+      "linter": { "rules": { "style": { "noNonNullAssertion": "off" }, "suspicious": { "noTemplateCurlyInString": "off" } } }
+    }
+  ]
+}

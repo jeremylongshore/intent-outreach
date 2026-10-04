@@ -1,0 +1,56 @@
+name: Dependabot bundle check
+
+# bundle/ is committed (it is what users run), so a dependency bump that changes bundled code
+# makes bundle/ stale and ci.yml/build-test fails on it. Dependabot cannot rebuild it itself.
+#
+# SAFE DESIGN, deliberately NOT auto-commit: GitHub gives dependabot-triggered pull_request runs
+# a read-only GITHUB_TOKEN and no repo secrets. The only way to push a rebuilt bundle back is
+# pull_request_target (write token) or a PAT; both would run `npm ci` (dependency install
+# scripts of an updated, untrusted package version) with push rights - a supply-chain foothold
+# into main-adjacent branches. So this job runs read-only, rebuilds the bundle, and on drift
+# FAILS with the exact maintainer step and uploads the rebuilt bundle/ as an artifact to
+# copy in. Maintainer step:  npm ci && npm run bundle && commit bundle/ to the PR branch.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-bundle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependabot-bundle:
+    name: dependabot-bundle
+    if: github.actor == 'dependabot[bot]' && startsWith(github.head_ref, 'dependabot/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run bundle
+      - name: Fail with instructions if bundle/ drifted
+        id: drift
+        run: |
+          if git diff --quiet -- bundle/; then
+            echo "bundle/ is up to date for this dependency bump."
+          else
+            echo "drifted=true" >> "$GITHUB_OUTPUT"
+            echo "::error::This dependency bump changes the bundled output. Rebuild locally: check out this branch, run npm ci && npm run bundle, commit bundle/, push. Or copy bundle/ from the dependabot-bundle artifact on this run."
+            exit 1
+          fi
+      - name: Upload the rebuilt bundle/
+        if: failure() && steps.drift.outputs.drifted == 'true'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: dependabot-bundle
+          path: bundle/
+          retention-days: 7

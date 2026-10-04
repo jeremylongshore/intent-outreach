@@ -1,0 +1,47 @@
+name: Mutation
+
+# Mutation gate for the safety-critical modules (pipeline_core/compliance/** and validator.ts).
+# Scheduled + manual, NOT a PR check: a full run is ~200 mutants x the relevant test files, which
+# measured 28-88 min on a heavily loaded box (the 10-minute PR budget is exceeded either way).
+# The gate is stryker.conf.json thresholds.break = the measured baseline (73.04 -> 73; validator.ts alone is 50.0, compliance 76.7). Raise it
+# as survivors are killed; never lower it.
+#
+# Why testRunner=command and not @stryker-mutator/vitest-runner: the runner (10.0.0, built for
+# vitest 4.1) runs 0 tests per mutant under this repo vitest 5, so every mutant "survives"
+# (score 9%, meaningless). The command runner just re-runs vitest per mutant and is version-proof.
+on:
+  schedule:
+    - cron: "43 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: mutation
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Stryker (fails below thresholds.break)
+        run: npm run mutation
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 14
+          if-no-files-found: ignore
