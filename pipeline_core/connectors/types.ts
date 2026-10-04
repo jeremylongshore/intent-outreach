@@ -24,6 +24,9 @@ export interface ResearchInput {
   domain: string;
   /** The campaign ICP, for connectors that can filter people by role/seniority. */
   icp: string;
+  /** Per-invocation deadline from the pipeline. Optional; adapters may ignore it
+   *  (the pipeline still enforces the deadline by racing the call). */
+  signal?: AbortSignal;
 }
 
 export interface ResearchOutput {
@@ -36,6 +39,8 @@ export interface ResearchOutput {
 export interface EnrichInput {
   lead: Lead;
   contacts: Contact[];
+  /** Per-invocation deadline from the pipeline (see ResearchInput.signal). */
+  signal?: AbortSignal;
 }
 
 export interface EnrichOutput {
