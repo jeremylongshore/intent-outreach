@@ -89,6 +89,8 @@ function stubProvider(name: ProviderName): LLMProvider {
         fitScore: 75,
         fitReason: "Matches the ICP on industry and size.",
         angles: ["Just raised a Series A — likely scaling GTM."],
+        decline: false,
+        declineReason: null,
         subject: "Scaling Acme's GTM",
         body: "Hi Jane — saw Acme raised a Series A; teams at that stage often need X.",
         cta: "Open to a 15-min call next week?",
@@ -310,7 +312,7 @@ describe("runCampaign failure isolation", () => {
     expect(run.rejectedDrafts[0]?.issues.join(" ")).toMatch(/createdAt/);
   });
 
-  it("promptVersion derives from the pack's draft prompt file (b2b-sdr: outreach.v2.md)", async () => {
+  it("promptVersion derives from the pack's draft prompt file (b2b-sdr: outreach.v3.md)", async () => {
     const { run } = await runCampaign({
       id: "run-pv",
       icp: "x",
@@ -319,11 +321,11 @@ describe("runCampaign failure isolation", () => {
       now: clock,
     });
     // "<file>@<sha8>" — the exact prompt content that drafted, not just its name.
-    expect(run.messages[0]?.promptVersion).toBe(promptRef("outreach.v2.md"));
-    expect(run.messages[0]?.promptVersion).toMatch(/^outreach\.v2@[0-9a-f]{8}$/);
+    expect(run.messages[0]?.promptVersion).toBe(promptRef("outreach.v3.md"));
+    expect(run.messages[0]?.promptVersion).toMatch(/^outreach\.v3@[0-9a-f]{8}$/);
     expect(run.promptRefs).toEqual({
       score: [promptRef("research.v2.md"), promptRef("enrich.v2.md")],
-      draft: promptRef("outreach.v2.md"),
+      draft: promptRef("outreach.v3.md"),
     });
     expect(run.origin).toBe("pipeline");
     expect(run.schemaVersion).toBe(SCHEMA_VERSION);
@@ -349,6 +351,36 @@ describe("runCampaign failure isolation", () => {
     expect(run.rejectedDrafts[0]?.issues.join(" ")).toMatch(/url not present in inputs/);
     expect(cost.calls).toBe(2); // score + the rejected draft
     expect(run.status).toBe("enriched"); // no message, no error: the rejection alone is not a failure
+  });
+
+  it("a model decline (out-of-ICP lead) lands in rejectedDrafts with its reason, is metered, and is never a message", async () => {
+    const base = stubProvider("anthropic");
+    const provider: LLMProvider = {
+      ...base,
+      async generateObject(args) {
+        const out = await base.generateObject(args);
+        if ("body" in (out.object as object)) {
+          return {
+            ...out,
+            object: {
+              decline: true,
+              declineReason: "Acme sells hardware, not B2B SaaS.",
+              subject: null,
+              body: "",
+              cta: "",
+            } as typeof out.object,
+          };
+        }
+        return out;
+      },
+    };
+    const { run, cost } = await runCampaign({ id: "run-decline", icp: "x", domains: ["acme.com"], provider, now: clock });
+    expect(run.messages).toHaveLength(0);
+    expect(run.errors).toEqual([]);
+    expect(run.rejectedDrafts).toEqual([
+      { contactKey: "jane@acme.com", issues: ["declined: Acme sells hardware, not B2B SaaS."] },
+    ]);
+    expect(cost.calls).toBe(2); // score + the declined draft
   });
 
   it("verified enrichment emails/phones reach the draft guard allowlist", async () => {

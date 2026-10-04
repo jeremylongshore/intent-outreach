@@ -294,6 +294,8 @@ function countingProvider(): LLMProvider & { drafts: string[] } {
         fitScore: 80,
         fitReason: "fit",
         angles: ["angle"],
+        decline: false,
+        declineReason: null,
         subject: "Hi",
         body: "Hello — a short, relevant note.",
         cta: "Chat?",

@@ -21,6 +21,7 @@ import {
   ScoreOutputSchema,
   type DraftContext,
   type DraftOutput,
+  type DraftText,
   type ScoreOutput,
 } from "../pipeline_core/seam.js";
 import type { LLMProvider } from "../pipeline_core/providers.js";
@@ -66,7 +67,7 @@ export function schemaConformance(kind: "score" | "draft", output: unknown): Sco
  * Beyond schema: a usable draft has a non-empty CTA, a body within length bounds,
  * and (for email) a subject. LinkedIn drafts must NOT carry a subject.
  */
-export function draftContract(ctx: DraftContext, output: DraftOutput): ScoreResult {
+export function draftContract(ctx: DraftContext, output: DraftText): ScoreResult {
   const findings: string[] = [];
 
   const cta = (output.cta ?? "").trim();
@@ -108,7 +109,7 @@ function wordCount(s: string): number {
  * openers, fake Re:/Fwd:, header injection) PLUS the prompt's tighter length
  * contract: email body ≤90 words, linkedin ≤60, subject ≤7.
  */
-export function draftStyle(ctx: DraftContext, output: DraftOutput): ScoreResult {
+export function draftStyle(ctx: DraftContext, output: DraftText): ScoreResult {
   const findings: string[] = [];
   const verdict = guardDraft(output, {
     allowedText: [ctx.icp, ctx.lead.domain, ctx.contact.email, ctx.contact.linkedin, ctx.styleOverride].filter(
@@ -133,10 +134,15 @@ const DOLLAR_FIGURE = /\$\s?\d[\d,.]*\s?(?:k|m|b|mm|bn|million|billion|thousand)
 /** A capitalized multi-word phrase that looks like an investor/firm name. */
 const NAMED_ENTITY = /\b[A-Z][a-zA-Z&.]+(?:\s+[A-Z][a-zA-Z&.]+){0,3}\b/g;
 
-/** Normalize for substring containment: lowercase, collapse whitespace, drop most punctuation. */
+/**
+ * Normalize for substring containment: lowercase, hyphens/dashes as spaces (so
+ * "seed-to-Series-A" in an ICP grounds "Series A" in a draft), drop most
+ * punctuation, collapse whitespace.
+ */
 function norm(s: string): string {
   return s
     .toLowerCase()
+    .replace(/[-\u2010-\u2015]/g, " ")
     .replace(/[$,]/g, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -173,7 +179,7 @@ function allowedCorpus(ctx: DraftContext): string {
  *
  * Conservative by design: a grounded mention of a fact that IS in the inputs passes.
  */
-export function groundingHeuristic(ctx: DraftContext, output: DraftOutput): ScoreResult {
+export function groundingHeuristic(ctx: DraftContext, output: DraftText): ScoreResult {
   const body = output.body ?? "";
   const corpus = allowedCorpus(ctx);
   const findings: string[] = [];
@@ -260,7 +266,7 @@ function signalTokens(ctx: DraftContext): Set<string> {
   return new Set(longTokens([...ctx.angles, ctx.lead.industry ?? "", ctx.lead.description ?? ""].join(" ")));
 }
 
-function draftClaimFindings(ctx: DraftContext, output: DraftOutput, corpus: string): string[] {
+function draftClaimFindings(ctx: DraftContext, output: DraftText, corpus: string): string[] {
   const findings: string[] = [];
   const text = [output.subject ?? "", output.body ?? "", output.cta ?? ""].join("\n");
 
@@ -403,7 +409,7 @@ function judgeFacts(f: JudgeInputs): { lead: Record<string, string>; contact: Re
 export async function llmJudge(
   provider: LLMProvider,
   fixture: JudgeInputs,
-  output: DraftOutput,
+  output: DraftText,
 ): Promise<{ object: JudgeOutput; usage: { costUsd: number } }> {
   const facts = judgeFacts(fixture);
   const system = [

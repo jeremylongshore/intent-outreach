@@ -110,6 +110,8 @@ function captureProvider(object: Record<string, unknown>) {
 }
 
 const GOOD_DRAFT = {
+  decline: false,
+  declineReason: null,
   subject: "An idea for Acme",
   body: "Hi Jane, congrats on the Series A. Teams at your stage often want outbound that does not eat the founder's week.",
   cta: "Open to a 15-minute call next week?",
@@ -275,6 +277,47 @@ describe("guardDraft", () => {
   });
 });
 
+describe("draftMessage: declining an out-of-ICP lead", () => {
+  it("turns a decline into a DraftRejectedError with the reason, metered, never a draft", async () => {
+    const { provider } = captureProvider({
+      decline: true,
+      declineReason: "A coffee roaster is not a B2B SaaS company, so the offer does not apply.",
+      subject: null,
+      body: "",
+      cta: "",
+    });
+    const err = await seam
+      .draftMessage(provider, { icp: "x", lead, contact, angles: [], channel: "email" })
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(seam.DraftRejectedError);
+    expect(seam.isDecline(err)).toBe(true);
+    const e = err as InstanceType<typeof seam.DraftRejectedError>;
+    expect(e.issues).toEqual(["declined: A coffee roaster is not a B2B SaaS company, so the offer does not apply."]);
+    expect(e.usage.costUsd).toBe(0.001);
+  });
+
+  it("a guard rejection is not a decline", async () => {
+    const { provider } = captureProvider({ ...GOOD_DRAFT, body: "Book now at https://evil.example.io/book" });
+    const err = await seam.draftMessage(provider, { icp: "x", lead, contact, angles: [], channel: "email" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(seam.DraftRejectedError);
+    expect(seam.isDecline(err)).toBe(false);
+  });
+
+  it("the schema requires a body and cta unless declining", () => {
+    expect(seam.DraftOutputSchema.safeParse({ ...GOOD_DRAFT, body: " " }).success).toBe(false);
+    expect(seam.DraftOutputSchema.safeParse({ ...GOOD_DRAFT, cta: "" }).success).toBe(false);
+    expect(
+      seam.DraftOutputSchema.safeParse({ decline: true, declineReason: "mismatch", subject: null, body: "", cta: "" }).success,
+    ).toBe(true);
+  });
+
+  it("the v3 prompt tells the model when to decline and that thin data is not a reason", () => {
+    const { system } = seam.buildDraftPrompt({ icp: "x", lead, contact, angles: [], channel: "email" });
+    expect(system).toContain("decide whether to draft at all");
+    expect(system).toContain("Thin data is not a reason to decline");
+  });
+});
+
 describe("draftMessage + guard", () => {
   it("throws a typed DraftRejectedError carrying issues and usage", async () => {
     const { provider } = captureProvider({ ...GOOD_DRAFT, body: "Book now at https://evil.example.io/book" });
@@ -306,7 +349,7 @@ describe("draftMessage + guard", () => {
     const { provider } = captureProvider(GOOD_DRAFT);
     const res = await seam.draftMessage(provider, { icp: "x", lead, contact, angles: [], channel: "linkedin" });
     expect(res.object.subject).toBeNull();
-    expect(res.promptRef).toMatch(/^outreach\.v2@[0-9a-f]{8}$/);
+    expect(res.promptRef).toMatch(/^outreach\.v3@[0-9a-f]{8}$/);
   });
 });
 

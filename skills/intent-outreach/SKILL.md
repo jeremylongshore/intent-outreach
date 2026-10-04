@@ -70,7 +70,9 @@ runs before writing them to the local JSONL store.
    `failedConnectors`, `errors`, `pack`, and `profile` (the Report Profile path or name whose `sender`
    identity supplies the CAN-SPAM footer). Each message needs `contactKey` (the contact's email, or
    `name@domain` when it has none, matching an entry in `contacts`), `channel`, `body`, and `cta`;
-   `subject`, `fitScore`, and `promptVersion` are optional. The server stamps `createdAt`, derives the
+   `subject`, `fitScore`, and `promptVersion` are optional. Pass every drafter decline (a lead clearly
+   outside the ICP) as a `rejectedDrafts` entry `{ contactKey, issues: ["declined: <reason>"] }`, so the
+   decision is recorded rather than dropped. The server stamps `createdAt`, derives the
    status, re-applies the suppression list and the pack's compliance gate, runs the send-safety draft
    guard, and appends the footer. Report any `blockedContacts`, `rejectedDrafts`, or
    `complianceWarnings` it returns. If it says the run id already exists, ask before retrying with

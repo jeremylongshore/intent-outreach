@@ -17,5 +17,6 @@
   },
   "angles": [],
   "channel": "email",
-  "judgeMin": 3
+  "judgeMin": 3,
+  "expectDecline": true
 }

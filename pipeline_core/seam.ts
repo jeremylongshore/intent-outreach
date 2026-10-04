@@ -43,13 +43,31 @@ export const ScoreOutputSchema = z.object({
 });
 export type ScoreOutput = z.infer<typeof ScoreOutputSchema>;
 
-export const DraftOutputSchema = z.object({
-  /** null = channel has no subject line (linkedin). */
-  subject: z.string().nullable(),
-  body: z.string().min(1),
-  cta: z.string().min(1),
-});
+export const DraftOutputSchema = z
+  .object({
+    /**
+     * true = the model declines to draft because the lead clearly sits outside the
+     * ICP. A decline is never sent: the seam turns it into a DraftRejectedError so
+     * it lands in run.rejectedDrafts with the reason. Required (not defaulted) so
+     * strict structured-output providers accept the schema.
+     */
+    decline: z.boolean(),
+    /** Why the lead is outside the ICP; null when not declining. */
+    declineReason: z.string().nullable(),
+    /** null = channel has no subject line (linkedin). */
+    subject: z.string().nullable(),
+    /** Empty only when declining. */
+    body: z.string(),
+    cta: z.string(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.decline) return;
+    if (d.body.trim() === "") ctx.addIssue({ code: "custom", path: ["body"], message: "body is required unless declining" });
+    if (d.cta.trim() === "") ctx.addIssue({ code: "custom", path: ["cta"], message: "cta is required unless declining" });
+  });
 export type DraftOutput = z.infer<typeof DraftOutputSchema>;
+/** The sendable text of a draft: what scorers, the guard and the judge read. */
+export type DraftText = Pick<DraftOutput, "subject" | "body" | "cta">;
 
 /** Per-seam call bounds. Thinking tokens count toward maxOutputTokens. */
 export const SCORE_CALL = { maxOutputTokens: 2000, effort: "low" } as const;
@@ -59,7 +77,7 @@ export const SEAM_TIMEOUT_MS = 60_000;
 /** Default score-seam prompt files — the b2b-sdr pack supplies the same set. */
 export const DEFAULT_SCORE_PROMPTS = ["research.v2.md", "enrich.v2.md"];
 /** Default draft-seam prompt file. */
-export const DEFAULT_DRAFT_PROMPT = "outreach.v2.md";
+export const DEFAULT_DRAFT_PROMPT = "outreach.v3.md";
 
 /** The one data-trust rule, restated in every user message so it holds even under a custom pack's prompt. */
 export const DATA_TRUST_RULE =
@@ -263,7 +281,7 @@ export interface DraftContext {
   channel: "email" | "linkedin";
   /** Optional Report-Profile overrides for tone/length (user-supplied, trusted). */
   styleOverride?: string;
-  /** Pack-supplied draft prompt file. Default: outreach.v2.md. */
+  /** Pack-supplied draft prompt file. Default: outreach.v3.md. */
   draftPrompt?: string;
   /**
    * Enrichments for this lead/contact. Never sent to the model here; only widens
@@ -279,7 +297,15 @@ export interface DraftResult {
   promptRef: string;
 }
 
-/** Thrown when a structurally valid draft fails the send-safety guard. Carries usage so spend is still metered. */
+/** Issue prefix that marks a model decline (out-of-ICP lead) rather than a guard rejection. */
+export const DECLINED_PREFIX = "declined: ";
+
+/** True when a DraftRejectedError is the model declining an out-of-ICP lead. */
+export function isDecline(err: unknown): boolean {
+  return err instanceof DraftRejectedError && err.issues.some((i) => i.startsWith(DECLINED_PREFIX));
+}
+
+/** Thrown when a draft is not sent: it failed the send-safety guard, or the model declined an out-of-ICP lead. Carries usage so spend is still metered. */
 export class DraftRejectedError extends Error {
   constructor(
     public readonly issues: string[],
@@ -317,6 +343,11 @@ export async function draftMessage(provider: LLMProvider, ctx: DraftContext): Pr
     prompt,
     options: callOptions(DRAFT_CALL),
   });
+  if (res.object.decline) {
+    // The model judged the lead outside the ICP. Record it as a rejected draft with
+    // the reason (audited and metered) instead of sending a pitch that doesn't fit.
+    throw new DraftRejectedError([`${DECLINED_PREFIX}${res.object.declineReason ?? "lead is outside the ICP"}`], res.usage);
+  }
   // LinkedIn has no subject line: normalize rather than reject a stray one.
   const object: DraftOutput = ctx.channel === "linkedin" ? { ...res.object, subject: null } : res.object;
   const verdict = guardDraft(object, {
