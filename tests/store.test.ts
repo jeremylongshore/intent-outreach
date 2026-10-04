@@ -364,6 +364,8 @@ describe("legacy JSONL golden fixture still parses (invariant 6)", () => {
       "legacy-v1-minimal",
       "legacy-v1-enriched",
       "legacy-v2-blocked",
+      "legacy-v1-pending",
+      "legacy-v1-drafted",
     ]);
 
     const minimal = await store.getRun("legacy-v1-minimal");
@@ -375,13 +377,22 @@ describe("legacy JSONL golden fixture still parses (invariant 6)", () => {
     const blocked = await store.getRun("legacy-v2-blocked");
     expect(blocked?.schemaVersion).toBe(2);
     expect(blocked?.blockedContacts).toEqual([{ contactKey: "Ana Ruiz@gulfroof.com", reason: "dnc" }]);
+
+    // Pre-dd46601b v1 statuses (pruned without a version bump) parse again and
+    // are kept verbatim — an audit record's status is never rewritten.
+    const pending = await store.getRun("legacy-v1-pending");
+    expect(pending?.status).toBe("pending");
+    const drafted = await store.getRun("legacy-v1-drafted");
+    expect(drafted?.status).toBe("drafted");
+    expect(drafted?.messages[0]?.needsSenderIdentity).toBe(false); // v4 default on an old message
+    expect(drafted?.complianceWarnings).toEqual([]); // v4 default on an old run
   });
 
   it("new saves append cleanly after legacy lines", async () => {
     copyFileSync(resolve("tests/fixtures/runs.legacy.jsonl"), path);
     const store = new JsonlRunStore(path);
     await store.saveRun(assertCampaignRun(sampleRun("fresh")));
-    expect(await store.listRunIds()).toHaveLength(5);
+    expect(await store.listRunIds()).toHaveLength(7);
     await expect(store.saveRun(assertCampaignRun(sampleRun("legacy-v1-minimal")))).rejects.toBeInstanceOf(
       DuplicateRunError,
     );

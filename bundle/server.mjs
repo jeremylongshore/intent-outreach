@@ -37363,6 +37363,10 @@ var APOLLO_ORG_ALLOW = [
   "latest_funding_round_date"
 ];
 var PERSONAL_PHONE = /mobile|home|personal/i;
+function contactNameOf(requested, p) {
+  const vendor = p.name?.trim() || [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+  return requested?.trim() || vendor || void 0;
+}
 function workPhone(p) {
   const hit = (p.phone_numbers ?? []).find(
     (n) => n.raw_number && !(n.type && PERSONAL_PHONE.test(n.type))
@@ -37408,10 +37412,11 @@ var apolloConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV);
   },
-  async research({ domain: domain2, icp }) {
+  async research({ domain: domain2, icp, signal }) {
     const orgRes = parseVendor(
       OrgSearchSchema,
       await httpJson(`${BASE}/organizations/api_search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { q_organization_domains: [domain2], per_page: 1 }
@@ -37422,6 +37427,7 @@ var apolloConnector = {
     const peopleRes = parseVendor(
       PeopleSearchSchema,
       await httpJson(`${BASE}/mixed_people/api_search`, {
+        signal,
         method: "POST",
         headers: headers(),
         json: { q_organization_domains: [domain2], q_keywords: icp, per_page: 10 }
@@ -37435,7 +37441,7 @@ var apolloConnector = {
       raw: keepRawOptIn() ? { org: orgRes, people: peopleRes } : { org: pickAllowed(org, APOLLO_ORG_ALLOW), people: people.length }
     };
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const needy = eligibleContacts(contacts, 10, { filter: (c) => !c.email });
     if (needy.length === 0) return { enrichments: [] };
     const failures = [];
@@ -37444,6 +37450,7 @@ var apolloConnector = {
       const res = parseVendor(
         BulkMatchSchema,
         await httpJson(`${BASE}/people/bulk_match`, {
+          signal,
           method: "POST",
           headers: headers(),
           json: {
@@ -37457,15 +37464,22 @@ var apolloConnector = {
       if (isAuthFailure(err) || !isNotFound(err)) throw err;
     }
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const enrichments = matches.filter((m) => Boolean(m && m.email && m.email.includes("@"))).map((m) => ({
-      subjectType: "contact",
-      subjectKey: m.email,
-      provider: "apollo",
-      verifiedEmail: m.email,
-      phone: workPhone(m),
-      data: minimizePerson(m),
-      fetchedAt: now
-    }));
+    const aligned = matches.length === needy.length;
+    const enrichments = matches.map((m, i) => ({ m, requested: aligned ? needy[i]?.name : void 0 })).filter(
+      (x) => Boolean(x.m && x.m.email && x.m.email.includes("@"))
+    ).map(({ m, requested }) => {
+      const contactName = contactNameOf(requested, m);
+      return {
+        subjectType: "contact",
+        subjectKey: m.email,
+        provider: "apollo",
+        verifiedEmail: m.email,
+        ...contactName ? { contactName } : {},
+        phone: workPhone(m),
+        data: minimizePerson(m),
+        fetchedAt: now
+      };
+    });
     return {
       enrichments,
       failures,
@@ -37503,10 +37517,11 @@ var hunterConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV2);
   },
-  async research({ domain: domain2 }) {
+  async research({ domain: domain2, signal }) {
     const res = parseVendor(
       DomainSearchSchema,
       await httpJson(`${BASE2}/domain-search`, {
+        signal,
         query: { domain: domain2, api_key: useSecret(KEY_ENV2), limit: 10 }
       })
     );
@@ -37526,7 +37541,7 @@ var hunterConnector = {
     }));
     return { leads: [lead], contacts, raw: res };
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -37535,6 +37550,7 @@ var hunterConnector = {
         const res = parseVendor(
           FinderSchema,
           await httpJson(`${BASE2}/email-finder`, {
+            signal,
             query: { domain: lead.domain, full_name: c.name, api_key: useSecret(KEY_ENV2) }
           })
         );
@@ -37545,6 +37561,9 @@ var hunterConnector = {
           subjectKey: email3,
           provider: "hunter",
           verifiedEmail: email3,
+          // Back-reference to the contact this name-keyed lookup was for, so the
+          // pipeline folds the found email into the right contact.
+          contactName: c.name,
           data: res.data ?? {},
           fetchedAt: now
         };
@@ -37619,12 +37638,13 @@ var peopledatalabsConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV3);
   },
-  async research({ domain: domain2 }) {
+  async research({ domain: domain2, signal }) {
     const failures = [];
     let companyRaw = void 0;
     let co = {};
     try {
       companyRaw = await httpJson(`${BASE3}/company/enrich`, {
+        signal,
         query: { website: domain2 },
         headers: headers2()
       });
@@ -37647,6 +37667,7 @@ var peopledatalabsConnector = {
       const personRes = parseVendor(
         PdlPersonSearchSchema,
         await httpJson(`${BASE3}/person/search`, {
+          signal,
           method: "POST",
           headers: headers2(),
           json: {
@@ -37679,7 +37700,7 @@ var peopledatalabsConnector = {
       failures
     };
   },
-  async enrich({ contacts }) {
+  async enrich({ contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -37688,7 +37709,7 @@ var peopledatalabsConnector = {
         const email3 = contact.email;
         const res = parseVendor(
           PdlPersonEnrichSchema,
-          await httpJson(`${BASE3}/person/enrich`, { query: { email: email3 }, headers: headers2() })
+          await httpJson(`${BASE3}/person/enrich`, { query: { email: email3 }, headers: headers2(), signal })
         );
         const p = res.data ?? res;
         const verified = workEmail(p) ?? email3;
@@ -37697,6 +37718,7 @@ var peopledatalabsConnector = {
           subjectKey: email3,
           provider: "peopledatalabs",
           verifiedEmail: verified.includes("@") ? verified : void 0,
+          contactName: contact.name,
           data: pickAllowed(p, PDL_PERSON_ALLOW),
           fetchedAt: now
         };
@@ -37735,10 +37757,11 @@ var exaConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV4);
   },
-  async research({ domain: domain2 }) {
+  async research({ domain: domain2, signal }) {
     const res = parseVendor(
       ExaSearchSchema,
       await httpJson(`${BASE4}/search`, {
+        signal,
         method: "POST",
         headers: headers3(),
         json: { query: "company at " + domain2, numResults: 5, type: "auto" }
@@ -37753,11 +37776,12 @@ var exaConnector = {
     };
     return { leads: [lead], contacts: [], raw: res };
   },
-  async enrich({ lead }) {
+  async enrich({ lead, signal }) {
     const year = clock().getUTCFullYear();
     const res = parseVendor(
       ExaSearchSchema,
       await httpJson(`${BASE4}/search`, {
+        signal,
         method: "POST",
         headers: headers3(),
         json: { query: `${lead.companyName} funding news ${year}`, numResults: 5 }
@@ -37810,10 +37834,11 @@ var crunchbaseConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV5);
   },
-  async enrich({ lead }) {
+  async enrich({ lead, signal }) {
     const res = parseVendor(
       CbSearchSchema,
       await httpJson(`${BASE5}/searches/organizations`, {
+        signal,
         method: "POST",
         headers: headers4(),
         json: {
@@ -37897,7 +37922,7 @@ var leadmagicConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV6);
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -37907,6 +37932,7 @@ var leadmagicConnector = {
         const res = parseVendor(
           EmailFinderSchema,
           await httpJson(`${BASE6}/email-finder`, {
+            signal,
             method: "POST",
             headers: headers5(),
             json: { first_name: first, last_name: last, domain: lead.domain }
@@ -37919,6 +37945,7 @@ var leadmagicConnector = {
           subjectKey: email3,
           provider: "leadmagic",
           verifiedEmail: email3,
+          contactName: c.name,
           data: pickAllowed(res, LEADMAGIC_ALLOW),
           fetchedAt: now
         };
@@ -37948,9 +37975,10 @@ var clayConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV7) && hasSecret(WEBHOOK_ENV);
   },
-  async research({ domain: domain2, icp }) {
+  async research({ domain: domain2, icp, signal }) {
     try {
       await httpJson(useSecret(WEBHOOK_ENV), {
+        signal,
         method: "POST",
         headers: headers6(),
         json: { domain: domain2, icp },
@@ -37992,8 +38020,8 @@ function isClearbitPending(body) {
   const status = typeof o.status === "string" ? o.status.toLowerCase() : "";
   return status === "queued" || status === "pending";
 }
-async function tryFetch(schema, url2, query) {
-  const body = await httpJson(url2, { method: "GET", headers: headers7(), query });
+async function tryFetch(schema, url2, query, signal) {
+  const body = await httpJson(url2, { method: "GET", headers: headers7(), query, signal });
   if (isClearbitPending(body)) return null;
   return parseVendor(schema, body);
 }
@@ -38007,7 +38035,7 @@ var clearbitConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV8);
   },
-  async enrich({ lead, contacts }) {
+  async enrich({ lead, contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -38015,7 +38043,7 @@ var clearbitConnector = {
       async (contact) => {
         const person = await tryFetch(ClearbitPersonSchema, `${PERSON_BASE}/people/find`, {
           email: contact.email
-        });
+        }, signal);
         if (!person) return null;
         return {
           subjectType: "contact",
@@ -38035,7 +38063,7 @@ var clearbitConnector = {
       try {
         const company = await tryFetch(ClearbitCompanySchema, `${COMPANY_BASE}/companies/find`, {
           domain: lead.domain
-        });
+        }, signal);
         if (company) {
           enrichments.push({
             subjectType: "lead",
@@ -38130,10 +38158,11 @@ var zoominfoConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV9);
   },
-  async research({ domain: domain2, icp }) {
+  async research({ domain: domain2, icp, signal }) {
     const companyRes = parseVendor(
       CompanyEnvelope,
       await httpJson(`${BASE7}/search/company`, {
+        signal,
         method: "POST",
         headers: headers8(),
         json: { companyWebsite: domain2 }
@@ -38144,6 +38173,7 @@ var zoominfoConnector = {
     const contactRes = parseVendor(
       ContactEnvelope,
       await httpJson(`${BASE7}/search/contact`, {
+        signal,
         method: "POST",
         headers: headers8(),
         json: { companyWebsite: domain2, keywords: icp, maxResults: 10 }
@@ -38159,7 +38189,7 @@ var zoominfoConnector = {
       raw: keepRawOptIn() ? { company: companyRes, contacts: contactRes } : { company: companyRes, contacts: people.length }
     };
   },
-  async enrich({ contacts }) {
+  async enrich({ contacts, signal }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { results, failures } = await forEachContact(
       contacts,
@@ -38168,6 +38198,7 @@ var zoominfoConnector = {
         const res = parseVendor(
           ContactEnvelope,
           await httpJson(`${BASE7}/enrich/contact`, {
+            signal,
             method: "POST",
             headers: headers8(),
             json: { email: contact.email }
@@ -38180,6 +38211,7 @@ var zoominfoConnector = {
           subjectKey: contact.email,
           provider: "zoominfo",
           verifiedEmail: contact.email,
+          contactName: contact.name,
           phone: businessPhone(match),
           data: pickAllowed(match, ZI_CONTACT_ALLOW),
           fetchedAt: now
@@ -38208,8 +38240,8 @@ function registerBuiltinConnectors() {
 }
 
 // pipeline_core/models.ts
-var SCHEMA_VERSION = 3;
-var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3];
+var SCHEMA_VERSION = 4;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4];
 var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
 var SchemaVersionSchema = external_exports.union([
   external_exports.literal(V_FIRST),
@@ -38273,9 +38305,18 @@ var MessageSchema = external_exports.object({
   /** Provenance: which model + prompt version produced this. */
   model: external_exports.string().min(1),
   promptVersion: external_exports.string().min(1),
-  createdAt: external_exports.string().datetime()
+  createdAt: external_exports.string().datetime(),
+  /**
+   * True when this is an EMAIL draft and no sender identity (name, company,
+   * postal address) was configured, so the CAN-SPAM footer could NOT be appended.
+   * Such a draft must not be sent as-is. Additive (v4); defaults false.
+   */
+  needsSenderIdentity: external_exports.boolean().default(false)
 });
 var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
+var LEGACY_RUN_STATUSES = ["pending", "drafted"];
+var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
+var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
 var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
 var RunErrorSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -38306,7 +38347,7 @@ var CampaignRunSchema = external_exports.object({
   /** Model + provider that ran the LLM seams. */
   provider: external_exports.string().min(1),
   model: external_exports.string().min(1),
-  status: RunStatusSchema,
+  status: StoredRunStatusSchema,
   leads: external_exports.array(LeadSchema).default([]),
   contacts: external_exports.array(ContactSchema).default([]),
   enrichments: external_exports.array(EnrichmentSchema).default([]),
@@ -38339,6 +38380,12 @@ var CampaignRunSchema = external_exports.object({
    * "not configured" only (v3).
    */
   failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
+  /**
+   * Run-level compliance warnings that did not block a contact but must be seen
+   * before anything is sent — e.g. email drafts produced without a configured
+   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
+   */
+  complianceWarnings: external_exports.array(external_exports.string()).default([]),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
@@ -38405,6 +38452,29 @@ var DraftOutputSchema = external_exports.object({
   subject: external_exports.string().nullable(),
   body: external_exports.string().min(1),
   cta: external_exports.string().min(1)
+});
+
+// pipeline_core/compliance/suppression.ts
+var EMPTY_SUPPRESSION_LIST = Object.freeze({
+  emails: /* @__PURE__ */ new Set(),
+  domains: /* @__PURE__ */ new Set()
+});
+
+// pipeline_core/footer.ts
+var nonBlank = external_exports.string().trim().min(1);
+var SenderIdentitySchema = external_exports.object({
+  /** The human the message is from, e.g. "Jeremy Longshore". */
+  name: nonBlank,
+  /** The sending company, e.g. "intentsolutions.io LLC". */
+  company: nonBlank,
+  /** A valid physical postal address (street or registered PO box). May be multi-line. */
+  postalAddress: nonBlank,
+  /** Optional reply-to address shown in the footer. */
+  replyToEmail: external_exports.string().trim().email().optional(),
+  /** Opt-out sentence. Defaults to DEFAULT_OPT_OUT_TEXT. */
+  optOutText: nonBlank.optional(),
+  /** Append the opt-out sentence to LinkedIn drafts too (no postal footer). Default false. */
+  optOutOnLinkedin: external_exports.boolean().optional()
 });
 
 // pipeline_core/pipeline.ts
@@ -38510,6 +38580,11 @@ function recordConnectorFailure(connector, phase, err, raw, failed) {
   raw[connector.name] = { failed: true, status };
   failed.push({ name: connector.name, phase, status });
 }
+function recordItemFailures(connector, phase, failures, failed) {
+  for (const f of failures ?? []) {
+    failed.push({ name: connector.name, phase, status: f.status ?? f.reason });
+  }
+}
 async function runResearch(domain2, icp, opts = {}) {
   registerBuiltinConnectors();
   const target = normalizeDomain2(domain2);
@@ -38532,6 +38607,7 @@ async function runResearch(domain2, icp, opts = {}) {
       contacts.push(...out.contacts);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      recordItemFailures(connector, "research", out.failures, failedConnectors);
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
@@ -38599,6 +38675,7 @@ async function runEnrich(lead, contacts, opts = {}) {
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);

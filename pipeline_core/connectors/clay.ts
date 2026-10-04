@@ -54,12 +54,13 @@ export const clayConnector: Connector = {
     return hasSecret(KEY_ENV) && hasSecret(WEBHOOK_ENV);
   },
 
-  async research({ domain, icp }: ResearchInput): Promise<ResearchOutput> {
+  async research({ domain, icp, signal }: ResearchInput): Promise<ResearchOutput> {
     // Push the domain into the user's Clay enrichment table via the webhook.
     // Clay will kick off its configured enrichment workflow asynchronously.
     // There is no synchronous response that contains lead or contact records.
     try {
       await httpJson<unknown>(useSecret(WEBHOOK_ENV), {
+        signal,
         method: "POST",
         headers: headers(),
         json: { domain, icp },

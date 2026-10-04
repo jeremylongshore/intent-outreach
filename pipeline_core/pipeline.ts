@@ -21,7 +21,7 @@ import {
   getSkippedConnectors,
   registerBuiltinConnectors,
 } from "./connectors/index.js";
-import type { Connector, ConnectorPhase } from "./connectors/types.js";
+import type { Connector, ConnectorItemFailure, ConnectorPhase } from "./connectors/types.js";
 import { HttpError } from "./http.js";
 import { ContactSchema, SCHEMA_VERSION } from "./models.js";
 import type {
@@ -36,10 +36,13 @@ import type {
 } from "./models.js";
 import { assertCampaignRun, validateMessage, type Validated } from "./validator.js";
 import { getProvider, type LLMProvider } from "./providers.js";
-import { CostMeter } from "./cost.js";
+import { CostMeter, type CacheTokens, type Usage } from "./cost.js";
 import { draftMessage, scoreLead } from "./seam.js";
 import { registerBuiltinPacks, resolvePack } from "./packs/index.js";
-import type { ComplianceContext, Pack } from "./packs/types.js";
+import type { ComplianceContext, ComplianceGate } from "./packs/types.js";
+import { composeGates, suppressionGate, type SuppressionList } from "./compliance/suppression.js";
+import { loadSuppressionList } from "./suppressions.js";
+import { applyComplianceFooter, missingSenderFields, type SenderIdentity } from "./footer.js";
 
 /** Default ceiling on domains per campaign (override with `allowLarge`). */
 export const DEFAULT_MAX_DOMAINS = 25;
@@ -241,9 +244,25 @@ function recordConnectorFailure(
 }
 
 function isPushOnly(name: string): boolean {
-  // `pushOnly` is an optional Connector flag (push-only sinks like Clay produce
-  // no research data). Read structurally so this works before/after it is typed.
-  return (getConnector(name) as { pushOnly?: boolean } | undefined)?.pushOnly === true;
+  // Push-only sinks (e.g. Clay) hand data off asynchronously and produce no records.
+  return getConnector(name)?.pushOnly === true;
+}
+
+/**
+ * Fold a connector's non-fatal per-item failures (one contact's lookup 5xx'd,
+ * a vendor body failed schema validation) into `failedConnectors`, so a call
+ * that "succeeded" with partial results is still visible in the run record.
+ * Sanitized: HTTP status when known, else the reason ("schema" | "error").
+ */
+function recordItemFailures(
+  connector: Connector,
+  phase: ConnectorPhase,
+  failures: readonly ConnectorItemFailure[] | undefined,
+  failed: FailedConnector[],
+): void {
+  for (const f of failures ?? []) {
+    failed.push({ name: connector.name, phase, status: f.status ?? f.reason });
+  }
 }
 
 /**
@@ -278,6 +297,7 @@ export async function runResearch(
       contacts.push(...out.contacts);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      recordItemFailures(connector, "research", out.failures, failedConnectors);
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
@@ -375,6 +395,7 @@ export async function runEnrich(
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
+      recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
@@ -400,14 +421,33 @@ function sanitizeErrorMessage(err: unknown): string {
   return redacted.length > MAX_ERROR_MESSAGE ? `${redacted.slice(0, MAX_ERROR_MESSAGE)}…` : redacted;
 }
 
+/** Only the cache counts that are present and positive (so costFor sees exactly what was billed). */
+function cacheOf(u: { cacheReadTokens?: number; cacheWriteTokens?: number }): CacheTokens {
+  const pos = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
+  const cacheReadTokens = pos(u.cacheReadTokens);
+  const cacheWriteTokens = pos(u.cacheWriteTokens);
+  return {
+    ...(cacheReadTokens ? { cacheReadTokens } : {}),
+    ...(cacheWriteTokens ? { cacheWriteTokens } : {}),
+  };
+}
+
 /** Usage an LLM error may carry (AI SDK NoObjectGeneratedError has `.usage`). */
-function usageFromError(err: unknown): { inputTokens: number; outputTokens: number } | undefined {
+function usageFromError(
+  err: unknown,
+): { inputTokens: number; outputTokens: number; cache: CacheTokens } | undefined {
   const u = (err as { usage?: Record<string, unknown> } | null)?.usage;
   if (!u || typeof u !== "object") return undefined;
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
   const inputTokens = num(u.inputTokens) || num(u.promptTokens);
   const outputTokens = num(u.outputTokens) || num(u.completionTokens);
-  return inputTokens || outputTokens ? { inputTokens, outputTokens } : undefined;
+  // AI SDK v7 nests the cache split under inputTokenDetails; our Usage flattens it.
+  const details = (u.inputTokenDetails ?? {}) as Record<string, unknown>;
+  const cache = cacheOf({
+    cacheReadTokens: num(u.cacheReadTokens) || num(details.cacheReadTokens),
+    cacheWriteTokens: num(u.cacheWriteTokens) || num(details.cacheWriteTokens),
+  });
+  return inputTokens || outputTokens ? { inputTokens, outputTokens, cache } : undefined;
 }
 
 function finishReasonFromError(err: unknown): string | undefined {
@@ -422,9 +462,9 @@ type GateOutcome = { clean: true } | { clean: false; reason: string; error?: str
  * Any other verdict (including typos like "BLOCKED", undefined, null) blocks; a
  * throwing (or rejecting) gate blocks with reason "gate-error: <msg>".
  */
-async function evaluateGate(pack: Pack, ctx: ComplianceContext): Promise<GateOutcome> {
+async function evaluateGate(gate: ComplianceGate, ctx: ComplianceContext): Promise<GateOutcome> {
   try {
-    const verdict = await pack.compliance.check(ctx);
+    const verdict = await gate.check(ctx);
     if (verdict && verdict.status === "clean") return { clean: true };
     const reason =
       verdict && typeof verdict.reason === "string" && verdict.reason ? verdict.reason : "non-clean-verdict";
@@ -506,6 +546,17 @@ export interface RunCampaignInput {
   allowLarge?: boolean;
   /** Per-connector-invocation deadline in ms. Default 90s. */
   connectorTimeoutMs?: number;
+  /**
+   * Sender identity for the code-appended CAN-SPAM footer on email drafts
+   * (Report Profile `sender`). Absent ⇒ email drafts are flagged
+   * `needsSenderIdentity` and a run-level `complianceWarnings` entry is recorded.
+   */
+  sender?: SenderIdentity;
+  /**
+   * Suppression (opt-out) list. Default: loaded from
+   * `${INTENT_OUTREACH_HOME}/suppressions.jsonl` (missing file ⇒ nothing suppressed).
+   */
+  suppressions?: SuppressionList;
 }
 
 export interface RunCampaignResult {
@@ -531,9 +582,16 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const connectorOpts: ConnectorRunOptions = input.connectorTimeoutMs
     ? { connectorTimeoutMs: input.connectorTimeoutMs }
     : {};
+  // Opt-outs are loaded (I/O, pipeline layer) BEFORE anything is spent; a corrupt
+  // suppression file throws here — fail closed rather than draft to an opt-out.
+  const suppressions = input.suppressions ?? (await loadSuppressionList());
   const provider = input.provider ?? (await getProvider());
   registerBuiltinPacks();
   const pack = resolvePack(input.pack);
+  // The suppression gate runs FIRST for EVERY pack (an unsubscribe is not
+  // vertical-specific — swapping packs must never drop it), then the pack's own
+  // gate. Both run under evaluateGate's fail-closed handling.
+  const gate = composeGates(suppressionGate(suppressions), pack.compliance);
   // Provenance comes from the prompt file that actually drafted (pack-supplied).
   const promptVersion = pack.prompts.draft.replace(/\.md$/i, "");
   const meter = new CostMeter();
@@ -549,10 +607,14 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const failedConnectors: FailedConnector[] = [];
   const skipped = new Set<string>();
   let anyResearchRan = false;
+  let draftsMissingSender = 0;
+
+  // Cache-aware: the run total uses the same costFor split as the per-call Usage.
+  const recordUsage = (u: Usage) => meter.record(provider.model, u.inputTokens, u.outputTokens, cacheOf(u));
 
   const recordError = (err: unknown, where: Omit<RunError, "message" | "finishReason">) => {
     const usage = usageFromError(err);
-    if (usage) meter.record(provider.model, usage.inputTokens, usage.outputTokens);
+    if (usage) meter.record(provider.model, usage.inputTokens, usage.outputTokens, usage.cache);
     const finishReason = finishReasonFromError(err);
     errors.push({ ...where, message: sanitizeErrorMessage(err), ...(finishReason ? { finishReason } : {}) });
   };
@@ -590,16 +652,17 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
         recordError(err, { domain: lead.domain, stage: "score" });
         continue;
       }
-      meter.record(provider.model, scored.usage.inputTokens, scored.usage.outputTokens);
+      recordUsage(scored.usage);
       if (scored.object.fitScore < minScore) continue;
 
       // COMPLIANCE gate (pack-supplied, FAIL-CLOSED) — runs BEFORE drafting so a
       // blocked contact never burns LLM tokens. Blocked contacts are recorded for
-      // the audit trail and do not consume a draft slot. b2b-sdr's gate is a no-op.
+      // the audit trail and do not consume a draft slot. The suppression list
+      // applies to every pack, b2b-sdr included.
       const eligible: Contact[] = [];
       for (const contact of contacts) {
         const contactKey = contactKeyOf(contact);
-        const outcome = await evaluateGate(pack, {
+        const outcome = await evaluateGate(gate, {
           lead,
           contact,
           now: new Date(now()),
@@ -633,7 +696,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
           recordError(err, { domain: lead.domain, contactKey, stage: "draft" });
           continue;
         }
-        meter.record(provider.model, drafted.usage.inputTokens, drafted.usage.outputTokens);
+        recordUsage(drafted.usage);
 
         const candidate = {
           contactKey,
@@ -648,7 +711,18 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
         };
         const validated = validateMessage(candidate);
         if (validated.ok) {
-          messages.push(validated.value);
+          // CAN-SPAM footer appended by CODE after the draft passed validation —
+          // never by the LLM. Re-validated so only gate-checked values are recorded.
+          const footed = validateMessage(applyComplianceFooter(validated.value, input.sender));
+          if (footed.ok) {
+            if (footed.value.needsSenderIdentity) draftsMissingSender += 1;
+            messages.push(footed.value);
+          } else {
+            rejectedDrafts.push({
+              contactKey,
+              issues: footed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
+            });
+          }
         } else {
           rejectedDrafts.push({
             contactKey,
@@ -657,6 +731,15 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
         }
       }
     }
+  }
+
+  const complianceWarnings: string[] = [];
+  if (draftsMissingSender > 0) {
+    const missing = missingSenderFields(input.sender).join(", ");
+    complianceWarnings.push(
+      `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured ` +
+        `(missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`,
+    );
   }
 
   const status = deriveRunStatus({
@@ -687,6 +770,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     errors,
     rejectedDrafts,
     failedConnectors,
+    complianceWarnings,
     createdAt,
     finishedAt: now(),
   });
