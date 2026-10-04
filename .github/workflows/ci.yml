@@ -66,6 +66,8 @@ jobs:
         run: npm run typecheck
       - name: "Invariants: store/provider separation, zero Google, no Validated casts, no framework bloat, connectors never read process.env"
         run: npm run test:architecture
+      - name: "Audit harness: hash-pinned gates, tests and workflows are untampered"
+        run: scripts/audit-harness verify
 
   e2e:
     name: e2e

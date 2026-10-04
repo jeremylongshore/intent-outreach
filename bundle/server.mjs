@@ -40090,7 +40090,8 @@ async function handleSaveRun(rawArgs, deps = {}) {
 
 // mcp/server.ts
 registerBuiltinConnectors();
-var server = new McpServer({ name: "intent-outreach", version: "0.2.0" });
+var VERSION = true ? "0.3.0" : "dev";
+var server = new McpServer({ name: "intent-outreach", version: VERSION });
 server.registerTool(
   "list_connectors",
   {

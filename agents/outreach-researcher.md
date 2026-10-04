@@ -8,7 +8,7 @@ tools:
   - mcp__intent-outreach__research_domain
 model: inherit
 color: cyan
-version: 0.2.0
+version: 0.3.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 tags:
   - sdr

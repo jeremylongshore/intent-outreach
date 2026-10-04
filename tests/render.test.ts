@@ -236,3 +236,13 @@ describe("renderHtml — run data is entity-escaped", () => {
     expect(html).toContain("&lt;img src=x onerror=&#39;alert(1)&#39;&gt;");
   });
 });
+
+describe("markdown table cell escaping", () => {
+  it("escapes backslashes before pipes so a trailing backslash can't break the row", async () => {
+    const { esc } = await import("../pipeline_core/render/markdown.js");
+    expect(esc("a|b")).toBe("a\\|b");
+    expect(esc("ends\\")).toBe("ends\\\\");
+    expect(esc("x\\|y")).toBe("x\\\\\\|y");
+    expect(esc("one\r\ntwo\nthree\rfour")).toBe("one two three four");
+  });
+});

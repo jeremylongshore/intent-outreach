@@ -7,7 +7,7 @@ description: >-
 allowed-tools:
   - mcp__plugin_intent-outreach_intent-outreach__list_connectors
   - mcp__intent-outreach__list_connectors
-version: 0.2.0
+version: 0.3.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 license: SEE LICENSE IN LICENSE
 compatibility: Claude Code with the bundled Intent Outreach MCP server

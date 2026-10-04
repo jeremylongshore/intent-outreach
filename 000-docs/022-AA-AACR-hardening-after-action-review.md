@@ -77,14 +77,25 @@ as type-only (CI stream).
 
 ## 5. CI stream results
 
-> **TODO (orchestrator):** fill in from the CI stream (#54) once it merges.
->
-> - Coverage baseline (lines / branches / functions / statements) and the thresholds set:
-> - Mutation score (Stryker on `compliance/` + `validator.ts`) and the break threshold:
-> - Store concurrency test: root cause and fix:
-> - Architecture/type tests added:
-> - Required checks configured for branch protection:
-> - Harness re-pin (`scripts/audit-harness init`) commit:
+Landed in #63 (closes #54); main green at `1a37fa9a` with 634/634 tests.
+
+- **Coverage baseline** (thresholds = baseline rounded down, never lowered): statements 88.60 → 88,
+  branches 79.47 → 79, functions 89.49 → 89, lines 90.76 → 90.
+- **Mutation score** (Stryker on `compliance/` + `validator.ts`): 73.04% (297 killed, 1 timeout, 110
+  survived of 408); break threshold 73. Per file: compliance 76.7%, `validator.ts` 50.0% (weakest; follow-up).
+  Runs as a scheduled/manual workflow because a run took 88 minutes on a loaded box.
+- **Store concurrency test:** not a logic bug. The "many concurrent large saves" case timed out at vitest's
+  default 5s when the box sat at load average 35+, and passed alone. Fix: global `testTimeout` 30s;
+  assertions unchanged. A second source of false failures was agent worktrees under `.claude/worktrees`
+  being collected; `vitest.config.ts` now excludes `.claude/**` and `.stryker-tmp/**`.
+- **Architecture/type tests added:** `tests/architecture.test.ts` (esbuild-metafile import graph: store and
+  validator closure excludes the provider layer; zero Google with no allowlist; no `Validated` casts; no
+  framework bloat; connectors never read `process.env`), `tests/types/store-invariant.test-d.ts` (raw
+  `saveRun` is a compile error), MCP stdio and CLI end-to-end tests against `bundle/`.
+- **Required checks on `main`** (branch protection enabled 2026-10-04, strict, no force-push or deletion):
+  `build-test`, `invariants`, `e2e`, `security`, `analyze (javascript-typescript)`.
+- **Harness re-pin:** `scripts/audit-harness init` ran in the 0.3.0 release PR after every other edit, and
+  `scripts/audit-harness verify` now runs in the `invariants` job.
 
 ## 6. Lessons to carry forward
 

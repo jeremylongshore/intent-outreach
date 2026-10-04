@@ -9,7 +9,7 @@ allowed-tools:
   - mcp__intent-outreach__list_connectors
   - mcp__plugin_intent-outreach_intent-outreach__research_domain
   - mcp__intent-outreach__research_domain
-version: 0.2.0
+version: 0.3.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 license: SEE LICENSE IN LICENSE
 compatibility: Claude Code with the bundled Intent Outreach MCP server

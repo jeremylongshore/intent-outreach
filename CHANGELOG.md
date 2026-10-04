@@ -6,6 +6,8 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-04
+
 Hardening release after the October 2026 six-lens audit (epic #51; plan and review in
 `000-docs/021-AT-PLAN` and `000-docs/022-AA-AACR`).
 

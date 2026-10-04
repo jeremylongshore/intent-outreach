@@ -5,8 +5,9 @@
  * mesh"). It is a THIN wrapper over pipeline_core: the handlers in ./tools.ts
  * call the deterministic runResearch/runEnrich and the shared compliance path,
  * so connector and gate logic live in exactly one place. BYO keys reach this
- * process via env passthrough declared in .mcp.json; the server reads them
- * locally through pipeline_core/secrets and transmits them only to each
+ * process through the inherited environment (stdio servers inherit the parent
+ * env; .mcp.json declares no env block) or the local secrets file; the server
+ * reads them through pipeline_core/secrets and transmits them only to each
  * provider's API.
  *
  * Tools are phase-level (research_domain, enrich_lead), NOT per-connector — the
@@ -29,7 +30,12 @@ import {
 
 registerBuiltinConnectors();
 
-const server = new McpServer({ name: "intent-outreach", version: "0.2.0" });
+// Injected by the bundle step from package.json (esbuild --define), so the
+// server version can never drift from the package. Unbundled dev runs report "dev".
+declare const __INTENT_OUTREACH_VERSION__: string | undefined;
+const VERSION = typeof __INTENT_OUTREACH_VERSION__ === "string" ? __INTENT_OUTREACH_VERSION__ : "dev";
+
+const server = new McpServer({ name: "intent-outreach", version: VERSION });
 
 server.registerTool(
   "list_connectors",

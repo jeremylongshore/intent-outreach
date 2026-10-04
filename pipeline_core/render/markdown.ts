@@ -17,9 +17,13 @@ import type { ReportProfile } from "../profiles.js";
 
 const DEFAULT_SECTIONS = ["summary", "leads", "contacts", "messages", "cost"] as const;
 
-/** Escape pipe characters inside table cells. */
-function esc(s: string): string {
-  return s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+/**
+ * Make a value safe inside a Markdown table cell. Backslashes are escaped first,
+ * otherwise a value ending in "\" would turn the next "\|" into an escaped pipe
+ * and break the table; CR/LF collapse to a space so a value can't end the row.
+ */
+export function esc(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r\n|\r|\n/g, " ");
 }
 
 function renderSummary(run: Validated<CampaignRun>): string {
