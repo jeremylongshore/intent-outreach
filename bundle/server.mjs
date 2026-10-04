@@ -4536,7 +4536,7 @@ function isRef(value) {
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
-function isRecursive(inst, stack, resolve) {
+function isRecursive(inst, stack, resolve2) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -4546,7 +4546,7 @@ function isRecursive(inst, stack, resolve) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve);
+      const answer = isRecursive(child, stack, resolve2);
       if (answer > result)
         result = answer;
     }
@@ -4557,7 +4557,7 @@ function isRecursive(inst, stack, resolve) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve2) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -4621,7 +4621,7 @@ function isRecursive(inst, stack, resolve) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve2 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -20782,11 +20782,11 @@ var require_codegen = __commonJS({
         const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
         return `${varKind} ${this.name}${rhs};` + _n;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         if (!names[this.name.str])
           return;
         if (this.rhs)
-          this.rhs = optimizeExpr(this.rhs, names, constants);
+          this.rhs = optimizeExpr(this.rhs, names, constants2);
         return this;
       }
       get names() {
@@ -20803,10 +20803,10 @@ var require_codegen = __commonJS({
       render({ _n }) {
         return `${this.lhs} = ${this.rhs};` + _n;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         if (this.lhs instanceof code_1.Name && !names[this.lhs.str] && !this.sideEffects)
           return;
-        this.rhs = optimizeExpr(this.rhs, names, constants);
+        this.rhs = optimizeExpr(this.rhs, names, constants2);
         return this;
       }
       get names() {
@@ -20867,8 +20867,8 @@ var require_codegen = __commonJS({
       optimizeNodes() {
         return `${this.code}` ? this : void 0;
       }
-      optimizeNames(names, constants) {
-        this.code = optimizeExpr(this.code, names, constants);
+      optimizeNames(names, constants2) {
+        this.code = optimizeExpr(this.code, names, constants2);
         return this;
       }
       get names() {
@@ -20897,12 +20897,12 @@ var require_codegen = __commonJS({
         }
         return nodes.length > 0 ? this : void 0;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         const { nodes } = this;
         let i = nodes.length;
         while (i--) {
           const n = nodes[i];
-          if (n.optimizeNames(names, constants))
+          if (n.optimizeNames(names, constants2))
             continue;
           subtractNames(names, n.names);
           nodes.splice(i, 1);
@@ -20955,12 +20955,12 @@ var require_codegen = __commonJS({
           return void 0;
         return this;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         var _a3;
-        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants);
-        if (!(super.optimizeNames(names, constants) || this.else))
+        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants2);
+        if (!(super.optimizeNames(names, constants2) || this.else))
           return;
-        this.condition = optimizeExpr(this.condition, names, constants);
+        this.condition = optimizeExpr(this.condition, names, constants2);
         return this;
       }
       get names() {
@@ -20983,10 +20983,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.iteration})` + super.render(opts);
       }
-      optimizeNames(names, constants) {
-        if (!super.optimizeNames(names, constants))
+      optimizeNames(names, constants2) {
+        if (!super.optimizeNames(names, constants2))
           return;
-        this.iteration = optimizeExpr(this.iteration, names, constants);
+        this.iteration = optimizeExpr(this.iteration, names, constants2);
         return this;
       }
       get names() {
@@ -21022,10 +21022,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
       }
-      optimizeNames(names, constants) {
-        if (!super.optimizeNames(names, constants))
+      optimizeNames(names, constants2) {
+        if (!super.optimizeNames(names, constants2))
           return;
-        this.iterable = optimizeExpr(this.iterable, names, constants);
+        this.iterable = optimizeExpr(this.iterable, names, constants2);
         return this;
       }
       get names() {
@@ -21067,11 +21067,11 @@ var require_codegen = __commonJS({
         (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
         return this;
       }
-      optimizeNames(names, constants) {
+      optimizeNames(names, constants2) {
         var _a3, _b;
-        super.optimizeNames(names, constants);
-        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants);
-        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants);
+        super.optimizeNames(names, constants2);
+        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants2);
+        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants2);
         return this;
       }
       get names() {
@@ -21372,7 +21372,7 @@ var require_codegen = __commonJS({
     function addExprNames(names, from) {
       return from instanceof code_1._CodeOrName ? addNames(names, from.names) : names;
     }
-    function optimizeExpr(expr, names, constants) {
+    function optimizeExpr(expr, names, constants2) {
       if (expr instanceof code_1.Name)
         return replaceName(expr);
       if (!canOptimize(expr))
@@ -21387,14 +21387,14 @@ var require_codegen = __commonJS({
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants[n.str];
+        const c = constants2[n.str];
         if (c === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
         return c;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants2[c.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -23356,7 +23356,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -23383,7 +23383,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -24014,7 +24014,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options) {
+    function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -24272,7 +24272,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -34757,7 +34757,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error62) {
@@ -34774,7 +34774,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const earlyReject = (error62) => {
         reject(error62);
       };
@@ -34852,7 +34852,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve(parseResult.data);
+            resolve2(parseResult.data);
           }
         } catch (error62) {
           reject(error62);
@@ -35113,12 +35113,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve, interval);
+      const timeoutId = setTimeout(resolve2, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -36213,7 +36213,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -36877,12 +36877,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve();
+        resolve2();
       } else {
-        this._stdout.once("drain", resolve);
+        this._stdout.once("drain", resolve2);
       }
     });
   }
@@ -36971,44 +36971,86 @@ async function httpJson(url2, opts = {}) {
 }
 
 // pipeline_core/secrets.ts
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, statSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 import { homedir } from "node:os";
 var MissingSecretError = class extends Error {
   constructor(name) {
+    let where;
+    try {
+      where = localSecretsPath();
+    } catch {
+      where = "the local secrets file";
+    }
     super(
-      `secret "${name}" not found. Set the ${name} environment variable, or add it to ${localSecretsPath()}. Intent Outreach never stores keys in the cloud.`
+      `secret "${name}" not found. Set the ${name} environment variable, or add it to ${where}. Intent Outreach never stores keys in the cloud.`
     );
     this.name = name;
     this.name = "MissingSecretError";
   }
   name;
 };
+var PLACEHOLDER = /^\$\{.*\}$/;
+function isUnsetValue(v) {
+  if (typeof v !== "string") return true;
+  const t = v.trim();
+  return t.length === 0 || PLACEHOLDER.test(t);
+}
+function envPath(name) {
+  const raw = process.env[name];
+  if (isUnsetValue(raw)) return void 0;
+  const p = raw.trim();
+  if (!isAbsolute(p)) {
+    throw new Error(`${name} must be an absolute path (got "${p}")`);
+  }
+  return p;
+}
+function intentOutreachHome() {
+  return envPath("INTENT_OUTREACH_HOME") ?? join(homedir(), ".intent-outreach");
+}
 function localSecretsPath() {
-  return process.env.INTENT_OUTREACH_SECRETS_FILE ?? join(process.env.INTENT_OUTREACH_HOME ?? join(homedir(), ".intent-outreach"), "secrets.json");
+  return envPath("INTENT_OUTREACH_SECRETS_FILE") ?? join(intentOutreachHome(), "secrets.json");
 }
 var fileCache = null;
+function warnIfBroadPermissions(path) {
+  try {
+    const mode = statSync(path).mode & 511;
+    if (mode & 63) {
+      process.stderr.write(
+        `intent-outreach: warning: secrets file ${path} is readable by group/other (mode ${mode.toString(8).padStart(3, "0")}); run: chmod 600 ${path}
+`
+      );
+    }
+  } catch {
+  }
+}
 function loadLocalFile() {
   if (fileCache) return fileCache;
+  const path = localSecretsPath();
   try {
-    const text = readFileSync(localSecretsPath(), "utf8");
+    const text = readFileSync(path, "utf8");
+    warnIfBroadPermissions(path);
     const parsed = JSON.parse(text);
-    fileCache = parsed && typeof parsed === "object" ? parsed : {};
+    fileCache = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
   } catch {
     fileCache = {};
   }
   return fileCache;
 }
-function getSecret(name) {
+function resolve(name) {
   const fromEnv = process.env[name];
-  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  if (!isUnsetValue(fromEnv)) return fromEnv;
   const fromFile = loadLocalFile()[name];
-  if (fromFile && fromFile.length > 0) return fromFile;
-  throw new MissingSecretError(name);
+  if (!isUnsetValue(fromFile)) return fromFile;
+  return void 0;
+}
+function getSecret(name) {
+  const v = resolve(name);
+  if (v === void 0) throw new MissingSecretError(name);
+  return v;
 }
 function hasSecret(name) {
-  if (process.env[name]) return true;
-  return Boolean(loadLocalFile()[name]);
+  return resolve(name) !== void 0;
 }
 
 // pipeline_core/connectors/apollo.ts
@@ -37662,6 +37704,7 @@ function registerBuiltinConnectors() {
 
 // pipeline_core/models.ts
 var SCHEMA_VERSION = 2;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2];
 var SourceSchema = external_exports.string().min(1);
 var LeadSchema = external_exports.object({
   domain: external_exports.string().min(1),
@@ -37755,6 +37798,14 @@ var CampaignRunSchema = external_exports.object({
 });
 
 // pipeline_core/validator.ts
+function deepFreeze(value, seen = /* @__PURE__ */ new WeakSet()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const key of Reflect.ownKeys(value)) {
+    deepFreeze(value[key], seen);
+  }
+  return Object.freeze(value);
+}
 var ValidationError = class extends Error {
   constructor(kind, issues) {
     super(
@@ -37770,7 +37821,7 @@ var ValidationError = class extends Error {
 function gate(kind, schema, raw) {
   const parsed = schema.safeParse(raw);
   if (parsed.success) {
-    return { ok: true, value: parsed.data };
+    return { ok: true, value: deepFreeze(parsed.data) };
   }
   return { ok: false, error: new ValidationError(kind, parsed.error.issues) };
 }
@@ -37884,60 +37935,178 @@ async function runEnrich(lead, contacts) {
 }
 
 // pipeline_core/store.ts
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { constants, mkdir, open as open2, readFile, stat, unlink } from "node:fs/promises";
 import { dirname, join as join2 } from "node:path";
-import { homedir as homedir2 } from "node:os";
+var DuplicateRunError = class extends Error {
+  constructor(runId) {
+    super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
+    this.runId = runId;
+    this.name = "DuplicateRunError";
+  }
+  runId;
+};
+var StoreLockTimeoutError = class extends Error {
+  constructor(lockPath) {
+    super(`timed out waiting for run-store lock ${lockPath} (another intent-outreach process is writing)`);
+    this.lockPath = lockPath;
+    this.name = "StoreLockTimeoutError";
+  }
+  lockPath;
+};
 function defaultStorePath() {
-  const base = process.env.INTENT_OUTREACH_HOME ?? join2(homedir2(), ".intent-outreach");
-  return join2(base, "runs.jsonl");
+  return join2(intentOutreachHome(), "runs.jsonl");
 }
+var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
+var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 var JsonlRunStore = class {
-  constructor(path = defaultStorePath()) {
+  constructor(path = defaultStorePath(), opts = {}) {
     this.path = path;
+    this.lockTimeoutMs = opts.lockTimeoutMs ?? 1e4;
+    this.staleLockMs = opts.staleLockMs ?? 3e4;
   }
   path;
-  async saveRun(run) {
-    await mkdir(dirname(this.path), { recursive: true });
-    await appendFile(this.path, JSON.stringify(run) + "\n", "utf8");
+  lockTimeoutMs;
+  staleLockMs;
+  permsChecked = false;
+  warnedKey = "";
+  async saveRun(run, opts = {}) {
+    const checked = assertCampaignRun(run);
+    const line = JSON.stringify(checked) + "\n";
+    await mkdir(dirname(this.path), { recursive: true, mode: 448 });
+    await this.withLock(async () => {
+      if (!opts.overwrite) {
+        const { runs } = await this.scan();
+        if (runs.some((r) => r.run.id === checked.id)) throw new DuplicateRunError(checked.id);
+      }
+      await this.append(line);
+    });
   }
   async getRun(id) {
-    const lines = await this.readLines();
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i];
-      if (line === void 0) continue;
-      const parsed = this.tryParseLine(line);
-      if (parsed && parsed.id === id) return parsed;
+    const { runs } = await this.scan();
+    for (let i = runs.length - 1; i >= 0; i--) {
+      const r = runs[i];
+      if (r && r.run.id === id) return r.run;
     }
     return null;
   }
   async listRunIds() {
-    const lines = await this.readLines();
-    const ids = /* @__PURE__ */ new Set();
-    for (const line of lines) {
-      const parsed = this.tryParseLine(line);
-      if (parsed) ids.add(parsed.id);
-    }
-    return [...ids];
+    const { runs } = await this.scan();
+    return [...new Set(runs.map((r) => r.run.id))];
   }
-  async readLines() {
+  async corruptLines() {
+    return (await this.scan()).corrupt;
+  }
+  // ── write path ──────────────────────────────────────────────────────────────
+  /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
+  async append(line) {
+    const fh = await open2(
+      this.path,
+      constants.O_RDWR | constants.O_APPEND | constants.O_CREAT,
+      384
+    );
     try {
-      const text = await readFile(this.path, "utf8");
-      return text.split("\n").filter((l) => l.trim().length > 0);
+      const st = await fh.stat();
+      if (!this.permsChecked) {
+        if ((st.mode & 63) !== 0) await fh.chmod(384);
+        this.permsChecked = true;
+      }
+      let payload = line;
+      if (st.size > 0) {
+        const last = Buffer.alloc(1);
+        await fh.read(last, 0, 1, st.size - 1);
+        if (last[0] !== 10) payload = "\n" + line;
+      }
+      await fh.write(payload);
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  }
+  /**
+   * Cross-process mutual exclusion via an exclusive-create lockfile. A lock older
+   * than `staleLockMs` (writer crashed mid-save) is broken. Backoff is bounded.
+   */
+  async withLock(fn) {
+    const lockPath = `${this.path}.lock`;
+    const deadline = Date.now() + this.lockTimeoutMs;
+    let delay = 5;
+    let lock;
+    while (!lock) {
+      try {
+        lock = await open2(lockPath, "wx", 384);
+      } catch (err) {
+        if (err.code !== "EEXIST") throw err;
+        try {
+          const st = await stat(lockPath);
+          if (Date.now() - st.mtimeMs > this.staleLockMs) {
+            await unlink(lockPath).catch(() => void 0);
+            continue;
+          }
+        } catch {
+          continue;
+        }
+        if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
+        await sleep(delay + Math.floor(Math.random() * delay));
+        delay = Math.min(delay * 2, 200);
+      }
+    }
+    try {
+      await lock.write(`${process.pid} ${(/* @__PURE__ */ new Date()).toISOString()}
+`);
+      return await fn();
+    } finally {
+      await lock.close().catch(() => void 0);
+      await unlink(lockPath).catch(() => void 0);
+    }
+  }
+  // ── read path ───────────────────────────────────────────────────────────────
+  async scan() {
+    let text;
+    try {
+      text = await readFile(this.path, "utf8");
     } catch (err) {
-      if (err.code === "ENOENT") return [];
+      if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
     }
-  }
-  /** Re-validate on read so a hand-edited/corrupt line can never poison a result. */
-  tryParseLine(line) {
-    let raw;
-    try {
-      raw = JSON.parse(line);
-    } catch {
-      return null;
+    const runs = [];
+    const corrupt = [];
+    const lines = text.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      if (raw === void 0 || raw.trim().length === 0) continue;
+      const lineNo = i + 1;
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        corrupt.push({ line: lineNo, reason: "invalid-json" });
+        continue;
+      }
+      const r = validateCampaignRun(parsed);
+      if (r.ok) {
+        runs.push({ line: lineNo, run: r.value });
+        continue;
+      }
+      const version2 = parsed && typeof parsed === "object" ? parsed.schemaVersion : void 0;
+      corrupt.push({
+        line: lineNo,
+        reason: SUPPORTED_VERSIONS.includes(version2) ? "schema-invalid" : "unknown-schema-version"
+      });
     }
-    const r = validateCampaignRun(raw);
-    return r.ok ? r.value : null;
+    this.warnCorrupt(corrupt);
+    return { runs, corrupt };
+  }
+  /** One stderr warning per distinct set of bad lines (not one per read). */
+  warnCorrupt(corrupt) {
+    if (corrupt.length === 0) return;
+    const key = corrupt.map((c) => `${c.line}:${c.reason}`).join(",");
+    if (key === this.warnedKey) return;
+    this.warnedKey = key;
+    const detail = corrupt.map((c) => `${c.line} (${c.reason})`).join(", ");
+    process.stderr.write(
+      `intent-outreach: warning: ${corrupt.length} unreadable line(s) in ${this.path} were skipped: line ${detail}
+`
+    );
   }
 };
 

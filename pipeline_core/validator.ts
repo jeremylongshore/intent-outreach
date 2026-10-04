@@ -30,7 +30,37 @@ import {
  * receive one from the functions below.
  */
 declare const VALIDATED: unique symbol;
-export type Validated<T> = T & { readonly [VALIDATED]: true };
+
+/**
+ * Recursively readonly view of a value. A validated record is a SNAPSHOT: the
+ * compiler rejects `run.messages.push(x)` / `run.id = "y"` after the gate, and
+ * the runtime backs that up with a deep `Object.freeze` (see `deepFreeze`).
+ */
+export type DeepReadonly<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends readonly (infer U)[]
+    ? readonly DeepReadonly<U>[]
+    : T extends object
+      ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T;
+
+export type Validated<T> = DeepReadonly<T> & { readonly [VALIDATED]: true };
+
+/**
+ * Recursively `Object.freeze` a freshly-parsed value. Post-validation mutation
+ * then throws in strict mode (all ESM is strict) instead of silently producing a
+ * branded-but-invalid record. zod builds new objects/arrays for every schema'd
+ * node; opaque `z.unknown()` payloads (Enrichment.data values) pass through by
+ * reference and are frozen too — they are part of the record from here on.
+ */
+function deepFreeze<T>(value: T, seen: WeakSet<object> = new WeakSet()): T {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const key of Reflect.ownKeys(value)) {
+    deepFreeze((value as Record<PropertyKey, unknown>)[key], seen);
+  }
+  return Object.freeze(value);
+}
 
 export class ValidationError extends Error {
   constructor(
@@ -59,7 +89,8 @@ function gate<S extends z.ZodTypeAny>(
 ): ValidateResult<z.infer<S>> {
   const parsed = schema.safeParse(raw);
   if (parsed.success) {
-    return { ok: true, value: parsed.data as Validated<z.infer<S>> };
+    // The ONLY place the brand is minted (CI rejects `as Validated` elsewhere).
+    return { ok: true, value: deepFreeze(parsed.data) as Validated<z.infer<S>> };
   }
   return { ok: false, error: new ValidationError(kind, parsed.error.issues) };
 }
