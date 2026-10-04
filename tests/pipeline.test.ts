@@ -299,7 +299,7 @@ describe("runCampaign failure isolation", () => {
     expect(run.rejectedDrafts[0]?.issues.join(" ")).toMatch(/createdAt/);
   });
 
-  it("promptVersion derives from the pack's draft prompt file (b2b-sdr: outreach.v1.md)", async () => {
+  it("promptVersion derives from the pack's draft prompt file (b2b-sdr: outreach.v2.md)", async () => {
     const { run } = await runCampaign({
       id: "run-pv",
       icp: "x",
@@ -307,7 +307,7 @@ describe("runCampaign failure isolation", () => {
       provider: stubProvider("anthropic"),
       now: clock,
     });
-    expect(run.messages[0]?.promptVersion).toBe("outreach.v1");
+    expect(run.messages[0]?.promptVersion).toBe("outreach.v2");
   });
 });
 
