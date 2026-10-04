@@ -24,7 +24,7 @@ export const b2bSdrPack: Pack = {
   compliance: noopCompliance,
   // Exactly the files seam.ts loaded before packs existed — keeps output identical.
   prompts: {
-    score: ["research.v1.md", "enrich.v1.md"],
-    draft: "outreach.v1.md",
+    score: ["research.v2.md", "enrich.v2.md"],
+    draft: "outreach.v2.md",
   },
 };

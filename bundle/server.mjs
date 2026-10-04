@@ -38426,9 +38426,24 @@ function gateOrThrow(kind, schema, raw) {
 var validateCampaignRun = (raw) => gate("CampaignRun", CampaignRunSchema, raw);
 var assertCampaignRun = (raw) => gateOrThrow("CampaignRun", CampaignRunSchema, raw);
 
+// pipeline_core/draft-guard.ts
+var PROPER_STOPWORDS = new Set(
+  [
+    "a an the this that these those it its they their there here we our you your i he she his her",
+    "just recently recent new now likely probably possibly may might could would should will can",
+    "raised raising hiring hired scaling growing launched launching announced expanding building",
+    "series seed round funding company team teams sales marketing engineering product customers",
+    "and or but so if when while with without for from to of in on at by as after before since",
+    "january february march april may june july august september october november december",
+    "monday tuesday wednesday thursday friday saturday sunday",
+    "b2b b2c saas ceo cto cfo coo cro vp head director founder founders cofounder",
+    "north south east west american european us uk eu"
+  ].join(" ").split(/\s+/)
+);
+
 // pipeline_core/seam.ts
 var ScoreOutputSchema = external_exports.object({
-  fitScore: external_exports.number().min(0).max(100),
+  fitScore: external_exports.number().int().min(0).max(100),
   fitReason: external_exports.string(),
   angles: external_exports.array(external_exports.string()).max(3)
 });
