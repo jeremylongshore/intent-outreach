@@ -6,7 +6,7 @@ Claude Code, with your own model.**
 Intent Outreach is a model-agnostic, Claude-Code-native SDR orchestrator. It researches companies,
 enriches the leads, and drafts personalized outreach — running **fully on your machine**, with **your
 own** data-provider and model keys, and **zero Google dependency**. Claude is the default model. OpenAI
-(gpt-4o) is also enabled, and xAI (Grok) ships behind the eval gate until a keyed eval run approves a model.
+(gpt-4o) and MiniMax (MiniMax-M3, eval-gated in) are also enabled, and xAI (Grok) ships behind the eval gate until a keyed eval run approves a model.
 It drafts and records; it **never sends** a message to anyone.
 
 As a Claude Code plugin, an **orchestrator skill** (`/intent-outreach`) dispatches **phase sub-agents**
@@ -99,7 +99,7 @@ node bundle/cli.mjs suppress list
 on a fresh clone with no `node_modules`); regenerate them with `npm run bundle`.
 
 `run` options: `--icp` and `--domains` (required), `--profile <path|name>`, `--provider
-anthropic|openai|xai`, `--model`, `--channel email|linkedin`, `--min-score 0-100`, `--max-contacts 1-50`,
+anthropic|openai|minimax|xai`, `--model`, `--channel email|linkedin`, `--min-score 0-100`, `--max-contacts 1-50`,
 `--out <path>`, `--json`. Every flag is validated before anything is spent; a bad or unknown flag prints an
 error and exits with code **2** (runtime failures exit 1).
 
@@ -171,6 +171,7 @@ confirm commercial terms with the provider before a campaign.
 | `ZOOMINFO_JWT`                      | ZoomInfo — enrichment                                    | enterprise       |
 | `ANTHROPIC_API_KEY`                 | Claude (default model)                                   | —                |
 | `OPENAI_API_KEY`                    | OpenAI gpt-4o                                            | —                |
+| `MINIMAX_API_KEY`                   | MiniMax-M3 (OpenAI-compatible; keyed eval gate passed)   | —                |
 | `XAI_API_KEY`                       | Grok (adapter ready; gated until a keyed eval run passes) | —               |
 
 The anthropic and openai approvals in `evals/supported.ts` are legacy claims marked `verified: false`; they

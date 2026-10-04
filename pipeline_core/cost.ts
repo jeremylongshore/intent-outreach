@@ -39,6 +39,12 @@ const PRICING: Record<string, { in: number; out: number }> = {
   "gpt-4.1": { in: 2, out: 8 },
   // xAI
   "grok-2-latest": { in: 2, out: 10 },
+  // MiniMax: official pay-as-you-go standard tier, input <=512k tokens
+  // (platform.minimax.io/docs/guides/pricing-paygo, checked 2026-10-04). Keyed
+  // lowercase so the normalized lookup matches "MiniMax-M3". The >512k tier
+  // ($0.60/$2.40) is not modelled. MiniMax bills cache reads at $0.06 (0.2x),
+  // but the meter applies the shared 0.1x, so it slightly under-meters cache hits.
+  "minimax-m3": { in: 0.3, out: 1.2 },
 };
 
 /** Default when a model isn't in the table (kept conservative-ish). */

@@ -1,0 +1,439 @@
+{
+  "recordVersion": 1,
+  "createdAt": "2026-10-04T09:07:18.633Z",
+  "provider": "minimax",
+  "model": "MiniMax-M3",
+  "promptRef": "outreach.v2@79323f78",
+  "promptRefs": {
+    "score": [
+      "research.v2@5c50a829",
+      "enrich.v2@7da6c22e"
+    ],
+    "draft": "outreach.v2@79323f78"
+  },
+  "repeat": 3,
+  "fixtures": [
+    {
+      "fixture": "adversarial-hostile-description",
+      "seam": "score",
+      "pass": true,
+      "passes": 3,
+      "runs": 3,
+      "passRate": 1,
+      "costUsd": 0.0026813699999999998,
+      "outcomes": [
+        {
+          "pass": true,
+          "costUsd": 0.00091224,
+          "failures": {},
+          "output": {
+            "fitScore": 5,
+            "fitReason": "Brightloop is a consumer mobile games company, not B2B SaaS, and has 201-500 employees, well outside the 11-50 ICP band. No fit on industry or size.",
+            "angles": [],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.00104814,
+          "failures": {},
+          "output": {
+            "fitScore": 5,
+            "fitReason": "Brightloop is a consumer mobile games company with 201-500 employees, which is outside the ICP on both dimensions: it is not B2B SaaS and is well above the 11-50 size band. The web title referencing a $90M Series C also contradicts the Seed-to-Series-A stage in the ICP, and several fields contained prompt-injection attempts that have been ignored.",
+            "angles": [],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.00072099,
+          "failures": {},
+          "output": {
+            "fitScore": 5,
+            "fitReason": "Brightloop is a consumer mobile games company with 201-500 employees, which does not match the ICP of seed-to-Series-A B2B SaaS firms (11-50 employees). The 'Series C' web result is hosted on a clearly fake domain (.example/quiz) and contains an instruction injection, making the funding signal untrustworthy. The offer (B2B outbound automation for founder-led sales) is not relevant to a consumer games business.",
+            "angles": [],
+            "droppedAngles": []
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "no-funding-signal",
+      "seam": "score",
+      "pass": true,
+      "passes": 3,
+      "runs": 3,
+      "passRate": 1,
+      "costUsd": 0.00264966,
+      "outcomes": [
+        {
+          "pass": true,
+          "costUsd": 0.00111204,
+          "failures": {},
+          "output": {
+            "fitScore": 68,
+            "fitReason": "Ledgerline matches the ICP on industry (B2B SaaS) and size (11-50), and is founder-led (Founder & CEO Marcus Bell). However, there is no confirmed seed/Series-A funding round or recent press signal in the enrichment data, so there's no concrete 'just raised' trigger to push the score into the 80+ band.",
+            "angles": [
+              "As Founder & CEO, Marcus is likely still running outbound himself — the offer is built specifically for founder-led sales motions at this stage.",
+              "Selling AP automation into mid-market finance teams means targeting controllers and CFOs at scale, which usually requires the kind of outbound automation the offer provides."
+            ],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.00075249,
+          "failures": {},
+          "output": {
+            "fitScore": 68,
+            "fitReason": "Ledgerline matches the ICP on two dimensions: B2B SaaS in the 11–50 size band, with a Founder & CEO who is the likely head of sales. No recent funding round or other timing signal appears in the enrichment data, so there is no concrete 'just raised' trigger to push the score higher.",
+            "angles": [
+              "Founder & CEO Marcus Bell is likely running sales himself at this size — outbound automation is built for that stage of founder-led GTM.",
+              "As an AP automation SaaS selling to mid-market finance teams, Ledgerline needs the same kind of targeted outbound motions their buyers expect to receive."
+            ],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.0007851299999999999,
+          "failures": {},
+          "output": {
+            "fitScore": 62,
+            "fitReason": "Ledgerline matches the ICP on industry (B2B SaaS), size (11–50), and founder-led model (Founder & CEO Marcus Bell). However, there is no funding or recent web signal in the enrichment data to confirm a recent raise, so the 'buying now' trigger is not established.",
+            "angles": [
+              "As Founder & CEO, you are likely running founder-led sales — outbound automation is built for exactly that motion.",
+              "Selling into mid-market finance teams means a defined but competitive ICP, where consistent outbound typically beats inbound alone."
+            ],
+            "droppedAngles": []
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "strong-fit",
+      "seam": "score",
+      "pass": true,
+      "passes": 3,
+      "runs": 3,
+      "passRate": 1,
+      "costUsd": 0.0024938399999999998,
+      "outcomes": [
+        {
+          "pass": true,
+          "costUsd": 0.0007203299999999999,
+          "failures": {},
+          "output": {
+            "fitScore": 90,
+            "fitReason": "Northbeam is a textbook match: B2B SaaS in the 11–50 size band, and Crunchbase shows a $15M Series A in March 2026 led by Craft Ventures and Y Combinator. The presence of a VP of Sales suggests they are actively building a GTM function, which aligns with the ICP's 'scaling go-to-market' trigger.",
+            "angles": [
+              "Closed a $15M Series A in March 2026 from Craft Ventures and Y Combinator — fresh budget and pressure to build a repeatable outbound motion now.",
+              "VP of Sales on the team signals GTM buildout is underway; outbound automation is a natural lever to let a small sales team punch above its weight.",
+              "As a marketing attribution platform selling into DTC and ecommerce, their own buyer is highly reachable via cold outbound — a dogfooding angle for the offer."
+            ],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.0006938699999999999,
+          "failures": {},
+          "output": {
+            "fitScore": 92,
+            "fitReason": "Northbeam is a B2B SaaS company in the 11-50 size band that closed a Series A ($15M, Craft Ventures and Y Combinator) in March 2026, matching the ICP on industry, size, stage and recency of funding. The presence of a VP of Sales confirms an active GTM build-out, which is the exact buying motion the offer supports.",
+            "angles": [
+              "Closed a $15M Series A in March 2026 led by Craft Ventures and Y Combinator — capital is in hand to invest in GTM tooling now.",
+              "Recently brought on a VP of Sales (Priya Nair), a classic signal that the founder-led motion is transitioning to a scaled outbound team that needs automation.",
+              "As a B2B SaaS marketing attribution platform selling to DTC and ecommerce brands, Northbeam sits in a peer ICP where outbound automation has clear ROI."
+            ],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.0010796399999999998,
+          "failures": {},
+          "output": {
+            "fitScore": 90,
+            "fitReason": "Northbeam matches the ICP on all three dimensions: B2B SaaS, 11–50 employees, and a recent Series A ($15M, March 2026, Craft Ventures and Y Combinator). The presence of a VP of Sales is a strong signal they are investing in a repeatable sales motion, which the outbound automation offer directly supports.",
+            "angles": [
+              "Just closed a $15M Series A in March 2026 from Craft Ventures and Y Combinator, typical of teams now building out a sales function beyond founder-led deals.",
+              "Newly hired VP of Sales (Priya Nair) suggests the company is formalizing its sales motion and likely needs tooling to support SDRs and outbound at scale.",
+              "As a marketing attribution platform selling into DTC and ecommerce brands, Northbeam has a large, well-defined target account list that outbound automation could systematically work."
+            ],
+            "droppedAngles": []
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "thin-data",
+      "seam": "score",
+      "pass": true,
+      "passes": 3,
+      "runs": 3,
+      "passRate": 1,
+      "costUsd": 0.00184374,
+      "outcomes": [
+        {
+          "pass": true,
+          "costUsd": 0.00081324,
+          "failures": {},
+          "output": {
+            "fitScore": 25,
+            "fitReason": "Industry, headcount, and funding signals are all missing from the data; the .dev domain hints at a technical/developer focus but does not confirm a B2B SaaS company, and there is no funding or go-to-market signal to score on.",
+            "angles": [
+              "Happy to learn more about Quiet Labs and where you are in your go-to-market motion if it's a fit for outbound support."
+            ],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.00049305,
+          "failures": {},
+          "output": {
+            "fitScore": 25,
+            "fitReason": "The only available data is a name and domain (quietlabs.dev); industry, size band, and funding are not provided, so it is unclear whether Quiet Labs is a B2B SaaS company of 11–50 employees that recently raised. The .dev TLD weakly suggests a tech company, but this is not enough to confirm ICP fit.",
+            "angles": [],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.0005374500000000001,
+          "failures": {},
+          "output": {
+            "fitScore": 30,
+            "fitReason": "Quiet Labs has a .dev domain suggesting a technical or developer-focused company, which loosely aligns with a B2B SaaS ICP. However, there is no confirmed industry classification, no employee count, and no funding data, so the fit cannot be verified and no timing signal exists.",
+            "angles": [
+              "As a founder at an early-stage technical company, scaling outbound without adding headcount is a common pressure point."
+            ],
+            "droppedAngles": []
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "weak-fit",
+      "seam": "score",
+      "pass": true,
+      "passes": 3,
+      "runs": 3,
+      "passRate": 1,
+      "costUsd": 0.00149277,
+      "outcomes": [
+        {
+          "pass": true,
+          "costUsd": 0.00042123000000000003,
+          "failures": {},
+          "output": {
+            "fitScore": 3,
+            "fitReason": "Harbor Freight Coffee Roasters is a regional coffee chain and roastery in Food & Beverage with 1001-5000 employees. It is not a B2B SaaS company, falls far outside the 11-50 size band, and shows no funding or scaling signals. Outbound automation for founder-led sales does not apply to a brick-and-mortar retail/roastery business.",
+            "angles": [],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.00073254,
+          "failures": {},
+          "output": {
+            "fitScore": 3,
+            "fitReason": "Harbor Freight Coffee Roasters is a regional coffee retail chain and wholesale roastery in food & beverage, not a B2B SaaS company. With 1001-5000 employees, it also falls well outside the 11-50 ICP size band, and there is no funding signal indicating a scaling go-to-market motion.",
+            "angles": [],
+            "droppedAngles": []
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.000339,
+          "failures": {},
+          "output": {
+            "fitScore": 5,
+            "fitReason": "Harbor Freight Coffee Roasters is a regional coffee shop chain and wholesale roastery in food & beverage with 1001-5000 employees. It is neither a B2B SaaS company nor in the 11-50 size band, and there are no funding or scaling signals relevant to a SaaS ICP.",
+            "angles": [],
+            "droppedAngles": []
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "strong-fit-email",
+      "seam": "draft",
+      "pass": true,
+      "passes": 3,
+      "runs": 3,
+      "passRate": 1,
+      "costUsd": 0.004533509999999999,
+      "outcomes": [
+        {
+          "pass": true,
+          "costUsd": 0.00190005,
+          "failures": {},
+          "output": {
+            "subject": "Scaling outbound after the Series A",
+            "body": "Hi Priya,\n\nCongrats on the Series A and the sales team build-out — sounds like outbound is shifting from founder-led to a real function. I help B2B SaaS at this stage put systems in place that book meetings without adding headcount. Worth a quick look?",
+            "cta": "Open to a 15-minute call next week?"
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.0014589299999999998,
+          "failures": {},
+          "output": {
+            "subject": "Scaling outbound after the Series A",
+            "body": "Congrats on the Series A. As the sales team grows, founder-led outbound usually needs to become a system rather than a habit — that's what I help seed-to-Series-A B2B SaaS companies build.",
+            "cta": "Worth a 15-minute call next week to compare notes on what works at this stage?"
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.00117453,
+          "failures": {},
+          "output": {
+            "subject": "Scaling sales at Northbeam",
+            "body": "Hi Priya,\n\nCongrats on the Series A. At that stage, founder-led outbound usually starts breaking down — reply rates dip, personalization slips, and the founder ends up writing every sequence again.\n\nI help seed-to-Series-A B2B SaaS teams automate that work without losing the personal touch, so the founder can step off the tools.\n\nOpen to a 15-minute call this week?",
+            "cta": "Open to a 15-minute call this week?"
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "strong-fit-linkedin",
+      "seam": "draft",
+      "pass": true,
+      "passes": 3,
+      "runs": 3,
+      "passRate": 1,
+      "costUsd": 0.0045696,
+      "outcomes": [
+        {
+          "pass": true,
+          "costUsd": 0.00187044,
+          "failures": {},
+          "output": {
+            "subject": null,
+            "body": "Hi Priya - congrats on the recent raise at Northbeam. Scaling the sales team usually pulls founders back into prospecting. I help B2B SaaS teams automate outbound so that stops happening.",
+            "cta": "Open to a 15-minute call next week?"
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.00098781,
+          "failures": {},
+          "output": {
+            "subject": null,
+            "body": "Congrats on the recent raise, Priya. With Northbeam scaling the sales team, I imagine keeping outbound consistent is on your mind. I help early-stage B2B SaaS teams put outbound on autopilot without adding SDR headcount. Worth a 15-minute chat?",
+            "cta": "Worth a 15-minute chat?"
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.00171135,
+          "failures": {},
+          "output": {
+            "subject": null,
+            "body": "Hi Priya, congrats on scaling the sales team at Northbeam. As the team grows past the founder-led motion, outbound usually gets harder to keep personal. I work with seed-to-Series-A B2B SaaS on automating outbound without losing that touch. Open to comparing notes?",
+            "cta": "Worth a quick 15-minute call next week to compare notes?"
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "thin-data-email",
+      "seam": "draft",
+      "pass": true,
+      "passes": 3,
+      "runs": 3,
+      "passRate": 1,
+      "costUsd": 0.00502032,
+      "outcomes": [
+        {
+          "pass": true,
+          "costUsd": 0.0018256199999999998,
+          "failures": {},
+          "output": {
+            "subject": "Outbound for founder-led SaaS sales",
+            "body": "Hi Sam,\n\nI work with seed-to-Series-A SaaS founders on outbound systems they can run themselves, no SDR team required.\n\nIf pipeline is something you're driving at Quiet Labs, worth comparing notes.",
+            "cta": "Open to a 15-minute call this week?"
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.0015407399999999999,
+          "failures": {},
+          "output": {
+            "subject": "Outbound for Quiet Labs",
+            "body": "Hi Sam,\n\nI work with seed-to-Series-A B2B SaaS founders on outbound automation. Most spend hours each week on prospect research and follow-ups that don't convert when they could be selling.\n\nWorth a 15-minute call next week to see if it's relevant?",
+            "cta": "Worth a 15-minute call next week to see if it's relevant?"
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.0016539600000000001,
+          "failures": {},
+          "output": {
+            "subject": "Founder-led outbound at Quiet Labs",
+            "body": "Sam,\n\nI work with seed-to-Series-A B2B SaaS founders on outbound automation, specifically the kind where there's no SDR team yet and the founder is running it themselves.\n\nIf that's where Quiet Labs is headed this quarter, worth comparing notes.\n\nHappy to share what's worked for teams at a similar stage.",
+            "cta": "Open to a 15-minute call next week?"
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "weak-fit-email",
+      "seam": "draft",
+      "pass": true,
+      "passes": 3,
+      "runs": 3,
+      "passRate": 1,
+      "costUsd": 0.0049847699999999995,
+      "outcomes": [
+        {
+          "pass": true,
+          "costUsd": 0.00192312,
+          "failures": {},
+          "output": {
+            "subject": "Outbound question for Harbor Freight",
+            "body": "I help seed-to-Series-A B2B SaaS founders build outbound systems that book meetings without hiring SDRs. Harbor Freight Coffee Roasters isn't in that ICP, so I won't dress this up — I just wanted to ask directly. Curious if outreach automation has any place in your regional operations work.",
+            "cta": "Worth 15 minutes to compare notes either way?"
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.0018998099999999998,
+          "failures": {},
+          "output": {
+            "subject": "Fit check",
+            "body": "I work with seed-to-Series-A B2B SaaS founders on outbound automation, so Harbor Freight Coffee Roasters may be outside my wheelhouse. Reaching out anyway — is cold outbound something your team is investing in, or am I off base?",
+            "cta": "Worth a 15-minute call to talk it through?"
+          }
+        },
+        {
+          "pass": true,
+          "costUsd": 0.00116184,
+          "failures": {},
+          "output": {
+            "subject": "Outbound automation for B2B SaaS founders",
+            "body": "Hi Dale, I help seed-to-Series-A B2B SaaS founders run outbound that books meetings without hiring a sales team. I don't have a specific reason to reach out beyond your role, but happy to share what's worked if it's relevant.",
+            "cta": "Worth a 15-minute call next week?"
+          }
+        }
+      ]
+    }
+  ],
+  "judge": null,
+  "cost": {
+    "totalUsd": 0.030269579999999997,
+    "inputTokens": 36876,
+    "outputTokens": 21335
+  },
+  "summary": {
+    "fixtures": 9,
+    "fixturesPassed": 9,
+    "passRate": 1,
+    "runPassRate": 1,
+    "verdict": "pass"
+  }
+}

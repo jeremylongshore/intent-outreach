@@ -4,7 +4,7 @@
  * Because connector calls are deterministic glue (pipeline.ts), the hard
  * cross-provider TOOL-CALLING problem collapses to the easy cross-provider
  * STRUCTURED-OUTPUT problem — which the Vercel AI SDK's generateText +
- * Output.object solves uniformly across Anthropic / OpenAI / xAI.
+ * Output.object solves uniformly across Anthropic / OpenAI / xAI / MiniMax.
  *
  * Google was dropped entirely (owner decision, 2026-10): no adapter, no key
  * lookup, no optional dependency. Intent Outreach is zero-Google.
@@ -16,13 +16,21 @@
  * and dynamically imported, so a minimal install still works on Claude alone.
  */
 
-import { generateText, Output, type LanguageModel, type LanguageModelUsage } from "ai";
+import {
+  extractReasoningMiddleware,
+  generateText,
+  Output,
+  wrapLanguageModel,
+  type LanguageModel,
+  type LanguageModelUsage,
+} from "ai";
 import type { z } from "zod";
 import { getSecret, hasSecret } from "./secrets.js";
 import { costFor, type Usage } from "./cost.js";
+import { minimaxJsonMiddleware } from "./minimax.js";
 import { approvedEntry, supportedProviderNames } from "../evals/supported.js";
 
-export type ProviderName = "anthropic" | "openai" | "xai";
+export type ProviderName = "anthropic" | "openai" | "xai" | "minimax";
 
 /**
  * Providers that may run unguarded: DERIVED from evals/supported.ts. A provider
@@ -38,12 +46,14 @@ const DEFAULT_MODEL: Record<ProviderName, string> = {
   anthropic: "claude-sonnet-4-6",
   openai: "gpt-4o",
   xai: "grok-2-latest",
+  minimax: "MiniMax-M3",
 };
 
 const KEY_ENV: Record<ProviderName, string[]> = {
   anthropic: ["ANTHROPIC_API_KEY"],
   openai: ["OPENAI_API_KEY"],
   xai: ["XAI_API_KEY"],
+  minimax: ["MINIMAX_API_KEY"],
 };
 
 /** Anthropic effort levels the seams use (thinking depth + overall token spend). */
@@ -77,10 +87,19 @@ export interface LLMProvider {
   ): Promise<{ object: z.infer<S>; usage: Usage }>;
 }
 
+/** MiniMax's OpenAI-compatible endpoint (override for a gateway with MINIMAX_BASE_URL). */
+export const MINIMAX_BASE_URL = "https://api.minimax.io/v1";
+
+/**
+ * Auto-detect preference order: Claude first (D4), then OpenAI, then MiniMax.
+ * MiniMax sits after both, so adding a MINIMAX_API_KEY never displaces a
+ * configured Anthropic/OpenAI key. Making it the default is an owner decision.
+ */
+export const DETECT_ORDER: readonly ProviderName[] = ["anthropic", "openai", "minimax", "xai"];
+
 /** First provider with a configured key, in Claude-first preference order. */
 export function detectProvider(): ProviderName {
-  const order: ProviderName[] = ["anthropic", "openai", "xai"];
-  for (const p of order) {
+  for (const p of DETECT_ORDER) {
     if (KEY_ENV[p].some((k) => hasSecret(k))) return p;
   }
   return "anthropic";
@@ -117,7 +136,36 @@ async function resolveModel(provider: ProviderName, modelId: string): Promise<La
       const { createXai } = await import("@ai-sdk/xai");
       return createXai({ apiKey: firstKey("xai") })(modelId);
     }
+    case "minimax": {
+      // OpenAI-compatible endpoint. supportsStructuredOutputs is OFF on purpose:
+      // a live probe showed M3 accepts response_format json_schema and ignores
+      // it, so we run JSON mode and minimaxJsonMiddleware carries the schema in
+      // a system message, strips <think> blocks/fences and coerces "" -> [].
+      const { createOpenAICompatible } = await import("@ai-sdk/openai-compatible");
+      const baseURL = process.env.MINIMAX_BASE_URL ?? MINIMAX_BASE_URL;
+      const base = createOpenAICompatible({
+        name: "minimax",
+        baseURL,
+        apiKey: firstKey("minimax"),
+        includeUsage: true,
+        supportsStructuredOutputs: false,
+      })(modelId);
+      return wrapMinimax(base);
+    }
   }
+}
+
+/**
+ * Apply the MiniMax middleware stack. The JSON middleware is listed first, so
+ * it is outermost and sees text AFTER extractReasoningMiddleware has lifted
+ * terminated <think> blocks into reasoning parts; its own stripThink stays as
+ * the safety net for an unterminated block (token budget exhausted).
+ */
+export function wrapMinimax(model: Parameters<typeof wrapLanguageModel>[0]["model"]): LanguageModel {
+  return wrapLanguageModel({
+    model,
+    middleware: [minimaxJsonMiddleware, extractReasoningMiddleware({ tagName: "think" })],
+  });
 }
 
 /**
