@@ -66597,11 +66597,11 @@ function backoffMs(attempt) {
   return Math.min(MAX_RETRY_WAIT_MS, Math.round(ceiling * (0.5 + Math.random() * 0.5)));
 }
 function sleep(ms, signal) {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
     const t = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
-      resolve3();
+      resolve4();
     }, ms);
     const onAbort = () => {
       clearTimeout(t);
@@ -76926,7 +76926,7 @@ var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
 var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
 var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
-function normalizeDomain(input2) {
+function normalizeDomain2(input2) {
   if (typeof input2 !== "string" || !input2.trim()) {
     throw new Error(`invalid domain ${JSON.stringify(input2)}: empty`);
   }
@@ -76949,7 +76949,7 @@ function normalizeDomain(input2) {
 }
 function normalizeDomainLenient(domain2) {
   try {
-    return normalizeDomain(domain2);
+    return normalizeDomain2(domain2);
   } catch {
     return String(domain2 ?? "").trim().toLowerCase();
   }
@@ -76958,7 +76958,7 @@ function normalizeDomains(domains) {
   const out = [];
   const seen = /* @__PURE__ */ new Set();
   for (const d of domains) {
-    const n = normalizeDomain(d);
+    const n = normalizeDomain2(d);
     if (!seen.has(n)) {
       seen.add(n);
       out.push(n);
@@ -77045,7 +77045,7 @@ function isPushOnly(name29) {
 }
 async function runResearch(domain2, icp, opts = {}) {
   registerBuiltinConnectors();
-  const target = normalizeDomain(domain2);
+  const target = normalizeDomain2(domain2);
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const connectors = getConfiguredConnectors("research");
   const leads = [];
@@ -77361,7 +77361,7 @@ function defaultStorePath() {
   return join3(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
-var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
 var JsonlRunStore = class {
   constructor(path = defaultStorePath(), opts = {}) {
     this.path = path;
@@ -77450,7 +77450,7 @@ var JsonlRunStore = class {
           continue;
         }
         if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
-        await sleep(delay3 + Math.floor(Math.random() * delay3));
+        await sleep2(delay3 + Math.floor(Math.random() * delay3));
         delay3 = Math.min(delay3 * 2, 200);
       }
     }
