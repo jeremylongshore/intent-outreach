@@ -32,3 +32,9 @@ out/
 .dolt/
 *.db
 .beads-credential-key
+
+# Agent checkouts, coverage and mutation output
+.claude/worktrees/
+coverage/
+reports/mutation/
+.stryker-tmp/

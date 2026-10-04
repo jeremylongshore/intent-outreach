@@ -30,7 +30,12 @@
     "test:watch": "vitest",
     "mcp": "tsx mcp/server.ts",
     "evals": "npx -y promptfoo eval -c evals/promptfooconfig.yaml",
-    "lint": "tsc --noEmit"
+    "lint": "biome lint .",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "vitest run tests/mcp.e2e.test.ts tests/cli.e2e.test.ts",
+    "test:architecture": "vitest run tests/architecture.test.ts",
+    "mutation": "stryker run",
+    "audit:gate": "node .github/scripts/audit-gate.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.63",
@@ -39,7 +44,11 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/node": "^26.5.1",
+    "@vitest/coverage-v8": "^5.0.3",
     "esbuild": "^0.28.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
