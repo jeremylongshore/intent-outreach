@@ -121,6 +121,8 @@ describe("runCampaign meters prompt-cache tokens", () => {
           fitScore: 80,
           fitReason: "fit",
           angles: ["a"],
+          decline: false,
+          declineReason: null,
           subject: "s",
           body: "b",
           cta: "c",
@@ -169,7 +171,7 @@ describe("connector per-item failures land in run.failedConnectors", () => {
       model: "claude-sonnet-4-6",
       async generateObject({ schema }) {
         return {
-          object: schema.parse({ fitScore: 1, fitReason: "r", angles: [], subject: "s", body: "b", cta: "c" }),
+          object: schema.parse({ fitScore: 1, fitReason: "r", angles: [], decline: false, declineReason: null, subject: "s", body: "b", cta: "c" }),
           usage: { inputTokens: 1, outputTokens: 1, costUsd: 0 },
         };
       },

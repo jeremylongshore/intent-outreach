@@ -16,7 +16,7 @@
 import { describe, expect, it } from "vitest";
 import { formatReport, runEvals } from "../evals/run.js";
 import { draftContract, draftStyle, groundingHeuristic, schemaConformance } from "../evals/scorers.js";
-import type { DraftContext, DraftOutput } from "../pipeline_core/seam.js";
+import type { DraftContext, DraftOutput, DraftText } from "../pipeline_core/seam.js";
 
 describe("eval harness — offline (stub provider, no keys, free)", () => {
   it("reports the stub provider SUPPORTED and the run all-supported", async () => {
@@ -87,6 +87,8 @@ describe("groundingHeuristic catches fabrication", () => {
 
   it("flags a fabricated funding figure absent from the inputs", () => {
     const hallucinated: DraftOutput = {
+      decline: false,
+      declineReason: null,
       subject: "Scaling Quiet Labs",
       body:
         "Hi Sam — congrats on Quiet Labs raising your $12M Series B from Sequoia Capital. " +
@@ -108,7 +110,7 @@ describe("groundingHeuristic catches fabrication", () => {
   });
 
   it("passes an honest, grounded draft for the same thin-data context", () => {
-    const honest: DraftOutput = {
+    const honest: DraftText = {
       subject: "An idea for Quiet Labs",
       body:
         "Hi Sam — I work with founders on outbound and thought Quiet Labs might be a fit. " +
@@ -126,7 +128,7 @@ describe("groundingHeuristic catches fabrication", () => {
       angles: ["Northbeam raised a Series A and is hiring on the sales team."],
       channel: "email",
     };
-    const grounded: DraftOutput = {
+    const grounded: DraftText = {
       subject: "An idea for Northbeam",
       body:
         "Hi Priya — saw Northbeam raised a Series A and is growing the sales team. " +
@@ -145,7 +147,7 @@ describe("groundingHeuristic — beyond funding", () => {
     angles: ["Northbeam is hiring on the sales team."],
     channel: "email",
   };
-  const draft = (body: string): DraftOutput => ({ subject: "An idea for Northbeam", body, cta: "Open to a quick call?" });
+  const draft = (body: string): DraftText => ({ subject: "An idea for Northbeam", body, cta: "Open to a quick call?" });
   const findings = (body: string) => groundingHeuristic(ctx, draft(body)).findings.join(" | ");
 
   it("flags invented customers", () => {
@@ -213,5 +215,26 @@ describe("draftStyle — prompt caps + guardDraft", () => {
     const blob = r.findings.join(" ");
     expect(blob).toMatch(/banned stock phrase/);
     expect(blob).toMatch(/url not present in inputs/);
+  });
+});
+
+describe("groundingHeuristic: segments named in the ICP are not invented customers", () => {
+  const ctx: DraftContext = {
+    icp: "Outbound automation for founder-led sales at seed-to-Series-A B2B SaaS.",
+    lead: { domain: "northbeam.io", companyName: "Northbeam", source: "manual" },
+    contact: { name: "Priya Shah", leadDomain: "northbeam.io", source: "manual" },
+    angles: [],
+    channel: "email",
+  };
+  const draft = (body: string): DraftText => ({ subject: "An idea for Northbeam", body, cta: "Open to a call?" });
+
+  it("accepts a segment the ICP names, whatever the hyphenation", () => {
+    const r = groundingHeuristic(ctx, draft("I work with Series A B2B SaaS teams on outbound."));
+    expect(r.findings.filter((f) => f.startsWith("invented customer"))).toEqual([]);
+  });
+
+  it("still flags a named customer absent from the inputs", () => {
+    const r = groundingHeuristic(ctx, draft("We helped Stripe and Ramp scale outbound."));
+    expect(r.findings).toContain('invented customer/reference: "Stripe"');
   });
 });

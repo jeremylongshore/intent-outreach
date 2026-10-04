@@ -38790,9 +38790,9 @@ var APPROVED_MODELS = (
     {
       "provider": "minimax",
       "model": "MiniMax-M3",
-      "resultFile": "evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json",
+      "resultFile": "evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v3@eb798ecb-2.json",
       "verified": true,
-      "evidence": "keyed eval gate passed: repeat 3, 9/9 fixtures in all runs (evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json)"
+      "evidence": "keyed eval gate passed: repeat 3, 9/9 fixtures in all runs, judge per-fixture minimums met (mean 3.89) (evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v3@eb798ecb-2.json)"
     }
   ]
 );
@@ -38945,10 +38945,24 @@ var ScoreOutputSchema = external_exports.object({
   angles: external_exports.array(external_exports.string()).max(3)
 });
 var DraftOutputSchema = external_exports.object({
+  /**
+   * true = the model declines to draft because the lead clearly sits outside the
+   * ICP. A decline is never sent: the seam turns it into a DraftRejectedError so
+   * it lands in run.rejectedDrafts with the reason. Required (not defaulted) so
+   * strict structured-output providers accept the schema.
+   */
+  decline: external_exports.boolean(),
+  /** Why the lead is outside the ICP; null when not declining. */
+  declineReason: external_exports.string().nullable(),
   /** null = channel has no subject line (linkedin). */
   subject: external_exports.string().nullable(),
-  body: external_exports.string().min(1),
-  cta: external_exports.string().min(1)
+  /** Empty only when declining. */
+  body: external_exports.string(),
+  cta: external_exports.string()
+}).superRefine((d, ctx) => {
+  if (d.decline) return;
+  if (d.body.trim() === "") ctx.addIssue({ code: "custom", path: ["body"], message: "body is required unless declining" });
+  if (d.cta.trim() === "") ctx.addIssue({ code: "custom", path: ["cta"], message: "cta is required unless declining" });
 });
 
 // pipeline_core/packs/types.ts
@@ -38985,7 +38999,7 @@ var b2bSdrPack = {
   // Exactly the files seam.ts loaded before packs existed — keeps output identical.
   prompts: {
     score: ["research.v2.md", "enrich.v2.md"],
-    draft: "outreach.v2.md"
+    draft: "outreach.v3.md"
   }
 };
 

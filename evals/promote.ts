@@ -99,7 +99,7 @@ export async function promote(opts: PromoteOptions): Promise<PromoteResult> {
     resultFile,
     verified: true,
     evidence: `keyed eval gate passed: repeat ${repeat}, ${p.fixtures.length}/${p.fixtures.length} fixtures in all runs${
-      p.judge ? `, judge mean ${p.judge.meanRating.toFixed(2)} ≥ ${p.judge.floor}` : ""
+      p.judge ? `, judge per-fixture minimums met (mean ${p.judge.meanRating.toFixed(2)})` : ""
     } (${resultFile})`,
   };
   const file = opts.supportedFile ?? SUPPORTED_FILE;

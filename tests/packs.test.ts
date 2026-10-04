@@ -82,6 +82,8 @@ function stubProvider(name: ProviderName): LLMProvider {
         fitScore: 80,
         fitReason: "Fits the ICP.",
         angles: ["A relevant angle."],
+        decline: false,
+        declineReason: null,
         subject: "Subject line",
         body: "Hi — a short, relevant opener.",
         cta: "Open to a quick call?",

@@ -82,6 +82,8 @@ function goodScore(prompt: string) {
   return { fitScore: 10, fitReason: "Outside the ICP or too little data.", angles: [] };
 }
 const GOOD_DRAFT = {
+  decline: false,
+  declineReason: null,
   subject: "An idea for your team",
   body: "Hi, I work with founders on outbound and thought this might be a fit. No assumptions about your current setup.",
   cta: "Open to a 15-minute call next week?",
@@ -249,8 +251,8 @@ describe("result record (keyed)", () => {
   it("is written as <date>-<provider>-<model>-<promptRef>.json with the documented shape", async () => {
     const r = await keyed();
     const p = r.providers[0]!;
-    const ref = promptRef("outreach.v2.md");
-    expect(ref).toMatch(/^outreach\.v2@[0-9a-f]{8}$/);
+    const ref = promptRef("outreach.v3.md");
+    expect(ref).toMatch(/^outreach\.v3@[0-9a-f]{8}$/);
     const expected = `2026-10-04-anthropic-claude-sonnet-5-5-${ref}.json`;
     expect(recordFileName("anthropic", "claude-sonnet-5-5", ref, NOW())).toBe(expected);
     expect(p.recordPath).toBe(join(dir, expected));
@@ -290,6 +292,49 @@ describe("result record (keyed)", () => {
     expect(draft.pass).toBe(false);
     expect(draft.scorers.draftGuard?.findings.join(" ")).toMatch(/url not present/);
     expect(draft.costUsd).toBeGreaterThan(0);
+  });
+});
+
+// ── declines ────────────────────────────────────────────────────────────────
+
+const DECLINE = {
+  decline: true,
+  declineReason: "Not a B2B SaaS company, so the offer does not apply.",
+  subject: null,
+  body: "",
+  cta: "",
+};
+
+describe("declining out-of-ICP leads", () => {
+  it("a decline on the weak-fit (expectDecline) fixture passes the run", async () => {
+    mock.respond = (c) =>
+      c.kind === "draft" && c.prompt.includes("Harbor Freight Coffee Roasters") ? DECLINE : goodModel(c);
+    const p = (await keyed({ repeat: 1 })).providers[0]!;
+    const weak = p.fixtures.find((f) => f.seam === "draft" && f.fixture === "weak-fit-email")!;
+    expect(weak.pass).toBe(true);
+    expect(weak.runs[0]!.scorers.expectedDecline?.pass).toBe(true);
+    expect(p.supported).toBe(true);
+    // The record says why the run passed: the model's decline reason.
+    const rec = JSON.parse(readFileSync(p.recordPath!, "utf8"));
+    const weakRec = rec.fixtures.find((f: { fixture: string; seam: string }) => f.seam === "draft" && f.fixture === "weak-fit-email");
+    expect(weakRec.outcomes[0].declined).toEqual(["declined: Not a B2B SaaS company, so the offer does not apply."]);
+  });
+
+  it("a decline on a strong-fit fixture is a false decline and fails the gate", async () => {
+    mock.respond = (c) => (c.kind === "draft" && c.prompt.includes("linkedin") ? DECLINE : goodModel(c));
+    const p = (await keyed({ repeat: 1 })).providers[0]!;
+    const linkedin = p.fixtures.find((f) => f.seam === "draft" && f.fixture === "strong-fit-linkedin")!;
+    expect(linkedin.pass).toBe(false);
+    expect(linkedin.runs[0]!.scorers.falseDecline?.pass).toBe(false);
+    expect(p.supported).toBe(false);
+  });
+
+  it("declined drafts are not sent to the judge", async () => {
+    mock.respond = (c) =>
+      c.kind === "draft" && c.prompt.includes("Harbor Freight Coffee Roasters") ? DECLINE : goodModel(c);
+    const p = (await keyed({ repeat: 1, judge: true })).providers[0]!;
+    expect(p.judge?.perFixture.some((f) => f.fixture.includes("weak-fit"))).toBe(false);
+    expect(p.judge?.pass).toBe(true);
   });
 });
 
@@ -472,7 +517,7 @@ describe("evals:promote", () => {
     expect(res.pass).toBe(true);
     const entry = readApprovedBlock(readFileSync(file, "utf8")).find((e) => e.model === "claude-sonnet-5-5")!;
     expect(entry.verified).toBe(true);
-    expect(entry.resultFile).toBe(`evals/results/2026-10-04-anthropic-claude-sonnet-5-5-${promptRef("outreach.v2.md")}.json`);
+    expect(entry.resultFile).toBe(`evals/results/2026-10-04-anthropic-claude-sonnet-5-5-${promptRef("outreach.v3.md")}.json`);
     expect(existsSync(join(dir, entry.resultFile!))).toBe(true);
     expect(lines.join("\n")).toMatch(/DEFAULT_MODEL: anthropic: "claude-sonnet-5-5"/);
     expect(providersBefore()).toBe(before);
