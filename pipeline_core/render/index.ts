@@ -12,7 +12,7 @@
  *   pdf         → { markdown: string, note: string } — PDF is produced by
  *                 running /whiteglove-pdf on the markdown; no PDF dep here.
  *   slack       → SlackMessage { text: string, blocks?: SlackBlock[] }
- *   email-draft → EmailDraft { subject: string, body: string, to?: string }
+ *   email-draft → EmailDraft { subject: string, body: string, to?: string, note?: string }
  */
 
 import type { Validated } from "../validator.js";
@@ -22,6 +22,7 @@ import { renderMarkdown } from "./markdown.js";
 import { renderCsv } from "./csv.js";
 import { renderJson } from "./json.js";
 import { renderHtml } from "./html.js";
+import { isValidEmailAddress, INVALID_RECIPIENT_NOTE } from "./headers.js";
 
 // ── Return-type discriminated union ────────────────────────────────────────
 
@@ -53,8 +54,14 @@ export interface EmailDraft {
   subject: string;
   /** Plain-text body derived from the markdown render. */
   body: string;
-  /** Contact key of the first message, if any. */
+  /**
+   * Recipient: the first message's contact key, set ONLY when it is a
+   * syntactically valid email address (contact keys can be fallbacks such as
+   * "Jane Doe@acme.com", which must never become a header).
+   */
   to?: string;
+  /** Why `to` was omitted, when the first message's contact key was unusable. */
+  note?: string;
 }
 
 export type RenderResult =
@@ -107,8 +114,10 @@ function toEmailDraft(run: Validated<CampaignRun>, profile?: ReportProfile): Ema
   const md = renderMarkdown(run, profile);
   const firstMsg = run.messages[0];
   const subject = firstMsg?.subject ?? `Intent Outreach report — ${run.id}`;
-  const to = firstMsg?.contactKey;
-  return { subject, body: md, ...(to !== undefined ? { to } : {}) };
+  const key = firstMsg?.contactKey;
+  if (key === undefined) return { subject, body: md };
+  if (isValidEmailAddress(key)) return { subject, body: md, to: key };
+  return { subject, body: md, note: INVALID_RECIPIENT_NOTE };
 }
 
 // ── Dispatcher ──────────────────────────────────────────────────────────────
