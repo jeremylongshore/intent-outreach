@@ -8,11 +8,17 @@
  *
  * Endpoints (auth via x-api-key header):
  *   - Search: POST https://api.exa.ai/search
+ *
+ * The enrich query carries the CURRENT year from an injectable clock (it used to
+ * hardcode "2026"). The full payload is returned only as `raw` (audit trail),
+ * never duplicated into enrichment `data`.
  */
 
+import { z } from "zod";
 import { httpJson } from "../http.js";
-import { getSecret, hasSecret } from "../secrets.js";
+import { hasSecret } from "../secrets.js";
 import type { Enrichment, Lead } from "../models.js";
+import { parseVendor, useSecret } from "./_shared.js";
 import type {
   Connector,
   EnrichInput,
@@ -25,23 +31,30 @@ const BASE = "https://api.exa.ai";
 const KEY_ENV = "EXA_API_KEY";
 
 function headers(): Record<string, string> {
-  return { "x-api-key": getSecret(KEY_ENV) };
+  return { "x-api-key": useSecret(KEY_ENV) };
 }
 
-interface ExaResult {
-  title?: string;
-  url?: string;
-  text?: string;
-  highlights?: string[];
-}
-interface ExaSearchResponse {
-  results?: ExaResult[];
+const ExaResultSchema = z
+  .object({
+    title: z.string().nullish(),
+    url: z.string().nullish(),
+    text: z.string().nullish(),
+    highlights: z.array(z.string()).nullish(),
+  })
+  .passthrough();
+type ExaResult = z.infer<typeof ExaResultSchema>;
+const ExaSearchSchema = z.object({ results: z.array(ExaResultSchema).nullish() }).passthrough();
+
+let clock: () => Date = () => new Date();
+
+/** Inject the clock used for the enrich query's year. Tests only. */
+export function _setExaClock(fn: (() => Date) | null): void {
+  clock = fn ?? (() => new Date());
 }
 
 /** Pull the best single-sentence snippet from a result for a Lead description. */
 function topSnippet(result: ExaResult): string | undefined {
-  const raw =
-    result.highlights?.[0] ?? result.text?.slice(0, 200) ?? result.title;
+  const raw = result.highlights?.[0] ?? result.text?.slice(0, 200) ?? result.title;
   return raw?.trim() || undefined;
 }
 
@@ -58,11 +71,14 @@ export const exaConnector: Connector = {
   },
 
   async research({ domain }: ResearchInput): Promise<ResearchOutput> {
-    const res = await httpJson<ExaSearchResponse>(`${BASE}/search`, {
-      method: "POST",
-      headers: headers(),
-      json: { query: "company at " + domain, numResults: 5, type: "auto" },
-    });
+    const res = parseVendor(
+      ExaSearchSchema,
+      await httpJson(`${BASE}/search`, {
+        method: "POST",
+        headers: headers(),
+        json: { query: "company at " + domain, numResults: 5, type: "auto" },
+      }),
+    );
 
     const top = res.results?.[0];
     const lead: Lead = {
@@ -76,28 +92,27 @@ export const exaConnector: Connector = {
   },
 
   async enrich({ lead }: EnrichInput): Promise<EnrichOutput> {
-    const res = await httpJson<ExaSearchResponse>(`${BASE}/search`, {
-      method: "POST",
-      headers: headers(),
-      json: {
-        query: lead.companyName + " funding news 2026",
-        numResults: 5,
-      },
-    });
+    const year = clock().getUTCFullYear();
+    const res = parseVendor(
+      ExaSearchSchema,
+      await httpJson(`${BASE}/search`, {
+        method: "POST",
+        headers: headers(),
+        json: { query: `${lead.companyName} funding news ${year}`, numResults: 5 },
+      }),
+    );
 
-    const results = res.results ?? [];
-    const webContext = results.map((r) => ({
+    const webContext = (res.results ?? []).map((r) => ({
       title: r.title ?? "",
       url: r.url ?? "",
     }));
 
-    const now = new Date().toISOString();
     const enrichment: Enrichment = {
       subjectType: "lead",
       subjectKey: lead.domain,
       provider: "exa",
-      data: { webContext, _raw: res as Record<string, unknown> },
-      fetchedAt: now,
+      data: { webContext },
+      fetchedAt: new Date().toISOString(),
     };
 
     return { enrichments: [enrichment], raw: res };

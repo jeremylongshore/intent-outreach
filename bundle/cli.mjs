@@ -66497,18 +66497,57 @@ function getSkippedConnectors(phase) {
   );
 }
 
+// node_modules/zod/index.js
+init_external();
+init_external();
+
 // pipeline_core/http.ts
+var MAX_BODY_BYTES = 5 * 1024 * 1024;
+var MAX_RETRY_WAIT_MS = 1e4;
+var DEFAULT_RETRIES = 2;
+var BASE_BACKOFF_MS = 250;
+var MAX_REDIRECTS = 3;
+var RETRYABLE_STATUS = /* @__PURE__ */ new Set([408, 429, 500, 502, 503, 504]);
+var REDIRECT_STATUS = /* @__PURE__ */ new Set([301, 302, 303, 307, 308]);
+var MIN_REDACT_LEN = 4;
+var registeredSecrets = /* @__PURE__ */ new Set();
+function registerSecretForRedaction(value) {
+  if (typeof value === "string" && value.length >= MIN_REDACT_LEN) registeredSecrets.add(value);
+}
+function scrubSecrets(text2, extra = []) {
+  const values = [...registeredSecrets, ...extra.filter((v) => v && v.length >= MIN_REDACT_LEN)].sort((a, b) => b.length - a.length);
+  let out = text2;
+  for (const v of values) out = out.split(v).join("REDACTED");
+  return out;
+}
 var HttpError = class extends Error {
-  constructor(status, url2, body) {
-    super(`HTTP ${status} from ${url2}: ${body.slice(0, 300)}`);
+  constructor(status, url2, body, opts = {}) {
+    const safeUrl = scrubSecrets(url2, opts.redact);
+    const safeBody = scrubSecrets(body, opts.redact);
+    super(`HTTP ${status} from ${safeUrl}: ${safeBody.slice(0, 300)}`);
     this.status = status;
     this.url = url2;
     this.body = body;
     this.name = "HttpError";
+    this.url = safeUrl;
+    this.body = safeBody;
+    if (opts.retryAfterMs !== void 0) this.retryAfterMs = opts.retryAfterMs;
   }
   status;
   url;
   body;
+  /** Server-requested wait before retrying (from Retry-After), when present. */
+  retryAfterMs;
+};
+var ResponseTooLargeError = class extends Error {
+  constructor(url2, limit) {
+    super(`response from ${url2} exceeded ${limit} bytes`);
+    this.url = url2;
+    this.limit = limit;
+    this.name = "ResponseTooLargeError";
+  }
+  url;
+  limit;
 };
 var SECRET_PARAMS = /* @__PURE__ */ new Set([
   "api_key",
@@ -66529,34 +66568,161 @@ function redactUrl(raw) {
   for (const k of [...u.searchParams.keys()]) {
     if (SECRET_PARAMS.has(k.toLowerCase())) u.searchParams.set(k, "REDACTED");
   }
-  return `${u.origin}${u.pathname}${u.search}`;
+  return scrubSecrets(`${u.origin}${u.pathname}${u.search}`);
 }
+function isLoopback(hostname3) {
+  return hostname3 === "localhost" || hostname3 === "127.0.0.1" || hostname3 === "[::1]" || hostname3 === "::1";
+}
+function assertAllowedUrl(u) {
+  if (u.protocol === "https:") return;
+  if (u.protocol === "http:" && isLoopback(u.hostname)) return;
+  throw new Error(
+    `refusing non-https URL ${redactUrl(u)} (only https, or http to localhost/127.0.0.1)`
+  );
+}
+function parseRetryAfter(value, now = Date.now()) {
+  if (!value) return void 0;
+  const trimmed = value.trim();
+  if (/^\d+(\.\d+)?$/.test(trimmed)) return Math.max(0, Math.round(Number(trimmed) * 1e3));
+  const at = Date.parse(trimmed);
+  if (Number.isNaN(at)) return void 0;
+  return Math.max(0, at - now);
+}
+function headerOf(res, name29) {
+  const h = res.headers;
+  return typeof h?.get === "function" ? h.get(name29) : null;
+}
+function backoffMs(attempt) {
+  const ceiling = BASE_BACKOFF_MS * 2 ** attempt;
+  return Math.min(MAX_RETRY_WAIT_MS, Math.round(ceiling * (0.5 + Math.random() * 0.5)));
+}
+function sleep(ms, signal) {
+  return new Promise((resolve4, reject) => {
+    if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
+    const t = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve4();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(t);
+      reject(signal?.reason ?? new Error("aborted"));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+async function readCapped(res, controller, url2) {
+  const declared = Number(headerOf(res, "content-length"));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+    controller.abort();
+    throw new ResponseTooLargeError(url2, MAX_BODY_BYTES);
+  }
+  const body = res.body;
+  if (!body || typeof body.getReader !== "function") {
+    const text2 = await res.text();
+    if (Buffer.byteLength(text2, "utf8") > MAX_BODY_BYTES) throw new ResponseTooLargeError(url2, MAX_BODY_BYTES);
+    return text2;
+  }
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let out = "";
+  for (; ; ) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      controller.abort();
+      await reader.cancel().catch(() => void 0);
+      throw new ResponseTooLargeError(url2, MAX_BODY_BYTES);
+    }
+    out += decoder.decode(value, { stream: true });
+  }
+  return out + decoder.decode();
+}
+var RetryableNetworkError = class extends Error {
+};
 async function httpJson(url2, opts = {}) {
-  const { method = "GET", headers: headers9 = {}, json: json3, query, timeoutMs = 2e4 } = opts;
+  const { query, retries = DEFAULT_RETRIES, signal } = opts;
   const u = new URL(url2);
   if (query) {
     for (const [k, v] of Object.entries(query)) {
       if (v !== void 0) u.searchParams.set(k, String(v));
     }
   }
+  assertAllowedUrl(u);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await attemptOnce(u, opts);
+    } catch (err) {
+      if (signal?.aborted) throw err;
+      const retryable = err instanceof HttpError && RETRYABLE_STATUS.has(err.status) || err instanceof RetryableNetworkError;
+      if (!retryable || attempt >= retries) {
+        throw err instanceof RetryableNetworkError && err.cause instanceof Error ? err.cause : err;
+      }
+      const serverWait = err instanceof HttpError ? err.retryAfterMs : void 0;
+      const wait = Math.min(MAX_RETRY_WAIT_MS, serverWait ?? backoffMs(attempt));
+      await sleep(wait, signal);
+    }
+  }
+}
+async function attemptOnce(start, opts) {
+  const { headers: headers9 = {}, json: json3, timeoutMs = 2e4, signal, redact } = opts;
+  let method = opts.method ?? "GET";
+  let sendBody = json3 !== void 0;
+  let current = start;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(new Error("timeout")), timeoutMs);
+  const onOuterAbort = () => controller.abort(signal?.reason);
+  if (signal) {
+    if (signal.aborted) controller.abort(signal.reason);
+    else signal.addEventListener("abort", onOuterAbort, { once: true });
+  }
   try {
-    const res = await fetch(u, {
-      method,
-      headers: {
-        Accept: "application/json",
-        ...json3 !== void 0 ? { "Content-Type": "application/json" } : {},
-        ...headers9
-      },
-      body: json3 !== void 0 ? JSON.stringify(json3) : void 0,
-      signal: controller.signal
-    });
-    const text2 = await res.text();
-    if (!res.ok) throw new HttpError(res.status, redactUrl(u), text2);
-    return text2 ? JSON.parse(text2) : {};
+    for (let hop = 0; ; hop++) {
+      let res;
+      try {
+        res = await fetch(current, {
+          method,
+          headers: {
+            Accept: "application/json",
+            ...sendBody ? { "Content-Type": "application/json" } : {},
+            ...headers9
+          },
+          body: sendBody ? JSON.stringify(json3) : void 0,
+          redirect: "manual",
+          signal: controller.signal
+        });
+      } catch (e) {
+        if (signal?.aborted) throw e;
+        throw new RetryableNetworkError(`network error calling ${redactUrl(current)}`, { cause: e });
+      }
+      if (REDIRECT_STATUS.has(res.status)) {
+        await res.body?.cancel?.().catch(() => void 0);
+        const location = headerOf(res, "location");
+        const next = location ? new URL(location, current) : null;
+        if (!next || next.origin !== current.origin || hop >= MAX_REDIRECTS) {
+          const why = !next ? "redirect without Location" : next.origin !== current.origin ? `cross-origin redirect to ${redactUrl(next)} refused` : `more than ${MAX_REDIRECTS} redirects`;
+          throw new HttpError(res.status, redactUrl(current), why, { redact });
+        }
+        if (res.status === 303 || (res.status === 301 || res.status === 302) && method === "POST") {
+          method = "GET";
+          sendBody = false;
+        }
+        current = next;
+        continue;
+      }
+      const text2 = await readCapped(res, controller, redactUrl(current));
+      if (!res.ok) {
+        throw new HttpError(res.status, redactUrl(current), text2, {
+          retryAfterMs: parseRetryAfter(headerOf(res, "retry-after")),
+          redact
+        });
+      }
+      return text2 ? JSON.parse(text2) : {};
+    }
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener("abort", onOuterAbort);
   }
 }
 
@@ -66643,19 +66809,175 @@ function hasSecret(name29) {
   return resolve(name29) !== void 0;
 }
 
+// pipeline_core/connectors/_domain.ts
+function normalizeDomain(input2) {
+  if (typeof input2 !== "string") return void 0;
+  let s = input2.trim().toLowerCase();
+  if (!s) return void 0;
+  s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
+  s = s.split(/[/?#]/, 1)[0] ?? "";
+  s = s.replace(/^[^@]*@/, "");
+  s = s.replace(/:\d*$/, "");
+  s = s.replace(/\.$/, "");
+  s = s.replace(/^www\./, "");
+  if (!s || !s.includes(".") || /\s/.test(s)) return void 0;
+  return s;
+}
+
+// pipeline_core/connectors/_shared.ts
+function useSecret(name29) {
+  const v = getSecret(name29);
+  registerSecretForRedaction(v);
+  return v;
+}
+var KEEP_RAW_ENV = "INTENT_OUTREACH_KEEP_RAW";
+function keepRawOptIn() {
+  return hasSecret(KEEP_RAW_ENV) && getSecret(KEEP_RAW_ENV).trim() === "1";
+}
+function pickAllowed(record2, allow) {
+  if (!record2 || typeof record2 !== "object") return {};
+  if (keepRawOptIn()) return { ...record2 };
+  const out = {};
+  for (const k of allow) {
+    const v = record2[k];
+    if (v !== void 0 && v !== null) out[k] = v;
+  }
+  return out;
+}
+var SchemaFailure = class extends Error {
+  constructor(detail) {
+    super(`vendor response failed schema validation: ${detail}`);
+    this.detail = detail;
+    this.name = "SchemaFailure";
+  }
+  detail;
+};
+function parseVendor(schema, value) {
+  const r = schema.safeParse(value);
+  if (r.success) return r.data;
+  const detail = r.error.issues.slice(0, 3).map((i) => `${i.path.map(String).join(".") || "(root)"}: ${i.code}`).join("; ");
+  throw new SchemaFailure(detail);
+}
+
+// pipeline_core/connectors/_per-item.ts
+function hasFullName(c) {
+  const name29 = (c.name ?? "").trim();
+  if (!name29 || name29 === "(unknown)") return false;
+  return name29.split(/\s+/).length >= 2;
+}
+function eligibleContacts(contacts, cap, opts = {}) {
+  const { requireFullName = true, filter: filter4 } = opts;
+  return contacts.filter((c) => filter4 ? filter4(c) : true).filter((c) => requireFullName ? hasFullName(c) : true).slice(0, cap);
+}
+function isNotFound(err) {
+  return err instanceof HttpError && (err.status === 404 || err.status === 422);
+}
+function isAuthFailure(err) {
+  return err instanceof HttpError && (err.status === 401 || err.status === 403);
+}
+function toFailure(item, err) {
+  if (err instanceof SchemaFailure) return { item, reason: "schema", detail: err.detail };
+  if (err instanceof HttpError) return { item, reason: "http", status: err.status };
+  return { item, reason: "error" };
+}
+async function forEachContact(contacts, cap, fn, opts = {}) {
+  const items = eligibleContacts(contacts, cap, opts);
+  const results = [];
+  const failures = [];
+  let lastErr;
+  for (let i = 0; i < items.length; i++) {
+    try {
+      const r = await fn(items[i], i);
+      if (r !== null && r !== void 0) results.push(r);
+    } catch (err) {
+      if (isAuthFailure(err)) throw err;
+      if (isNotFound(err)) continue;
+      failures.push(toFailure(i, err));
+      lastErr = err;
+    }
+  }
+  if (items.length > 0 && failures.length === items.length) throw lastErr;
+  return { results, failures };
+}
+
 // pipeline_core/connectors/apollo.ts
 var BASE = "https://api.apollo.io/api/v1";
 var KEY_ENV = "APOLLO_API_KEY";
 function headers() {
-  return { "X-Api-Key": getSecret(KEY_ENV) };
+  return { "X-Api-Key": useSecret(KEY_ENV) };
+}
+var ApolloOrgSchema = external_exports.object({
+  name: external_exports.string().nullish(),
+  website_url: external_exports.string().nullish(),
+  primary_domain: external_exports.string().nullish(),
+  industry: external_exports.string().nullish(),
+  estimated_num_employees: external_exports.number().nullish(),
+  short_description: external_exports.string().nullish()
+}).passthrough();
+var ApolloPhoneSchema = external_exports.object({ raw_number: external_exports.string().nullish(), type: external_exports.string().nullish() }).passthrough();
+var ApolloPersonSchema = external_exports.object({
+  name: external_exports.string().nullish(),
+  first_name: external_exports.string().nullish(),
+  last_name: external_exports.string().nullish(),
+  title: external_exports.string().nullish(),
+  linkedin_url: external_exports.string().nullish(),
+  email: external_exports.string().nullish(),
+  phone_numbers: external_exports.array(ApolloPhoneSchema).nullish(),
+  organization: ApolloOrgSchema.nullish()
+}).passthrough();
+var OrgSearchSchema = external_exports.object({
+  organizations: external_exports.array(ApolloOrgSchema).nullish(),
+  organization: ApolloOrgSchema.nullish()
+}).passthrough();
+var PeopleSearchSchema = external_exports.object({ people: external_exports.array(ApolloPersonSchema).nullish() }).passthrough();
+var BulkMatchSchema = external_exports.object({ matches: external_exports.array(ApolloPersonSchema.nullable()).nullish() }).passthrough();
+var APOLLO_PERSON_ALLOW = [
+  "name",
+  "first_name",
+  "last_name",
+  "title",
+  "headline",
+  "seniority",
+  "departments",
+  "email",
+  "email_status",
+  "linkedin_url",
+  "organization_id",
+  "organization_name"
+];
+var APOLLO_ORG_ALLOW = [
+  "name",
+  "primary_domain",
+  "website_url",
+  "industry",
+  "estimated_num_employees",
+  "linkedin_url",
+  "total_funding",
+  "latest_funding_stage",
+  "latest_funding_round_date"
+];
+var PERSONAL_PHONE = /mobile|home|personal/i;
+function workPhone(p) {
+  const hit = (p.phone_numbers ?? []).find(
+    (n) => n.raw_number && !(n.type && PERSONAL_PHONE.test(n.type))
+  );
+  return hit?.raw_number ?? void 0;
+}
+function minimizePerson(p) {
+  if (keepRawOptIn()) return { ...p };
+  const out = pickAllowed(p, APOLLO_PERSON_ALLOW);
+  if (p.organization) out.organization = pickAllowed(p.organization, APOLLO_ORG_ALLOW);
+  const phone = workPhone(p);
+  if (phone) out.phone = phone;
+  return out;
 }
 function orgToLead(org, fallbackDomain) {
   return {
-    domain: org.primary_domain ?? fallbackDomain,
+    domain: normalizeDomain(org.primary_domain) ?? normalizeDomain(org.website_url) ?? fallbackDomain,
     companyName: org.name ?? fallbackDomain,
-    industry: org.industry,
-    size: org.estimated_num_employees !== void 0 ? String(org.estimated_num_employees) : void 0,
-    description: org.short_description,
+    industry: org.industry ?? void 0,
+    size: org.estimated_num_employees !== void 0 && org.estimated_num_employees !== null ? String(org.estimated_num_employees) : void 0,
+    description: org.short_description ?? void 0,
     source: "apollo"
   };
 }
@@ -66665,8 +66987,8 @@ function personToContact(p, domain2) {
     name: name29 || "(unknown)",
     leadDomain: domain2,
     email: p.email && p.email.includes("@") ? p.email : void 0,
-    title: p.title,
-    linkedin: p.linkedin_url,
+    title: p.title ?? void 0,
+    linkedin: p.linkedin_url ?? void 0,
     source: "apollo"
   };
 }
@@ -66681,61 +67003,90 @@ var apolloConnector = {
     return hasSecret(KEY_ENV);
   },
   async research({ domain: domain2, icp }) {
-    const orgRes = await httpJson(`${BASE}/organizations/api_search`, {
-      method: "POST",
-      headers: headers(),
-      json: { q_organization_domains: [domain2], per_page: 1 }
-    });
+    const orgRes = parseVendor(
+      OrgSearchSchema,
+      await httpJson(`${BASE}/organizations/api_search`, {
+        method: "POST",
+        headers: headers(),
+        json: { q_organization_domains: [domain2], per_page: 1 }
+      })
+    );
     const org = orgRes.organization ?? orgRes.organizations?.[0] ?? { primary_domain: domain2 };
     const lead = orgToLead(org, domain2);
-    const peopleRes = await httpJson(
-      `${BASE}/mixed_people/api_search`,
-      {
+    const peopleRes = parseVendor(
+      PeopleSearchSchema,
+      await httpJson(`${BASE}/mixed_people/api_search`, {
         method: "POST",
         headers: headers(),
-        json: {
-          q_organization_domains: [domain2],
-          q_keywords: icp,
-          per_page: 10
-        }
-      }
+        json: { q_organization_domains: [domain2], q_keywords: icp, per_page: 10 }
+      })
     );
-    const contacts = (peopleRes.people ?? []).map(
-      (p) => personToContact(p, lead.domain)
-    );
-    return { leads: [lead], contacts, raw: { org: orgRes, people: peopleRes } };
+    const people = peopleRes.people ?? [];
+    const contacts = people.map((p) => personToContact(p, lead.domain));
+    return {
+      leads: [lead],
+      contacts,
+      raw: keepRawOptIn() ? { org: orgRes, people: peopleRes } : { org: pickAllowed(org, APOLLO_ORG_ALLOW), people: people.length }
+    };
   },
   async enrich({ lead, contacts }) {
-    const needy = contacts.filter((c) => !c.email).slice(0, 10);
+    const needy = eligibleContacts(contacts, 10, { filter: (c) => !c.email });
     if (needy.length === 0) return { enrichments: [] };
-    const res = await httpJson(
-      `${BASE}/people/bulk_match`,
-      {
-        method: "POST",
-        headers: headers(),
-        json: {
-          details: needy.map((c) => ({ name: c.name, domain: lead.domain })),
-          reveal_personal_emails: false
-        }
-      }
-    );
+    const failures = [];
+    let matches = [];
+    try {
+      const res = parseVendor(
+        BulkMatchSchema,
+        await httpJson(`${BASE}/people/bulk_match`, {
+          method: "POST",
+          headers: headers(),
+          json: {
+            details: needy.map((c) => ({ name: c.name, domain: lead.domain })),
+            reveal_personal_emails: false
+          }
+        })
+      );
+      matches = res.matches ?? [];
+    } catch (err) {
+      if (isAuthFailure(err) || !isNotFound(err)) throw err;
+    }
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const enrichments = (res.matches ?? []).filter((m) => Boolean(m && m.email)).map((m) => ({
+    const enrichments = matches.filter((m) => Boolean(m && m.email && m.email.includes("@"))).map((m) => ({
       subjectType: "contact",
       subjectKey: m.email,
       provider: "apollo",
       verifiedEmail: m.email,
-      phone: m.phone_numbers?.[0]?.raw_number,
-      data: m,
+      phone: workPhone(m),
+      data: minimizePerson(m),
       fetchedAt: now
     }));
-    return { enrichments, raw: res };
+    return {
+      enrichments,
+      failures,
+      raw: keepRawOptIn() ? { matches } : { matched: enrichments.length, failures }
+    };
   }
 };
 
 // pipeline_core/connectors/hunter.ts
 var BASE2 = "https://api.hunter.io/v2";
 var KEY_ENV2 = "HUNTER_API_KEY";
+var HunterEmailSchema = external_exports.object({
+  value: external_exports.string().nullish(),
+  first_name: external_exports.string().nullish(),
+  last_name: external_exports.string().nullish(),
+  position: external_exports.string().nullish(),
+  linkedin: external_exports.string().nullish()
+}).passthrough();
+var DomainSearchSchema = external_exports.object({
+  data: external_exports.object({
+    organization: external_exports.string().nullish(),
+    emails: external_exports.array(HunterEmailSchema).nullish()
+  }).passthrough().nullish()
+}).passthrough();
+var FinderSchema = external_exports.object({
+  data: external_exports.object({ email: external_exports.string().nullish(), score: external_exports.number().nullish() }).passthrough().nullish()
+}).passthrough();
 var hunterConnector = {
   name: "hunter",
   displayName: "Hunter.io",
@@ -66747,9 +67098,12 @@ var hunterConnector = {
     return hasSecret(KEY_ENV2);
   },
   async research({ domain: domain2 }) {
-    const res = await httpJson(`${BASE2}/domain-search`, {
-      query: { domain: domain2, api_key: getSecret(KEY_ENV2), limit: 10 }
-    });
+    const res = parseVendor(
+      DomainSearchSchema,
+      await httpJson(`${BASE2}/domain-search`, {
+        query: { domain: domain2, api_key: useSecret(KEY_ENV2), limit: 10 }
+      })
+    );
     const org = res.data?.organization;
     const lead = {
       domain: domain2,
@@ -66760,37 +67114,38 @@ var hunterConnector = {
       name: [e.first_name, e.last_name].filter(Boolean).join(" ") || "(unknown)",
       leadDomain: domain2,
       email: e.value && e.value.includes("@") ? e.value : void 0,
-      title: e.position,
+      title: e.position ?? void 0,
       linkedin: e.linkedin ?? void 0,
       source: "hunter"
     }));
     return { leads: [lead], contacts, raw: res };
   },
   async enrich({ lead, contacts }) {
-    const needy = contacts.filter((c) => !c.email).slice(0, 10);
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const enrichments = [];
-    for (const c of needy) {
-      const res = await httpJson(`${BASE2}/email-finder`, {
-        query: {
-          domain: lead.domain,
-          full_name: c.name,
-          api_key: getSecret(KEY_ENV2)
-        }
-      });
-      const email3 = res.data?.email;
-      if (email3 && email3.includes("@")) {
-        enrichments.push({
+    const { results, failures } = await forEachContact(
+      contacts,
+      10,
+      async (c) => {
+        const res = parseVendor(
+          FinderSchema,
+          await httpJson(`${BASE2}/email-finder`, {
+            query: { domain: lead.domain, full_name: c.name, api_key: useSecret(KEY_ENV2) }
+          })
+        );
+        const email3 = res.data?.email;
+        if (!email3 || !email3.includes("@")) return null;
+        return {
           subjectType: "contact",
           subjectKey: email3,
           provider: "hunter",
           verifiedEmail: email3,
           data: res.data ?? {},
           fetchedAt: now
-        });
-      }
-    }
-    return { enrichments };
+        };
+      },
+      { filter: (c) => !c.email }
+    );
+    return { enrichments: results, failures, raw: { failures } };
   }
 };
 
@@ -66798,12 +67153,55 @@ var hunterConnector = {
 var BASE3 = "https://api.peopledatalabs.com/v5";
 var KEY_ENV3 = "PDL_API_KEY";
 function headers2() {
-  return { "X-Api-Key": getSecret(KEY_ENV3) };
+  return { "X-Api-Key": useSecret(KEY_ENV3) };
 }
-function bestEmail(p) {
-  if (p.work_email && p.work_email.includes("@")) return p.work_email;
-  const personal = p.personal_emails?.find((e) => e.includes("@"));
-  return personal;
+var PdlCompanySchema = external_exports.object({
+  name: external_exports.string().nullish(),
+  industry: external_exports.string().nullish(),
+  employee_count: external_exports.number().nullish(),
+  summary: external_exports.string().nullish(),
+  website: external_exports.string().nullish()
+}).passthrough();
+var PdlCompanyResponseSchema = PdlCompanySchema.extend({
+  status: external_exports.number().nullish(),
+  data: PdlCompanySchema.nullish()
+}).passthrough();
+var PdlPersonSchema = external_exports.object({
+  full_name: external_exports.string().nullish(),
+  first_name: external_exports.string().nullish(),
+  last_name: external_exports.string().nullish(),
+  job_title: external_exports.string().nullish(),
+  linkedin_url: external_exports.string().nullish(),
+  work_email: external_exports.string().nullish()
+}).passthrough();
+var PdlPersonSearchSchema = external_exports.object({
+  status: external_exports.number().nullish(),
+  data: external_exports.array(PdlPersonSchema).nullish(),
+  items: external_exports.array(PdlPersonSchema).nullish()
+}).passthrough();
+var PdlPersonEnrichSchema = PdlPersonSchema.extend({
+  status: external_exports.number().nullish(),
+  data: PdlPersonSchema.nullish()
+}).passthrough();
+var PDL_PERSON_ALLOW = [
+  "full_name",
+  "first_name",
+  "last_name",
+  "job_title",
+  "job_title_role",
+  "job_title_sub_role",
+  "job_title_levels",
+  "job_company_name",
+  "job_company_website",
+  "job_company_industry",
+  "job_company_size",
+  "job_company_linkedin_url",
+  "work_email",
+  "linkedin_url",
+  "industry"
+];
+function workEmail(p) {
+  return p.work_email && p.work_email.includes("@") ? p.work_email : void 0;
 }
 var peopledatalabsConnector = {
   name: "peopledatalabs",
@@ -66816,16 +67214,20 @@ var peopledatalabsConnector = {
     return hasSecret(KEY_ENV3);
   },
   async research({ domain: domain2 }) {
-    const companyRes = await httpJson(
-      `${BASE3}/company/enrich`,
-      { query: { website: domain2 }, headers: headers2() }
-    );
-    const co = companyRes.data ?? {
-      name: companyRes.name,
-      industry: companyRes.industry,
-      employee_count: companyRes.employee_count,
-      summary: companyRes.summary
-    };
+    const failures = [];
+    let companyRaw = void 0;
+    let co = {};
+    try {
+      companyRaw = await httpJson(`${BASE3}/company/enrich`, {
+        query: { website: domain2 },
+        headers: headers2()
+      });
+      const companyRes = parseVendor(PdlCompanyResponseSchema, companyRaw);
+      co = companyRes.data ?? companyRes;
+    } catch (err) {
+      if (isAuthFailure(err)) throw err;
+      if (!isNotFound(err)) failures.push(toFailure(-1, err));
+    }
     const lead = {
       domain: domain2,
       companyName: co.name ?? domain2,
@@ -66836,69 +67238,66 @@ var peopledatalabsConnector = {
     };
     let contacts = [];
     try {
-      const personRes = await httpJson(
-        `${BASE3}/person/search`,
-        {
+      const personRes = parseVendor(
+        PdlPersonSearchSchema,
+        await httpJson(`${BASE3}/person/search`, {
           method: "POST",
           headers: headers2(),
           json: {
-            query: {
-              bool: {
-                must: [{ term: { job_company_website: domain2 } }]
-              }
-            },
+            query: { bool: { must: [{ term: { job_company_website: domain2 } }] } },
             size: 10
           }
-        }
+        })
       );
       const people = personRes.data ?? personRes.items ?? [];
       contacts = people.map((p) => {
         const name29 = p.full_name ?? ([p.first_name, p.last_name].filter(Boolean).join(" ") || "(unknown)");
-        const email3 = bestEmail(p);
         return {
           name: name29,
           leadDomain: domain2,
-          email: email3 && email3.includes("@") ? email3 : void 0,
+          email: workEmail(p),
           title: p.job_title ?? void 0,
           linkedin: p.linkedin_url ?? void 0,
           source: "peopledatalabs"
         };
       });
-    } catch {
-      contacts = [];
+    } catch (err) {
+      if (isAuthFailure(err)) throw err;
+      if (!isNotFound(err)) failures.push(toFailure(-1, err));
     }
-    return { leads: [lead], contacts, raw: { company: companyRes } };
+    return {
+      leads: [lead],
+      contacts,
+      // Company payload is firmographic (no personal data), so it stays in raw.
+      raw: { company: companyRaw, failures },
+      failures
+    };
   },
   async enrich({ contacts }) {
-    const withEmail = contacts.filter((c) => c.email).slice(0, 10);
-    if (withEmail.length === 0) return { enrichments: [] };
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const enrichments = [];
-    for (const contact of withEmail) {
-      const email3 = contact.email;
-      const res = await httpJson(
-        `${BASE3}/person/enrich`,
-        { query: { email: email3 }, headers: headers2() }
-      );
-      const p = res.data ?? {
-        full_name: res.full_name,
-        work_email: res.work_email,
-        personal_emails: res.personal_emails,
-        phone_numbers: res.phone_numbers
-      };
-      const verifiedEmail = bestEmail(p) ?? email3;
-      const phone = p.phone_numbers?.[0] ?? void 0;
-      enrichments.push({
-        subjectType: "contact",
-        subjectKey: email3,
-        provider: "peopledatalabs",
-        verifiedEmail: verifiedEmail.includes("@") ? verifiedEmail : void 0,
-        phone: typeof phone === "string" ? phone : void 0,
-        data: res.data ?? res,
-        fetchedAt: now
-      });
-    }
-    return { enrichments };
+    const { results, failures } = await forEachContact(
+      contacts,
+      10,
+      async (contact) => {
+        const email3 = contact.email;
+        const res = parseVendor(
+          PdlPersonEnrichSchema,
+          await httpJson(`${BASE3}/person/enrich`, { query: { email: email3 }, headers: headers2() })
+        );
+        const p = res.data ?? res;
+        const verified = workEmail(p) ?? email3;
+        return {
+          subjectType: "contact",
+          subjectKey: email3,
+          provider: "peopledatalabs",
+          verifiedEmail: verified.includes("@") ? verified : void 0,
+          data: pickAllowed(p, PDL_PERSON_ALLOW),
+          fetchedAt: now
+        };
+      },
+      { requireFullName: false, filter: (c) => Boolean(c.email) }
+    );
+    return { enrichments: results, failures, raw: { failures } };
   }
 };
 
@@ -66906,8 +67305,16 @@ var peopledatalabsConnector = {
 var BASE4 = "https://api.exa.ai";
 var KEY_ENV4 = "EXA_API_KEY";
 function headers3() {
-  return { "x-api-key": getSecret(KEY_ENV4) };
+  return { "x-api-key": useSecret(KEY_ENV4) };
 }
+var ExaResultSchema = external_exports.object({
+  title: external_exports.string().nullish(),
+  url: external_exports.string().nullish(),
+  text: external_exports.string().nullish(),
+  highlights: external_exports.array(external_exports.string()).nullish()
+}).passthrough();
+var ExaSearchSchema = external_exports.object({ results: external_exports.array(ExaResultSchema).nullish() }).passthrough();
+var clock = () => /* @__PURE__ */ new Date();
 function topSnippet(result) {
   const raw = result.highlights?.[0] ?? result.text?.slice(0, 200) ?? result.title;
   return raw?.trim() || void 0;
@@ -66923,11 +67330,14 @@ var exaConnector = {
     return hasSecret(KEY_ENV4);
   },
   async research({ domain: domain2 }) {
-    const res = await httpJson(`${BASE4}/search`, {
-      method: "POST",
-      headers: headers3(),
-      json: { query: "company at " + domain2, numResults: 5, type: "auto" }
-    });
+    const res = parseVendor(
+      ExaSearchSchema,
+      await httpJson(`${BASE4}/search`, {
+        method: "POST",
+        headers: headers3(),
+        json: { query: "company at " + domain2, numResults: 5, type: "auto" }
+      })
+    );
     const top = res.results?.[0];
     const lead = {
       domain: domain2,
@@ -66938,26 +67348,25 @@ var exaConnector = {
     return { leads: [lead], contacts: [], raw: res };
   },
   async enrich({ lead }) {
-    const res = await httpJson(`${BASE4}/search`, {
-      method: "POST",
-      headers: headers3(),
-      json: {
-        query: lead.companyName + " funding news 2026",
-        numResults: 5
-      }
-    });
-    const results = res.results ?? [];
-    const webContext = results.map((r) => ({
+    const year = clock().getUTCFullYear();
+    const res = parseVendor(
+      ExaSearchSchema,
+      await httpJson(`${BASE4}/search`, {
+        method: "POST",
+        headers: headers3(),
+        json: { query: `${lead.companyName} funding news ${year}`, numResults: 5 }
+      })
+    );
+    const webContext = (res.results ?? []).map((r) => ({
       title: r.title ?? "",
       url: r.url ?? ""
     }));
-    const now = (/* @__PURE__ */ new Date()).toISOString();
     const enrichment = {
       subjectType: "lead",
       subjectKey: lead.domain,
       provider: "exa",
-      data: { webContext, _raw: res },
-      fetchedAt: now
+      data: { webContext },
+      fetchedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
     return { enrichments: [enrichment], raw: res };
   }
@@ -66967,8 +67376,24 @@ var exaConnector = {
 var BASE5 = "https://api.crunchbase.com/v4/data";
 var KEY_ENV5 = "CRUNCHBASE_API_KEY";
 function headers4() {
-  return { "X-cb-user-key": getSecret(KEY_ENV5) };
+  return { "X-cb-user-key": useSecret(KEY_ENV5) };
 }
+var IdentifierSchema = external_exports.object({ permalink: external_exports.string().nullish(), value: external_exports.string().nullish() }).passthrough();
+var CbOrgSchema = external_exports.object({
+  identifier: IdentifierSchema.nullish(),
+  website_url: external_exports.string().nullish(),
+  funding_total: external_exports.object({ value_usd: external_exports.number().nullish() }).passthrough().nullish(),
+  last_funding_type: external_exports.string().nullish(),
+  last_funding_at: external_exports.string().nullish(),
+  num_funding_rounds: external_exports.number().nullish(),
+  investors: external_exports.array(external_exports.object({ identifier: IdentifierSchema.nullish() }).passthrough().nullish()).nullish()
+}).passthrough();
+var CbSearchSchema = external_exports.object({
+  entities: external_exports.array(
+    external_exports.object({ identifier: IdentifierSchema.nullish(), properties: CbOrgSchema.nullish() }).passthrough()
+  ).nullish(),
+  count: external_exports.number().nullish()
+}).passthrough();
 var crunchbaseConnector = {
   name: "crunchbase",
   displayName: "Crunchbase",
@@ -66980,9 +67405,9 @@ var crunchbaseConnector = {
     return hasSecret(KEY_ENV5);
   },
   async enrich({ lead }) {
-    const res = await httpJson(
-      `${BASE5}/searches/organizations`,
-      {
+    const res = parseVendor(
+      CbSearchSchema,
+      await httpJson(`${BASE5}/searches/organizations`, {
         method: "POST",
         headers: headers4(),
         json: {
@@ -67001,10 +67426,11 @@ var crunchbaseConnector = {
           },
           limit: 1
         }
-      }
+      })
     );
     const entity = res.entities?.[0];
-    const props = entity?.properties ?? {};
+    if (!entity) return { enrichments: [], raw: res };
+    const props = entity.properties ?? {};
     const investors = (props.investors ?? []).map((i) => i?.identifier?.value).filter((v) => typeof v === "string" && v.length > 0);
     const totalRaisedRaw = props.funding_total?.value_usd;
     const funding = {
@@ -67018,7 +67444,7 @@ var crunchbaseConnector = {
       subjectKey: lead.domain,
       provider: "crunchbase",
       funding,
-      data: entity ?? {},
+      data: entity,
       fetchedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
     return { enrichments: [enrichment], raw: res };
@@ -67029,11 +67455,28 @@ var crunchbaseConnector = {
 var BASE6 = "https://api.leadmagic.io";
 var KEY_ENV6 = "LEADMAGIC_API_KEY";
 function headers5() {
-  return { "X-API-Key": getSecret(KEY_ENV6) };
+  return { "X-API-Key": useSecret(KEY_ENV6) };
 }
+var EmailFinderSchema = external_exports.object({
+  email: external_exports.string().nullish(),
+  first_name: external_exports.string().nullish(),
+  last_name: external_exports.string().nullish(),
+  company: external_exports.string().nullish(),
+  title: external_exports.string().nullish(),
+  linkedin_url: external_exports.string().nullish()
+}).passthrough();
+var LEADMAGIC_ALLOW = [
+  "email",
+  "email_status",
+  "first_name",
+  "last_name",
+  "company",
+  "company_name",
+  "title",
+  "linkedin_url"
+];
 function splitName(full) {
   const parts = full.trim().split(/\s+/);
-  if (parts.length === 0) return { first: "", last: "" };
   const first = parts[0] ?? "";
   const last = parts.length > 1 ? parts.slice(1).join(" ") : "";
   return { first, last };
@@ -67049,36 +67492,34 @@ var leadmagicConnector = {
     return hasSecret(KEY_ENV6);
   },
   async enrich({ lead, contacts }) {
-    const needy = contacts.filter((c) => !c.email).slice(0, 10);
-    if (needy.length === 0) return { enrichments: [] };
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const enrichments = [];
-    for (const c of needy) {
-      const { first, last } = splitName(c.name);
-      const res = await httpJson(
-        `${BASE6}/email-finder`,
-        {
-          method: "POST",
-          headers: headers5(),
-          json: {
-            first_name: first,
-            last_name: last,
-            domain: lead.domain
-          }
-        }
-      );
-      const email3 = res.email;
-      if (!email3 || !email3.includes("@")) continue;
-      enrichments.push({
-        subjectType: "contact",
-        subjectKey: email3,
-        provider: "leadmagic",
-        verifiedEmail: email3,
-        data: res,
-        fetchedAt: now
-      });
-    }
-    return { enrichments };
+    const { results, failures } = await forEachContact(
+      contacts,
+      10,
+      async (c) => {
+        const { first, last } = splitName(c.name);
+        const res = parseVendor(
+          EmailFinderSchema,
+          await httpJson(`${BASE6}/email-finder`, {
+            method: "POST",
+            headers: headers5(),
+            json: { first_name: first, last_name: last, domain: lead.domain }
+          })
+        );
+        const email3 = res.email;
+        if (!email3 || !email3.includes("@")) return null;
+        return {
+          subjectType: "contact",
+          subjectKey: email3,
+          provider: "leadmagic",
+          verifiedEmail: email3,
+          data: pickAllowed(res, LEADMAGIC_ALLOW),
+          fetchedAt: now
+        };
+      },
+      { filter: (c) => !c.email }
+    );
+    return { enrichments: results, failures, raw: { failures } };
   }
 };
 
@@ -67086,7 +67527,7 @@ var leadmagicConnector = {
 var KEY_ENV7 = "CLAY_API_KEY";
 var WEBHOOK_ENV = "CLAY_WEBHOOK_URL";
 function headers6() {
-  return { Authorization: `Bearer ${getSecret(KEY_ENV7)}` };
+  return { Authorization: `Bearer ${useSecret(KEY_ENV7)}` };
 }
 var clayConnector = {
   name: "clay",
@@ -67094,16 +67535,22 @@ var clayConnector = {
   tier: "paid",
   keyEnvVar: KEY_ENV7,
   phases: ["research"],
+  // Push-only: a successful call returns no records, so it must not count as
+  // evidence that "research ran" (pipeline wiring for this flag is a separate change).
+  pushOnly: true,
   note: "Middleware, not a direct data source. Push-only: requires a configured Clay table webhook (CLAY_WEBHOOK_URL); results return asynchronously into the user's Clay workspace, not synchronously here.",
   isConfigured() {
     return hasSecret(KEY_ENV7) && hasSecret(WEBHOOK_ENV);
   },
   async research({ domain: domain2, icp }) {
     try {
-      await httpJson(getSecret(WEBHOOK_ENV), {
+      await httpJson(useSecret(WEBHOOK_ENV), {
         method: "POST",
         headers: headers6(),
-        json: { domain: domain2, icp }
+        json: { domain: domain2, icp },
+        // A push is not idempotent (a retried 5xx can create a duplicate, billable
+        // row in the Clay table), so no automatic retries here.
+        retries: 0
       });
     } catch (err) {
       const status = err instanceof HttpError ? err.status : "error";
@@ -67122,18 +67569,27 @@ var PERSON_BASE = "https://person.clearbit.com/v2";
 var COMPANY_BASE = "https://company.clearbit.com/v2";
 var KEY_ENV8 = "CLEARBIT_API_KEY";
 function headers7() {
-  return { Authorization: `Bearer ${getSecret(KEY_ENV8)}` };
+  return { Authorization: "Bearer " + useSecret(KEY_ENV8) };
 }
-async function tryFetch(url2, query) {
-  const result = await httpJson(url2, {
-    method: "GET",
-    headers: headers7(),
-    query
-  });
-  if (!result || typeof result !== "object" || Object.keys(result).length === 0) {
-    return null;
-  }
-  return result;
+var ClearbitPersonSchema = external_exports.object({
+  email: external_exports.string().nullish(),
+  name: external_exports.object({ fullName: external_exports.string().nullish() }).passthrough().nullish(),
+  phone: external_exports.string().nullish()
+}).passthrough();
+var ClearbitCompanySchema = external_exports.object({ name: external_exports.string().nullish(), domain: external_exports.string().nullish() }).passthrough();
+function isClearbitPending(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return true;
+  const o = body;
+  if (Object.keys(o).length === 0) return true;
+  if ("error" in o) return true;
+  if (o.pending === true || o.queued === true) return true;
+  const status = typeof o.status === "string" ? o.status.toLowerCase() : "";
+  return status === "queued" || status === "pending";
+}
+async function tryFetch(schema, url2, query) {
+  const body = await httpJson(url2, { method: "GET", headers: headers7(), query });
+  if (isClearbitPending(body)) return null;
+  return parseVendor(schema, body);
 }
 var clearbitConnector = {
   name: "clearbit",
@@ -67147,17 +67603,15 @@ var clearbitConnector = {
   },
   async enrich({ lead, contacts }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const enrichments = [];
-    const withEmail = contacts.filter((c) => Boolean(c.email)).slice(0, 10);
-    for (const contact of withEmail) {
-      const person = await tryFetch(
-        `${PERSON_BASE}/people/find`,
-        {
+    const { results, failures } = await forEachContact(
+      contacts,
+      10,
+      async (contact) => {
+        const person = await tryFetch(ClearbitPersonSchema, `${PERSON_BASE}/people/find`, {
           email: contact.email
-        }
-      );
-      if (person) {
-        enrichments.push({
+        });
+        if (!person) return null;
+        return {
           subjectType: "contact",
           subjectKey: contact.email,
           provider: "clearbit",
@@ -67165,27 +67619,32 @@ var clearbitConnector = {
           phone: typeof person.phone === "string" ? person.phone : void 0,
           data: person,
           fetchedAt: now
-        });
-      }
-    }
+        };
+      },
+      { requireFullName: false, filter: (c) => Boolean(c.email) }
+    );
+    const enrichments = [...results];
+    const allFailures = [...failures];
     if (lead.domain) {
-      const company = await tryFetch(
-        `${COMPANY_BASE}/companies/find`,
-        {
+      try {
+        const company = await tryFetch(ClearbitCompanySchema, `${COMPANY_BASE}/companies/find`, {
           domain: lead.domain
-        }
-      );
-      if (company) {
-        enrichments.push({
-          subjectType: "lead",
-          subjectKey: lead.domain,
-          provider: "clearbit",
-          data: company,
-          fetchedAt: now
         });
+        if (company) {
+          enrichments.push({
+            subjectType: "lead",
+            subjectKey: lead.domain,
+            provider: "clearbit",
+            data: company,
+            fetchedAt: now
+          });
+        }
+      } catch (err) {
+        if (isAuthFailure(err)) throw err;
+        if (!isNotFound(err)) allFailures.push(toFailure(-1, err));
       }
     }
-    return { enrichments };
+    return { enrichments, failures: allFailures, raw: { failures: allFailures } };
   }
 };
 
@@ -67193,15 +67652,48 @@ var clearbitConnector = {
 var BASE7 = "https://api.zoominfo.com";
 var KEY_ENV9 = "ZOOMINFO_JWT";
 function headers8() {
-  return { Authorization: `Bearer ${getSecret(KEY_ENV9)}` };
+  return { Authorization: "Bearer " + useSecret(KEY_ENV9) };
 }
+var ZiCompanySchema = external_exports.object({
+  name: external_exports.string().nullish(),
+  website: external_exports.string().nullish(),
+  primaryIndustry: external_exports.string().nullish(),
+  employeeCount: external_exports.union([external_exports.number(), external_exports.string()]).nullish(),
+  description: external_exports.string().nullish()
+}).passthrough();
+var ZiContactSchema = external_exports.object({
+  firstName: external_exports.string().nullish(),
+  lastName: external_exports.string().nullish(),
+  jobTitle: external_exports.string().nullish(),
+  email: external_exports.string().nullish(),
+  phone: external_exports.string().nullish(),
+  directPhone: external_exports.string().nullish(),
+  linkedInUrl: external_exports.string().nullish()
+}).passthrough();
+var CompanyEnvelope = external_exports.object({ data: external_exports.array(ZiCompanySchema).nullish(), maxResults: external_exports.number().nullish() }).passthrough();
+var ContactEnvelope = external_exports.object({ data: external_exports.array(ZiContactSchema).nullish(), maxResults: external_exports.number().nullish() }).passthrough();
+var ZI_CONTACT_ALLOW = [
+  "id",
+  "firstName",
+  "lastName",
+  "jobTitle",
+  "jobFunction",
+  "managementLevel",
+  "email",
+  "phone",
+  "directPhone",
+  "linkedInUrl",
+  "companyId",
+  "companyName",
+  "companyWebsite"
+];
 function ziCompanyToLead(c, fallbackDomain) {
   return {
-    domain: typeof c.website === "string" && c.website.length > 0 ? c.website : fallbackDomain,
+    domain: normalizeDomain(c.website) ?? fallbackDomain,
     companyName: typeof c.name === "string" && c.name.length > 0 ? c.name : fallbackDomain,
-    industry: typeof c.primaryIndustry === "string" ? c.primaryIndustry : void 0,
-    size: c.employeeCount !== void 0 ? String(c.employeeCount) : void 0,
-    description: typeof c.description === "string" ? c.description : void 0,
+    industry: c.primaryIndustry ?? void 0,
+    size: c.employeeCount !== void 0 && c.employeeCount !== null ? String(c.employeeCount) : void 0,
+    description: c.description ?? void 0,
     source: "zoominfo"
   };
 }
@@ -67213,10 +67705,14 @@ function ziContactToContact(p, domain2) {
     name: name29,
     leadDomain: domain2,
     email: email3,
-    title: typeof p.jobTitle === "string" ? p.jobTitle : void 0,
+    title: p.jobTitle ?? void 0,
     linkedin,
     source: "zoominfo"
   };
+}
+function businessPhone(p) {
+  for (const v of [p.directPhone, p.phone]) if (typeof v === "string" && v.length > 0) return v;
+  return void 0;
 }
 var zoominfoConnector = {
   name: "zoominfo",
@@ -67229,50 +67725,63 @@ var zoominfoConnector = {
     return hasSecret(KEY_ENV9);
   },
   async research({ domain: domain2, icp }) {
-    const companyRes = await httpJson(`${BASE7}/search/company`, {
-      method: "POST",
-      headers: headers8(),
-      json: { companyWebsite: domain2 }
-    });
+    const companyRes = parseVendor(
+      CompanyEnvelope,
+      await httpJson(`${BASE7}/search/company`, {
+        method: "POST",
+        headers: headers8(),
+        json: { companyWebsite: domain2 }
+      })
+    );
     const company = (companyRes.data ?? [])[0];
     const lead = company ? ziCompanyToLead(company, domain2) : { domain: domain2, companyName: domain2, source: "zoominfo" };
-    const contactRes = await httpJson(`${BASE7}/search/contact`, {
-      method: "POST",
-      headers: headers8(),
-      json: { companyWebsite: domain2, keywords: icp, maxResults: 10 }
-    });
-    const contacts = (contactRes.data ?? []).slice(0, 10).map((p) => ziContactToContact(p, lead.domain));
+    const contactRes = parseVendor(
+      ContactEnvelope,
+      await httpJson(`${BASE7}/search/contact`, {
+        method: "POST",
+        headers: headers8(),
+        json: { companyWebsite: domain2, keywords: icp, maxResults: 10 }
+      })
+    );
+    const people = (contactRes.data ?? []).slice(0, 10);
+    const contacts = people.map((p) => ziContactToContact(p, lead.domain));
     return {
       leads: [lead],
       contacts,
-      raw: { company: companyRes, contacts: contactRes }
+      // Company payload is firmographic; the contact payload (personal data) is
+      // kept only with INTENT_OUTREACH_KEEP_RAW=1.
+      raw: keepRawOptIn() ? { company: companyRes, contacts: contactRes } : { company: companyRes, contacts: people.length }
     };
   },
-  async enrich({ lead, contacts }) {
-    const withEmail = contacts.filter((c) => Boolean(c.email)).slice(0, 10);
-    if (withEmail.length === 0) return { enrichments: [] };
+  async enrich({ contacts }) {
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const enrichments = [];
-    for (const contact of withEmail) {
-      const res = await httpJson(`${BASE7}/enrich/contact`, {
-        method: "POST",
-        headers: headers8(),
-        json: { email: contact.email }
-      });
-      const match = (res.data ?? [])[0];
-      if (!match) continue;
-      const phone = typeof match.mobilePhone === "string" && match.mobilePhone.length > 0 ? match.mobilePhone : typeof match.directPhone === "string" && match.directPhone.length > 0 ? match.directPhone : void 0;
-      enrichments.push({
-        subjectType: "contact",
-        subjectKey: contact.email,
-        provider: "zoominfo",
-        verifiedEmail: contact.email,
-        phone,
-        data: match,
-        fetchedAt: now
-      });
-    }
-    return { enrichments };
+    const { results, failures } = await forEachContact(
+      contacts,
+      10,
+      async (contact) => {
+        const res = parseVendor(
+          ContactEnvelope,
+          await httpJson(`${BASE7}/enrich/contact`, {
+            method: "POST",
+            headers: headers8(),
+            json: { email: contact.email }
+          })
+        );
+        const match = (res.data ?? [])[0];
+        if (!match) return null;
+        return {
+          subjectType: "contact",
+          subjectKey: contact.email,
+          provider: "zoominfo",
+          verifiedEmail: contact.email,
+          phone: businessPhone(match),
+          data: pickAllowed(match, ZI_CONTACT_ALLOW),
+          fetchedAt: now
+        };
+      },
+      { requireFullName: false, filter: (c) => Boolean(c.email) }
+    );
+    return { enrichments: results, failures, raw: { failures } };
   }
 };
 
@@ -67291,10 +67800,6 @@ function registerBuiltinConnectors() {
   registerConnector(zoominfoConnector);
   registered = true;
 }
-
-// node_modules/zod/index.js
-init_external();
-init_external();
 
 // pipeline_core/models.ts
 var SCHEMA_VERSION = 3;
@@ -76421,7 +76926,7 @@ var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
 var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
 var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
-function normalizeDomain(input2) {
+function normalizeDomain2(input2) {
   if (typeof input2 !== "string" || !input2.trim()) {
     throw new Error(`invalid domain ${JSON.stringify(input2)}: empty`);
   }
@@ -76444,7 +76949,7 @@ function normalizeDomain(input2) {
 }
 function normalizeDomainLenient(domain2) {
   try {
-    return normalizeDomain(domain2);
+    return normalizeDomain2(domain2);
   } catch {
     return String(domain2 ?? "").trim().toLowerCase();
   }
@@ -76453,7 +76958,7 @@ function normalizeDomains(domains) {
   const out = [];
   const seen = /* @__PURE__ */ new Set();
   for (const d of domains) {
-    const n = normalizeDomain(d);
+    const n = normalizeDomain2(d);
     if (!seen.has(n)) {
       seen.add(n);
       out.push(n);
@@ -76540,7 +77045,7 @@ function isPushOnly(name29) {
 }
 async function runResearch(domain2, icp, opts = {}) {
   registerBuiltinConnectors();
-  const target = normalizeDomain(domain2);
+  const target = normalizeDomain2(domain2);
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const connectors = getConfiguredConnectors("research");
   const leads = [];
@@ -76856,7 +77361,7 @@ function defaultStorePath() {
   return join3(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
-var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
 var JsonlRunStore = class {
   constructor(path = defaultStorePath(), opts = {}) {
     this.path = path;
@@ -76945,7 +77450,7 @@ var JsonlRunStore = class {
           continue;
         }
         if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
-        await sleep(delay3 + Math.floor(Math.random() * delay3));
+        await sleep2(delay3 + Math.floor(Math.random() * delay3));
         delay3 = Math.min(delay3 * 2, 200);
       }
     }

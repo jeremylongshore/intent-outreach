@@ -12,38 +12,55 @@
  *   reviewed during connector research (018-DR-LAND). Confirm against
  *   https://data.crunchbase.com/docs/field-reference before production use —
  *   field names in v4 have changed across minor API revisions.
+ *
+ * No matching entity → no enrichment (never a fabricated empty record).
  */
 
+import { z } from "zod";
 import { httpJson } from "../http.js";
-import { getSecret, hasSecret } from "../secrets.js";
+import { hasSecret } from "../secrets.js";
 import type { Enrichment } from "../models.js";
+import { parseVendor, useSecret } from "./_shared.js";
 import type { Connector, EnrichInput, EnrichOutput } from "./types.js";
 
 const BASE = "https://api.crunchbase.com/v4/data";
 const KEY_ENV = "CRUNCHBASE_API_KEY";
 
 function headers(): Record<string, string> {
-  return { "X-cb-user-key": getSecret(KEY_ENV) };
+  return { "X-cb-user-key": useSecret(KEY_ENV) };
 }
 
-/** Defensive shape for a single entity returned by /searches/organizations. */
-interface CbOrg {
-  identifier?: { permalink?: string; value?: string };
-  website_url?: string;
-  funding_total?: { value_usd?: number };
-  last_funding_type?: string;
-  last_funding_at?: string;
-  num_funding_rounds?: number;
-  investors?: Array<{ identifier?: { value?: string } }>;
-}
+const IdentifierSchema = z
+  .object({ permalink: z.string().nullish(), value: z.string().nullish() })
+  .passthrough();
 
-interface CbSearchResponse {
-  entities?: Array<{
-    identifier?: { value?: string };
-    properties?: CbOrg;
-  }>;
-  count?: number;
-}
+/** Tolerant shape for one entity's properties from /searches/organizations. */
+const CbOrgSchema = z
+  .object({
+    identifier: IdentifierSchema.nullish(),
+    website_url: z.string().nullish(),
+    funding_total: z.object({ value_usd: z.number().nullish() }).passthrough().nullish(),
+    last_funding_type: z.string().nullish(),
+    last_funding_at: z.string().nullish(),
+    num_funding_rounds: z.number().nullish(),
+    investors: z
+      .array(z.object({ identifier: IdentifierSchema.nullish() }).passthrough().nullish())
+      .nullish(),
+  })
+  .passthrough();
+
+const CbSearchSchema = z
+  .object({
+    entities: z
+      .array(
+        z
+          .object({ identifier: IdentifierSchema.nullish(), properties: CbOrgSchema.nullish() })
+          .passthrough(),
+      )
+      .nullish(),
+    count: z.number().nullish(),
+  })
+  .passthrough();
 
 export const crunchbaseConnector: Connector = {
   name: "crunchbase",
@@ -58,9 +75,9 @@ export const crunchbaseConnector: Connector = {
   },
 
   async enrich({ lead }: EnrichInput): Promise<EnrichOutput> {
-    const res = await httpJson<CbSearchResponse>(
-      `${BASE}/searches/organizations`,
-      {
+    const res = parseVendor(
+      CbSearchSchema,
+      await httpJson(`${BASE}/searches/organizations`, {
         method: "POST",
         headers: headers(),
         json: {
@@ -79,12 +96,13 @@ export const crunchbaseConnector: Connector = {
           },
           limit: 1,
         },
-      },
+      }),
     );
 
-    // Defensive: Crunchbase wraps fields in properties; flatten whichever shape arrived.
+    // No matching organization → no enrichment.
     const entity = res.entities?.[0];
-    const props: CbOrg = entity?.properties ?? {};
+    if (!entity) return { enrichments: [], raw: res };
+    const props = entity.properties ?? {};
 
     // Investors array: each element may carry identifier.value (org name) or be absent.
     const investors = (props.investors ?? [])
@@ -96,9 +114,7 @@ export const crunchbaseConnector: Connector = {
     const funding: Enrichment["funding"] = {
       lastRound: props.last_funding_type ?? undefined,
       totalRaisedUsd:
-        typeof totalRaisedRaw === "number" && totalRaisedRaw >= 0
-          ? totalRaisedRaw
-          : undefined,
+        typeof totalRaisedRaw === "number" && totalRaisedRaw >= 0 ? totalRaisedRaw : undefined,
       lastRoundDate: props.last_funding_at ?? undefined,
       investors: investors.length > 0 ? investors : undefined,
     };
@@ -108,7 +124,7 @@ export const crunchbaseConnector: Connector = {
       subjectKey: lead.domain,
       provider: "crunchbase",
       funding,
-      data: (entity ?? {}) as Record<string, unknown>,
+      data: entity as Record<string, unknown>,
       fetchedAt: new Date().toISOString(),
     };
 
