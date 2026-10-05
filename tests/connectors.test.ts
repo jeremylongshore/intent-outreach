@@ -13,7 +13,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { _resetSecretCache } from "../pipeline_core/secrets.js";
-import { apolloConnector } from "../pipeline_core/connectors/apollo.js";
+import { MAX_REVEAL_PER_DOMAIN, apolloConnector } from "../pipeline_core/connectors/apollo.js";
 import { hunterConnector } from "../pipeline_core/connectors/hunter.js";
 import { crunchbaseConnector } from "../pipeline_core/connectors/crunchbase.js";
 import { peopledatalabsConnector } from "../pipeline_core/connectors/peopledatalabs.js";
@@ -165,61 +165,76 @@ describe("apolloConnector", () => {
     });
   });
 
-  describe("research – personToContact: name resolution", () => {
-    const ORG = {
-      organization: { name: "Acme", primary_domain: DOMAIN },
+  describe("research – live API shape (verified 2026-10-05)", () => {
+    const ORG = { organization: { name: "Acme", primary_domain: DOMAIN } };
+    // People search returns ids + first names + obfuscated last names, no emails.
+    const SEARCH = {
+      people: [
+        { id: "p1", first_name: "Jane", last_name_obfuscated: "D***e", title: "VP Sales", has_email: true },
+        { id: "p2", first_name: "Bob", last_name_obfuscated: "S***h", title: "CTO", has_email: false },
+        { id: "p3", first_name: "Cara", last_name_obfuscated: "L***e", title: "COO", has_email: true },
+      ],
+    };
+    const REVEAL = {
+      matches: [
+        { id: "p1", name: "Jane Doe", first_name: "Jane", last_name: "Doe", title: "VP Sales", email: "jane@acme.com" },
+        { id: "p3", name: "Cara Lowe", first_name: "Cara", last_name: "Lowe", title: "COO", email: "cara@acme.com" },
+      ],
     };
 
-    it("prefers the top-level name field when present", async () => {
-      const people = {
-        people: [
-          {
-            name: "Jane Doe",
-            first_name: "Jane",
-            last_name: "Doe",
-            title: "VP Sales",
-            email: "jane@acme.com",
-          },
-        ],
-      };
-      vi.stubGlobal("fetch", mockFetchSequence([ORG, people]));
+    it("looks up the org, searches decision-makers by domain list, and reveals only people with an email", async () => {
+      const fetchSpy = mockFetchSequence([ORG, SEARCH, REVEAL]);
+      vi.stubGlobal("fetch", fetchSpy);
 
-      const { contacts } = await apolloConnector.research!({ domain: DOMAIN, icp: "" });
+      const { leads, contacts } = await apolloConnector.research!({ domain: DOMAIN, icp: "a long ICP sentence" });
 
-      expect(contacts[0]?.name).toBe("Jane Doe");
-      expect(contacts[0]?.email).toBe("jane@acme.com");
-      expect(contacts[0]?.title).toBe("VP Sales");
-      expect(contacts[0]?.source).toBe("apollo");
+      const calls = (fetchSpy as unknown as { mock: { calls: [URL | string, RequestInit][] } }).mock.calls;
+      expect(String(calls[0]![0])).toBe(`https://api.apollo.io/api/v1/organizations/enrich?domain=${DOMAIN}`);
+      expect(String(calls[1]![0])).toBe("https://api.apollo.io/api/v1/mixed_people/api_search");
+      const search = JSON.parse(String(calls[1]![1].body));
+      expect(search.q_organization_domains_list).toEqual([DOMAIN]);
+      expect(search).not.toHaveProperty("q_organization_domains");
+      expect(search).not.toHaveProperty("q_keywords"); // the ICP is not a keyword query
+      expect(search.person_seniorities).toContain("c_suite");
+      expect(String(calls[2]![0])).toContain("/people/bulk_match");
+      expect(JSON.parse(String(calls[2]![1].body))).toEqual({ details: [{ id: "p1" }, { id: "p3" }] });
+
+      expect(leads[0]?.companyName).toBe("Acme");
+      expect(contacts.map((c) => [c.name, c.email, c.title])).toEqual([
+        ["Jane Doe", "jane@acme.com", "VP Sales"],
+        ["Cara Lowe", "cara@acme.com", "COO"],
+      ]);
     });
 
-    it("joins first_name + last_name when name is absent", async () => {
-      const people = {
-        people: [{ first_name: "Bob", last_name: "Smith", email: "bob@acme.com" }],
-      };
-      vi.stubGlobal("fetch", mockFetchSequence([ORG, people]));
-
-      const { contacts } = await apolloConnector.research!({ domain: DOMAIN, icp: "" });
-
-      expect(contacts[0]?.name).toBe("Bob Smith");
+    it(`caps reveals at ${MAX_REVEAL_PER_DOMAIN} per domain (credits)`, async () => {
+      const many = { people: Array.from({ length: 8 }, (_, i) => ({ id: `p${i}`, first_name: "X", has_email: true })) };
+      const fetchSpy = mockFetchSequence([ORG, many, { matches: [] }]);
+      vi.stubGlobal("fetch", fetchSpy);
+      await apolloConnector.research!({ domain: DOMAIN, icp: "" });
+      const calls = (fetchSpy as unknown as { mock: { calls: [URL | string, RequestInit][] } }).mock.calls;
+      expect(JSON.parse(String(calls[2]![1].body)).details).toHaveLength(MAX_REVEAL_PER_DOMAIN);
     });
 
-    it("falls back to (unknown) when both name and first/last are absent", async () => {
-      const people = { people: [{}] };
-      vi.stubGlobal("fetch", mockFetchSequence([ORG, people]));
-
+    it("drops people it could not reveal to a full name (first-name-only contacts are useless)", async () => {
+      vi.stubGlobal("fetch", mockFetchSequence([ORG, SEARCH, { matches: [{ id: "p1", first_name: "Jane" }, null] }]));
       const { contacts } = await apolloConnector.research!({ domain: DOMAIN, icp: "" });
-
-      expect(contacts[0]?.name).toBe("(unknown)");
+      expect(contacts).toEqual([]);
     });
 
-    it("drops email when it contains no @ character", async () => {
-      const people = {
-        people: [{ name: "No Email", email: "not-an-email" }],
-      };
-      vi.stubGlobal("fetch", mockFetchSequence([ORG, people]));
-
+    it("makes no reveal call (spends no credits) when nobody has an email", async () => {
+      const fetchSpy = mockFetchSequence([ORG, { people: [{ id: "p2", first_name: "Bob", has_email: false }] }]);
+      vi.stubGlobal("fetch", fetchSpy);
       const { contacts } = await apolloConnector.research!({ domain: DOMAIN, icp: "" });
+      expect(contacts).toEqual([]);
+      expect((fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(2);
+    });
 
+    it("drops a revealed email that contains no @", async () => {
+      vi.stubGlobal(
+        "fetch",
+        mockFetchSequence([ORG, SEARCH, { matches: [{ id: "p1", name: "Jane Doe", email: "not-an-email" }] }]),
+      );
+      const { contacts } = await apolloConnector.research!({ domain: DOMAIN, icp: "" });
       expect(contacts[0]?.email).toBeUndefined();
     });
   });

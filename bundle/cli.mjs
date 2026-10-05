@@ -61950,6 +61950,8 @@ async function forEachContact(contacts, cap, fn, opts = {}) {
 // pipeline_core/connectors/apollo.ts
 var BASE = "https://api.apollo.io/api/v1";
 var KEY_ENV = "APOLLO_API_KEY";
+var MAX_REVEAL_PER_DOMAIN = 3;
+var BUYER_SENIORITIES = ["owner", "founder", "c_suite", "partner", "vp", "head", "director"];
 function headers() {
   return { "X-Api-Key": useSecret(KEY_ENV) };
 }
@@ -61963,6 +61965,8 @@ var ApolloOrgSchema = external_exports.object({
 }).passthrough();
 var ApolloPhoneSchema = external_exports.object({ raw_number: external_exports.string().nullish(), type: external_exports.string().nullish() }).passthrough();
 var ApolloPersonSchema = external_exports.object({
+  id: external_exports.string().nullish(),
+  has_email: external_exports.boolean().nullish(),
   name: external_exports.string().nullish(),
   first_name: external_exports.string().nullish(),
   last_name: external_exports.string().nullish(),
@@ -61972,10 +61976,7 @@ var ApolloPersonSchema = external_exports.object({
   phone_numbers: external_exports.array(ApolloPhoneSchema).nullish(),
   organization: ApolloOrgSchema.nullish()
 }).passthrough();
-var OrgSearchSchema = external_exports.object({
-  organizations: external_exports.array(ApolloOrgSchema).nullish(),
-  organization: ApolloOrgSchema.nullish()
-}).passthrough();
+var OrgEnrichSchema = external_exports.object({ organization: ApolloOrgSchema.nullish() }).passthrough();
 var PeopleSearchSchema = external_exports.object({ people: external_exports.array(ApolloPersonSchema).nullish() }).passthrough();
 var BulkMatchSchema = external_exports.object({ matches: external_exports.array(ApolloPersonSchema.nullable()).nullish() }).passthrough();
 var APOLLO_PERSON_ALLOW = [
@@ -62053,17 +62054,17 @@ var apolloConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV);
   },
-  async research({ domain: domain2, icp, signal }) {
-    const orgRes = parseVendor(
-      OrgSearchSchema,
-      await httpJson(`${BASE}/organizations/api_search`, {
-        signal,
-        method: "POST",
-        headers: headers(),
-        json: { q_organization_domains: [domain2], per_page: 1 }
-      })
-    );
-    const org = orgRes.organization ?? orgRes.organizations?.[0] ?? { primary_domain: domain2 };
+  async research({ domain: domain2, signal }) {
+    let org = { primary_domain: domain2 };
+    try {
+      const orgRes = parseVendor(
+        OrgEnrichSchema,
+        await httpJson(`${BASE}/organizations/enrich`, { signal, headers: headers(), query: { domain: domain2 } })
+      );
+      org = orgRes.organization ?? org;
+    } catch (err) {
+      if (isAuthFailure(err) || !isNotFound(err)) throw err;
+    }
     const lead = orgToLead(org, domain2);
     const peopleRes = parseVendor(
       PeopleSearchSchema,
@@ -62071,15 +62072,38 @@ var apolloConnector = {
         signal,
         method: "POST",
         headers: headers(),
-        json: { q_organization_domains: [domain2], q_keywords: icp, per_page: 10 }
+        json: { q_organization_domains_list: [domain2], person_seniorities: [...BUYER_SENIORITIES], per_page: 10 }
       })
     );
-    const people = peopleRes.people ?? [];
-    const contacts = people.map((p) => personToContact(p, lead.domain));
+    const found = peopleRes.people ?? [];
+    const toReveal = found.filter((p) => p.id && p.has_email !== false).slice(0, MAX_REVEAL_PER_DOMAIN);
+    let revealed = [];
+    if (toReveal.length > 0) {
+      try {
+        const res = parseVendor(
+          BulkMatchSchema,
+          await httpJson(`${BASE}/people/bulk_match`, {
+            signal,
+            method: "POST",
+            headers: headers(),
+            query: { reveal_personal_emails: "false", reveal_phone_number: "false" },
+            json: { details: toReveal.map((p) => ({ id: p.id })) }
+          })
+        );
+        revealed = (res.matches ?? []).filter((m) => Boolean(m));
+      } catch (err) {
+        if (isAuthFailure(err) || !isNotFound(err)) throw err;
+      }
+    }
+    const contacts = revealed.map((p) => personToContact(p, lead.domain)).filter((c) => c.name !== "(unknown)" && c.name.trim().split(/\s+/).length > 1);
     return {
       leads: [lead],
       contacts,
-      raw: keepRawOptIn() ? { org: orgRes, people: peopleRes } : { org: pickAllowed(org, APOLLO_ORG_ALLOW), people: people.length }
+      raw: keepRawOptIn() ? { org, people: peopleRes, revealed } : {
+        org: pickAllowed(org, APOLLO_ORG_ALLOW),
+        peopleFound: found.length,
+        revealed: revealed.length
+      }
     };
   },
   async enrich({ lead, contacts, signal }) {
