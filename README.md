@@ -100,7 +100,8 @@ on a fresh clone with no `node_modules`); regenerate them with `npm run bundle`.
 
 `run` options: `--icp` and `--domains` (required), `--profile <path|name>`, `--provider
 anthropic|openai|minimax|xai`, `--model`, `--channel email|linkedin`, `--min-score 0-100`, `--max-contacts 1-50`,
-`--out <path>`, `--json`. Every flag is validated before anything is spent; a bad or unknown flag prints an
+`--buyer-titles "CTO,COO,VP Operations"` (ranks each lead's contacts buyers-first before drafting and aims
+Apollo reveals at them; overrides the profile's `filtering.contactTitles`), `--out <path>`, `--json`. Every flag is validated before anything is spent; a bad or unknown flag prints an
 error and exits with code **2** (runtime failures exit 1).
 
 `--profile` takes a path to a Report Profile JSON file, or a name looked up in `./profiles`, then

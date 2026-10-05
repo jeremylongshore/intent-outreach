@@ -24,6 +24,12 @@ export interface ResearchInput {
   domain: string;
   /** The campaign ICP, for connectors that can filter people by role/seniority. */
   icp: string;
+  /**
+   * Buyer titles the operator wants reached (profile `filtering.contactTitles` or
+   * `--buyer-titles`). Connectors that search people by title should filter/rank
+   * by them so paid reveals go to buyers. Absent = no title targeting.
+   */
+  buyerTitles?: string[];
   /** Per-invocation deadline from the pipeline. Optional; adapters may ignore it
    *  (the pipeline still enforces the deadline by racing the call). */
   signal?: AbortSignal;
@@ -57,6 +63,8 @@ export interface ResearchOutput {
 export interface EnrichInput {
   lead: Lead;
   contacts: Contact[];
+  /** Buyer titles (see ResearchInput.buyerTitles). Absent = no title targeting. */
+  buyerTitles?: string[];
   /** Per-invocation deadline from the pipeline (see ResearchInput.signal). */
   signal?: AbortSignal;
 }

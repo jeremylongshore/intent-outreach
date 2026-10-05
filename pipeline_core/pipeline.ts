@@ -46,6 +46,7 @@ import { applyComplianceFooter, missingSenderFields, type SenderIdentity } from 
 import { guardDraft } from "./draft-guard.js";
 import { loadProfile, type ReportProfile } from "./profiles.js";
 import { intentOutreachHome } from "./secrets.js";
+import { cleanBuyerTitles, rankContactsByTitle } from "./targeting.js";
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,6 +59,14 @@ export const DEFAULT_CONNECTOR_TIMEOUT_MS = 90_000;
 export interface ConnectorRunOptions {
   /** Per-connector-invocation deadline in ms. Default 90s. */
   connectorTimeoutMs?: number;
+  /** Buyer titles passed to every connector (people search/reveal targeting). */
+  buyerTitles?: string[];
+}
+
+/** `{ buyerTitles }` when any usable title is set, else `{}` (connector input stays unchanged). */
+function buyerTitlesArg(opts: ConnectorRunOptions): { buyerTitles?: string[] } {
+  const titles = cleanBuyerTitles(opts.buyerTitles);
+  return titles.length > 0 ? { buyerTitles: titles } : {};
 }
 
 export interface ResearchResult {
@@ -284,6 +293,7 @@ export async function runResearch(
   registerBuiltinConnectors();
   const target = normalizeDomain(domain);
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
+  const targeting = buyerTitlesArg(opts);
   const connectors = getConfiguredConnectors("research");
   const leads: Lead[] = [];
   const contacts: Contact[] = [];
@@ -296,7 +306,7 @@ export async function runResearch(
     if (!connector.research) continue;
     try {
       const out = await callWithDeadline(
-        (signal) => connector.research!({ domain: target, icp, signal }),
+        (signal) => connector.research!({ domain: target, icp, ...targeting, signal }),
         timeoutMs,
       );
       leads.push(...out.leads);
@@ -382,6 +392,7 @@ export async function runEnrich(
 ): Promise<EnrichResult> {
   registerBuiltinConnectors();
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
+  const targeting = buyerTitlesArg(opts);
   const connectors = getConfiguredConnectors("enrich");
   const enrichments: Enrichment[] = [];
   const raw: Record<string, unknown> = {};
@@ -395,7 +406,7 @@ export async function runEnrich(
     try {
       const current = working;
       const out = await callWithDeadline(
-        (signal) => connector.enrich!({ lead, contacts: current, signal }),
+        (signal) => connector.enrich!({ lead, contacts: current, ...targeting, signal }),
         timeoutMs,
       );
       enrichments.push(...out.enrichments);
@@ -500,23 +511,25 @@ export interface RunStatusInput {
   researchRan: boolean;
   /** Isolated per-lead/contact failures (`run.errors.length`). */
   errors: number;
-  /** Drafts rejected by the validator (`run.rejectedDrafts.length`). */
-  rejectedDrafts?: number;
 }
 
 /**
  * The ONE place a run's status is decided (runCampaign + the MCP save path).
  *
- *   messages && no errors/rejections → complete
- *   messages && some errors/rejections → partial
+ *   messages && no errors             → complete
+ *   messages && some errors           → partial (some lead/contact step FAILED)
  *   no messages && errors             → failed  (every LLM/gate step that ran failed)
  *   no messages && leads              → enriched
  *   no messages && research ran       → researched (honest empty result)
  *   nothing ran                       → failed
+ *
+ * Rejected drafts (model declines of out-of-ICP contacts, send-safety guard
+ * rejections) and blocked contacts are DECISIONS the pipeline made correctly,
+ * recorded for the audit trail; they never degrade the status. "partial" means
+ * something broke (a provider/gate error), so the operator should look.
  */
 export function deriveRunStatus(s: RunStatusInput): RunStatus {
-  const degraded = s.errors > 0 || (s.rejectedDrafts ?? 0) > 0;
-  if (s.messages > 0) return degraded ? "partial" : "complete";
+  if (s.messages > 0) return s.errors > 0 ? "partial" : "complete";
   if (s.errors > 0) return "failed";
   if (s.leads > 0) return "enriched";
   if (s.researchRan) return "researched";
@@ -767,6 +780,12 @@ export interface RunCampaignInput {
   minScore?: number;
   /** Contacts to draft per lead. Default 1. */
   maxContactsPerLead?: number;
+  /**
+   * Buyer titles (profile `filtering.contactTitles`, CLI `--buyer-titles`). When
+   * set, each lead's contacts are ranked buyers-first before the maxContactsPerLead
+   * slice, and connectors aim people search/reveals at them. Absent ⇒ unchanged order.
+   */
+  buyerTitles?: string[];
   /** Injected provider (tests/evals). Default: getProvider() from env (eval-gated). */
   provider?: LLMProvider;
   /** Injected clock for determinism in tests. Default: real wall clock. */
@@ -814,9 +833,11 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const channel = input.channel ?? "email";
   const minScore = input.minScore ?? 0;
   const maxContacts = input.maxContactsPerLead ?? 1;
-  const connectorOpts: ConnectorRunOptions = input.connectorTimeoutMs
-    ? { connectorTimeoutMs: input.connectorTimeoutMs }
-    : {};
+  const buyerTitles = cleanBuyerTitles(input.buyerTitles);
+  const connectorOpts: ConnectorRunOptions = {
+    ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
+    ...(buyerTitles.length > 0 ? { buyerTitles } : {}),
+  };
   // Opt-outs are loaded (I/O, pipeline layer) BEFORE anything is spent; a corrupt
   // suppression file throws here — fail closed rather than draft to an opt-out.
   const suppressions = input.suppressions ?? (await loadSuppressionList());
@@ -916,7 +937,8 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
       }
 
       // DRAFT seam (LLM) — output goes through the validator before it can persist.
-      for (const contact of eligible.slice(0, maxContacts)) {
+      // Buyers first (deterministic, stable; identity without buyer titles).
+      for (const contact of rankContactsByTitle(eligible, buyerTitles).slice(0, maxContacts)) {
         const contactKey = contactKeyOf(contact);
         let drafted: Awaited<ReturnType<typeof draftMessage>>;
         try {
@@ -978,7 +1000,6 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     leads: allLeads.length,
     researchRan: anyResearchRan,
     errors: errors.length,
-    rejectedDrafts: rejectedDrafts.length,
   });
 
   // Final gate: the whole record must pass the validator to become a record.
