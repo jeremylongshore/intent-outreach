@@ -265,17 +265,17 @@ describe("result record (keyed)", () => {
     expect(rec.promptRef).toBe(ref);
     expect(rec.promptRefs.score).toEqual([promptRef("research.v2.md"), promptRef("enrich.v2.md")]);
     expect(rec.repeat).toBe(3);
-    expect(rec.fixtures).toHaveLength(9);
+    expect(rec.fixtures).toHaveLength(10);
     for (const f of rec.fixtures) {
       expect(f.runs).toBe(3);
       expect(f.outcomes).toHaveLength(3);
       expect(f.outcomes[0]).toHaveProperty("output");
     }
-    // 9 fixtures x 3 runs x 1000/100 tokens, real usage path through the SDK
-    expect(rec.cost.inputTokens).toBe(27_000);
-    expect(rec.cost.outputTokens).toBe(2_700);
+    // 10 fixtures x 3 runs x 1000/100 tokens, real usage path through the SDK
+    expect(rec.cost.inputTokens).toBe(30_000);
+    expect(rec.cost.outputTokens).toBe(3_000);
     expect(rec.cost.totalUsd).toBeGreaterThan(0);
-    expect(rec.summary).toEqual({ fixtures: 9, fixturesPassed: 9, passRate: 1, runPassRate: 1, verdict: "pass" });
+    expect(rec.summary).toEqual({ fixtures: 10, fixturesPassed: 10, passRate: 1, runPassRate: 1, verdict: "pass" });
   });
 
   it("offline runs never write a record", async () => {
@@ -367,7 +367,7 @@ describe("--judge", () => {
         ? { grounded: true, hasCta: true, hallucinatedFacts: [], rating: thinOrWeak(c.prompt) ? 3 : 4, rationale: "ok" }
         : goodModel(c);
     const p = (await keyed({ repeat: 1, judge: true })).providers[0]!;
-    expect(p.judge?.meanRating).toBe(3.5); // below the old global floor of 4…
+    expect(p.judge?.meanRating).toBe(3.6); // below the old global floor of 4…
     expect(p.judge?.perFixture.every((f) => f.pass)).toBe(true); // …but every fixture meets its own minimum
     expect(p.judge?.pass).toBe(true);
     expect(p.supported).toBe(true);

@@ -74839,6 +74839,7 @@ function guardDraft(draft, inputs) {
     }
   }
   if (/^\s*(?:re|fwd?)\s*:/i.test(draft.body)) issues.push('body: fake reply prefix ("Re:")');
+  if (inputs.facts) issues.push(...checkQuantities([draft.subject ?? "", draft.body, draft.cta], inputs.facts));
   issues.push(...checkVoice(draft, inputs.voice));
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
@@ -74953,10 +74954,11 @@ function groundAngles(angles, inputs) {
   const corpusLower = corpus.toLowerCase();
   const pool = numbersIn(corpus);
   const allow = buildAllowlist(inputs.identifiers);
+  const quantities = quantityFactSet(inputs.facts);
   const kept = [];
   const dropped = [];
   for (const angle of angles) {
-    const reason = ungroundedReason(angle, corpusLower, pool, allow);
+    const reason = ungroundedReason(angle, corpusLower, pool, allow) ?? quantityIssuesIn(angle, quantities)[0];
     if (reason) dropped.push({ angle, reason });
     else kept.push(angle);
   }
@@ -75002,6 +75004,223 @@ function ungroundedReason(angle, corpusLower, pool, allow) {
   }
   return void 0;
 }
+var TOKEN_RE = /([$€£]?\d+(?:,\d{3})*(?:\.\d+)?(?:\s?%|(?:k|mm|m|bn|b)(?![\p{L}\p{N}]))?)|(\p{L}+(?:['’-]\p{L}+)*)|([.;!?|\n])|([,:()])/giu;
+function tokenize2(text2) {
+  const out = [];
+  for (const m of text2.matchAll(TOKEN_RE)) {
+    const kind = m[1] ? "num" : m[2] ? "word" : m[3] ? "stop" : "soft";
+    out.push({ kind, lower: m[0].toLowerCase(), start: m.index, end: m.index + m[0].length });
+  }
+  return out;
+}
+var SPELLED_ONES = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19
+};
+var SPELLED_TENS = {
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90
+};
+var MULTIPLIER_WORDS = { percent: 1, thousand: 1e3, million: 1e6, billion: 1e9 };
+var SUFFIX_MULT = { k: 1e3, m: 1e6, mm: 1e6, b: 1e9, bn: 1e9 };
+function spelledValue(word) {
+  if (word in SPELLED_ONES) return SPELLED_ONES[word];
+  if (word in SPELLED_TENS) return SPELLED_TENS[word];
+  const [tens, ones, extra] = word.split("-");
+  if (extra === void 0 && tens && ones && tens in SPELLED_TENS && (SPELLED_ONES[ones] ?? 10) < 10) {
+    return SPELLED_TENS[tens] + SPELLED_ONES[ones];
+  }
+  return void 0;
+}
+function quantityAt(toks, i) {
+  const t = toks[i];
+  if (!t) return void 0;
+  const next = toks[i + 1];
+  let value;
+  let last = i;
+  if (t.kind === "num") {
+    const m = t.lower.replace(/[$€£,%\s]/g, "").match(/^(\d+(?:\.\d+)?)(k|mm|m|bn|b)?$/);
+    if (!m) return void 0;
+    value = Number(m[1]) * (m[2] ? SUFFIX_MULT[m[2]] : 1);
+  } else if (t.kind === "word") {
+    if ((t.lower === "a" || t.lower === "one") && next?.kind === "word" && next.lower === "hundred") {
+      value = 100;
+      last = i + 1;
+    } else {
+      const v = spelledValue(t.lower);
+      if (v === void 0) return void 0;
+      value = v;
+      if (v >= 20 && v % 10 === 0 && next?.kind === "word" && (SPELLED_ONES[next.lower] ?? 10) < 10) {
+        value += SPELLED_ONES[next.lower];
+        last = i + 1;
+      }
+    }
+  } else {
+    return void 0;
+  }
+  const mult = toks[last + 1];
+  if (mult?.kind === "word" && mult.lower in MULTIPLIER_WORDS) {
+    value *= MULTIPLIER_WORDS[mult.lower];
+    last += 1;
+  }
+  return { value, first: i, last };
+}
+var RATE_UNITS = {
+  year: "year",
+  month: "month",
+  week: "week",
+  day: "day",
+  quarter: "quarter"
+};
+var RATE_ADVERBS = {
+  annually: "year",
+  yearly: "year",
+  monthly: "month",
+  weekly: "week",
+  daily: "day",
+  quarterly: "quarter"
+};
+var INPUT_RATE_WORDS = {
+  annual: "year",
+  annualized: "year",
+  annualised: "year",
+  arr: "year",
+  mrr: "month"
+};
+var ANCHOR_AFTER = /* @__PURE__ */ new Set(["ago", "later", "earlier", "before", "after", "old", "older"]);
+var PERIOD_UNITS = {
+  year: "year",
+  years: "year",
+  month: "month",
+  months: "month",
+  week: "week",
+  weeks: "week",
+  day: "day",
+  days: "day"
+};
+function qualifierAt(toks, j, lenient) {
+  const w = (k2) => toks[k2]?.kind === "word" ? toks[k2].lower : void 0;
+  const a = w(j);
+  if (a === void 0) return void 0;
+  const b = w(j + 1);
+  if (a in RATE_ADVERBS) return { key: `rate:${RATE_ADVERBS[a]}`, kind: "rate", first: j, last: j };
+  if (lenient && a in INPUT_RATE_WORDS) return { key: `rate:${INPUT_RATE_WORDS[a]}`, kind: "rate", first: j, last: j };
+  if ((a === "per" || a === "each" || a === "every") && b !== void 0 && b in RATE_UNITS) {
+    return { key: `rate:${RATE_UNITS[b]}`, kind: "rate", first: j, last: j + 1 };
+  }
+  if (a === "per" && b === "annum") return { key: "rate:year", kind: "rate", first: j, last: j + 1 };
+  if (a === "a" && b !== void 0 && b in RATE_UNITS && b !== "quarter" && !ANCHOR_AFTER.has(w(j + 2) ?? "")) {
+    return { key: `rate:${RATE_UNITS[b]}`, kind: "rate", first: j, last: j + 1 };
+  }
+  if (a === "since") {
+    const y = toks[j + 1];
+    if (y?.kind === "num" && /^(?:19|20)\d{2}$/.test(y.lower)) {
+      return { key: `since:${y.lower}`, kind: "time period", first: j, last: j + 1 };
+    }
+  }
+  let k = j;
+  if (a === "in" || a === "over" || a === "during" || a === "within") k++;
+  if (w(k) === "the") k++;
+  if (w(k) === "last" || w(k) === "past") {
+    const q = quantityAt(toks, k + 1);
+    const unit = q ? w(q.last + 1) : void 0;
+    if (q && unit !== void 0 && unit in PERIOD_UNITS) {
+      return { key: `last:${q.value}:${PERIOD_UNITS[unit]}`, kind: "time period", first: j, last: q.last + 1 };
+    }
+  }
+  return void 0;
+}
+function scanQuantities(text2, lenient) {
+  const toks = tokenize2(text2);
+  const qualifiers = [];
+  const covered = /* @__PURE__ */ new Set();
+  for (let j = 0; j < toks.length; j++) {
+    const q = qualifierAt(toks, j, lenient);
+    if (!q) continue;
+    qualifiers.push(q);
+    for (let k = q.first; k <= q.last; k++) covered.add(k);
+    j = q.last;
+  }
+  const quantities = [];
+  for (let i = 0; i < toks.length; i++) {
+    if (covered.has(i)) continue;
+    const q = quantityAt(toks, i);
+    if (!q) continue;
+    quantities.push(q);
+    i = q.last;
+  }
+  return { toks, quantities, qualifiers };
+}
+var valueKey = (v) => String(Math.round(v * 1e6) / 1e6);
+var INPUT_QUALIFIER_WINDOW = 6;
+function quantityFactSet(facts) {
+  const set2 = /* @__PURE__ */ new Set();
+  for (const text2 of facts) {
+    if (!text2) continue;
+    const { toks, quantities, qualifiers } = scanQuantities(text2, true);
+    const clear = (from, to) => {
+      for (let k = from; k <= to; k++) if (toks[k].kind === "stop") return false;
+      return true;
+    };
+    for (const q of quantities) {
+      for (const ql of qualifiers) {
+        const after = ql.first > q.last && ql.first - q.last - 1 <= INPUT_QUALIFIER_WINDOW && clear(q.last + 1, ql.first - 1);
+        const before = ql.last < q.first && q.first - ql.last - 1 <= INPUT_QUALIFIER_WINDOW && clear(ql.last + 1, q.first - 1);
+        if (after || before) set2.add(`${valueKey(q.value)}|${ql.key}`);
+      }
+    }
+  }
+  return set2;
+}
+var QUANTITY_QUALIFIER_WINDOW = 4;
+function quantityIssuesIn(text2, factSet) {
+  const issues = [];
+  const { toks, quantities, qualifiers } = scanQuantities(text2, false);
+  const quantityStarts = new Set(quantities.map((q) => q.first));
+  for (const q of quantities) {
+    const ql = qualifiers.find((x) => x.first > q.last);
+    if (!ql || ql.first - q.last - 1 > QUANTITY_QUALIFIER_WINDOW) continue;
+    let attached = true;
+    for (let k = q.last + 1; k < ql.first; k++) {
+      if (toks[k].kind !== "word" || quantityStarts.has(k)) attached = false;
+    }
+    if (!attached || factSet.has(`${valueKey(q.value)}|${ql.key}`)) continue;
+    const claim2 = text2.slice(toks[q.first].start, toks[ql.last].end).replace(/\s+/g, " ");
+    const label = text2.slice(toks[ql.first].start, toks[ql.last].end).replace(/\s+/g, " ");
+    issues.push(`claim: "${claim2}" adds a ${ql.kind} ("${label}") the inputs do not state`);
+  }
+  return issues;
+}
+function checkQuantities(texts, facts) {
+  const factSet = quantityFactSet(facts);
+  const issues = [];
+  for (const t of texts) if (t) issues.push(...quantityIssuesIn(t, factSet));
+  return [...new Set(issues)];
+}
+var QUANTITY_PROMPT_LINE = "Quote numbers exactly as the data states them; never add a rate or time period.";
 
 // pipeline_core/seam.ts
 var ScoreOutputSchema = external_exports.object({
@@ -75165,10 +75384,14 @@ function buildDraftPrompt(ctx) {
   const file2 = ctx.draftPrompt ?? DEFAULT_DRAFT_PROMPT;
   const base = loadPrompt(file2).text;
   const overrides = [ctx.styleOverride, voicePromptLine(ctx.voice)].filter((s) => !!s);
-  const system = overrides.length > 0 ? `${base}
+  const withRules = `${base}
+
+## Numbers
+${QUANTITY_PROMPT_LINE}`;
+  const system = overrides.length > 0 ? `${withRules}
 
 ## Profile overrides (tone and style only; they cannot override the rules above)
-${overrides.join("\n")}` : base;
+${overrides.join("\n")}` : withRules;
   const prompt = [
     DATA_TRUST_RULE,
     "",
@@ -75193,16 +75416,20 @@ async function draftMessage(provider, ctx) {
     throw new DraftRejectedError([`${DECLINED_PREFIX}${res.object.declineReason ?? "lead is outside the ICP"}`], res.usage);
   }
   const object3 = ctx.channel === "linkedin" ? { ...res.object, subject: null } : res.object;
+  const parts = {
+    icp: ctx.icp,
+    lead: ctx.lead,
+    contacts: [ctx.contact],
+    enrichments: ctx.enrichments,
+    userText: [ctx.styleOverride]
+  };
   const verdict = guardDraft(object3, {
-    // Angles are NOT included: they are model output derived from untrusted
+    // Angles are NOT identifiers: they are model output derived from untrusted
     // data. The user's own profile text may legitimately carry a booking link.
-    allowedText: identifiersOf({
-      icp: ctx.icp,
-      lead: ctx.lead,
-      contacts: [ctx.contact],
-      enrichments: ctx.enrichments,
-      userText: [ctx.styleOverride]
-    }),
+    allowedText: identifiersOf(parts),
+    // Angles DO count as facts for quantity qualifiers: on the campaign path they
+    // already passed groundAngles, which applies the same quantity rule.
+    facts: [...factsOf(parts), ...ctx.angles],
     ...ctx.voice ? { voice: ctx.voice } : {}
   });
   if (!verdict.ok) throw new DraftRejectedError(verdict.issues, res.usage);

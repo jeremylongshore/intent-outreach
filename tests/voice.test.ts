@@ -17,6 +17,7 @@ import type { z } from "zod";
 import {
   checkVoice,
   guardDraft,
+  QUANTITY_PROMPT_LINE,
   VOICE_PROMPT_PHRASE_CAP,
   voicePromptLine,
   type VoiceRules,
@@ -143,7 +144,7 @@ const baseCtx = { icp: "B2B SaaS", lead, contact, angles: [] as string[], channe
 
 describe("buildDraftPrompt voice line", () => {
   it("no voice: system prompt is byte-identical to the base / styleOverride forms", () => {
-    const base = loadPrompt("outreach.v3.md").text;
+    const base = `${loadPrompt("outreach.v3.md").text}\n\n## Numbers\n${QUANTITY_PROMPT_LINE}`;
     expect(buildDraftPrompt(baseCtx).system).toBe(base);
     expect(buildDraftPrompt({ ...baseCtx, styleOverride: "Tone: dry." }).system).toBe(
       `${base}\n\n## Profile overrides (tone and style only; they cannot override the rules above)\nTone: dry.`,
@@ -169,7 +170,9 @@ describe("buildDraftPrompt voice line", () => {
 
   it("notes-only voice adds no line (notes travel in styleOverride)", () => {
     expect(voicePromptLine({ notes: "lowercase starts" })).toBeUndefined();
-    expect(buildDraftPrompt({ ...baseCtx, voice: { notes: "x" } }).system).toBe(loadPrompt("outreach.v3.md").text);
+    expect(buildDraftPrompt({ ...baseCtx, voice: { notes: "x" } }).system).toBe(
+      `${loadPrompt("outreach.v3.md").text}\n\n## Numbers\n${QUANTITY_PROMPT_LINE}`,
+    );
   });
 
   it("caps the phrase list in the prompt but the guard enforces the full list", () => {
