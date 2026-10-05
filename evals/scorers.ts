@@ -26,7 +26,7 @@ import {
 } from "../pipeline_core/seam.js";
 import type { LLMProvider } from "../pipeline_core/providers.js";
 import type { Contact, Enrichment, Lead } from "../pipeline_core/models.js";
-import { groundAngles, guardDraft, type DroppedAngle } from "../pipeline_core/draft-guard.js";
+import { checkQuantities, groundAngles, guardDraft, type DroppedAngle } from "../pipeline_core/draft-guard.js";
 import { z } from "zod";
 
 /** One scorer's verdict. `findings` explains a fail (or warns on a pass). */
@@ -148,9 +148,9 @@ function norm(s: string): string {
     .trim();
 }
 
-/** Build the corpus of facts the model is ALLOWED to state, from the fixture inputs. */
-function allowedCorpus(ctx: DraftContext): string {
-  const parts: string[] = [
+/** The facts the model is ALLOWED to state, from the fixture inputs (raw, un-normalized). */
+function allowedFacts(ctx: DraftContext): string[] {
+  return [
     ctx.icp,
     ctx.lead.companyName,
     ctx.lead.industry ?? "",
@@ -161,7 +161,11 @@ function allowedCorpus(ctx: DraftContext): string {
     ...ctx.angles,
   ];
   // (DraftContext carries no enrichment; angles are the grounded carry-over from score().)
-  return norm(parts.join("  ||  "));
+}
+
+/** The allowed facts as one normalized string, for substring containment. */
+function allowedCorpus(ctx: DraftContext): string {
+  return norm(allowedFacts(ctx).join("  ||  "));
 }
 
 /**
@@ -175,7 +179,10 @@ function allowedCorpus(ctx: DraftContext): string {
  *   6.   named customers / references ("customers like Acme", "we helped Acme");
  *   7.   metrics: percentages, money, headcounts and proper names (draft-guard's
  *        groundAngles, sentence by sentence) and "3x"-style multipliers;
- *   8.   "I noticed / saw / congrats" claims with no grounded signal behind them.
+ *   8.   "I noticed / saw / congrats" claims with no grounded signal behind them;
+ *   9.   distorted quantities: a number pinned to a rate or time period the
+ *        inputs never state ("40 acquisitions a year" from "40 acquisitions"),
+ *        via draft-guard's checkQuantities (the same rule the product guard runs).
  *
  * Conservative by design: a grounded mention of a fact that IS in the inputs passes.
  */
@@ -222,6 +229,11 @@ export function groundingHeuristic(ctx: DraftContext, output: DraftText): ScoreR
 
   // 5-8.
   findings.push(...draftClaimFindings(ctx, output, corpus));
+
+  // 9. Distorted quantities (raw facts, not the normalized corpus: "1,200" and "40%" must survive).
+  for (const issue of checkQuantities([output.subject ?? "", body, output.cta ?? ""], allowedFacts(ctx))) {
+    findings.push(`distorted quantity: ${issue}`);
+  }
 
   return findings.length === 0 ? ok() : fail(...findings);
 }
@@ -290,7 +302,8 @@ function draftClaimFindings(ctx: DraftContext, output: DraftText, corpus: string
   const { dropped } = groundAngles(splitSentences(text), { facts: [corpus, EVAL_BENIGN_VOCAB], identifiers: [] });
   for (const d of dropped) {
     // url/email/phone are guardDraft's job (draftStyle); report fact claims only.
-    if (/^(?:url|email address|phone number) /.test(d.reason)) continue;
+    // Quantity qualifiers are reported once, by check 9.
+    if (/^(?:url|email address|phone number) /.test(d.reason) || d.reason.startsWith("claim: ")) continue;
     findings.push(`ungrounded claim: ${d.reason}`);
   }
   for (const m of text.match(MULTIPLIER_RE) ?? []) {

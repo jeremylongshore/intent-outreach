@@ -20638,16 +20638,16 @@ var require_scope = __commonJS({
           throw new Error("CodeGen: ref must be passed in value");
         const name = this.toName(nameOrPrefix);
         const { prefix } = name;
-        const valueKey = (_a3 = value.key) !== null && _a3 !== void 0 ? _a3 : value.ref;
+        const valueKey2 = (_a3 = value.key) !== null && _a3 !== void 0 ? _a3 : value.ref;
         let vs = this._values[prefix];
         if (vs) {
-          const _name = vs.get(valueKey);
+          const _name = vs.get(valueKey2);
           if (_name)
             return _name;
         } else {
           vs = this._values[prefix] = /* @__PURE__ */ new Map();
         }
-        vs.set(valueKey, name);
+        vs.set(valueKey2, name);
         const s = this._scope[prefix] || (this._scope[prefix] = []);
         const itemIndex = s.length;
         s[itemIndex] = value.ref;
@@ -39056,6 +39056,7 @@ function guardDraft(draft, inputs) {
     }
   }
   if (/^\s*(?:re|fwd?)\s*:/i.test(draft.body)) issues.push('body: fake reply prefix ("Re:")');
+  if (inputs.facts) issues.push(...checkQuantities([draft.subject ?? "", draft.body, draft.cta], inputs.facts));
   issues.push(...checkVoice(draft, inputs.voice));
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
@@ -39114,6 +39115,222 @@ var PROPER_STOPWORDS = new Set(
     "north south east west american european us uk eu"
   ].join(" ").split(/\s+/)
 );
+var TOKEN_RE = /([$€£]?\d+(?:,\d{3})*(?:\.\d+)?(?:\s?%|(?:k|mm|m|bn|b)(?![\p{L}\p{N}]))?)|(\p{L}+(?:['’-]\p{L}+)*)|([.;!?|\n])|([,:()])/giu;
+function tokenize(text) {
+  const out = [];
+  for (const m of text.matchAll(TOKEN_RE)) {
+    const kind = m[1] ? "num" : m[2] ? "word" : m[3] ? "stop" : "soft";
+    out.push({ kind, lower: m[0].toLowerCase(), start: m.index, end: m.index + m[0].length });
+  }
+  return out;
+}
+var SPELLED_ONES = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19
+};
+var SPELLED_TENS = {
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90
+};
+var MULTIPLIER_WORDS = { percent: 1, thousand: 1e3, million: 1e6, billion: 1e9 };
+var SUFFIX_MULT = { k: 1e3, m: 1e6, mm: 1e6, b: 1e9, bn: 1e9 };
+function spelledValue(word) {
+  if (word in SPELLED_ONES) return SPELLED_ONES[word];
+  if (word in SPELLED_TENS) return SPELLED_TENS[word];
+  const [tens, ones, extra] = word.split("-");
+  if (extra === void 0 && tens && ones && tens in SPELLED_TENS && (SPELLED_ONES[ones] ?? 10) < 10) {
+    return SPELLED_TENS[tens] + SPELLED_ONES[ones];
+  }
+  return void 0;
+}
+function quantityAt(toks, i) {
+  const t = toks[i];
+  if (!t) return void 0;
+  const next = toks[i + 1];
+  let value;
+  let last = i;
+  if (t.kind === "num") {
+    const m = t.lower.replace(/[$€£,%\s]/g, "").match(/^(\d+(?:\.\d+)?)(k|mm|m|bn|b)?$/);
+    if (!m) return void 0;
+    value = Number(m[1]) * (m[2] ? SUFFIX_MULT[m[2]] : 1);
+  } else if (t.kind === "word") {
+    if ((t.lower === "a" || t.lower === "one") && next?.kind === "word" && next.lower === "hundred") {
+      value = 100;
+      last = i + 1;
+    } else {
+      const v = spelledValue(t.lower);
+      if (v === void 0) return void 0;
+      value = v;
+      if (v >= 20 && v % 10 === 0 && next?.kind === "word" && (SPELLED_ONES[next.lower] ?? 10) < 10) {
+        value += SPELLED_ONES[next.lower];
+        last = i + 1;
+      }
+    }
+  } else {
+    return void 0;
+  }
+  const mult = toks[last + 1];
+  if (mult?.kind === "word" && mult.lower in MULTIPLIER_WORDS) {
+    value *= MULTIPLIER_WORDS[mult.lower];
+    last += 1;
+  }
+  return { value, first: i, last };
+}
+var RATE_UNITS = {
+  year: "year",
+  month: "month",
+  week: "week",
+  day: "day",
+  quarter: "quarter"
+};
+var RATE_ADVERBS = {
+  annually: "year",
+  yearly: "year",
+  monthly: "month",
+  weekly: "week",
+  daily: "day",
+  quarterly: "quarter"
+};
+var INPUT_RATE_WORDS = {
+  annual: "year",
+  annualized: "year",
+  annualised: "year",
+  arr: "year",
+  mrr: "month"
+};
+var ANCHOR_AFTER = /* @__PURE__ */ new Set(["ago", "later", "earlier", "before", "after", "old", "older"]);
+var PERIOD_UNITS = {
+  year: "year",
+  years: "year",
+  month: "month",
+  months: "month",
+  week: "week",
+  weeks: "week",
+  day: "day",
+  days: "day"
+};
+function qualifierAt(toks, j, lenient) {
+  const w = (k2) => toks[k2]?.kind === "word" ? toks[k2].lower : void 0;
+  const a = w(j);
+  if (a === void 0) return void 0;
+  const b = w(j + 1);
+  if (a in RATE_ADVERBS) return { key: `rate:${RATE_ADVERBS[a]}`, kind: "rate", first: j, last: j };
+  if (lenient && a in INPUT_RATE_WORDS) return { key: `rate:${INPUT_RATE_WORDS[a]}`, kind: "rate", first: j, last: j };
+  if ((a === "per" || a === "each" || a === "every") && b !== void 0 && b in RATE_UNITS) {
+    return { key: `rate:${RATE_UNITS[b]}`, kind: "rate", first: j, last: j + 1 };
+  }
+  if (a === "per" && b === "annum") return { key: "rate:year", kind: "rate", first: j, last: j + 1 };
+  if (a === "a" && b !== void 0 && b in RATE_UNITS && b !== "quarter" && !ANCHOR_AFTER.has(w(j + 2) ?? "")) {
+    return { key: `rate:${RATE_UNITS[b]}`, kind: "rate", first: j, last: j + 1 };
+  }
+  if (a === "since") {
+    const y = toks[j + 1];
+    if (y?.kind === "num" && /^(?:19|20)\d{2}$/.test(y.lower)) {
+      return { key: `since:${y.lower}`, kind: "time period", first: j, last: j + 1 };
+    }
+  }
+  let k = j;
+  if (a === "in" || a === "over" || a === "during" || a === "within") k++;
+  if (w(k) === "the") k++;
+  if (w(k) === "last" || w(k) === "past") {
+    const q = quantityAt(toks, k + 1);
+    const unit = q ? w(q.last + 1) : void 0;
+    if (q && unit !== void 0 && unit in PERIOD_UNITS) {
+      return { key: `last:${q.value}:${PERIOD_UNITS[unit]}`, kind: "time period", first: j, last: q.last + 1 };
+    }
+  }
+  return void 0;
+}
+function scanQuantities(text, lenient) {
+  const toks = tokenize(text);
+  const qualifiers = [];
+  const covered = /* @__PURE__ */ new Set();
+  for (let j = 0; j < toks.length; j++) {
+    const q = qualifierAt(toks, j, lenient);
+    if (!q) continue;
+    qualifiers.push(q);
+    for (let k = q.first; k <= q.last; k++) covered.add(k);
+    j = q.last;
+  }
+  const quantities = [];
+  for (let i = 0; i < toks.length; i++) {
+    if (covered.has(i)) continue;
+    const q = quantityAt(toks, i);
+    if (!q) continue;
+    quantities.push(q);
+    i = q.last;
+  }
+  return { toks, quantities, qualifiers };
+}
+var valueKey = (v) => String(Math.round(v * 1e6) / 1e6);
+var INPUT_QUALIFIER_WINDOW = 6;
+function quantityFactSet(facts) {
+  const set2 = /* @__PURE__ */ new Set();
+  for (const text of facts) {
+    if (!text) continue;
+    const { toks, quantities, qualifiers } = scanQuantities(text, true);
+    const clear = (from, to) => {
+      for (let k = from; k <= to; k++) if (toks[k].kind === "stop") return false;
+      return true;
+    };
+    for (const q of quantities) {
+      for (const ql of qualifiers) {
+        const after = ql.first > q.last && ql.first - q.last - 1 <= INPUT_QUALIFIER_WINDOW && clear(q.last + 1, ql.first - 1);
+        const before = ql.last < q.first && q.first - ql.last - 1 <= INPUT_QUALIFIER_WINDOW && clear(ql.last + 1, q.first - 1);
+        if (after || before) set2.add(`${valueKey(q.value)}|${ql.key}`);
+      }
+    }
+  }
+  return set2;
+}
+var QUANTITY_QUALIFIER_WINDOW = 4;
+function quantityIssuesIn(text, factSet) {
+  const issues = [];
+  const { toks, quantities, qualifiers } = scanQuantities(text, false);
+  const quantityStarts = new Set(quantities.map((q) => q.first));
+  for (const q of quantities) {
+    const ql = qualifiers.find((x) => x.first > q.last);
+    if (!ql || ql.first - q.last - 1 > QUANTITY_QUALIFIER_WINDOW) continue;
+    let attached = true;
+    for (let k = q.last + 1; k < ql.first; k++) {
+      if (toks[k].kind !== "word" || quantityStarts.has(k)) attached = false;
+    }
+    if (!attached || factSet.has(`${valueKey(q.value)}|${ql.key}`)) continue;
+    const claim2 = text.slice(toks[q.first].start, toks[ql.last].end).replace(/\s+/g, " ");
+    const label = text.slice(toks[ql.first].start, toks[ql.last].end).replace(/\s+/g, " ");
+    issues.push(`claim: "${claim2}" adds a ${ql.kind} ("${label}") the inputs do not state`);
+  }
+  return issues;
+}
+function checkQuantities(texts, facts) {
+  const factSet = quantityFactSet(facts);
+  const issues = [];
+  for (const t of texts) if (t) issues.push(...quantityIssuesIn(t, factSet));
+  return [...new Set(issues)];
+}
 
 // pipeline_core/seam.ts
 var ScoreOutputSchema = external_exports.object({
@@ -39141,6 +39358,52 @@ var DraftOutputSchema = external_exports.object({
   if (d.body.trim() === "") ctx.addIssue({ code: "custom", path: ["body"], message: "body is required unless declining" });
   if (d.cta.trim() === "") ctx.addIssue({ code: "custom", path: ["cta"], message: "cta is required unless declining" });
 });
+var MAX_TEXT = 1e3;
+var MAX_WEB_RESULTS = 5;
+function clip(s, max = MAX_TEXT) {
+  if (s === void 0) return void 0;
+  const t = s.trim();
+  return t.length > max ? `${t.slice(0, max)}\u2026` : t;
+}
+function webContextOf(e) {
+  const raw = e.data?.webContext;
+  if (!Array.isArray(raw)) return void 0;
+  const out = [];
+  for (const r of raw) {
+    if (!r || typeof r !== "object") continue;
+    const title = r.title;
+    const url2 = r.url;
+    if (typeof title !== "string" && typeof url2 !== "string") continue;
+    out.push({
+      title: clip(typeof title === "string" ? title : "", 300) ?? "",
+      url: clip(typeof url2 === "string" ? url2 : "", 500) ?? ""
+    });
+    if (out.length >= MAX_WEB_RESULTS) break;
+  }
+  return out.length > 0 ? out : void 0;
+}
+var nonEmpty = (xs) => xs.filter((s) => typeof s === "string" && s.length > 0);
+function identifiersOf(p) {
+  const out = [p.icp, ...p.userText ?? [], p.lead.domain];
+  for (const c of p.contacts) out.push(c.email, c.linkedin);
+  for (const e of p.enrichments ?? []) out.push(e.verifiedEmail, e.phone);
+  return nonEmpty(out);
+}
+function factsOf(p) {
+  const out = [...identifiersOf(p)];
+  const l = p.lead;
+  out.push(l.companyName, l.industry, l.size, l.description);
+  for (const c of p.contacts) out.push(c.name, c.title);
+  for (const e of p.enrichments ?? []) {
+    const f = e.funding;
+    if (f) {
+      out.push(f.lastRound, f.lastRoundDate, ...f.investors ?? []);
+      if (f.totalRaisedUsd !== void 0) out.push(String(f.totalRaisedUsd));
+    }
+    for (const w of webContextOf(e) ?? []) out.push(w.title);
+  }
+  return nonEmpty(out);
+}
 
 // pipeline_core/packs/types.ts
 var DEFAULT_PACK_ID = "b2b-sdr";
@@ -39851,6 +40114,9 @@ async function applyMessageCompliance(input2) {
       { subject, body: draft.body, cta: draft.cta },
       {
         allowedText: draftIdentifiers({ icp: input2.icp, lead, contact, enrichments, userText: input2.userText ?? [] }),
+        // Same fact text the seam grounds against, so an agent-written draft cannot
+        // turn "40 acquisitions" into "40 acquisitions a year" either.
+        facts: factsOf({ icp: input2.icp, lead, contacts: [contact], enrichments, userText: [...input2.userText ?? []] }),
         ...input2.voice ? { voice: input2.voice } : {}
       }
     );

@@ -37,7 +37,7 @@ import type {
 import { assertCampaignRun, validateMessage, type Validated } from "./validator.js";
 import { getProvider, type LLMProvider } from "./providers.js";
 import { CostMeter, type CacheTokens, type Usage } from "./cost.js";
-import { draftMessage, DraftRejectedError, scoreLead } from "./seam.js";
+import { draftMessage, DraftRejectedError, factsOf, scoreLead } from "./seam.js";
 import { registerBuiltinPacks, resolvePack } from "./packs/index.js";
 import type { ComplianceContext, ComplianceGate } from "./packs/types.js";
 import { composeGates, suppressionGate, type SuppressionList } from "./compliance/suppression.js";
@@ -696,6 +696,9 @@ export async function applyMessageCompliance(input: MessageComplianceInput): Pro
       { subject, body: draft.body, cta: draft.cta },
       {
         allowedText: draftIdentifiers({ icp: input.icp, lead, contact, enrichments, userText: input.userText ?? [] }),
+        // Same fact text the seam grounds against, so an agent-written draft cannot
+        // turn "40 acquisitions" into "40 acquisitions a year" either.
+        facts: factsOf({ icp: input.icp, lead, contacts: [contact], enrichments, userText: [...(input.userText ?? [])] }),
         ...(input.voice ? { voice: input.voice } : {}),
       },
     );

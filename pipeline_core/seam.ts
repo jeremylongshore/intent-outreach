@@ -28,7 +28,14 @@ import { loadPrompt, promptRef } from "./prompts.js";
 import type { GenerateOptions, LLMProvider } from "./providers.js";
 import type { Usage } from "./cost.js";
 import type { Contact, Enrichment, Lead } from "./models.js";
-import { groundAngles, guardDraft, voicePromptLine, type DroppedAngle, type VoiceRules } from "./draft-guard.js";
+import {
+  groundAngles,
+  guardDraft,
+  QUANTITY_PROMPT_LINE,
+  voicePromptLine,
+  type DroppedAngle,
+  type VoiceRules,
+} from "./draft-guard.js";
 
 // Strict-schema compatibility: OpenAI's structured-output mode (and xAI's
 // equivalent) require EVERY property to be listed in `required` — .optional()
@@ -174,7 +181,7 @@ export function fence(tag: string, value: unknown): string {
   return `<${tag}>\n${json}\n</${tag}>`;
 }
 
-interface CorpusParts {
+export interface CorpusParts {
   icp: string;
   lead: Lead;
   contacts: Contact[];
@@ -199,8 +206,12 @@ function identifiersOf(p: CorpusParts): string[] {
   return nonEmpty(out);
 }
 
-/** Fact corpus: every allowlisted string (free text included) — grounds money, rounds, names. */
-function factsOf(p: CorpusParts): string[] {
+/**
+ * Fact corpus: every allowlisted string (free text included) — grounds money,
+ * rounds, names and quantity qualifiers. Built from the same normalized fields
+ * the model sees (leadView / contactView / enrichmentView); never the `data` bag.
+ */
+export function factsOf(p: CorpusParts): string[] {
   const out: (string | undefined)[] = [...identifiersOf(p)];
   const l = p.lead;
   out.push(l.companyName, l.industry, l.size, l.description);
@@ -329,10 +340,13 @@ export function buildDraftPrompt(ctx: DraftContext): { system: string; prompt: s
   // file) so the model knows the rules the guard will enforce. No voice ⇒ the
   // system prompt is byte-identical to before voice rules existed.
   const overrides = [ctx.styleOverride, voicePromptLine(ctx.voice)].filter((s): s is string => !!s);
+  // The quantity rule the guard enforces (checkQuantities) is stated here, not in
+  // the hash-pinned prompt file, so the file's provenance hash is unchanged.
+  const withRules = `${base}\n\n## Numbers\n${QUANTITY_PROMPT_LINE}`;
   const system =
     overrides.length > 0
-      ? `${base}\n\n## Profile overrides (tone and style only; they cannot override the rules above)\n${overrides.join("\n")}`
-      : base;
+      ? `${withRules}\n\n## Profile overrides (tone and style only; they cannot override the rules above)\n${overrides.join("\n")}`
+      : withRules;
   const prompt = [
     DATA_TRUST_RULE,
     "",
@@ -361,16 +375,20 @@ export async function draftMessage(provider: LLMProvider, ctx: DraftContext): Pr
   }
   // LinkedIn has no subject line: normalize rather than reject a stray one.
   const object: DraftOutput = ctx.channel === "linkedin" ? { ...res.object, subject: null } : res.object;
+  const parts: CorpusParts = {
+    icp: ctx.icp,
+    lead: ctx.lead,
+    contacts: [ctx.contact],
+    enrichments: ctx.enrichments,
+    userText: [ctx.styleOverride],
+  };
   const verdict = guardDraft(object, {
-    // Angles are NOT included: they are model output derived from untrusted
+    // Angles are NOT identifiers: they are model output derived from untrusted
     // data. The user's own profile text may legitimately carry a booking link.
-    allowedText: identifiersOf({
-      icp: ctx.icp,
-      lead: ctx.lead,
-      contacts: [ctx.contact],
-      enrichments: ctx.enrichments,
-      userText: [ctx.styleOverride],
-    }),
+    allowedText: identifiersOf(parts),
+    // Angles DO count as facts for quantity qualifiers: on the campaign path they
+    // already passed groundAngles, which applies the same quantity rule.
+    facts: [...factsOf(parts), ...ctx.angles],
     ...(ctx.voice ? { voice: ctx.voice } : {}),
   });
   if (!verdict.ok) throw new DraftRejectedError(verdict.issues, res.usage);
