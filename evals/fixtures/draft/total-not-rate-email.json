@@ -1,0 +1,21 @@
+{
+  "name": "total-not-rate-email",
+  "icp": "Outbound automation for founder-led sales at seed-to-Series-A B2B SaaS.",
+  "lead": {
+    "domain": "heffernanholdings.com",
+    "companyName": "Heffernan Holdings",
+    "industry": "Insurance brokerage roll-up",
+    "description": "Building the capital structure behind 40 acquisitions.",
+    "source": "exa"
+  },
+  "contact": {
+    "name": "Dana Heffernan",
+    "leadDomain": "heffernanholdings.com",
+    "title": "Chief Development Officer",
+    "source": "apollo"
+  },
+  "angles": ["Heffernan completed 40 acquisitions, so integrating each acquired book is recurring work."],
+  "channel": "email",
+  "judgeMin": 3,
+  "note": "Trap: 40 acquisitions is a TOTAL over years. A draft must not invent a rate or period ('40 acquisitions a year', 'forty a year', 'since 2019'); groundingHeuristic rejects it via draft-guard's checkQuantities."
+}
