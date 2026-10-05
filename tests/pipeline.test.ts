@@ -736,12 +736,186 @@ describe("deriveRunStatus", () => {
   it.each([
     [{ messages: 2, leads: 1, researchRan: true, errors: 0 }, "complete"],
     [{ messages: 1, leads: 2, researchRan: true, errors: 1 }, "partial"],
-    [{ messages: 1, leads: 1, researchRan: true, errors: 0, rejectedDrafts: 1 }, "partial"],
     [{ messages: 0, leads: 2, researchRan: true, errors: 2 }, "failed"],
     [{ messages: 0, leads: 1, researchRan: true, errors: 0 }, "enriched"],
     [{ messages: 0, leads: 0, researchRan: true, errors: 0 }, "researched"],
     [{ messages: 0, leads: 0, researchRan: false, errors: 0 }, "failed"],
   ] as const)("%j → %s", (input, expected) => {
     expect(deriveRunStatus(input)).toBe(expected);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// Buyer-title targeting, initial-only names, and decline-vs-partial status
+// ──────────────────────────────────────────────────────────────────────────
+
+const TEAM = [
+  { name: "Hana Reyes", title: "HR Manager", email: "hana@acme.com" },
+  { name: "Sam Ortiz", title: "Sales Director", email: "sam@acme.com" },
+  { name: "Cara Lowe", title: "Chief Operating Officer", email: "cara@acme.com" },
+];
+
+function teamConnector(team: { name: string; title: string; email: string; nameIncomplete?: boolean }[], seen: unknown[] = []): Connector {
+  return {
+    name: "team-research",
+    displayName: "Team Research",
+    tier: "free",
+    keyEnvVar: null,
+    phases: ["research", "enrich"],
+    isConfigured: () => true,
+    async research(input) {
+      seen.push({ phase: "research", ...input, signal: undefined });
+      return {
+        leads: [{ domain: input.domain, companyName: "Acme Inc", source: "team-research" }],
+        contacts: team.map((t) => ({ ...t, leadDomain: input.domain, source: "team-research" })),
+      };
+    },
+    async enrich(input) {
+      seen.push({ phase: "enrich", buyerTitles: input.buyerTitles });
+      return { enrichments: [] };
+    },
+  };
+}
+
+/** The JSON inside the draft prompt's contact_data fence ("" for a score prompt). */
+function contactDataOf(prompt: string): string {
+  return /<contact_data>\n(.*)\n<\/contact_data>/.exec(prompt)?.[1] ?? "";
+}
+
+/** Records every prompt; declines any draft whose contact_data names a declined person. */
+function recordingProvider(prompts: string[], declineNames: string[] = []): LLMProvider {
+  return {
+    name: "anthropic",
+    model: "stub-model",
+    async generateObject({ schema, prompt }) {
+      prompts.push(prompt);
+      const contactData = contactDataOf(prompt);
+      const decline = declineNames.some((n) => contactData.includes(n));
+      const object = schema.parse({
+        fitScore: 80,
+        fitReason: "Matches the ICP.",
+        angles: ["Scaling operations."],
+        decline,
+        declineReason: decline ? "not the buyer" : null,
+        subject: decline ? "" : "Operations at Acme",
+        body: decline ? "" : "Hi there, teams scaling operations often need help with X.",
+        cta: decline ? "" : "Open to a 15-min call next week?",
+      });
+      return { object, usage: { inputTokens: 10, outputTokens: 10, costUsd: 0 } };
+    },
+  };
+}
+
+describe("buyer-title targeting", () => {
+  const saved = { ...process.env };
+  beforeEach(() => {
+    _resetBuiltins();
+    _resetSecretCache();
+    for (const k of Object.keys(process.env)) {
+      if (k.endsWith("_API_KEY") || k === "ZOOMINFO_JWT" || k === "CLAY_WEBHOOK_URL") delete process.env[k];
+    }
+  });
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it("drafts the buyer even when it is ranked third", async () => {
+    registerConnector(teamConnector(TEAM));
+    const { run } = await runCampaign({
+      id: "run-buyer-third",
+      icp: "Operations software for scaling teams",
+      domains: ["acme.com"],
+      maxContactsPerLead: 1,
+      buyerTitles: ["COO", "VP Operations"],
+      provider: recordingProvider([]),
+      now: clock,
+    });
+    expect(run.messages.map((m) => m.contactKey)).toEqual(["cara@acme.com"]);
+    expect(run.status).toBe("complete");
+  });
+
+  it("without buyer titles keeps the connector order (drafts the first contact)", async () => {
+    registerConnector(teamConnector(TEAM));
+    const { run } = await runCampaign({
+      id: "run-no-titles",
+      icp: "Operations software",
+      domains: ["acme.com"],
+      maxContactsPerLead: 1,
+      provider: recordingProvider([]),
+      now: clock,
+    });
+    expect(run.messages.map((m) => m.contactKey)).toEqual(["hana@acme.com"]);
+    // stored contact order is untouched by ranking
+    expect(run.contacts.map((c) => c.email)).toEqual(["hana@acme.com", "sam@acme.com", "cara@acme.com"]);
+  });
+
+  it("passes buyer titles to research and enrich connectors only when set", async () => {
+    const seen: Record<string, unknown>[] = [];
+    registerConnector(teamConnector(TEAM, seen));
+    await runResearch("acme.com", "icp", { buyerTitles: [" CTO ", ""] });
+    await runResearch("acme.com", "icp");
+    await runEnrich({ domain: "acme.com", companyName: "Acme", source: "x" }, [], { buyerTitles: ["COO"] });
+    expect(seen[0]).toMatchObject({ phase: "research", buyerTitles: ["CTO"] });
+    expect(seen[1]).not.toHaveProperty("buyerTitles");
+    expect(seen[2]).toEqual({ phase: "enrich", buyerTitles: ["COO"] });
+  });
+
+  it("addresses an initial-only contact by first name only", async () => {
+    registerConnector(
+      teamConnector([{ name: "Kristina L", title: "COO", email: "kristina@acme.com", nameIncomplete: true }]),
+    );
+    const prompts: string[] = [];
+    const { run } = await runCampaign({
+      id: "run-initial-name",
+      icp: "Operations software",
+      domains: ["acme.com"],
+      provider: recordingProvider(prompts),
+      now: clock,
+    });
+    const draftPrompt = prompts.find((p) => contactDataOf(p) !== "")!;
+    const contactData = contactDataOf(draftPrompt);
+    expect(JSON.parse(contactData)).toEqual({ name: "Kristina", title: "COO" });
+    // the record keeps the full vendor name and the flag
+    expect(run.contacts[0]).toMatchObject({ name: "Kristina L", nameIncomplete: true });
+    expect(run.messages).toHaveLength(1);
+  });
+
+  it("a run with no errors that declined some contacts is complete, not partial", async () => {
+    registerConnector(teamConnector(TEAM));
+    const { run } = await runCampaign({
+      id: "run-declines",
+      icp: "Operations software",
+      domains: ["acme.com"],
+      maxContactsPerLead: 3,
+      provider: recordingProvider([], ["Hana Reyes", "Sam Ortiz"]),
+      now: clock,
+    });
+    expect(run.errors).toEqual([]);
+    expect(run.rejectedDrafts).toHaveLength(2);
+    expect(run.messages).toHaveLength(1);
+    expect(run.status).toBe("complete");
+  });
+
+  it("a run where a draft errored is partial", async () => {
+    registerConnector(teamConnector(TEAM));
+    const base = recordingProvider([]);
+    const flaky: LLMProvider = {
+      ...base,
+      async generateObject(args) {
+        if (contactDataOf(args.prompt).includes("Sam Ortiz")) throw new Error("provider 500");
+        return base.generateObject(args);
+      },
+    };
+    const { run } = await runCampaign({
+      id: "run-partial",
+      icp: "Operations software",
+      domains: ["acme.com"],
+      maxContactsPerLead: 3,
+      provider: flaky,
+      now: clock,
+    });
+    expect(run.errors).toHaveLength(1);
+    expect(run.messages).toHaveLength(2);
+    expect(run.status).toBe("partial");
   });
 });

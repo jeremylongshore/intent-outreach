@@ -307,7 +307,6 @@ export async function handleSaveRun(rawArgs: SaveRunArgs, deps: SaveRunDeps = {}
     // honest "researched", not a failure.
     researchRan: true,
     errors: errors.length,
-    rejectedDrafts: rejectedDrafts.length,
   });
   const stamped = now();
 

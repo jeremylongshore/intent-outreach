@@ -99,6 +99,12 @@ export const ContactSchema = z.object({
   // an otherwise-valid contact (and thus the whole run) over a non-URL handle.
   linkedin: z.string().optional(),
   source: SourceSchema,
+  /**
+   * True when the provider withheld the surname (the last token is a lone
+   * initial, e.g. "Kristina L"). The contact is kept, but the drafter addresses
+   * them by first name only. Optional + additive: older lines simply omit it.
+   */
+  nameIncomplete: z.boolean().optional(),
 });
 export type Contact = z.infer<typeof ContactSchema>;
 

@@ -14,7 +14,8 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { loadProfileRef, normalizeDomain, runCampaign } from "./pipeline_core/pipeline.js";
-import { applyProfileToCampaignInput } from "./pipeline_core/profiles.js";
+import { applyProfileToCampaignInput, type ReportProfile } from "./pipeline_core/profiles.js";
+import { cleanBuyerTitles } from "./pipeline_core/targeting.js";
 import { JsonlRunStore, defaultStorePath } from "./pipeline_core/store.js";
 import { getConnectors, registerBuiltinConnectors } from "./pipeline_core/connectors/index.js";
 import {
@@ -79,6 +80,29 @@ export function parseDomainsFlag(raw: string): string[] {
   return out;
 }
 
+/** Split + trim --buyer-titles ("CTO, COO,VP Operations"); an all-blank list is a usage error. */
+export function parseBuyerTitlesFlag(raw: string): string[] {
+  const out: string[] = [];
+  for (const part of raw.split(",")) {
+    const t = part.trim();
+    if (t && !out.some((x) => x.toLowerCase() === t.toLowerCase())) out.push(t);
+  }
+  if (out.length === 0) throw new UsageError("--buyer-titles is empty");
+  return out;
+}
+
+/**
+ * The buyer titles a run targets: --buyer-titles wins, else the profile's
+ * `filtering.contactTitles`, else none (undefined ⇒ no ranking, today's order).
+ */
+export function resolveBuyerTitles(
+  flag: string[] | undefined,
+  profile: Pick<ReportProfile, "filtering"> | undefined,
+): string[] | undefined {
+  const titles = cleanBuyerTitles(flag ?? profile?.filtering?.contactTitles);
+  return titles.length > 0 ? titles : undefined;
+}
+
 export function parseChannelFlag(raw: string): "email" | "linkedin" {
   if (raw === "email" || raw === "linkedin") return raw;
   throw new UsageError(`--channel must be "email" or "linkedin", got ${JSON.stringify(raw)}`);
@@ -126,6 +150,9 @@ export function printHelp(): void {
       "  --channel <email|linkedin>   default: email (or the profile's)",
       "  --min-score <0-100>     skip drafting below this fit score (default: 0)",
       `  --max-contacts <1-${MAX_CONTACTS_LIMIT}>   contacts to draft per lead (default: 1)`,
+      "  --buyer-titles <list>   comma-separated buyer titles (e.g. \"CTO,COO,VP Operations\"):",
+      "                          contacts are ranked buyers-first before drafting and Apollo",
+      "                          reveals are aimed at them; overrides profile filtering.contactTitles",
       "  --out <path>            JSONL store path (default: " + defaultStorePath() + ")",
       "  --json                  print the full run as JSON",
       "",
@@ -175,6 +202,7 @@ async function cmdRun(args: string[]): Promise<void> {
         channel: { type: "string" },
         "min-score": { type: "string" },
         "max-contacts": { type: "string" },
+        "buyer-titles": { type: "string" },
         out: { type: "string" },
         json: { type: "boolean" },
       },
@@ -197,11 +225,13 @@ async function cmdRun(args: string[]): Promise<void> {
       ? parseNumberFlag("--max-contacts", values["max-contacts"], { min: 1, max: MAX_CONTACTS_LIMIT, integer: true })
       : undefined;
   const channel = values.channel !== undefined ? parseChannelFlag(values.channel) : undefined;
+  const flagBuyerTitles =
+    values["buyer-titles"] !== undefined ? parseBuyerTitlesFlag(values["buyer-titles"]) : undefined;
 
   const id = makeRunId();
   let profileOverrides = {};
+  let profile: ReportProfile | undefined;
   if (values.profile !== undefined) {
-    let profile;
     try {
       profile = loadProfileRef(values.profile);
     } catch (err) {
@@ -214,6 +244,7 @@ async function cmdRun(args: string[]): Promise<void> {
       ),
     );
   }
+  const buyerTitles = resolveBuyerTitles(flagBuyerTitles, profile);
 
   // Resolve an explicit provider only when overridden; else core auto-detects from env.
   const provider =
@@ -233,6 +264,7 @@ async function cmdRun(args: string[]): Promise<void> {
     ...(provider ? { provider } : {}),
     ...(minScore !== undefined ? { minScore } : {}),
     ...(maxContacts !== undefined ? { maxContactsPerLead: maxContacts } : {}),
+    ...(buyerTitles ? { buyerTitles } : {}),
   });
 
   const store = new JsonlRunStore(values.out);

@@ -33,6 +33,7 @@ import type { Contact, Enrichment, Lead } from "../models.js";
 import { normalizeDomain } from "./_domain.js";
 import { eligibleContacts, isAuthFailure, isNotFound } from "./_per-item.js";
 import { keepRawOptIn, parseVendor, pickAllowed, useSecret } from "./_shared.js";
+import { cleanBuyerTitles, hasInitialOnlyLastName, rankContactsByTitle } from "../targeting.js";
 import type {
   Connector,
   ConnectorItemFailure,
@@ -167,6 +168,8 @@ function personToContact(p: ApolloPerson, domain: string): Contact {
   const name = p.name ?? [p.first_name, p.last_name].filter(Boolean).join(" ");
   return {
     name: name || "(unknown)",
+    // "Kristina L": keep the contact, but the drafter must use the first name only.
+    ...(name && hasInitialOnlyLastName(name) ? { nameIncomplete: true } : {}),
     leadDomain: domain,
     email: p.email && p.email.includes("@") ? p.email : undefined,
     title: p.title ?? undefined,
@@ -187,7 +190,8 @@ export const apolloConnector: Connector = {
     return hasSecret(KEY_ENV);
   },
 
-  async research({ domain, signal }: ResearchInput): Promise<ResearchOutput> {
+  async research({ domain, signal, buyerTitles }: ResearchInput): Promise<ResearchOutput> {
+    const titles = cleanBuyerTitles(buyerTitles);
     // 1) Company lookup by domain. A 404/422 means Apollo has no record: keep a
     //    domain-only lead rather than failing the connector.
     let org: ApolloOrg = { primary_domain: domain };
@@ -204,19 +208,28 @@ export const apolloConnector: Connector = {
 
     // 2) Decision-makers at that company (free). The ICP is NOT sent as
     //    q_keywords: a sentence-long ICP over-filters people search to nothing.
+    //    Buyer titles (when set) ARE sent as person_titles, alongside seniorities.
     const peopleRes = parseVendor(
       PeopleSearchSchema,
       await httpJson(`${BASE}/mixed_people/api_search`, {
         signal,
         method: "POST",
         headers: headers(),
-        json: { q_organization_domains_list: [domain], person_seniorities: [...BUYER_SENIORITIES], per_page: 10 },
+        json: {
+          q_organization_domains_list: [domain],
+          person_seniorities: [...BUYER_SENIORITIES],
+          ...(titles.length > 0 ? { person_titles: titles } : {}),
+          per_page: 10,
+        },
       }),
     );
     const found = peopleRes.people ?? [];
 
-    // 3) Reveal (1 credit each) only people Apollo holds an email for, capped.
-    const toReveal = found.filter((p) => p.id && p.has_email !== false).slice(0, MAX_REVEAL_PER_DOMAIN);
+    // 3) Reveal (1 credit each) only people Apollo holds an email for, capped —
+    //    buyers first, so the credits go to the people outreach targets.
+    const toReveal = rankContactsByTitle(found, titles)
+      .filter((p) => p.id && p.has_email !== false)
+      .slice(0, MAX_REVEAL_PER_DOMAIN);
     let revealed: ApolloPerson[] = [];
     if (toReveal.length > 0) {
       try {
