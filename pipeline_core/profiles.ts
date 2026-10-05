@@ -96,6 +96,22 @@ export const DeliverySchema = z.object({
 });
 export type Delivery = z.infer<typeof DeliverySchema>;
 
+/**
+ * Operator voice rules. Deterministic: `banDashes` and `deniedPhrases` are
+ * enforced by the draft guard (pipeline_core/draft-guard.ts::checkVoice) on both
+ * the runCampaign seam path and the MCP save_run path; a violating draft lands
+ * in `rejectedDrafts`. `notes` is free-text guidance appended to styleOverride.
+ */
+export const VoiceSchema = z.object({
+  /** Reject em/en dashes, their HTML entities, and hyphens used as dashes (" - "). */
+  banDashes: z.boolean().optional(),
+  /** Phrases drafts must never contain: case-insensitive, whole-word, exact phrase. */
+  deniedPhrases: z.array(z.string().trim().min(1)).optional(),
+  /** Free-text voice guidance, appended to the draft styleOverride like `tone`. */
+  notes: z.string().optional(),
+});
+export type Voice = z.infer<typeof VoiceSchema>;
+
 export const ReportProfileSchema = z.object({
   /** Human-readable profile name, used in report headers. */
   name: z.string().min(1),
@@ -114,6 +130,8 @@ export const ReportProfileSchema = z.object({
    * run records a compliance warning; nothing is ever fabricated.
    */
   sender: SenderIdentitySchema.optional(),
+  /** Operator voice rules (see VoiceSchema). Optional; absent ⇒ no voice checks. */
+  voice: VoiceSchema.optional(),
 });
 export type ReportProfile = z.infer<typeof ReportProfileSchema>;
 
@@ -151,7 +169,7 @@ export function loadProfile(path: string): ReportProfile {
 export interface ProfileCampaignOverrides
   extends Pick<
     RunCampaignInput,
-    "channel" | "minScore" | "maxContactsPerLead" | "styleOverride" | "sender"
+    "channel" | "minScore" | "maxContactsPerLead" | "styleOverride" | "sender" | "voice"
   > {}
 
 /**
@@ -172,6 +190,7 @@ export function applyProfileToCampaignInput(
   if (outreach?.tone) styleParts.push(`Tone: ${outreach.tone}.`);
   if (outreach?.maxLength) styleParts.push(`Keep the body under ${outreach.maxLength} characters.`);
   if (outreach?.templateNotes) styleParts.push(outreach.templateNotes);
+  if (profile.voice?.notes) styleParts.push(profile.voice.notes);
   const styleOverride = styleParts.length > 0 ? styleParts.join(" ") : undefined;
 
   return {
@@ -182,6 +201,9 @@ export function applyProfileToCampaignInput(
     // Deterministic, operator-owned: passed straight through to the footer, never
     // to the LLM (it must not be paraphrased or invented by the model).
     ...(profile.sender !== undefined ? { sender: profile.sender } : {}),
+    // Deterministic, operator-owned: enforced by the draft guard (the model also
+    // gets a one-line hint, but the guard is what decides).
+    ...(profile.voice !== undefined ? { voice: profile.voice } : {}),
   };
 }
 
@@ -232,6 +254,10 @@ export function mergeProfileOverrides(
       overrides.sender !== undefined
         ? { ...profile.sender, ...overrides.sender }
         : profile.sender,
+    voice:
+      overrides.voice !== undefined
+        ? { ...profile.voice, ...overrides.voice }
+        : profile.voice,
   };
 
   const result = ReportProfileSchema.safeParse(merged);

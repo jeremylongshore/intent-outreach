@@ -43,7 +43,7 @@ import type { ComplianceContext, ComplianceGate } from "./packs/types.js";
 import { composeGates, suppressionGate, type SuppressionList } from "./compliance/suppression.js";
 import { loadSuppressionList } from "./suppressions.js";
 import { applyComplianceFooter, missingSenderFields, type SenderIdentity } from "./footer.js";
-import { guardDraft } from "./draft-guard.js";
+import { guardDraft, type VoiceRules } from "./draft-guard.js";
 import { loadProfile, type ReportProfile } from "./profiles.js";
 import { intentOutreachHome } from "./secrets.js";
 import { existsSync } from "node:fs";
@@ -610,6 +610,8 @@ export interface MessageComplianceInput {
   now: () => string;
   /** User-owned text (profile style override) whose identifiers a draft may repeat. */
   userText?: readonly (string | undefined)[];
+  /** Operator voice rules (Report Profile `voice`); enforced by the same guard as the seam path. */
+  voice?: VoiceRules | undefined;
 }
 
 export interface MessageComplianceResult {
@@ -679,7 +681,10 @@ export async function applyMessageCompliance(input: MessageComplianceInput): Pro
     const subject = draft.channel === "linkedin" ? null : (draft.subject ?? null);
     const verdict = guardDraft(
       { subject, body: draft.body, cta: draft.cta },
-      { allowedText: draftIdentifiers({ icp: input.icp, lead, contact, enrichments, userText: input.userText ?? [] }) },
+      {
+        allowedText: draftIdentifiers({ icp: input.icp, lead, contact, enrichments, userText: input.userText ?? [] }),
+        ...(input.voice ? { voice: input.voice } : {}),
+      },
     );
     if (!verdict.ok) {
       rejectedDrafts.push({ contactKey, issues: verdict.issues });
@@ -773,6 +778,8 @@ export interface RunCampaignInput {
   now?: () => string;
   /** Verbatim tone/length override from a Report Profile. */
   styleOverride?: string;
+  /** Operator voice rules from a Report Profile (`voice`), enforced by the draft guard. */
+  voice?: VoiceRules;
   /** Which pack to run. Default: "b2b-sdr" (today's behavior). */
   pack?: string;
   /** Max distinct (normalized) domains per run. Default 25. */
@@ -930,6 +937,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
             // Never shown to the model; widens the guard allowlist to verified emails/phones.
             enrichments: enrichmentsFor(lead, contact, enrich.enrichments),
             ...(input.styleOverride ? { styleOverride: input.styleOverride } : {}),
+            ...(input.voice ? { voice: input.voice } : {}),
           });
         } catch (err) {
           if (err instanceof DraftRejectedError) {

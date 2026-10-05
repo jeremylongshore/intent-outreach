@@ -1,0 +1,31 @@
+{
+  "name": "Operator Voice (example)",
+  "description": "Example profile showing the voice section: drafts in the operator's own voice, with dashes banned and a short list of AI-slop phrases rejected by the draft guard. Copy it, then replace the sender and the phrase list with your own.",
+  "outreach": {
+    "channel": "email",
+    "tone": "Plain, direct, operator-to-operator. Concrete specifics over adjectives.",
+    "maxLength": 600,
+    "maxContactsPerLead": 1
+  },
+  "voice": {
+    "banDashes": true,
+    "deniedPhrases": [
+      "delve",
+      "game-changer",
+      "seamless",
+      "at its core",
+      "it's worth noting",
+      "in today's fast-paced"
+    ],
+    "notes": "Write like a person talking to another builder. Short sentences, plain words, no hype."
+  },
+  "structure": {
+    "sections": ["summary", "leads", "contacts", "messages", "cost"]
+  },
+  "output": {
+    "formats": ["markdown", "json"]
+  },
+  "delivery": {
+    "targets": ["console"]
+  }
+}

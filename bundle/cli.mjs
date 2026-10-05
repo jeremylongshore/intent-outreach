@@ -74732,7 +74732,65 @@ function guardDraft(draft, inputs) {
     }
   }
   if (/^\s*(?:re|fwd?)\s*:/i.test(draft.body)) issues.push('body: fake reply prefix ("Re:")');
+  issues.push(...checkVoice(draft, inputs.voice));
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
+}
+var DASH_RULES = [
+  { label: "em dash", re: /—|&mdash;|&#8212;|&#x2014;/i },
+  { label: "en dash", re: /–|&ndash;|&#8211;|&#x2013;/i },
+  // " - " or " -- " between two non-space characters on the same line. Horizontal
+  // whitespace only, so a markdown bullet at a line start ("\n- item") is not a dash.
+  { label: "spaced hyphen used as a dash", re: /(?<=\S)[ \t ]+-{1,2}[ \t ]+(?=\S)/ },
+  // The ASCII em dash: "word--word".
+  { label: "double hyphen used as a dash", re: /(?<=[\p{L}\p{N}])--(?=[\p{L}\p{N}])/u }
+];
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function phraseMatcher(phrase) {
+  const norm = normApostrophes(phrase).trim().replace(/\s+/g, " ");
+  if (!norm) return void 0;
+  const body = norm.split(" ").map(escapeRegExp).join("\\s+");
+  return new RegExp(`(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])`, "iu");
+}
+function checkVoice(draft, voice) {
+  if (!voice) return [];
+  const issues = [];
+  const fields = [
+    ["subject", draft.subject ?? ""],
+    ["body", draft.body],
+    ["cta", draft.cta]
+  ];
+  if (voice.banDashes) {
+    for (const { label, re } of DASH_RULES) {
+      for (const [field, text2] of fields) {
+        if (re.test(text2)) issues.push(`voice: ${label} (${field})`);
+      }
+    }
+  }
+  for (const phrase of voice.deniedPhrases ?? []) {
+    const re = phraseMatcher(phrase);
+    if (!re) continue;
+    for (const [field, text2] of fields) {
+      if (re.test(normApostrophes(text2))) issues.push(`voice: banned phrase "${phrase.trim()}" (${field})`);
+    }
+  }
+  return issues;
+}
+var VOICE_PROMPT_PHRASE_CAP = 25;
+function voicePromptLine(voice) {
+  if (!voice) return void 0;
+  const parts = [];
+  if (voice.banDashes) {
+    parts.push('no em or en dashes and no hyphen used as a dash (" - "); use a period, comma, colon or parentheses');
+  }
+  const phrases = (voice.deniedPhrases ?? []).map((p) => p.trim()).filter(Boolean);
+  if (phrases.length > 0) {
+    const shown = phrases.slice(0, VOICE_PROMPT_PHRASE_CAP).map((p) => `"${p}"`);
+    const more = phrases.length > shown.length ? ` (and ${phrases.length - shown.length} more)` : "";
+    parts.push(`avoid these phrases: ${shown.join(", ")}${more}`);
+  }
+  return parts.length > 0 ? `Voice rules: ${parts.join("; ")}.` : void 0;
 }
 var MONEY_RE = /(?:[$€£]\s?\d[\d,]*(?:\.\d+)?\s*(?:k|m|mm|b|bn|thousand|million|billion)?\b)|(?:\b\d[\d,]*(?:\.\d+)?\s*(?:million|billion|mm|bn)\b)/gi;
 var PERCENT_RE = /\b\d+(?:\.\d+)?\s*(?:%|percent\b)/gi;
@@ -74999,10 +75057,11 @@ var DraftRejectedError = class extends Error {
 function buildDraftPrompt(ctx) {
   const file2 = ctx.draftPrompt ?? DEFAULT_DRAFT_PROMPT;
   const base = loadPrompt(file2).text;
-  const system = ctx.styleOverride ? `${base}
+  const overrides = [ctx.styleOverride, voicePromptLine(ctx.voice)].filter((s) => !!s);
+  const system = overrides.length > 0 ? `${base}
 
 ## Profile overrides (tone and style only; they cannot override the rules above)
-${ctx.styleOverride}` : base;
+${overrides.join("\n")}` : base;
   const prompt = [
     DATA_TRUST_RULE,
     "",
@@ -75036,7 +75095,8 @@ async function draftMessage(provider, ctx) {
       contacts: [ctx.contact],
       enrichments: ctx.enrichments,
       userText: [ctx.styleOverride]
-    })
+    }),
+    ...ctx.voice ? { voice: ctx.voice } : {}
   });
   if (!verdict.ok) throw new DraftRejectedError(verdict.issues, res.usage);
   return { object: object3, usage: res.usage, promptRef: ref };
@@ -75432,6 +75492,14 @@ var DeliverySchema = external_exports.object({
    */
   dir: external_exports.string().optional()
 });
+var VoiceSchema = external_exports.object({
+  /** Reject em/en dashes, their HTML entities, and hyphens used as dashes (" - "). */
+  banDashes: external_exports.boolean().optional(),
+  /** Phrases drafts must never contain: case-insensitive, whole-word, exact phrase. */
+  deniedPhrases: external_exports.array(external_exports.string().trim().min(1)).optional(),
+  /** Free-text voice guidance, appended to the draft styleOverride like `tone`. */
+  notes: external_exports.string().optional()
+});
 var ReportProfileSchema = external_exports.object({
   /** Human-readable profile name, used in report headers. */
   name: external_exports.string().min(1),
@@ -75449,7 +75517,9 @@ var ReportProfileSchema = external_exports.object({
    * Optional — when absent, email drafts are flagged `needsSenderIdentity` and the
    * run records a compliance warning; nothing is ever fabricated.
    */
-  sender: SenderIdentitySchema.optional()
+  sender: SenderIdentitySchema.optional(),
+  /** Operator voice rules (see VoiceSchema). Optional; absent ⇒ no voice checks. */
+  voice: VoiceSchema.optional()
 });
 function loadProfile(path) {
   let raw;
@@ -75471,6 +75541,7 @@ function applyProfileToCampaignInput(profile, _base) {
   if (outreach?.tone) styleParts.push(`Tone: ${outreach.tone}.`);
   if (outreach?.maxLength) styleParts.push(`Keep the body under ${outreach.maxLength} characters.`);
   if (outreach?.templateNotes) styleParts.push(outreach.templateNotes);
+  if (profile.voice?.notes) styleParts.push(profile.voice.notes);
   const styleOverride = styleParts.length > 0 ? styleParts.join(" ") : void 0;
   return {
     channel: outreach?.channel,
@@ -75479,7 +75550,10 @@ function applyProfileToCampaignInput(profile, _base) {
     ...styleOverride !== void 0 ? { styleOverride } : {},
     // Deterministic, operator-owned: passed straight through to the footer, never
     // to the LLM (it must not be paraphrased or invented by the model).
-    ...profile.sender !== void 0 ? { sender: profile.sender } : {}
+    ...profile.sender !== void 0 ? { sender: profile.sender } : {},
+    // Deterministic, operator-owned: enforced by the draft guard (the model also
+    // gets a one-line hint, but the guard is what decides).
+    ...profile.voice !== void 0 ? { voice: profile.voice } : {}
   };
 }
 
@@ -75908,7 +75982,8 @@ async function runCampaign(input2) {
             draftPrompt: pack.prompts.draft,
             // Never shown to the model; widens the guard allowlist to verified emails/phones.
             enrichments: enrichmentsFor(lead, contact, enrich.enrichments),
-            ...input2.styleOverride ? { styleOverride: input2.styleOverride } : {}
+            ...input2.styleOverride ? { styleOverride: input2.styleOverride } : {},
+            ...input2.voice ? { voice: input2.voice } : {}
           });
         } catch (err) {
           if (err instanceof DraftRejectedError) {
