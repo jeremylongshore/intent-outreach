@@ -41,7 +41,7 @@ import {
   StoreLockTimeoutError,
   type RunStore,
 } from "../pipeline_core/store.js";
-import { applyProfileToCampaignInput } from "../pipeline_core/profiles.js";
+import { applyProfileToCampaignInput, type ReportProfile } from "../pipeline_core/profiles.js";
 import { getConnectors, registerBuiltinConnectors } from "../pipeline_core/connectors/index.js";
 import { registerBuiltinPacks, resolvePack } from "../pipeline_core/packs/index.js";
 import { loadSuppressionList } from "../pipeline_core/suppressions.js";
@@ -266,11 +266,14 @@ export async function handleSaveRun(rawArgs: SaveRunArgs, deps: SaveRunDeps = {}
 
   let sender: SenderIdentity | undefined;
   let styleOverride: string | undefined;
+  let voice: ReportProfile["voice"];
   const profileRef = args.profile ?? (process.env.INTENT_OUTREACH_PROFILE?.trim() || undefined);
   if (profileRef) {
     try {
       const profile = loadProfileRef(profileRef, deps.cwd);
       sender = profile.sender;
+      // Agent-written drafts get the same voice check as seam drafts.
+      voice = profile.voice;
       styleOverride = applyProfileToCampaignInput(profile, { id: args.id, icp: args.icp, domains }).styleOverride;
     } catch (err) {
       return toolError(`run NOT saved: ${errMsg(err)}`);
@@ -288,6 +291,7 @@ export async function handleSaveRun(rawArgs: SaveRunArgs, deps: SaveRunDeps = {}
     model: args.model,
     now,
     userText: [styleOverride],
+    voice,
   });
 
   const errors = [...args.errors, ...gated.errors];

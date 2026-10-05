@@ -6,7 +6,8 @@
  *
  *   guardDraft()   — no url / email / phone the inputs did not contain (the
  *                    signature of a prompt injection riding in from connector
- *                    data), length caps, single-line subject, banned openers.
+ *                    data), length caps, single-line subject, banned openers,
+ *                    and the operator's optional voice rules (checkVoice).
  *   groundAngles() — drop score-seam angles that cite a fact (money, round,
  *                    percentage, headcount, proper name) absent from the inputs.
  *
@@ -46,6 +47,11 @@ export interface GuardInputs {
    * it would let the injection legitimize itself.
    */
   allowedText: string[];
+  /**
+   * Operator voice rules (Report Profile `voice`). Optional: absent ⇒ the guard
+   * behaves exactly as it did before voice rules existed.
+   */
+  voice?: VoiceRules | undefined;
 }
 
 export type GuardResult = { ok: true } | { ok: false; issues: string[] };
@@ -196,7 +202,109 @@ export function guardDraft(draft: DraftLike, inputs: GuardInputs): GuardResult {
   }
   if (/^\s*(?:re|fwd?)\s*:/i.test(draft.body)) issues.push('body: fake reply prefix ("Re:")');
 
+  issues.push(...checkVoice(draft, inputs.voice));
+
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
+}
+
+// ──────────────────────────────── voice rules ───────────────────────────────
+
+/**
+ * Operator-configured voice rules (Report Profile `voice`), checked on top of
+ * the send-safety guard. Structural so this module stays import-free.
+ */
+export interface VoiceRules {
+  /** Reject em/en dashes (and their HTML entities) and hyphens used as dashes. */
+  banDashes?: boolean | undefined;
+  /** Phrases a draft must never contain. Case-insensitive, whole-word, exact phrase. */
+  deniedPhrases?: readonly string[] | undefined;
+  /** Free-text guidance; reaches the model via styleOverride, never checked here. */
+  notes?: string | undefined;
+}
+
+/**
+ * Dash forms the voice ban rejects, in report order. Hyphenated words
+ * ("follow-up", "B2B-only") are untouched: a single hyphen with a non-space
+ * character on both sides is a hyphen, not a dash.
+ */
+const DASH_RULES: readonly { label: string; re: RegExp }[] = [
+  { label: "em dash", re: /—|&mdash;|&#8212;|&#x2014;/i },
+  { label: "en dash", re: /–|&ndash;|&#8211;|&#x2013;/i },
+  // " - " or " -- " between two non-space characters on the same line. Horizontal
+  // whitespace only, so a markdown bullet at a line start ("\n- item") is not a dash.
+  { label: "spaced hyphen used as a dash", re: /(?<=\S)[ \t ]+-{1,2}[ \t ]+(?=\S)/ },
+  // The ASCII em dash: "word--word".
+  { label: "double hyphen used as a dash", re: /(?<=[\p{L}\p{N}])--(?=[\p{L}\p{N}])/u },
+];
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Whole-word, case-insensitive matcher for one denied phrase. Exact-phrase
+ * semantics: "delve" matches "Delve" and "delve," but NOT "delved" or "delves"
+ * (list inflections explicitly). Internal whitespace matches any whitespace
+ * run; curly apostrophes are normalized on both sides.
+ */
+function phraseMatcher(phrase: string): RegExp | undefined {
+  const norm = normApostrophes(phrase).trim().replace(/\s+/g, " ");
+  if (!norm) return undefined;
+  const body = norm.split(" ").map(escapeRegExp).join("\\s+");
+  return new RegExp(`(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])`, "iu");
+}
+
+/**
+ * Pure voice check. Returns one issue per (rule, field) hit, e.g.
+ * `voice: em dash (body)` or `voice: banned phrase "delve" (subject)`.
+ * No rules ⇒ always [].
+ */
+export function checkVoice(draft: DraftLike, voice: VoiceRules | undefined): string[] {
+  if (!voice) return [];
+  const issues: string[] = [];
+  const fields: [string, string][] = [
+    ["subject", draft.subject ?? ""],
+    ["body", draft.body],
+    ["cta", draft.cta],
+  ];
+  if (voice.banDashes) {
+    for (const { label, re } of DASH_RULES) {
+      for (const [field, text] of fields) {
+        if (re.test(text)) issues.push(`voice: ${label} (${field})`);
+      }
+    }
+  }
+  for (const phrase of voice.deniedPhrases ?? []) {
+    const re = phraseMatcher(phrase);
+    if (!re) continue;
+    for (const [field, text] of fields) {
+      if (re.test(normApostrophes(text))) issues.push(`voice: banned phrase "${phrase.trim()}" (${field})`);
+    }
+  }
+  return issues;
+}
+
+/** Max denied phrases listed in the draft prompt; the guard still enforces the full list. */
+export const VOICE_PROMPT_PHRASE_CAP = 25;
+
+/**
+ * The one-line voice instruction for the draft prompt, or undefined when there
+ * is nothing enforceable to say (no voice, or notes only: notes travel in the
+ * styleOverride).
+ */
+export function voicePromptLine(voice: VoiceRules | undefined): string | undefined {
+  if (!voice) return undefined;
+  const parts: string[] = [];
+  if (voice.banDashes) {
+    parts.push('no em or en dashes and no hyphen used as a dash (" - "); use a period, comma, colon or parentheses');
+  }
+  const phrases = (voice.deniedPhrases ?? []).map((p) => p.trim()).filter(Boolean);
+  if (phrases.length > 0) {
+    const shown = phrases.slice(0, VOICE_PROMPT_PHRASE_CAP).map((p) => `"${p}"`);
+    const more = phrases.length > shown.length ? ` (and ${phrases.length - shown.length} more)` : "";
+    parts.push(`avoid these phrases: ${shown.join(", ")}${more}`);
+  }
+  return parts.length > 0 ? `Voice rules: ${parts.join("; ")}.` : undefined;
 }
 
 // ────────────────────────────── groundAngles ───────────────────────────────
