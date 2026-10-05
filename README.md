@@ -137,6 +137,31 @@ Report Profile:
   you send those drafts.
 - **LinkedIn drafts:** no postal footer. Set `optOutOnLinkedin: true` to append the opt-out sentence.
 
+## Voice rules
+
+Want drafts in your own voice? Add an optional `voice` block to your Report Profile:
+
+```json
+{
+  "voice": {
+    "banDashes": true,
+    "deniedPhrases": ["delve", "game-changer", "seamless"],
+    "notes": "Short sentences, plain words, no hype."
+  }
+}
+```
+
+- **`banDashes`:** rejects em and en dashes (and their HTML entities) and hyphens used as dashes
+  (`word - word`, `word--word`). Hyphenated words like `follow-up` are fine.
+- **`deniedPhrases`:** case-insensitive, whole-word, exact-phrase matches on subject, body and CTA
+  (`delve` does not match `delved`; list inflections you want banned).
+- **`notes`:** free-text guidance appended to the draft style override, like `tone`.
+
+The rules are enforced in code by the draft guard on both the CLI/`runCampaign` path and MCP
+`save_run`. A violating draft lands in `rejectedDrafts` (for example `voice: em dash (body)`), never
+in `messages`. The CAN-SPAM footer is appended after the check, so it never trips it. See
+`profiles/operator-voice.example.json` and `profiles/000-INDEX.md`.
+
 ## Suppression list (opt-outs)
 
 Everyone who asks not to be contacted goes on a local list that every run honors, ahead of any pack's

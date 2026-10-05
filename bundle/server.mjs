@@ -39056,7 +39056,50 @@ function guardDraft(draft, inputs) {
     }
   }
   if (/^\s*(?:re|fwd?)\s*:/i.test(draft.body)) issues.push('body: fake reply prefix ("Re:")');
+  issues.push(...checkVoice(draft, inputs.voice));
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
+}
+var DASH_RULES = [
+  { label: "em dash", re: /—|&mdash;|&#8212;|&#x2014;/i },
+  { label: "en dash", re: /–|&ndash;|&#8211;|&#x2013;/i },
+  // " - " or " -- " between two non-space characters on the same line. Horizontal
+  // whitespace only, so a markdown bullet at a line start ("\n- item") is not a dash.
+  { label: "spaced hyphen used as a dash", re: /(?<=\S)[ \t ]+-{1,2}[ \t ]+(?=\S)/ },
+  // The ASCII em dash: "word--word".
+  { label: "double hyphen used as a dash", re: /(?<=[\p{L}\p{N}])--(?=[\p{L}\p{N}])/u }
+];
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function phraseMatcher(phrase) {
+  const norm = normApostrophes(phrase).trim().replace(/\s+/g, " ");
+  if (!norm) return void 0;
+  const body = norm.split(" ").map(escapeRegExp).join("\\s+");
+  return new RegExp(`(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])`, "iu");
+}
+function checkVoice(draft, voice) {
+  if (!voice) return [];
+  const issues = [];
+  const fields = [
+    ["subject", draft.subject ?? ""],
+    ["body", draft.body],
+    ["cta", draft.cta]
+  ];
+  if (voice.banDashes) {
+    for (const { label, re } of DASH_RULES) {
+      for (const [field, text] of fields) {
+        if (re.test(text)) issues.push(`voice: ${label} (${field})`);
+      }
+    }
+  }
+  for (const phrase of voice.deniedPhrases ?? []) {
+    const re = phraseMatcher(phrase);
+    if (!re) continue;
+    for (const [field, text] of fields) {
+      if (re.test(normApostrophes(text))) issues.push(`voice: banned phrase "${phrase.trim()}" (${field})`);
+    }
+  }
+  return issues;
 }
 var PROPER_STOPWORDS = new Set(
   [
@@ -39413,6 +39456,14 @@ var DeliverySchema = external_exports.object({
    */
   dir: external_exports.string().optional()
 });
+var VoiceSchema = external_exports.object({
+  /** Reject em/en dashes, their HTML entities, and hyphens used as dashes (" - "). */
+  banDashes: external_exports.boolean().optional(),
+  /** Phrases drafts must never contain: case-insensitive, whole-word, exact phrase. */
+  deniedPhrases: external_exports.array(external_exports.string().trim().min(1)).optional(),
+  /** Free-text voice guidance, appended to the draft styleOverride like `tone`. */
+  notes: external_exports.string().optional()
+});
 var ReportProfileSchema = external_exports.object({
   /** Human-readable profile name, used in report headers. */
   name: external_exports.string().min(1),
@@ -39430,7 +39481,9 @@ var ReportProfileSchema = external_exports.object({
    * Optional — when absent, email drafts are flagged `needsSenderIdentity` and the
    * run records a compliance warning; nothing is ever fabricated.
    */
-  sender: SenderIdentitySchema.optional()
+  sender: SenderIdentitySchema.optional(),
+  /** Operator voice rules (see VoiceSchema). Optional; absent ⇒ no voice checks. */
+  voice: VoiceSchema.optional()
 });
 function loadProfile(path) {
   let raw;
@@ -39452,6 +39505,7 @@ function applyProfileToCampaignInput(profile, _base) {
   if (outreach?.tone) styleParts.push(`Tone: ${outreach.tone}.`);
   if (outreach?.maxLength) styleParts.push(`Keep the body under ${outreach.maxLength} characters.`);
   if (outreach?.templateNotes) styleParts.push(outreach.templateNotes);
+  if (profile.voice?.notes) styleParts.push(profile.voice.notes);
   const styleOverride = styleParts.length > 0 ? styleParts.join(" ") : void 0;
   return {
     channel: outreach?.channel,
@@ -39460,7 +39514,10 @@ function applyProfileToCampaignInput(profile, _base) {
     ...styleOverride !== void 0 ? { styleOverride } : {},
     // Deterministic, operator-owned: passed straight through to the footer, never
     // to the LLM (it must not be paraphrased or invented by the model).
-    ...profile.sender !== void 0 ? { sender: profile.sender } : {}
+    ...profile.sender !== void 0 ? { sender: profile.sender } : {},
+    // Deterministic, operator-owned: enforced by the draft guard (the model also
+    // gets a one-line hint, but the guard is what decides).
+    ...profile.voice !== void 0 ? { voice: profile.voice } : {}
   };
 }
 
@@ -39792,7 +39849,10 @@ async function applyMessageCompliance(input2) {
     const subject = draft.channel === "linkedin" ? null : draft.subject ?? null;
     const verdict = guardDraft(
       { subject, body: draft.body, cta: draft.cta },
-      { allowedText: draftIdentifiers({ icp: input2.icp, lead, contact, enrichments, userText: input2.userText ?? [] }) }
+      {
+        allowedText: draftIdentifiers({ icp: input2.icp, lead, contact, enrichments, userText: input2.userText ?? [] }),
+        ...input2.voice ? { voice: input2.voice } : {}
+      }
     );
     if (!verdict.ok) {
       rejectedDrafts.push({ contactKey, issues: verdict.issues });
@@ -40164,11 +40224,13 @@ async function handleSaveRun(rawArgs, deps = {}) {
   }
   let sender;
   let styleOverride;
+  let voice;
   const profileRef = args.profile ?? (process.env.INTENT_OUTREACH_PROFILE?.trim() || void 0);
   if (profileRef) {
     try {
       const profile = loadProfileRef(profileRef, deps.cwd);
       sender = profile.sender;
+      voice = profile.voice;
       styleOverride = applyProfileToCampaignInput(profile, { id: args.id, icp: args.icp, domains }).styleOverride;
     } catch (err) {
       return toolError(`run NOT saved: ${errMsg(err)}`);
@@ -40184,7 +40246,8 @@ async function handleSaveRun(rawArgs, deps = {}) {
     sender,
     model: args.model,
     now,
-    userText: [styleOverride]
+    userText: [styleOverride],
+    voice
   });
   const errors = [...args.errors, ...gated.errors];
   const rejectedDrafts = [...args.rejectedDrafts, ...gated.rejectedDrafts];
