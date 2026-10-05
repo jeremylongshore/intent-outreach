@@ -229,6 +229,61 @@ describe("apolloConnector", () => {
       expect((fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(2);
     });
 
+    it("sends no person_titles without buyer titles (request unchanged)", async () => {
+      const fetchSpy = mockFetchSequence([ORG, SEARCH, REVEAL]);
+      vi.stubGlobal("fetch", fetchSpy);
+      await apolloConnector.research!({ domain: DOMAIN, icp: "" });
+      const calls = (fetchSpy as unknown as { mock: { calls: [URL | string, RequestInit][] } }).mock.calls;
+      expect(JSON.parse(String(calls[1]![1].body))).not.toHaveProperty("person_titles");
+    });
+
+    it("sends person_titles with buyer titles and spends reveal credits on buyers first", async () => {
+      // Five people with emails; the buyers (COO, CTO) sit 4th and 5th. Without
+      // ranking, the cap of 3 would reveal HR, sales and a media buyer.
+      const search = {
+        people: [
+          { id: "hr", first_name: "Hana", title: "HR Director", has_email: true },
+          { id: "sales", first_name: "Sam", title: "VP Sales", has_email: true },
+          { id: "media", first_name: "Mia", title: "Media Buyer", has_email: true },
+          { id: "coo", first_name: "Cara", title: "Chief Operating Officer", has_email: true },
+          { id: "cto", first_name: "Tom", title: "CTO", has_email: true },
+        ],
+      };
+      const fetchSpy = mockFetchSequence([ORG, search, { matches: [] }]);
+      vi.stubGlobal("fetch", fetchSpy);
+
+      await apolloConnector.research!({ domain: DOMAIN, icp: "", buyerTitles: [" CTO ", "COO", ""] });
+
+      const calls = (fetchSpy as unknown as { mock: { calls: [URL | string, RequestInit][] } }).mock.calls;
+      const body = JSON.parse(String(calls[1]![1].body));
+      expect(body.person_titles).toEqual(["CTO", "COO"]);
+      expect(body.person_seniorities).toContain("c_suite"); // seniorities kept alongside titles
+      const revealed = JSON.parse(String(calls[2]![1].body)).details.map((d: { id: string }) => d.id);
+      expect(revealed).toHaveLength(MAX_REVEAL_PER_DOMAIN);
+      expect(revealed.slice(0, 2)).toEqual(["coo", "cto"]);
+      expect(revealed).not.toContain("hr");
+    });
+
+    it("keeps a revealed contact whose last name is only an initial, marked nameIncomplete", async () => {
+      vi.stubGlobal(
+        "fetch",
+        mockFetchSequence([
+          ORG,
+          SEARCH,
+          {
+            matches: [
+              { id: "p1", name: "Kristina L", title: "COO", email: "kristina@acme.com" },
+              { id: "p3", name: "Cara Lowe", title: "COO", email: "cara@acme.com" },
+            ],
+          },
+        ]),
+      );
+      const { contacts } = await apolloConnector.research!({ domain: DOMAIN, icp: "" });
+      expect(contacts).toHaveLength(2);
+      expect(contacts[0]).toMatchObject({ name: "Kristina L", email: "kristina@acme.com", nameIncomplete: true });
+      expect(contacts[1]).not.toHaveProperty("nameIncomplete");
+    });
+
     it("drops a revealed email that contains no @", async () => {
       vi.stubGlobal(
         "fetch",

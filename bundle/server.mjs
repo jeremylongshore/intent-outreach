@@ -37619,6 +37619,99 @@ async function forEachContact(contacts, cap, fn, opts = {}) {
   return { results, failures };
 }
 
+// pipeline_core/targeting.ts
+var ABBREVIATIONS = {
+  ceo: "chief executive officer",
+  cto: "chief technology officer",
+  coo: "chief operating officer",
+  cio: "chief information officer",
+  cfo: "chief financial officer",
+  cmo: "chief marketing officer",
+  cro: "chief revenue officer",
+  cpo: "chief product officer",
+  ciso: "chief information security officer",
+  vp: "vice president",
+  svp: "senior vice president",
+  evp: "executive vice president",
+  avp: "assistant vice president",
+  sr: "senior",
+  dir: "director",
+  mgr: "manager",
+  ops: "operations",
+  hr: "human resources"
+};
+var PHRASE_SYNONYMS = [
+  [/\bchief technical officer\b/g, "chief technology officer"],
+  [/\bchief operations officer\b/g, "chief operating officer"],
+  [/\bvice-president\b/g, "vice president"]
+];
+var STOPWORDS = /* @__PURE__ */ new Set(["of", "the", "and", "for", "a", "an", "to", "in", "at"]);
+var NON_BUYER_FUNCTIONS = [
+  "human resources",
+  "people operations",
+  "talent acquisition",
+  "recruiting",
+  "recruiter",
+  "recruitment",
+  "sales",
+  "marketing",
+  "legal",
+  "counsel",
+  "attorney",
+  "paralegal"
+];
+var SCORE_EXACT = 100;
+var SCORE_CONTAINS_BUYER = 80;
+var SCORE_INSIDE_BUYER = 60;
+var SCORE_ALL_TOKENS = 50;
+var PENALTY_NON_BUYER = 50;
+function normalizeTitle(title) {
+  const words = title.toLowerCase().replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(/\s+/).filter(Boolean).map((w) => ABBREVIATIONS[w] ?? w);
+  let out = words.join(" ");
+  for (const [re, to] of PHRASE_SYNONYMS) out = out.replace(re, to);
+  return out;
+}
+var contentTokens = (s) => s.split(" ").filter((w) => w && !STOPWORDS.has(w));
+var containsPhrase = (haystack, needle) => needle.length > 0 && ` ${haystack} `.includes(` ${needle} `);
+function matchScore(title, buyers) {
+  let best = 0;
+  const titleTokens = new Set(contentTokens(title));
+  for (const b of buyers) {
+    let s = 0;
+    if (title === b) s = SCORE_EXACT;
+    else if (containsPhrase(title, b)) s = SCORE_CONTAINS_BUYER;
+    else if (containsPhrase(b, title)) s = SCORE_INSIDE_BUYER;
+    else {
+      const bt = contentTokens(b);
+      if (bt.length > 0 && bt.every((w) => titleTokens.has(w))) s = SCORE_ALL_TOKENS;
+    }
+    if (s > best) best = s;
+  }
+  return best;
+}
+function isNonBuyer(title, buyers) {
+  return NON_BUYER_FUNCTIONS.some((f) => containsPhrase(title, f) && !buyers.some((b) => containsPhrase(b, f)));
+}
+function scoreAgainst(title, buyers) {
+  const t = title ? normalizeTitle(title) : "";
+  if (!t) return 0;
+  return matchScore(t, buyers) - (isNonBuyer(t, buyers) ? PENALTY_NON_BUYER : 0);
+}
+var normalizedBuyers = (buyerTitles) => cleanBuyerTitles(buyerTitles).map(normalizeTitle).filter(Boolean);
+function cleanBuyerTitles(buyerTitles) {
+  return (buyerTitles ?? []).map((t) => typeof t === "string" ? t.trim() : "").filter((t) => t.length > 0);
+}
+function rankContactsByTitle(contacts, buyerTitles) {
+  const buyers = normalizedBuyers(buyerTitles);
+  if (buyers.length === 0) return contacts.slice();
+  return contacts.map((c, i) => ({ c, i, score: scoreAgainst(c.title, buyers) })).sort((a, b) => b.score - a.score || a.i - b.i).map((x) => x.c);
+}
+function hasInitialOnlyLastName(name) {
+  const tokens = name.trim().split(/\s+/);
+  if (tokens.length < 2) return false;
+  return /^\p{L}\.?$/u.test(tokens[tokens.length - 1]);
+}
+
 // pipeline_core/connectors/apollo.ts
 var BASE = "https://api.apollo.io/api/v1";
 var KEY_ENV = "APOLLO_API_KEY";
@@ -37709,6 +37802,8 @@ function personToContact(p, domain2) {
   const name = p.name ?? [p.first_name, p.last_name].filter(Boolean).join(" ");
   return {
     name: name || "(unknown)",
+    // "Kristina L": keep the contact, but the drafter must use the first name only.
+    ...name && hasInitialOnlyLastName(name) ? { nameIncomplete: true } : {},
     leadDomain: domain2,
     email: p.email && p.email.includes("@") ? p.email : void 0,
     title: p.title ?? void 0,
@@ -37726,7 +37821,8 @@ var apolloConnector = {
   isConfigured() {
     return hasSecret(KEY_ENV);
   },
-  async research({ domain: domain2, signal }) {
+  async research({ domain: domain2, signal, buyerTitles }) {
+    const titles = cleanBuyerTitles(buyerTitles);
     let org = { primary_domain: domain2 };
     try {
       const orgRes = parseVendor(
@@ -37744,11 +37840,16 @@ var apolloConnector = {
         signal,
         method: "POST",
         headers: headers(),
-        json: { q_organization_domains_list: [domain2], person_seniorities: [...BUYER_SENIORITIES], per_page: 10 }
+        json: {
+          q_organization_domains_list: [domain2],
+          person_seniorities: [...BUYER_SENIORITIES],
+          ...titles.length > 0 ? { person_titles: titles } : {},
+          per_page: 10
+        }
       })
     );
     const found = peopleRes.people ?? [];
-    const toReveal = found.filter((p) => p.id && p.has_email !== false).slice(0, MAX_REVEAL_PER_DOMAIN);
+    const toReveal = rankContactsByTitle(found, titles).filter((p) => p.id && p.has_email !== false).slice(0, MAX_REVEAL_PER_DOMAIN);
     let revealed = [];
     if (toReveal.length > 0) {
       try {
@@ -38615,7 +38716,13 @@ var ContactSchema = external_exports.object({
   // A LinkedIn handle OR full URL — providers return both shapes, so don't reject
   // an otherwise-valid contact (and thus the whole run) over a non-URL handle.
   linkedin: external_exports.string().optional(),
-  source: SourceSchema
+  source: SourceSchema,
+  /**
+   * True when the provider withheld the surname (the last token is a lone
+   * initial, e.g. "Kristina L"). The contact is kept, but the drafter addresses
+   * them by first name only. Optional + additive: older lines simply omit it.
+   */
+  nameIncomplete: external_exports.boolean().optional()
 });
 var EnrichmentSchema = external_exports.object({
   /** What this enrichment is attached to. */
@@ -39301,7 +39408,11 @@ var FilteringSchema = external_exports.object({
   minScore: external_exports.number().min(0).max(100).optional(),
   /** Plain-English company-type filters, e.g. ["Series A", "bootstrapped"]. */
   companyFilters: external_exports.array(external_exports.string()).optional(),
-  /** Contact title substrings to prefer, e.g. ["CEO", "Founder", "VP Sales"]. */
+  /**
+   * Buyer titles, e.g. ["CTO", "COO", "VP Operations"]. Contacts are ranked by
+   * match before drafting (and Apollo reveals are aimed at them); see
+   * pipeline_core/targeting.ts. The CLI's --buyer-titles overrides this list.
+   */
   contactTitles: external_exports.array(external_exports.string()).optional()
 });
 var OutreachSchema = external_exports.object({
@@ -39416,6 +39527,10 @@ import { dirname as dirname2, isAbsolute as isAbsolute2, join as join3, resolve 
 import { fileURLToPath } from "node:url";
 var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
+function buyerTitlesArg(opts) {
+  const titles = cleanBuyerTitles(opts.buyerTitles);
+  return titles.length > 0 ? { buyerTitles: titles } : {};
+}
 var LABEL_RE2 = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
 var TLD_RE2 = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
 function normalizeDomain2(input2) {
@@ -39541,6 +39656,7 @@ async function runResearch(domain2, icp, opts = {}) {
   registerBuiltinConnectors();
   const target = normalizeDomain2(domain2);
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
+  const targeting = buyerTitlesArg(opts);
   const connectors = getConfiguredConnectors("research");
   const leads = [];
   const contacts = [];
@@ -39552,7 +39668,7 @@ async function runResearch(domain2, icp, opts = {}) {
     if (!connector.research) continue;
     try {
       const out = await callWithDeadline(
-        (signal) => connector.research({ domain: target, icp, signal }),
+        (signal) => connector.research({ domain: target, icp, ...targeting, signal }),
         timeoutMs
       );
       leads.push(...out.leads);
@@ -39609,6 +39725,7 @@ function foldVerifiedEmails(working, found) {
 async function runEnrich(lead, contacts, opts = {}) {
   registerBuiltinConnectors();
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
+  const targeting = buyerTitlesArg(opts);
   const connectors = getConfiguredConnectors("enrich");
   const enrichments = [];
   const raw = {};
@@ -39621,7 +39738,7 @@ async function runEnrich(lead, contacts, opts = {}) {
     try {
       const current = working;
       const out = await callWithDeadline(
-        (signal) => connector.enrich({ lead, contacts: current, signal }),
+        (signal) => connector.enrich({ lead, contacts: current, ...targeting, signal }),
         timeoutMs
       );
       enrichments.push(...out.enrichments);
@@ -39659,8 +39776,7 @@ function enrichmentsFor(lead, contact, all) {
   );
 }
 function deriveRunStatus(s) {
-  const degraded = s.errors > 0 || (s.rejectedDrafts ?? 0) > 0;
-  if (s.messages > 0) return degraded ? "partial" : "complete";
+  if (s.messages > 0) return s.errors > 0 ? "partial" : "complete";
   if (s.errors > 0) return "failed";
   if (s.leads > 0) return "enriched";
   if (s.researchRan) return "researched";
@@ -40145,8 +40261,7 @@ async function handleSaveRun(rawArgs, deps = {}) {
     // The agent reached save_run after its research phase; an empty result is an
     // honest "researched", not a failure.
     researchRan: true,
-    errors: errors.length,
-    rejectedDrafts: rejectedDrafts.length
+    errors: errors.length
   });
   const stamped = now();
   try {

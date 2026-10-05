@@ -113,7 +113,7 @@ export function leadView(lead: Lead) {
 
 /** Contacts as the model sees them: no email (not needed to score or write). */
 export function contactView(c: Contact) {
-  return defined({ name: clip(c.name, 200), title: clip(c.title, 200) });
+  return defined({ name: clip(c.nameIncomplete ? c.name.trim().split(/\s+/)[0] : c.name, 200), title: clip(c.title, 200) });
 }
 
 interface WebResult {

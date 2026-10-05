@@ -19,7 +19,9 @@ import {
   MAX_CONTACTS_LIMIT,
   parseChannelFlag,
   parseDomainsFlag,
+  parseBuyerTitlesFlag,
   parseNumberFlag,
+  resolveBuyerTitles,
   UsageError,
 } from "../cli.js";
 import { loadProfileRef, resolveProfilePath } from "../pipeline_core/pipeline.js";
@@ -76,6 +78,35 @@ describe("--domains / --channel", () => {
     expect(parseChannelFlag("linkedin")).toBe("linkedin");
     expect(() => parseChannelFlag("fax")).toThrow(UsageError);
   });
+});
+
+describe("--buyer-titles", () => {
+  it("splits, trims and dedupes (case-insensitively)", () => {
+    expect(parseBuyerTitlesFlag(" CTO, COO ,,VP Operations, cto ")).toEqual(["CTO", "COO", "VP Operations"]);
+  });
+
+  it.each(["", " , ", ","])("an empty list %j is a usage error", (raw) => {
+    expect(() => parseBuyerTitlesFlag(raw)).toThrow(UsageError);
+  });
+
+  it("the flag overrides the profile's filtering.contactTitles", () => {
+    const profile = { filtering: { contactTitles: ["CEO", "Founder"] } };
+    expect(resolveBuyerTitles(["CTO"], profile)).toEqual(["CTO"]);
+    expect(resolveBuyerTitles(undefined, profile)).toEqual(["CEO", "Founder"]);
+  });
+
+  it("no flag and no profile titles ⇒ undefined (no ranking)", () => {
+    expect(resolveBuyerTitles(undefined, undefined)).toBeUndefined();
+    expect(resolveBuyerTitles(undefined, { filtering: {} })).toBeUndefined();
+    expect(resolveBuyerTitles(undefined, { filtering: { contactTitles: [" "] } })).toBeUndefined();
+  });
+
+  it("an empty --buyer-titles exits 2 before any spend, and help documents the flag", () => {
+    const r = runCli(["run", "--icp", "x", "--domains", "acme.com", "--buyer-titles", " , "]);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/--buyer-titles is empty/);
+    expect(runCli(["help"]).stdout).toContain("--buyer-titles <list>");
+  }, 60_000);
 });
 
 describe("--profile resolution", () => {

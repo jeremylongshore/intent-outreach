@@ -36,7 +36,11 @@ export const FilteringSchema = z.object({
   minScore: z.number().min(0).max(100).optional(),
   /** Plain-English company-type filters, e.g. ["Series A", "bootstrapped"]. */
   companyFilters: z.array(z.string()).optional(),
-  /** Contact title substrings to prefer, e.g. ["CEO", "Founder", "VP Sales"]. */
+  /**
+   * Buyer titles, e.g. ["CTO", "COO", "VP Operations"]. Contacts are ranked by
+   * match before drafting (and Apollo reveals are aimed at them); see
+   * pipeline_core/targeting.ts. The CLI's --buyer-titles overrides this list.
+   */
   contactTitles: z.array(z.string()).optional(),
 });
 export type Filtering = z.infer<typeof FilteringSchema>;
