@@ -53,9 +53,9 @@ export const APPROVED_MODELS: readonly ApprovedModel[] =
   {
     "provider": "minimax",
     "model": "MiniMax-M3",
-    "resultFile": "evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v3@eb798ecb-2.json",
+    "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
     "verified": true,
-    "evidence": "keyed eval gate passed: repeat 3, 9/9 fixtures in all runs, judge per-fixture minimums met (mean 3.89) (evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v3@eb798ecb-2.json)"
+    "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
   }
 ]
 // END APPROVED_MODELS

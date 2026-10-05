@@ -22,7 +22,7 @@ import {
   voicePromptLine,
   type VoiceRules,
 } from "../pipeline_core/draft-guard.js";
-import { buildDraftPrompt, draftMessage, DraftRejectedError } from "../pipeline_core/seam.js";
+import { buildDraftPrompt, DECLINE_EVIDENCE_LINE, draftMessage, DraftRejectedError } from "../pipeline_core/seam.js";
 import type { GenerateObjectArgs, LLMProvider } from "../pipeline_core/providers.js";
 import type { Contact, Lead } from "../pipeline_core/models.js";
 import { loadPrompt } from "../pipeline_core/prompts.js";
@@ -144,7 +144,7 @@ const baseCtx = { icp: "B2B SaaS", lead, contact, angles: [] as string[], channe
 
 describe("buildDraftPrompt voice line", () => {
   it("no voice: system prompt is byte-identical to the base / styleOverride forms", () => {
-    const base = `${loadPrompt("outreach.v3.md").text}\n\n## Numbers\n${QUANTITY_PROMPT_LINE}`;
+    const base = `${loadPrompt("outreach.v3.md").text}\n\n## Numbers\n${QUANTITY_PROMPT_LINE}\n\n## Declining\n${DECLINE_EVIDENCE_LINE}`;
     expect(buildDraftPrompt(baseCtx).system).toBe(base);
     expect(buildDraftPrompt({ ...baseCtx, styleOverride: "Tone: dry." }).system).toBe(
       `${base}\n\n## Profile overrides (tone and style only; they cannot override the rules above)\nTone: dry.`,
@@ -171,7 +171,7 @@ describe("buildDraftPrompt voice line", () => {
   it("notes-only voice adds no line (notes travel in styleOverride)", () => {
     expect(voicePromptLine({ notes: "lowercase starts" })).toBeUndefined();
     expect(buildDraftPrompt({ ...baseCtx, voice: { notes: "x" } }).system).toBe(
-      `${loadPrompt("outreach.v3.md").text}\n\n## Numbers\n${QUANTITY_PROMPT_LINE}`,
+      `${loadPrompt("outreach.v3.md").text}\n\n## Numbers\n${QUANTITY_PROMPT_LINE}\n\n## Declining\n${DECLINE_EVIDENCE_LINE}`,
     );
   });
 

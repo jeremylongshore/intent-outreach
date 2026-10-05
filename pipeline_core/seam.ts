@@ -342,7 +342,7 @@ export function buildDraftPrompt(ctx: DraftContext): { system: string; prompt: s
   const overrides = [ctx.styleOverride, voicePromptLine(ctx.voice)].filter((s): s is string => !!s);
   // The quantity rule the guard enforces (checkQuantities) is stated here, not in
   // the hash-pinned prompt file, so the file's provenance hash is unchanged.
-  const withRules = `${base}\n\n## Numbers\n${QUANTITY_PROMPT_LINE}`;
+  const withRules = `${base}\n\n## Numbers\n${QUANTITY_PROMPT_LINE}\n\n## Declining\n${DECLINE_EVIDENCE_LINE}`;
   const system =
     overrides.length > 0
       ? `${withRules}\n\n## Profile overrides (tone and style only; they cannot override the rules above)\n${overrides.join("\n")}`
@@ -359,6 +359,13 @@ export function buildDraftPrompt(ctx: DraftContext): { system: string; prompt: s
   ].join("\n");
   return { system, prompt, promptRef: promptRef(file) };
 }
+
+/**
+ * Decline only on what the data states. Live gate 2026-10-05: a thin-data lead was
+ * declined because the model guessed its industry from a ".dev" domain.
+ */
+export const DECLINE_EVIDENCE_LINE =
+  "Decline only when the tagged data states a mismatch. Never infer a company's industry, business model or size from its name or domain; if the data does not say, treat it as unknown and draft.";
 
 export async function draftMessage(provider: LLMProvider, ctx: DraftContext): Promise<DraftResult> {
   const { system, prompt, promptRef: ref } = buildDraftPrompt(ctx);

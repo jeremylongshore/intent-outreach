@@ -129,6 +129,13 @@ export function draftStyle(ctx: DraftContext, output: DraftText): ScoreResult {
 // ───────────────────────────── groundingHeuristic ────────────────────────────
 
 const FUNDING_VERB = /\b(raised|raising|secured|closed)\b/i;
+/**
+ * An angle that explicitly says there is NO funding ("no public raise is on file",
+ * "has not raised", "without funding") or only asks about it ("worth confirming
+ * whether they have raised") is the honest version, not a funding claim.
+ */
+const NEGATED_FUNDING =
+  /\b(?:no|not|without|never|hasn'?t|has not|isn'?t|is not|lacks?|whether|if)\b[^.]{0,40}\b(?:raise|raised|raising|funding|funded|round|investors?)\b/i;
 const SERIES_ROUND = /\bseries\s+[a-k]\b/i;
 const DOLLAR_FIGURE = /\$\s?\d[\d,.]*\s?(?:k|m|b|mm|bn|million|billion|thousand)?\b/i;
 /** A capitalized multi-word phrase that looks like an investor/firm name. */
@@ -278,6 +285,18 @@ function signalTokens(ctx: DraftContext): Set<string> {
   return new Set(longTokens([...ctx.angles, ctx.lead.industry ?? "", ctx.lead.description ?? ""].join(" ")));
 }
 
+/**
+ * "I work with Series A SaaS teams" names a segment, not a customer. When every word
+ * of the captured phrase appears in the user's own ICP, it is the ICP reworded
+ * (words dropped or reordered), so it is grounded. An invented customer ("Stripe")
+ * has words the ICP does not contain and still fails.
+ */
+function isIcpSegment(name: string, icp: string): boolean {
+  const icpWords = new Set(norm(icp).split(/[^a-z0-9]+/).filter(Boolean));
+  const words = norm(name).split(/[^a-z0-9]+/).filter(Boolean);
+  return words.length > 0 && words.every((w) => icpWords.has(w));
+}
+
 function draftClaimFindings(ctx: DraftContext, output: DraftText, corpus: string): string[] {
   const findings: string[] = [];
   const text = [output.subject ?? "", output.body ?? "", output.cta ?? ""].join("\n");
@@ -293,7 +312,9 @@ function draftClaimFindings(ctx: DraftContext, output: DraftText, corpus: string
         .split(/,|\band\b/)
         .map((x) => x.trim())
         .filter(Boolean)) {
-        if (!corpus.includes(norm(name))) findings.push(`invented customer/reference: "${name}"`);
+        if (!corpus.includes(norm(name)) && !isIcpSegment(name, ctx.icp)) {
+          findings.push(`invented customer/reference: "${name}"`);
+        }
       }
     }
   }
@@ -371,6 +392,7 @@ export function angleGrounding(inputs: ScoreInputs, kept: string[], dropped: Dro
   const findings = dropped.map((d) => `fabricated angle dropped by groundAngles: "${d.angle}" (${d.reason})`);
   if (!hasFundingSignal(inputs)) {
     for (const a of kept) {
+      if (NEGATED_FUNDING.test(a)) continue;
       if (FUNDING_VERB.test(a) || /\b(?:funding|funded|round|investors?)\b/i.test(a)) {
         findings.push(`angle claims funding with no funding signal in the inputs: "${a}"`);
       }

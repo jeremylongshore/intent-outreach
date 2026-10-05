@@ -594,3 +594,25 @@ describe("result records are never overwritten", () => {
     expect(uniqueRecordPath(dir, base)).toBe(join(dir, base.replace(".json", "-3.json")));
   });
 });
+
+describe("angleGrounding: negated funding is honest, not a claim", async () => {
+  const { angleGrounding } = await import("../evals/scorers.js");
+  const inputs = {
+    icp: "x",
+    lead: { domain: "quietlabs.dev", companyName: "Quiet Labs", source: "manual" },
+    contacts: [],
+    enrichments: [],
+  } as unknown as Parameters<typeof angleGrounding>[0];
+  it("does not flag an angle that says there is no raise on file", () => {
+    const r = angleGrounding(inputs, ["No public raise is on file, so keep the first message focused on founder-led efficiency rather than scaling-after-funding assumptions."], []);
+    expect(r.pass).toBe(true);
+  });
+  it("does not flag an angle that only asks whether they raised", () => {
+    const r = angleGrounding(inputs, ["Worth confirming whether they have raised recently to time the pitch."], []);
+    expect(r.pass).toBe(true);
+  });
+  it("still flags an invented raise", () => {
+    const r = angleGrounding(inputs, ["Quiet Labs just raised a new round."], []);
+    expect(r.pass).toBe(false);
+  });
+});
