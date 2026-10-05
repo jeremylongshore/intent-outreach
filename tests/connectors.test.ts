@@ -822,6 +822,22 @@ describe("exaConnector", () => {
     expect(contacts).toHaveLength(0);
   });
 
+  it("research asks Exa for highlights (without `contents` Exa returns metadata only)", async () => {
+    const fetchSpy = vi.fn(
+      async () => new Response(JSON.stringify({ results: [{ title: "Acme", highlights: ["Acme sells software."] }] }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+    await exaConnector.research!({ domain: DOMAIN, icp: "" });
+    const [url, init] = fetchSpy.mock.calls[0] as unknown as [URL | string, RequestInit];
+    expect(String(url)).toBe("https://api.exa.ai/search");
+    expect(JSON.parse(String(init.body))).toEqual({
+      query: `company at ${DOMAIN}`,
+      numResults: 5,
+      type: "auto",
+      contents: { highlights: true },
+    });
+  });
+
   it("research falls back to text snippet when highlights is absent", async () => {
     const payload = {
       results: [{ title: "Acme", text: "Great company doing great things." }],
