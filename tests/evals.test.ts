@@ -233,6 +233,11 @@ describe("groundingHeuristic: segments named in the ICP are not invented custome
     expect(r.findings.filter((f) => f.startsWith("invented customer"))).toEqual([]);
   });
 
+  it("accepts the ICP segment reworded with a word dropped", () => {
+    const r = groundingHeuristic(ctx, draft("I work with Series A SaaS teams on outbound."));
+    expect(r.findings.filter((f) => f.startsWith("invented customer"))).toEqual([]);
+  });
+
   it("still flags a named customer absent from the inputs", () => {
     const r = groundingHeuristic(ctx, draft("We helped Stripe and Ramp scale outbound."));
     expect(r.findings).toContain('invented customer/reference: "Stripe"');
