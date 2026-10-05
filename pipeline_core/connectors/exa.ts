@@ -77,7 +77,10 @@ export const exaConnector: Connector = {
         signal,
         method: "POST",
         headers: headers(),
-        json: { query: "company at " + domain, numResults: 5, type: "auto" },
+        // Exa returns page content only when asked: without `contents` a result is
+        // metadata only (title, url, dates), and the lead description fell back to
+        // the page title. Highlights are Exa's token-efficient extraction.
+        json: { query: "company at " + domain, numResults: 5, type: "auto", contents: { highlights: true } },
       }),
     );
 
