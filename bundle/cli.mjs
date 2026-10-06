@@ -77883,7 +77883,7 @@ async function runCampaign(input2) {
     domains,
     provider: provider.name,
     model: provider.model,
-    ...scoreProvider !== provider ? {
+    ...scoreProvider.name !== provider.name || scoreProvider.model !== provider.model ? {
       seamModels: {
         score: { provider: scoreProvider.name, model: scoreProvider.model },
         draft: { provider: provider.name, model: provider.model }
@@ -78269,7 +78269,7 @@ async function runPropertyCampaign(input2) {
     queries: input2.queries,
     provider: provider.name,
     model: provider.model,
-    ...scoreProvider !== provider ? {
+    ...scoreProvider.name !== provider.name || scoreProvider.model !== provider.model ? {
       seamModels: {
         score: { provider: scoreProvider.name, model: scoreProvider.model },
         draft: { provider: provider.name, model: provider.model }
@@ -79051,9 +79051,9 @@ auto-detected provider: ${detected}
 `);
 }
 async function scoreProviderFrom(values) {
-  const p = values["score-provider"];
   const m = values["score-model"];
-  if (typeof p !== "string" && typeof m !== "string") return void 0;
+  const p = values["score-provider"] ?? values.provider;
+  if (typeof values["score-provider"] !== "string" && typeof m !== "string") return void 0;
   return getProvider({
     ...typeof p === "string" ? { provider: p } : {},
     ...typeof m === "string" ? { model: m } : {}

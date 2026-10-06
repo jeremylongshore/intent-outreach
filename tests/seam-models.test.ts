@@ -121,5 +121,26 @@ describe("per-seam models", () => {
     const one = await runPropertyCampaign({ ...base, id: "split-3", provider: model("strong", single) });
     expect(single).toEqual(["strong:score", "strong:draft"]);
     expect(one.run.seamModels).toBeUndefined();
+
+    // An equal but distinct provider object is the same model: no seamModels.
+    const twin = await runPropertyCampaign({ ...base, id: "split-4", provider: model("strong", []), scoreProvider: model("strong", []) });
+    expect(twin.run.seamModels).toBeUndefined();
+  });
+});
+
+describe("CLI: --score-model alone keeps --provider", () => {
+  it("resolves the scorer on the run's provider", async () => {
+    const providers = await import("../pipeline_core/providers.js");
+    const seen: unknown[] = [];
+    const spy = (await import("vitest")).vi.spyOn(providers, "getProvider").mockImplementation(async (o?: unknown) => {
+      seen.push(o);
+      throw new Error("stop after resolution");
+    });
+    const { main } = await import("../cli.js");
+    await expect(main(["run", "--icp", "x", "--domains", "acme.com", "--provider", "openai", "--score-model", "gpt-4o-mini"])).rejects.toThrow(
+      /stop after resolution/,
+    );
+    expect(seen[0]).toEqual({ provider: "openai", model: "gpt-4o-mini" });
+    spy.mockRestore();
   });
 });

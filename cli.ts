@@ -213,9 +213,10 @@ function cmdProviders(): void {
 
 /** Resolve the optional score-seam provider (cheap scorer); undefined ⇒ the main provider scores too. */
 async function scoreProviderFrom(values: Record<string, unknown>) {
-  const p = values["score-provider"];
   const m = values["score-model"];
-  if (typeof p !== "string" && typeof m !== "string") return undefined;
+  // --score-model alone keeps the run's --provider (never silently auto-detects a different vendor).
+  const p = values["score-provider"] ?? values.provider;
+  if (typeof values["score-provider"] !== "string" && typeof m !== "string") return undefined;
   return getProvider({
     ...(typeof p === "string" ? { provider: p as ProviderName } : {}),
     ...(typeof m === "string" ? { model: m } : {}),

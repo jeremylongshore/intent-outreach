@@ -330,7 +330,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     queries: input.queries,
     provider: provider.name,
     model: provider.model,
-    ...(scoreProvider !== provider
+    ...(scoreProvider.name !== provider.name || scoreProvider.model !== provider.model
       ? {
           seamModels: {
             score: { provider: scoreProvider.name, model: scoreProvider.model },
