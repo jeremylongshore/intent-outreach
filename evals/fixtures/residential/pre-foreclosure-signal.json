@@ -1,0 +1,63 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "pre-foreclosure-signal",
+  "kind": "gate",
+  "note": "A lis pendens on the parcel: pre-foreclosure goes to the manual-review queue, never auto-drafted.",
+  "property": {
+    "key": "01003:05-09-27-0-000-107.000",
+    "apn": "05-09-27-0-000-107.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "23 Dune Dr",
+      "city": "Gulf Shores",
+      "state": "AL",
+      "zip": "36542"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "distressSignals": {
+        "value": [
+          "Lis Pendens recorded 2026-08-14"
+        ],
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:distress",
+      "kind": "person",
+      "name": "Paul Bennett",
+      "source": "fixture-county-gis",
+      "mailingAddress": {
+        "line1": "88 Music Sq E",
+        "city": "Nashville",
+        "state": "TN",
+        "zip": "37203"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-09-27-0-000-107.000",
+      "partyKey": "person:distress",
+      "role": "owner",
+      "asOf": "2014-03-12",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expectBlocked": "manual-review:pre-foreclosure"
+}

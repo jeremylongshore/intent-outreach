@@ -5,9 +5,10 @@ offline mode is a wiring check, not a quality gate.
 
 | Mode | Command | What it proves | Writes a record? |
 |---|---|---|---|
-| Offline wiring check | `npx tsx evals/run.ts --offline` | Seams, guard, scorers and report run end to end. The stub is grounded by construction, and score bands are skipped. | No |
+| Offline wiring check | `npx tsx evals/run.ts --offline` | Seams, gates, guard, scorers and report run end to end for **every pack**. The stub is grounded by construction, and score bands are skipped. | No |
 | Keyed gate | `npm run evals` (= `tsx evals/run.ts --providers anthropic --repeat 3`) | Real model quality on the golden fixtures, k runs each | Yes, `evals/results/` |
-| Promote | `npm run evals:promote -- --provider anthropic --model claude-sonnet-5-5` | Keyed gate, then marks the pair `verified: true` in `supported.ts` on a pass | Yes |
+| Keyed gate, residential | `npx tsx evals/run.ts --providers minimax --model MiniMax-M3 --pack residential-re --judge` | Real model quality on the residential fixtures | Yes |
+| Promote | `npm run evals:promote -- --provider anthropic --model claude-sonnet-5-5 [--pack residential-re]` | Keyed gate on that pack, then marks `{provider, model, pack}` `verified: true` in `supported.ts` on a pass | Yes |
 
 ## What a pass means
 
@@ -26,11 +27,46 @@ Every fixture must pass **every** one of k runs (`--repeat`, default 3 when keye
 - **`--judge`** (optional, costs more) asks the same model to rate each draft from 1 to 5. The mean
   rating must reach `--judge-floor` (default 4). A judge error counts as a fail.
 
+## The residential-re suite (`--pack residential-re`)
+
+Fixtures live in `fixtures/residential/*.json`; the loader, gate wiring and scorers are in
+`residential.ts`. Each fixture is a property, its owner and ownerships, and expectations. Every run
+checks four kinds of result:
+
+- **Gate fixtures** (`kind: "gate"`) must be blocked with an exact reason before any model call.
+  They run through the product's own gate chain (`pipeline_core/property-campaign.ts`
+  `gateVerdict`: suppression, then the mail address, then the pack's `propertyGate`). The cases are
+  a DNC-listed phone on the opt-out list, an opted-out mailing address, no owner contact, a
+  phone-only owner, no owner record, an expired listing whose exclusive agreement still runs, a
+  pre-foreclosure (lis pendens) signal, an estate owner (probate), outside the service area, and
+  undeclared license terms.
+- **Score results** (`kind: "model"`) must pass the gate, the schema, `scoreBand` and
+  `reasonGrounding`. `scoreBand` checks the band the model named against the fixture's
+  `expect.bands` and the score against that band's range (hot 70–100, warm 40–69, cold 0–39, from
+  the residential score prompt). `reasonGrounding` fails a reason that `groundAngles` dropped, or
+  one that leans on a protected trait.
+- **Draft results** must pass `draftRules` and `draftGrounding`, plus `recipient` for entity owners.
+  `draftRules` is the product guard with `fairHousingDraftRule`, `distressLanguageDraftRule` and the
+  quantity guard over the property facts, plus the prompt caps. `draftGrounding` fails a money
+  amount, percentage or proper name that is not on record. `recipient` requires that a greeting
+  names the entity or a generic owner, with no honorific. A decline passes only where the fixture
+  sets `expectDecline` (the commercial parcel).
+- **Pairs** (`pair:<id>`) are two fixtures that differ only in a protected-class signal: the owner's
+  name (national origin), or an age attribute and occupancy note that must be stripped. In every
+  run, the two scores must agree within 10 points and in the same band, and both drafts must pass
+  the fair-housing rule. The age pair must also build byte-identical prompts.
+- **`--judge`** uses a residential rubric: about the property and the numbers on record, plain and
+  restrained, with one low-pressure ask. Pitchy or urgent letters rate 2, and any reference to the
+  owner as a person rates 1. Fixtures set their own `judgeMin`.
+
 ## Approval: `supported.ts`
 
-`supported.ts` lists approved `{provider, model}` pairs. `pipeline_core/providers.ts` derives
-`SUPPORTED_PROVIDERS` from it: a provider is supported only if it has at least one entry. Running a
-model that has no entry under a supported provider prints a warning on stderr.
+`supported.ts` lists approved `{provider, model, pack}` records. A pass on one pack says nothing
+about another. Entries written before packs existed are `b2b-sdr`. `pipeline_core/providers.ts`
+derives `SUPPORTED_PROVIDERS` from the `b2b-sdr` entries, so a provider is supported only if it has
+at least one of them, and an approval on another pack never switches a provider on. Running a model
+that has no `b2b-sdr` entry under a supported provider prints a warning on stderr. Product code does
+not yet check an approval per pack at runtime (follow-up).
 
 `verified: true` means `resultFile` points at a committed record whose verdict is `pass`.
 `tests/eval-gate.test.ts` enforces this. The anthropic and openai entries are legacy claims from
@@ -43,7 +79,8 @@ qualifies an ungated model. No product code may call it, and a test enforces tha
 
 ```bash
 export ANTHROPIC_API_KEY=...            # or via scripts/sops-env
-npm run evals:promote -- --provider anthropic --model claude-sonnet-5-5
+npm run evals:promote -- --provider anthropic --model claude-sonnet-5-5                         # b2b-sdr
+npm run evals:promote -- --provider minimax --model MiniMax-M3 --pack residential-re --judge   # residential
 # on PASS: commit evals/results/<record>.json + evals/supported.ts
 # to switch the default, edit DEFAULT_MODEL in pipeline_core/providers.ts by hand (the script prints the line)
 ```
