@@ -16,6 +16,7 @@
  */
 
 import {
+  acceptsQuery,
   getConfiguredConnectors,
   getConnector,
   getSkippedConnectors,
@@ -27,10 +28,16 @@ import { ContactSchema, SCHEMA_VERSION } from "./models.js";
 import type {
   CampaignRun,
   Contact,
+  ContactPoint,
   Enrichment,
+  EntityLink,
   FailedConnector,
   Lead,
   Message,
+  Ownership,
+  Party,
+  Property,
+  ResearchQuery,
   RunError,
   RunStatus,
 } from "./models.js";
@@ -72,6 +79,12 @@ function buyerTitlesArg(opts: ConnectorRunOptions): { buyerTitles?: string[] } {
 export interface ResearchResult {
   leads: Lead[];
   contacts: Contact[];
+  /** Property/owner model (schema v6), deduped by natural key. Empty for domain queries. */
+  properties: Property[];
+  parties: Party[];
+  ownerships: Ownership[];
+  entityLinks: EntityLink[];
+  contactPoints: ContactPoint[];
   /** Connectors that ran, in call order — the determinism witness. */
   ran: string[];
   /** Connectors that are NOT configured (no key) — never a failure. */
@@ -280,6 +293,16 @@ function recordItemFailures(
   }
 }
 
+/** First record per key wins (registration order), so the result is deterministic. */
+function dedupeBy<T>(items: readonly T[], key: (t: T) => string): T[] {
+  const seen = new Map<string, T>();
+  for (const item of items) {
+    const k = key(item);
+    if (!seen.has(k)) seen.set(k, item);
+  }
+  return [...seen.values()];
+}
+
 /**
  * Research one domain across every configured research connector, in order.
  * A connector that throws (or blows its deadline) is recorded in
@@ -290,27 +313,56 @@ export async function runResearch(
   icp: string,
   opts: ConnectorRunOptions = {},
 ): Promise<ResearchResult> {
+  return runResearchQuery({ kind: "domain", domain }, icp, opts);
+}
+
+/**
+ * Run one typed research query (schema v6) across every configured research
+ * connector that declares its kind, in registration order. The routing is
+ * fixed by each connector's `queryKinds`, never chosen by the model, so a
+ * B2B connector is never handed a parcel query (invariant 5). Connectors that
+ * are configured but do not answer this kind are neither run nor "skipped".
+ */
+export async function runResearchQuery(
+  query: ResearchQuery,
+  icp: string,
+  opts: ConnectorRunOptions = {},
+): Promise<ResearchResult> {
   registerBuiltinConnectors();
-  const target = normalizeDomain(domain);
+  const typed: ResearchQuery =
+    query.kind === "domain" ? { kind: "domain", domain: normalizeDomain(query.domain) } : query;
+  const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("research");
+  const connectors = getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind));
   const leads: Lead[] = [];
   const contacts: Contact[] = [];
+  const properties: Property[] = [];
+  const parties: Party[] = [];
+  const ownerships: Ownership[] = [];
+  const entityLinks: EntityLink[] = [];
+  const contactPoints: ContactPoint[] = [];
   const raw: Record<string, unknown> = {};
   const ran: string[] = [];
-  const skipped = getSkippedConnectors("research").map((c) => c.name);
+  const skipped = getSkippedConnectors("research")
+    .filter((c) => acceptsQuery(c, typed.kind))
+    .map((c) => c.name);
   const failedConnectors: FailedConnector[] = [];
 
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
       const out = await callWithDeadline(
-        (signal) => connector.research!({ domain: target, icp, ...targeting, signal }),
+        (signal) => connector.research!({ domain: target, query: typed, icp, ...targeting, signal }),
         timeoutMs,
       );
       leads.push(...out.leads);
       contacts.push(...out.contacts);
+      properties.push(...(out.properties ?? []));
+      parties.push(...(out.parties ?? []));
+      ownerships.push(...(out.ownerships ?? []));
+      entityLinks.push(...(out.entityLinks ?? []));
+      contactPoints.push(...(out.contactPoints ?? []));
       raw[connector.name] = out.raw;
       ran.push(connector.name);
       recordItemFailures(connector, "research", out.failures, failedConnectors);
@@ -322,6 +374,11 @@ export async function runResearch(
   return {
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
+    properties: dedupeBy(properties, (p) => p.key),
+    parties: dedupeBy(parties, (p) => p.key),
+    ownerships: dedupeBy(ownerships, (o) => `${o.propertyKey}|${o.partyKey}`),
+    entityLinks: dedupeBy(entityLinks, (l) => `${l.entityKey}|${l.personKey}|${l.role}`),
+    contactPoints: dedupeBy(contactPoints, (c) => `${c.partyKey}|${c.kind}|${c.value}`),
     ran,
     skipped,
     failedConnectors,

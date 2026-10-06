@@ -37214,6 +37214,9 @@ function getConfiguredConnectors(phase) {
     (c) => c.phases.includes(phase) && c.isConfigured()
   );
 }
+function acceptsQuery(connector, kind) {
+  return (connector.queryKinds ?? ["domain"]).includes(kind);
+}
 function getSkippedConnectors(phase) {
   return getConnectors().filter(
     (c) => c.phases.includes(phase) && !c.isConfigured()
@@ -38690,8 +38693,8 @@ function registerBuiltinConnectors() {
 }
 
 // pipeline_core/models.ts
-var SCHEMA_VERSION = 5;
-var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5];
+var SCHEMA_VERSION = 6;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
 var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
 var SchemaVersionSchema = external_exports.union([
   external_exports.literal(V_FIRST),
@@ -38749,6 +38752,124 @@ var EnrichmentSchema = external_exports.object({
   data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
   fetchedAt: external_exports.string().datetime()
 });
+var Sha256HexSchema = external_exports.string().regex(/^[0-9a-f]{64}$/, "expected a sha256 hex digest");
+var LicenseTermsSchema = external_exports.object({
+  /** Short identifier of the terms, e.g. "dealmachine-tos-2026" or "public-record". */
+  id: external_exports.string().min(1).optional(),
+  outreachRestricted: external_exports.boolean().optional(),
+  /** Days the vendor allows this fact to be retained. */
+  retentionDays: external_exports.number().int().positive().optional(),
+  /** Required attribution text, if the terms demand one. */
+  attribution: external_exports.string().min(1).optional()
+});
+function factSchema(value) {
+  return external_exports.object({
+    value,
+    source: SourceSchema,
+    fetchedAt: external_exports.string().datetime(),
+    responseHash: Sha256HexSchema.optional(),
+    licenseTerms: LicenseTermsSchema.optional()
+  });
+}
+var FactSchema = factSchema(external_exports.unknown());
+var UsStateSchema = external_exports.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code");
+var CountyFipsSchema = external_exports.string().regex(/^\d{5}$/, "expected a 5-digit county FIPS code");
+var AddressSchema = external_exports.object({
+  line1: external_exports.string().min(1),
+  line2: external_exports.string().min(1).optional(),
+  city: external_exports.string().min(1),
+  state: UsStateSchema,
+  zip: external_exports.string().regex(/^\d{5}(?:-\d{4})?$/, "expected ZIP5 or ZIP+4"),
+  county: external_exports.string().min(1).optional(),
+  countyFips: CountyFipsSchema.optional()
+});
+function propertyKey(countyFips, apn) {
+  return `${countyFips}:${apn.trim().toUpperCase()}`;
+}
+var PropertySchema = external_exports.object({
+  key: external_exports.string().min(1),
+  apn: external_exports.string().min(1),
+  countyFips: CountyFipsSchema,
+  address: AddressSchema.optional(),
+  attributes: external_exports.record(external_exports.string().min(1), FactSchema).default({}),
+  source: SourceSchema
+}).refine((p) => p.key === propertyKey(p.countyFips, p.apn), {
+  message: "key must equal propertyKey(countyFips, apn)",
+  path: ["key"]
+});
+var PartySchema = external_exports.object({
+  /** Stable id within the run, e.g. "person:<connector-id>" or "entity:AL:000123456". */
+  key: external_exports.string().min(1),
+  kind: external_exports.enum(["person", "entity"]),
+  name: external_exports.string().min(1),
+  /** For entities only. */
+  entityType: external_exports.enum(["llc", "corporation", "trust", "estate", "partnership", "government", "other"]).optional(),
+  mailingAddress: AddressSchema.optional(),
+  source: SourceSchema
+});
+var OwnershipSchema = external_exports.object({
+  propertyKey: external_exports.string().min(1),
+  partyKey: external_exports.string().min(1),
+  /** Fraction held, 0 < share <= 1, when the record states it. */
+  share: external_exports.number().gt(0).lte(1).optional(),
+  role: external_exports.enum(["owner", "co-owner", "trustee", "life-tenant"]).default("owner"),
+  /** Recording or deed date (ISO date), when known. */
+  asOf: external_exports.string().date().optional(),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime()
+});
+var EntityLinkSchema = external_exports.object({
+  entityKey: external_exports.string().min(1),
+  personKey: external_exports.string().min(1),
+  role: external_exports.enum(["member", "manager", "officer", "registered-agent", "organizer", "other"]),
+  confidence: external_exports.number().min(0).max(1),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime()
+});
+var DncStatusSchema = external_exports.enum(["clean", "listed", "unknown"]);
+var ContactPointSchema = external_exports.object({
+  partyKey: external_exports.string().min(1),
+  kind: external_exports.enum(["phone", "email", "mail"]),
+  /** E.164 phone, email address, or a one-line mailing address. */
+  value: external_exports.string().min(1),
+  /** Phones only. "unknown" means the line type was not established. */
+  lineType: external_exports.enum(["mobile", "landline", "voip", "unknown"]).optional(),
+  /** Phones only; defaults to "unknown" (fail closed). */
+  dnc: DncStatusSchema.default("unknown"),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime(),
+  verifiedAt: external_exports.string().datetime().optional(),
+  licenseTerms: LicenseTermsSchema.optional()
+}).refine((c) => c.kind !== "phone" || /^\+\d{10,15}$/.test(c.value), {
+  message: "a phone contact point must be E.164",
+  path: ["value"]
+}).refine((c) => c.kind !== "email" || external_exports.string().email().safeParse(c.value).success, {
+  message: "an email contact point must be a valid email",
+  path: ["value"]
+});
+var ResearchQuerySchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("domain"), domain: external_exports.string().min(1) }),
+  external_exports.object({
+    kind: external_exports.literal("area"),
+    geography: external_exports.object({
+      state: UsStateSchema.optional(),
+      countyFips: external_exports.array(CountyFipsSchema).optional(),
+      zips: external_exports.array(external_exports.string().regex(/^\d{5}$/)).optional()
+    }).refine((g) => Boolean(g.state || g.countyFips?.length || g.zips?.length), {
+      message: "an area query needs a state, county FIPS codes or ZIPs"
+    }),
+    /** Pack buy-box filters, already compiled to plain values. */
+    filters: external_exports.record(external_exports.string().min(1), external_exports.unknown()).default({})
+  }),
+  external_exports.object({
+    kind: external_exports.literal("parcel"),
+    countyFips: CountyFipsSchema.optional(),
+    apn: external_exports.string().min(1).optional(),
+    address: AddressSchema.optional()
+  }).refine((q) => Boolean(q.countyFips && q.apn || q.address), {
+    message: "a parcel query needs countyFips + apn, or an address"
+  })
+]);
 var MessageSchema = external_exports.object({
   /** FK to the Contact this message is for (email if known, else name@domain). */
   contactKey: external_exports.string().min(1),
@@ -38862,6 +38983,14 @@ var CampaignRunSchema = external_exports.object({
    * where the drafts and the `model` field are caller-claimed.
    */
   origin: external_exports.enum(["pipeline", "agent"]).optional(),
+  /** The typed research queries this run executed (v6, optional). */
+  queries: external_exports.array(ResearchQuerySchema).optional(),
+  /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
+  properties: external_exports.array(PropertySchema).default([]),
+  parties: external_exports.array(PartySchema).default([]),
+  ownerships: external_exports.array(OwnershipSchema).default([]),
+  entityLinks: external_exports.array(EntityLinkSchema).default([]),
+  contactPoints: external_exports.array(ContactPointSchema).default([]),
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
@@ -40117,27 +40246,49 @@ function recordItemFailures(connector, phase, failures, failed) {
     failed.push({ name: connector.name, phase, status: f.status ?? f.reason });
   }
 }
+function dedupeBy(items, key) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const item of items) {
+    const k = key(item);
+    if (!seen.has(k)) seen.set(k, item);
+  }
+  return [...seen.values()];
+}
 async function runResearch(domain2, icp, opts = {}) {
+  return runResearchQuery({ kind: "domain", domain: domain2 }, icp, opts);
+}
+async function runResearchQuery(query, icp, opts = {}) {
   registerBuiltinConnectors();
-  const target = normalizeDomain2(domain2);
+  const typed = query.kind === "domain" ? { kind: "domain", domain: normalizeDomain2(query.domain) } : query;
+  const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("research");
+  const connectors = getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind));
   const leads = [];
   const contacts = [];
+  const properties = [];
+  const parties = [];
+  const ownerships = [];
+  const entityLinks = [];
+  const contactPoints = [];
   const raw = {};
   const ran = [];
-  const skipped = getSkippedConnectors("research").map((c) => c.name);
+  const skipped = getSkippedConnectors("research").filter((c) => acceptsQuery(c, typed.kind)).map((c) => c.name);
   const failedConnectors = [];
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
       const out = await callWithDeadline(
-        (signal) => connector.research({ domain: target, icp, ...targeting, signal }),
+        (signal) => connector.research({ domain: target, query: typed, icp, ...targeting, signal }),
         timeoutMs
       );
       leads.push(...out.leads);
       contacts.push(...out.contacts);
+      properties.push(...out.properties ?? []);
+      parties.push(...out.parties ?? []);
+      ownerships.push(...out.ownerships ?? []);
+      entityLinks.push(...out.entityLinks ?? []);
+      contactPoints.push(...out.contactPoints ?? []);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
       recordItemFailures(connector, "research", out.failures, failedConnectors);
@@ -40148,6 +40299,11 @@ async function runResearch(domain2, icp, opts = {}) {
   return {
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
+    properties: dedupeBy(properties, (p) => p.key),
+    parties: dedupeBy(parties, (p) => p.key),
+    ownerships: dedupeBy(ownerships, (o) => `${o.propertyKey}|${o.partyKey}`),
+    entityLinks: dedupeBy(entityLinks, (l) => `${l.entityKey}|${l.personKey}|${l.role}`),
+    contactPoints: dedupeBy(contactPoints, (c) => `${c.partyKey}|${c.kind}|${c.value}`),
     ran,
     skipped,
     failedConnectors,

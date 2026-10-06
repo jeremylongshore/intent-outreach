@@ -11,7 +11,18 @@
  * can register their own at runtime via registerConnector() — no core edits.
  */
 
-import type { Contact, Enrichment, Lead } from "../models.js";
+import type {
+  Contact,
+  ContactPoint,
+  Enrichment,
+  EntityLink,
+  Lead,
+  Ownership,
+  Party,
+  Property,
+  ResearchQuery,
+  ResearchQueryKind,
+} from "../models.js";
 
 /** Pricing/access reality of a connector, surfaced to the user. */
 export type ConnectorTier = "free" | "paid" | "enterprise" | "legacy";
@@ -20,8 +31,16 @@ export type ConnectorTier = "free" | "paid" | "enterprise" | "legacy";
 export type ConnectorPhase = "research" | "enrich";
 
 export interface ResearchInput {
-  /** Company domain to research. */
+  /**
+   * Company domain to research. Set for a `domain` query; empty ("") for an
+   * area or parcel query, which a domain-only connector never receives.
+   */
   domain: string;
+  /**
+   * The typed query (schema v6). Always set by the pipeline; a connector that
+   * declares only the `domain` kind may keep reading `domain` and ignore it.
+   */
+  query?: ResearchQuery;
   /** The campaign ICP, for connectors that can filter people by role/seniority. */
   icp: string;
   /**
@@ -54,6 +73,12 @@ export interface ConnectorItemFailure {
 export interface ResearchOutput {
   leads: Lead[];
   contacts: Contact[];
+  /** Property/owner model (schema v6); property connectors fill these. */
+  properties?: Property[];
+  parties?: Party[];
+  ownerships?: Ownership[];
+  entityLinks?: EntityLink[];
+  contactPoints?: ContactPoint[];
   /** Raw provider payload, retained for the audit trail. */
   raw?: unknown;
   /** Per-item / schema failures that did not abort the call. */
@@ -92,6 +117,12 @@ export interface Connector {
    * research produced anything; the pipeline may exclude it from "research ran".
    */
   readonly pushOnly?: boolean;
+  /**
+   * Research query kinds this connector answers. Absent = `["domain"]`, so
+   * every existing B2B connector keeps its behavior and is never handed an
+   * area or parcel query. The pipeline routes by this list, never the LLM.
+   */
+  readonly queryKinds?: readonly ResearchQueryKind[];
 
   /** True when the connector has what it needs to run (its key, or none needed). */
   isConfigured(): boolean;
