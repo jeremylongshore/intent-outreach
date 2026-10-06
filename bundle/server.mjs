@@ -39453,10 +39453,39 @@ function registerBuiltinPacks() {
   registered2 = true;
 }
 
+// pipeline_core/compliance/index.ts
+var E164_RE = /^\+\d{10,15}$/;
+function normalizePhone(phone) {
+  if (typeof phone !== "string") {
+    throw new Error("phone must be a string");
+  }
+  const stripped = phone.replace(/[\s\-.()]/g, "");
+  if (!stripped) {
+    throw new Error("phone is empty after normalization");
+  }
+  let candidate;
+  if (stripped.startsWith("+")) {
+    candidate = stripped;
+  } else if (stripped.length === 10 && /^\d+$/.test(stripped)) {
+    candidate = "+1" + stripped;
+  } else if (stripped.length === 11 && /^\d+$/.test(stripped) && stripped.startsWith("1")) {
+    candidate = "+" + stripped;
+  } else {
+    throw new Error(`phone ${JSON.stringify(phone)} is not in a recognized US format`);
+  }
+  if (!E164_RE.test(candidate)) {
+    throw new Error(`phone ${JSON.stringify(phone)} is not valid E.164`);
+  }
+  return candidate;
+}
+
 // pipeline_core/compliance/suppression.ts
+var SUPPRESSION_KINDS = ["email", "domain", "phone", "address"];
 var EMPTY_SUPPRESSION_LIST = Object.freeze({
   emails: /* @__PURE__ */ new Set(),
-  domains: /* @__PURE__ */ new Set()
+  domains: /* @__PURE__ */ new Set(),
+  phones: /* @__PURE__ */ new Set(),
+  addresses: /* @__PURE__ */ new Set()
 });
 var EMAIL_RE2 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
@@ -39483,15 +39512,161 @@ function normalizeSuppressionEmail(input2) {
   const at = e.lastIndexOf("@");
   return `${e.slice(0, at)}@${normalizeSuppressionDomain(e.slice(at + 1))}`;
 }
-function buildSuppressionList(entries) {
-  const emails = /* @__PURE__ */ new Set();
-  const domains = /* @__PURE__ */ new Set();
-  for (const e of entries) {
-    if (e.kind === "email") emails.add(normalizeSuppressionEmail(e.value));
-    else if (e.kind === "domain") domains.add(normalizeSuppressionDomain(e.value));
-    else throw new Error(`unknown suppression kind ${JSON.stringify(e.kind)}`);
+function normalizeSuppressionPhone(input2) {
+  return normalizePhone(input2);
+}
+var ADDRESS_ABBREVIATIONS = {
+  STREET: "ST",
+  AVENUE: "AVE",
+  ROAD: "RD",
+  DRIVE: "DR",
+  BOULEVARD: "BLVD",
+  LANE: "LN",
+  COURT: "CT",
+  CIRCLE: "CIR",
+  PLACE: "PL",
+  PARKWAY: "PKWY",
+  HIGHWAY: "HWY",
+  TERRACE: "TER",
+  TRAIL: "TRL",
+  WAY: "WAY",
+  SQUARE: "SQ",
+  POINT: "PT",
+  COVE: "CV",
+  LOOP: "LOOP",
+  NORTH: "N",
+  SOUTH: "S",
+  EAST: "E",
+  WEST: "W",
+  NORTHEAST: "NE",
+  NORTHWEST: "NW",
+  SOUTHEAST: "SE",
+  SOUTHWEST: "SW",
+  BUILDING: "BLDG",
+  FLOOR: "FL"
+};
+var UNIT_DESIGNATORS = /* @__PURE__ */ new Set(["#", "APT", "APARTMENT", "UNIT", "STE", "SUITE"]);
+var STATE_CODES = {
+  ALABAMA: "AL",
+  ALASKA: "AK",
+  ARIZONA: "AZ",
+  ARKANSAS: "AR",
+  CALIFORNIA: "CA",
+  COLORADO: "CO",
+  CONNECTICUT: "CT",
+  DELAWARE: "DE",
+  "DISTRICT OF COLUMBIA": "DC",
+  FLORIDA: "FL",
+  GEORGIA: "GA",
+  HAWAII: "HI",
+  IDAHO: "ID",
+  ILLINOIS: "IL",
+  INDIANA: "IN",
+  IOWA: "IA",
+  KANSAS: "KS",
+  KENTUCKY: "KY",
+  LOUISIANA: "LA",
+  MAINE: "ME",
+  MARYLAND: "MD",
+  MASSACHUSETTS: "MA",
+  MICHIGAN: "MI",
+  MINNESOTA: "MN",
+  MISSISSIPPI: "MS",
+  MISSOURI: "MO",
+  MONTANA: "MT",
+  NEBRASKA: "NE",
+  NEVADA: "NV",
+  "NEW HAMPSHIRE": "NH",
+  "NEW JERSEY": "NJ",
+  "NEW MEXICO": "NM",
+  "NEW YORK": "NY",
+  "NORTH CAROLINA": "NC",
+  "NORTH DAKOTA": "ND",
+  OHIO: "OH",
+  OKLAHOMA: "OK",
+  OREGON: "OR",
+  PENNSYLVANIA: "PA",
+  "RHODE ISLAND": "RI",
+  "SOUTH CAROLINA": "SC",
+  "SOUTH DAKOTA": "SD",
+  TENNESSEE: "TN",
+  TEXAS: "TX",
+  UTAH: "UT",
+  VERMONT: "VT",
+  VIRGINIA: "VA",
+  WASHINGTON: "WA",
+  "WEST VIRGINIA": "WV",
+  WISCONSIN: "WI",
+  WYOMING: "WY",
+  "PUERTO RICO": "PR"
+};
+var STATE_NAMES = Object.keys(STATE_CODES).sort((a, b) => b.length - a.length);
+var ZIP_TAIL_RE = /\b(\d{5})(?:-\d{4})?$/;
+function normalizeMailingAddress(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) throw new Error("address is empty");
+  let a = input2.toUpperCase().replace(/#/g, " # ");
+  a = a.replace(/\bP\.?\s*O\.?\s*BOX\b/g, "PO BOX").replace(/\bPOST\s+OFFICE\s+BOX\b/g, "PO BOX");
+  a = a.replace(/[.,;]/g, " ").replace(/\s+/g, " ").trim();
+  const zip = ZIP_TAIL_RE.exec(a);
+  if (!zip) throw new Error(`${JSON.stringify(input2)} has no trailing 5-digit ZIP`);
+  let head = a.slice(0, zip.index).trim();
+  let state;
+  for (const name of STATE_NAMES) {
+    if (head === name || head.endsWith(` ${name}`)) {
+      state = STATE_CODES[name];
+      head = head.slice(0, head.length - name.length).trim();
+      break;
+    }
   }
-  return { emails, domains };
+  const tokens = [];
+  for (const raw of head.split(" ")) {
+    if (!raw) continue;
+    const prev = tokens[tokens.length - 1];
+    if (UNIT_DESIGNATORS.has(raw)) {
+      if (prev !== "UNIT" && prev !== "BOX") tokens.push("UNIT");
+      continue;
+    }
+    tokens.push(ADDRESS_ABBREVIATIONS[raw] ?? raw);
+  }
+  if (state) tokens.push(state);
+  if (tokens.length < 3 || !/\d/.test(tokens.join(" "))) {
+    throw new Error(`${JSON.stringify(input2)} is not a full mailing address (street, city, state, ZIP)`);
+  }
+  return `${tokens.join(" ")} ${zip[1]}`;
+}
+function normalizeByKind(kind, value) {
+  switch (kind) {
+    case "email":
+      return normalizeSuppressionEmail(value);
+    case "domain":
+      return normalizeSuppressionDomain(value);
+    case "phone":
+      return normalizeSuppressionPhone(value);
+    case "address":
+      return normalizeMailingAddress(value);
+    default:
+      throw new Error(`unknown suppression kind ${JSON.stringify(kind)}`);
+  }
+}
+function normalizeSuppression(kind, value) {
+  return normalizeByKind(kind, value);
+}
+function buildSuppressionList(entries) {
+  const sets = {
+    email: /* @__PURE__ */ new Set(),
+    domain: /* @__PURE__ */ new Set(),
+    phone: /* @__PURE__ */ new Set(),
+    address: /* @__PURE__ */ new Set()
+  };
+  for (const e of entries) {
+    const set2 = sets[e.kind];
+    if (!set2) throw new Error(`unknown suppression kind ${JSON.stringify(e.kind)}`);
+    set2.add(normalizeByKind(e.kind, e.value));
+  }
+  return { emails: sets.email, domains: sets.domain, phones: sets.phone, addresses: sets.address };
+}
+function isEmptyList(list) {
+  return list.emails.size + list.domains.size + list.phones.size + list.addresses.size === 0;
 }
 function domainSuppressed(list, domain2) {
   const labels = domain2.split(".");
@@ -39501,8 +39676,9 @@ function domainSuppressed(list, domain2) {
   return false;
 }
 function checkSuppression(list, subject) {
-  if (list.emails.size === 0 && list.domains.size === 0) return { status: "clean" };
-  if (subject.email !== void 0) {
+  if (isEmptyList(list)) return { status: "clean" };
+  const checkEmailDomain = list.emails.size + list.domains.size > 0;
+  if (checkEmailDomain && subject.email !== void 0) {
     let email3;
     try {
       email3 = normalizeSuppressionEmail(subject.email);
@@ -39514,7 +39690,7 @@ function checkSuppression(list, subject) {
       return { status: "blocked", reason: "suppressed:domain" };
     }
   }
-  for (const d of subject.domains) {
+  for (const d of checkEmailDomain ? subject.domains : []) {
     let domain2;
     try {
       domain2 = normalizeSuppressionDomain(d);
@@ -39523,13 +39699,36 @@ function checkSuppression(list, subject) {
     }
     if (domainSuppressed(list, domain2)) return { status: "blocked", reason: "suppressed:domain" };
   }
+  if (list.phones.size > 0) {
+    for (const p of subject.phones ?? []) {
+      let phone;
+      try {
+        phone = normalizeSuppressionPhone(p);
+      } catch {
+        return { status: "blocked", reason: "suppression:malformed-phone" };
+      }
+      if (list.phones.has(phone)) return { status: "blocked", reason: "suppressed:phone" };
+    }
+  }
+  if (list.addresses.size > 0) {
+    for (const a of subject.addresses ?? []) {
+      let address;
+      try {
+        address = normalizeMailingAddress(a);
+      } catch {
+        return { status: "blocked", reason: "suppression:malformed-address" };
+      }
+      if (list.addresses.has(address)) return { status: "blocked", reason: "suppressed:address" };
+    }
+  }
   return { status: "clean" };
 }
 function suppressionGate(list) {
   return {
     check: (ctx) => checkSuppression(list, {
       ...ctx.contact.email !== void 0 ? { email: ctx.contact.email } : {},
-      domains: [ctx.lead.domain, ctx.contact.leadDomain]
+      domains: [ctx.lead.domain, ctx.contact.leadDomain],
+      phones: ctx.enrichments.flatMap((e) => e.phone !== void 0 ? [e.phone] : [])
     })
   };
 }
@@ -39557,17 +39756,20 @@ function parseEntry(raw, line, path) {
   };
   if (!raw || typeof raw !== "object") return fail("not an object");
   const o = raw;
-  if (o.kind !== "email" && o.kind !== "domain") return fail("kind must be email|domain");
+  if (!SUPPRESSION_KINDS.includes(o.kind)) {
+    return fail(`kind must be ${SUPPRESSION_KINDS.join("|")}`);
+  }
+  const kind = o.kind;
   if (typeof o.value !== "string") return fail("value must be a string");
   let value;
   try {
-    value = o.kind === "email" ? normalizeSuppressionEmail(o.value) : normalizeSuppressionDomain(o.value);
+    value = normalizeSuppression(kind, o.value);
   } catch (err) {
     return fail(err instanceof Error ? err.message : "unparseable value");
   }
   const addedAt = typeof o.addedAt === "string" ? o.addedAt : fail("addedAt must be a string");
   return {
-    kind: o.kind,
+    kind,
     value,
     addedAt,
     ...typeof o.reason === "string" && o.reason ? { reason: o.reason } : {}
