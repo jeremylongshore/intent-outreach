@@ -78272,9 +78272,129 @@ async function runPropertyCampaign(input2) {
   return { run, cost: meter.summary() };
 }
 
-// pipeline_core/store.ts
-import { constants as constants2, mkdir as mkdir3, open as open3, readFile as readFile3, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+// pipeline_core/monitors.ts
+import { chmod as chmod2, mkdir as mkdir3, readFile as readFile3, rename as rename3, writeFile as writeFile2 } from "node:fs/promises";
+import { randomUUID as randomUUID2 } from "node:crypto";
 import { dirname as dirname4, join as join6 } from "node:path";
+var MonitorSchema = external_exports.object({
+  id: external_exports.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/, "lowercase letters, digits and dashes"),
+  query: ResearchQuerySchema,
+  /** Minimum relative change in value that counts as an event (default 10%). */
+  valueChangePct: external_exports.number().positive().max(100).default(10)
+});
+var FingerprintSchema = external_exports.object({
+  ownerName: external_exports.string().optional(),
+  ownerKey: external_exports.string().optional(),
+  valueCents: external_exports.number().optional(),
+  listingStatus: external_exports.string().optional(),
+  distress: external_exports.array(external_exports.string()).optional()
+});
+var SnapshotSchema = external_exports.object({
+  monitorId: external_exports.string(),
+  checkedAt: external_exports.string().datetime(),
+  parcels: external_exports.record(external_exports.string(), FingerprintSchema)
+});
+var VALUE_KEYS = ["justValueCents", "marketValueCents", "assessedValueCents"];
+function fingerprint(property, owner) {
+  const fp = {};
+  if (owner) {
+    fp.ownerName = owner.name.trim().toUpperCase();
+    fp.ownerKey = owner.key;
+  }
+  for (const k of VALUE_KEYS) {
+    const v = property.attributes[k]?.value;
+    if (typeof v === "number") {
+      fp.valueCents = v;
+      break;
+    }
+  }
+  const listing = property.attributes.listingStatus?.value;
+  if (listing && typeof listing.status === "string") fp.listingStatus = listing.status.toLowerCase();
+  const distress = property.attributes.distressSignals?.value;
+  if (Array.isArray(distress)) fp.distress = distress.filter((s) => typeof s === "string").map((s) => s.toLowerCase()).sort();
+  return fp;
+}
+function diffSnapshots(before, after, valueChangePct) {
+  const events = [];
+  for (const key of Object.keys(after).sort()) {
+    const a = after[key];
+    const b = before[key];
+    if (!b) {
+      events.push({ kind: "new-parcel", propertyKey: key });
+      continue;
+    }
+    if (b.ownerName !== void 0 && a.ownerName !== void 0 && b.ownerName !== a.ownerName) {
+      events.push({ kind: "owner-change", propertyKey: key, before: b.ownerName, after: a.ownerName });
+    }
+    if (b.valueCents !== void 0 && a.valueCents !== void 0 && b.valueCents > 0) {
+      const pct = Math.abs(a.valueCents - b.valueCents) / b.valueCents * 100;
+      if (pct >= valueChangePct) events.push({ kind: "value-change", propertyKey: key, before: b.valueCents, after: a.valueCents });
+    }
+    if (a.listingStatus !== b.listingStatus && a.listingStatus !== void 0) {
+      events.push({ kind: "listing-change", propertyKey: key, before: b.listingStatus, after: a.listingStatus });
+    }
+    if (JSON.stringify(a.distress ?? []) !== JSON.stringify(b.distress ?? []) && (a.distress?.length ?? 0) > 0) {
+      events.push({ kind: "distress-change", propertyKey: key, before: b.distress ?? [], after: a.distress });
+    }
+  }
+  return events;
+}
+function monitorPath(id) {
+  return join6(intentOutreachHome(), "monitors", `${id}.json`);
+}
+async function readSnapshot(path) {
+  let text2;
+  try {
+    text2 = await readFile3(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return void 0;
+    throw err;
+  }
+  const r = SnapshotSchema.safeParse(JSON.parse(text2));
+  if (!r.success) throw new Error(`monitor snapshot ${path} is invalid; delete it to re-baseline`);
+  return r.data;
+}
+async function writeSnapshot(path, snap) {
+  await mkdir3(dirname4(path), { recursive: true, mode: 448 });
+  const tmp = `${path}.${randomUUID2()}.tmp`;
+  await writeFile2(tmp, JSON.stringify(snap), { mode: 384 });
+  await chmod2(tmp, 384);
+  await rename3(tmp, path);
+}
+async function checkMonitor(monitor, opts) {
+  const m = MonitorSchema.parse(monitor);
+  const path = opts.path ?? monitorPath(m.id);
+  const r = await runResearchQuery(m.query, opts.icp ?? "monitor", opts);
+  const model = mergePropertyModel(r);
+  const failed = r.failedConnectors.map((f) => ({ name: f.name, status: f.status }));
+  const parcels = {};
+  for (const p of model.properties) {
+    const own2 = model.ownerships.find((o) => o.propertyKey === p.key && o.role === "owner") ?? model.ownerships.find((o) => o.propertyKey === p.key);
+    parcels[p.key] = fingerprint(p, own2 ? model.parties.find((x) => x.key === own2.partyKey) : void 0);
+  }
+  const previous = await readSnapshot(path);
+  if (model.properties.length === 0 && failed.length > 0) {
+    return { monitorId: m.id, baseline: previous === void 0, parcels: 0, events: [], changedQueries: [], failedConnectors: failed };
+  }
+  const events = previous ? diffSnapshots(previous.parcels, parcels, m.valueChangePct) : [];
+  await writeSnapshot(path, { monitorId: m.id, checkedAt: opts.now(), parcels });
+  const changed = [...new Set(events.map((e) => e.propertyKey))];
+  return {
+    monitorId: m.id,
+    baseline: previous === void 0,
+    parcels: model.properties.length,
+    events,
+    changedQueries: changed.map((key) => {
+      const [countyFips, ...rest] = key.split(":");
+      return { kind: "parcel", countyFips, apn: rest.join(":") };
+    }),
+    failedConnectors: failed
+  };
+}
+
+// pipeline_core/store.ts
+import { constants as constants2, mkdir as mkdir4, open as open3, readFile as readFile4, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { dirname as dirname5, join as join7 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
     super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
@@ -78292,7 +78412,7 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
-  return join6(intentOutreachHome(), "runs.jsonl");
+  return join7(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
 var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -78310,7 +78430,7 @@ var JsonlRunStore = class {
   async saveRun(run, opts = {}) {
     const checked = assertCampaignRun(run);
     const line = JSON.stringify(checked) + "\n";
-    await mkdir3(dirname4(this.path), { recursive: true, mode: 448 });
+    await mkdir4(dirname5(this.path), { recursive: true, mode: 448 });
     await this.withLock(async () => {
       if (!opts.overwrite) {
         const { runs } = await this.scan();
@@ -78407,7 +78527,7 @@ var JsonlRunStore = class {
   async scan() {
     let text2;
     try {
-      text2 = await readFile3(this.path, "utf8");
+      text2 = await readFile4(this.path, "utf8");
     } catch (err) {
       if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
@@ -78709,9 +78829,9 @@ function checkSendable(input2) {
 }
 
 // pipeline_core/approvals.ts
-import { createHash as createHash5, randomUUID as randomUUID2 } from "node:crypto";
-import { constants as constants3, mkdir as mkdir4, open as open4, readFile as readFile4, rename as rename3, stat as stat3, truncate, unlink as unlink3 } from "node:fs/promises";
-import { dirname as dirname5, join as join7 } from "node:path";
+import { createHash as createHash5, randomUUID as randomUUID3 } from "node:crypto";
+import { constants as constants3, mkdir as mkdir5, open as open4, readFile as readFile5, rename as rename4, stat as stat3, truncate, unlink as unlink3 } from "node:fs/promises";
+import { dirname as dirname6, join as join8 } from "node:path";
 var ApprovalRecordSchema = external_exports.object({
   runId: external_exports.string().min(1),
   contactKey: external_exports.string().min(1),
@@ -78735,12 +78855,12 @@ function approvalVerdict(records, runId, contactKey2, message) {
   return state;
 }
 function defaultApprovalsPath() {
-  return join7(intentOutreachHome(), "approvals.jsonl");
+  return join8(intentOutreachHome(), "approvals.jsonl");
 }
 async function readApprovals(path = defaultApprovalsPath()) {
   let text2;
   try {
-    text2 = await readFile4(path, "utf8");
+    text2 = await readFile5(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return [];
     throw err;
@@ -78764,9 +78884,9 @@ async function readApprovals(path = defaultApprovalsPath()) {
 }
 var sleep4 = (ms) => new Promise((r) => setTimeout(r, ms));
 async function withLock2(path, fn) {
-  await mkdir4(dirname5(path), { recursive: true, mode: 448 });
+  await mkdir5(dirname6(path), { recursive: true, mode: 448 });
   const lockPath = `${path}.lock`;
-  const token = randomUUID2();
+  const token = randomUUID3();
   const deadline = Date.now() + 1e4;
   let lock;
   while (!lock) {
@@ -78778,7 +78898,7 @@ async function withLock2(path, fn) {
       try {
         if (Date.now() - (await stat3(lockPath)).mtimeMs > 3e4) {
           const stolen = `${lockPath}.stale.${token}`;
-          await rename3(lockPath, stolen);
+          await rename4(lockPath, stolen);
           await unlink3(stolen).catch(() => void 0);
           continue;
         }
@@ -78792,14 +78912,14 @@ async function withLock2(path, fn) {
     return await fn();
   } finally {
     await lock.close().catch(() => void 0);
-    const holder = await readFile4(lockPath, "utf8").catch(() => void 0);
+    const holder = await readFile5(lockPath, "utf8").catch(() => void 0);
     if (holder === token) await unlink3(lockPath).catch(() => void 0);
   }
 }
 async function repairTornTail(path) {
   let text2;
   try {
-    text2 = await readFile4(path, "utf8");
+    text2 = await readFile5(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return;
     throw err;
@@ -78898,7 +79018,7 @@ function recipientMatches(run, contactKey2, recipient) {
 
 // cli.ts
 import { userInfo } from "node:os";
-import { join as join8 } from "node:path";
+import { join as join9 } from "node:path";
 var UsageError = class extends Error {
   constructor(message) {
     super(message);
@@ -78972,6 +79092,8 @@ function printHelp() {
       "  intent-outreach suppress list       opt-outs honored by every run",
       "  intent-outreach property-run --icp <text> (--zips <list> | --parcels <fips:apn,...>) [options]",
       "                                      draft letters to owners of record (residential-re pack)",
+      "  intent-outreach monitor add|list|check   watch ZIPs or parcels for new parcels, sales, value,",
+      "                                      listing and distress changes (check --draft drafts the changes)",
       "  intent-outreach approvals pending   drafts waiting for a person to approve or reject",
       "  intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]",
       "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
@@ -79089,7 +79211,7 @@ async function cmdRun(args) {
     ...buyerTitles ? { buyerTitles } : {},
     ...budgetCredits !== void 0 ? { budgetCredits } : {},
     // Only connectors that declare cacheTtlMs are cached; files are 0600 under the local home.
-    cache: new FileResponseCache(join8(intentOutreachHome(), "cache"))
+    cache: new FileResponseCache(join9(intentOutreachHome(), "cache"))
   });
   const store = new JsonlRunStore(values.out);
   await store.saveRun(run);
@@ -79233,7 +79355,7 @@ ${PROPERTY_RUN_USAGE}`);
     ...minScore !== void 0 ? { minScore } : {},
     ...maxProperties !== void 0 ? { maxProperties } : {},
     ...budgetCredits !== void 0 ? { budgetCredits } : {},
-    cache: new FileResponseCache(join8(intentOutreachHome(), "cache"))
+    cache: new FileResponseCache(join9(intentOutreachHome(), "cache"))
   });
   const out = typeof values.out === "string" ? values.out : void 0;
   await new JsonlRunStore(out).saveRun(run);
@@ -79309,6 +79431,110 @@ CTA: ${p.cta}
     return;
   }
   throw new UsageError(APPROVALS_USAGE);
+}
+var MONITOR_USAGE = "usage: intent-outreach monitor add <id> (--zips <a,b> | --parcels <fips:apn,...>) [--value-change-pct <n>]\n       intent-outreach monitor list\n       intent-outreach monitor check <id> [--json] [--draft --icp <text> [--profile <p>]]\n  the first check records a baseline; later checks report new parcels, owner, value, listing and distress changes.\n  --draft runs a property campaign over the changed parcels only (drafts wait for approval).";
+var monitorDefPath = (id) => join9(intentOutreachHome(), "monitors", `${id}.monitor.json`);
+async function cmdMonitor(args) {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args,
+      options: {
+        zips: { type: "string" },
+        parcels: { type: "string" },
+        "value-change-pct": { type: "string" },
+        json: { type: "boolean" },
+        draft: { type: "boolean" },
+        icp: { type: "string" },
+        profile: { type: "string" }
+      },
+      allowPositionals: true
+    });
+  } catch {
+    throw new UsageError(MONITOR_USAGE);
+  }
+  const { values, positionals } = parsed;
+  const [action, id, ...extra] = positionals;
+  if (extra.length > 0) throw new UsageError(MONITOR_USAGE);
+  const { mkdir: mkdir6, readFile: readFile6, readdir, writeFile: writeFile3 } = await import("node:fs/promises");
+  if (action === "list" && id === void 0) {
+    const dir = join9(intentOutreachHome(), "monitors");
+    const names = await readdir(dir).catch(() => []);
+    const defs = names.filter((n) => n.endsWith(".monitor.json"));
+    if (defs.length === 0) process.stdout.write("no monitors\n");
+    for (const n of defs.sort()) {
+      const m = MonitorSchema.parse(JSON.parse(await readFile6(join9(dir, n), "utf8")));
+      const snap = await readSnapshot(monitorPath(m.id)).catch(() => void 0);
+      process.stdout.write(`${m.id}  ${JSON.stringify(m.query)}  last check: ${snap?.checkedAt ?? "never"}
+`);
+    }
+    return;
+  }
+  if (!id || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) throw new UsageError(MONITOR_USAGE);
+  if (action === "add") {
+    const query = typeof values.zips === "string" ? { kind: "area", geography: { zips: values.zips.split(",").map((z4) => z4.trim()).filter(Boolean) }, filters: {} } : typeof values.parcels === "string" ? (() => {
+      const refs = values.parcels.split(",").map((p) => p.trim()).filter(Boolean);
+      if (refs.length !== 1) throw new UsageError("--parcels: a monitor watches one parcel or one ZIP list");
+      const m = /^(\d{5}):(.+)$/.exec(refs[0]);
+      if (!m) throw new UsageError(`--parcels: ${JSON.stringify(refs[0])} is not <countyFips>:<apn>`);
+      return { kind: "parcel", countyFips: m[1], apn: m[2] };
+    })() : void 0;
+    if (!query) throw new UsageError(MONITOR_USAGE);
+    const pct = values["value-change-pct"] !== void 0 ? parseNumberFlag("--value-change-pct", values["value-change-pct"], { min: 0.1, max: 100 }) : void 0;
+    let monitor;
+    try {
+      monitor = MonitorSchema.parse({ id, query, ...pct !== void 0 ? { valueChangePct: pct } : {} });
+    } catch (err) {
+      throw new UsageError(`monitor: ${err instanceof external_exports.ZodError ? err.issues.map((i) => i.message).join("; ") : String(err)}`);
+    }
+    const path = monitorDefPath(id);
+    await mkdir6(join9(intentOutreachHome(), "monitors"), { recursive: true, mode: 448 });
+    await writeFile3(path, JSON.stringify(monitor, null, 2), { mode: 384 });
+    process.stdout.write(`monitor ${id} saved \u2192 ${path}
+`);
+    return;
+  }
+  if (action === "check") {
+    let monitor;
+    try {
+      monitor = MonitorSchema.parse(JSON.parse(await readFile6(monitorDefPath(id), "utf8")));
+    } catch (err) {
+      throw new UsageError(`monitor ${id}: ${err.code === "ENOENT" ? "not found (monitor add first)" : String(err)}`);
+    }
+    if (values.draft && !(typeof values.icp === "string" && values.icp.trim())) throw new UsageError("--draft needs --icp");
+    const result = await checkMonitor(monitor, {
+      now: () => (/* @__PURE__ */ new Date()).toISOString(),
+      cache: new FileResponseCache(join9(intentOutreachHome(), "cache"))
+    });
+    let draftRun;
+    if (values.draft && result.changedQueries.length > 0) {
+      const sender = typeof values.profile === "string" ? loadProfileRef(values.profile).sender : void 0;
+      const { run } = await runPropertyCampaign({
+        id: makeRunId(),
+        icp: values.icp.trim(),
+        queries: result.changedQueries,
+        ...sender ? { sender } : {},
+        cache: new FileResponseCache(join9(intentOutreachHome(), "cache"))
+      });
+      await new JsonlRunStore().saveRun(run);
+      draftRun = `${run.id} (${run.messages.length} drafts, waiting for approval)`;
+    }
+    if (values.json) {
+      process.stdout.write(`${JSON.stringify({ ...result, ...draftRun ? { draftRun } : {} }, null, 2)}
+`);
+      return;
+    }
+    process.stdout.write(
+      [
+        `monitor ${id}: ${result.baseline ? "baseline recorded" : `${result.events.length} event(s)`} over ${result.parcels} parcel(s)`,
+        ...result.events.map((e) => `  ${e.kind}  ${e.propertyKey}${e.before !== void 0 ? `  ${JSON.stringify(e.before)} \u2192 ${JSON.stringify(e.after)}` : ""}`),
+        ...result.failedConnectors.map((f) => `  WARNING: ${f.name} failed (${f.status}); snapshot kept`),
+        draftRun ? `drafted: ${draftRun}` : ""
+      ].filter(Boolean).join("\n") + "\n"
+    );
+    return;
+  }
+  throw new UsageError(MONITOR_USAGE);
 }
 var CHECK_SEND_USAGE = 'usage: intent-outreach check-send [--profile <name|path>] < input.json\n  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,"now"?,"consents"?,"recipientState"?,"pack"?,"runId","contactKey"}\n  the message must match an approved draft exactly (intent-outreach approvals pending / approve)';
 var CheckSendInputSchema = external_exports.object({
@@ -79403,6 +79629,8 @@ async function main(argv = process.argv.slice(2)) {
       return cmdCheckSend(rest);
     case "property-run":
       return cmdPropertyRun(rest);
+    case "monitor":
+      return cmdMonitor(rest);
     case "approvals":
       return cmdApprovals(rest);
     case "help":
