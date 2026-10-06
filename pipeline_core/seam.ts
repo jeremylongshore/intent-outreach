@@ -33,6 +33,7 @@ import {
   guardDraft,
   QUANTITY_PROMPT_LINE,
   voicePromptLine,
+  type DraftRule,
   type DroppedAngle,
   type VoiceRules,
 } from "./draft-guard.js";
@@ -305,6 +306,8 @@ export interface DraftContext {
    * absent ⇒ prompt and guard behave exactly as before.
    */
   voice?: VoiceRules;
+  /** Pack draft rules (Pack v2), run by the guard after the built-in checks. */
+  draftRules?: readonly DraftRule[];
 }
 
 export interface DraftResult {
@@ -397,6 +400,7 @@ export async function draftMessage(provider: LLMProvider, ctx: DraftContext): Pr
     // already passed groundAngles, which applies the same quantity rule.
     facts: [...factsOf(parts), ...ctx.angles],
     ...(ctx.voice ? { voice: ctx.voice } : {}),
+    ...(ctx.draftRules ? { rules: ctx.draftRules } : {}),
   });
   if (!verdict.ok) throw new DraftRejectedError(verdict.issues, res.usage);
   return { object, usage: res.usage, promptRef: ref };
