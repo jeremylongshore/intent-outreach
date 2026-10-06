@@ -70,7 +70,8 @@ export const QUIET_END = { hour: 21, minute: 0 } as const; // 9:00pm — NOT all
 //
 // In-process DNC list. A production scrub (BYOK connector) can replace the source
 // without changing this gate's signature — downstream never branches on it.
-const E164_RE = /^\+\d{10,15}$/;
+// E.164: "+", a country code that never starts with 0, 10–15 digits in total.
+const E164_RE = /^\+[1-9]\d{9,14}$/;
 
 /**
  * Return the canonical E.164 form of `phone`.

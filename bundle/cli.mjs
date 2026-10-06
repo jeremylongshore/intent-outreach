@@ -63124,7 +63124,7 @@ var PropertySchema = external_exports.object({
 }).refine((p) => p.key === propertyKey(p.countyFips, p.apn), {
   message: "key must equal propertyKey(countyFips, apn)",
   path: ["key"]
-});
+}).refine((p) => p.apn === p.apn.trim(), { message: "apn must not carry surrounding whitespace", path: ["apn"] });
 var PartySchema = external_exports.object({
   /** Stable id within the run, e.g. "person:<connector-id>" or "entity:AL:000123456". */
   key: external_exports.string().min(1),
@@ -63168,7 +63168,7 @@ var ContactPointSchema = external_exports.object({
   fetchedAt: external_exports.string().datetime(),
   verifiedAt: external_exports.string().datetime().optional(),
   licenseTerms: LicenseTermsSchema.optional()
-}).refine((c) => c.kind !== "phone" || /^\+\d{10,15}$/.test(c.value), {
+}).refine((c) => c.kind !== "phone" || /^\+[1-9]\d{9,14}$/.test(c.value), {
   message: "a phone contact point must be E.164",
   path: ["value"]
 }).refine((c) => c.kind !== "email" || external_exports.string().email().safeParse(c.value).success, {
@@ -75618,7 +75618,7 @@ function registerBuiltinPacks() {
 }
 
 // pipeline_core/compliance/index.ts
-var E164_RE = /^\+\d{10,15}$/;
+var E164_RE = /^\+[1-9]\d{9,14}$/;
 function normalizePhone(phone) {
   if (typeof phone !== "string") {
     throw new Error("phone must be a string");
@@ -76377,6 +76377,34 @@ function dedupeBy(items, key) {
   }
   return [...seen.values()];
 }
+var DNC_RANK = { clean: 0, unknown: 1, listed: 2 };
+var contactPointKey = (c) => `${c.partyKey}|${c.kind}|${c.kind === "email" ? c.value.toLowerCase() : c.value}`;
+function mergeContactPoint(a, b) {
+  const dnc = DNC_RANK[b.dnc] > DNC_RANK[a.dnc] ? b.dnc : a.dnc;
+  const restricted = Boolean(a.licenseTerms?.outreachRestricted || b.licenseTerms?.outreachRestricted);
+  const licenseTerms = a.licenseTerms || b.licenseTerms ? { ...b.licenseTerms, ...a.licenseTerms, ...restricted ? { outreachRestricted: true } : {} } : void 0;
+  return {
+    ...a,
+    dnc,
+    ...a.lineType === void 0 || a.lineType === "unknown" ? b.lineType ? { lineType: b.lineType } : {} : {},
+    ...licenseTerms ? { licenseTerms } : {}
+  };
+}
+function mergePropertyModel(model) {
+  const points = /* @__PURE__ */ new Map();
+  for (const c of model.contactPoints) {
+    const k = contactPointKey(c);
+    const prev = points.get(k);
+    points.set(k, prev ? mergeContactPoint(prev, c) : c);
+  }
+  return {
+    properties: dedupeBy(model.properties, (p) => p.key),
+    parties: dedupeBy(model.parties, (p) => p.key),
+    ownerships: dedupeBy(model.ownerships, (o) => `${o.propertyKey}|${o.partyKey}|${o.role}`),
+    entityLinks: dedupeBy(model.entityLinks, (l) => `${l.entityKey}|${l.personKey}|${l.role}`),
+    contactPoints: [...points.values()]
+  };
+}
 async function runResearch(domain2, icp, opts = {}) {
   return runResearchQuery({ kind: "domain", domain: domain2 }, icp, opts);
 }
@@ -76422,11 +76450,7 @@ async function runResearchQuery(query, icp, opts = {}) {
   return {
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
-    properties: dedupeBy(properties, (p) => p.key),
-    parties: dedupeBy(parties, (p) => p.key),
-    ownerships: dedupeBy(ownerships, (o) => `${o.propertyKey}|${o.partyKey}`),
-    entityLinks: dedupeBy(entityLinks, (l) => `${l.entityKey}|${l.personKey}|${l.role}`),
-    contactPoints: dedupeBy(contactPoints, (c) => `${c.partyKey}|${c.kind}|${c.value}`),
+    ...mergePropertyModel({ properties, parties, ownerships, entityLinks, contactPoints }),
     ran,
     skipped,
     failedConnectors,
@@ -76617,6 +76641,7 @@ async function runCampaign(input2) {
   const allLeads = [];
   const allContacts = [];
   const allEnrichments = [];
+  const allProperty = { properties: [], parties: [], ownerships: [], entityLinks: [], contactPoints: [] };
   const messages = [];
   const blockedContacts = [];
   const errors = [];
@@ -76638,6 +76663,11 @@ async function runCampaign(input2) {
     const research = await runResearch(domain2, icp, connectorOpts);
     research.skipped.forEach((s) => skipped.add(s));
     failedConnectors.push(...research.failedConnectors);
+    allProperty.properties.push(...research.properties);
+    allProperty.parties.push(...research.parties);
+    allProperty.ownerships.push(...research.ownerships);
+    allProperty.entityLinks.push(...research.entityLinks);
+    allProperty.contactPoints.push(...research.contactPoints);
     if (research.ran.some((name31) => !isPushOnly(name31))) anyResearchRan = true;
     for (const lead of research.leads) {
       const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
@@ -76753,6 +76783,7 @@ async function runCampaign(input2) {
     leads: dedupeLeads(allLeads),
     contacts: dedupeContacts(allContacts),
     enrichments: allEnrichments,
+    ...mergePropertyModel(allProperty),
     messages,
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],

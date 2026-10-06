@@ -32,7 +32,10 @@ import { assertCampaignRun, validateCampaignRun } from "../pipeline_core/validat
 import { JsonlRunStore } from "../pipeline_core/store.js";
 import { _resetBuiltins, acceptsQuery, registerConnector } from "../pipeline_core/connectors/index.js";
 import type { Connector, ResearchInput } from "../pipeline_core/connectors/types.js";
-import { runResearch, runResearchQuery } from "../pipeline_core/pipeline.js";
+import { mergePropertyModel, runCampaign, runResearch, runResearchQuery } from "../pipeline_core/pipeline.js";
+import { normalizePhone } from "../pipeline_core/compliance/index.js";
+import type { LLMProvider } from "../pipeline_core/providers.js";
+import type { ContactPoint } from "../pipeline_core/models.js";
 import { _resetSecretCache } from "../pipeline_core/secrets.js";
 
 const T = "2026-10-06T12:00:00.000Z";
@@ -92,6 +95,10 @@ describe("Property / Fact", () => {
     expect(r.success).toBe(true);
   });
 
+  it("rejects an apn with surrounding whitespace", () => {
+    expect(PropertySchema.safeParse({ ...property, apn: ` ${property.apn} ` }).success).toBe(false);
+  });
+
   it("rejects a key that does not match countyFips + apn", () => {
     expect(PropertySchema.safeParse({ ...property, key: "01097:05-43-09-32-0-000-012.000" }).success).toBe(false);
   });
@@ -143,6 +150,8 @@ describe("ContactPoint", () => {
 
   it("a phone must be E.164 and an email must be an email", () => {
     expect(ContactPointSchema.safeParse({ ...phone, value: "(251) 555-0100" }).success).toBe(false);
+    expect(ContactPointSchema.safeParse({ ...phone, value: "+0123456789" }).success).toBe(false); // country code can't start with 0
+    expect(() => normalizePhone("+0123456789")).toThrow();
     expect(ContactPointSchema.safeParse({ ...phone, kind: "email", value: "not-an-email" }).success).toBe(false);
     expect(ContactPointSchema.safeParse({ ...phone, kind: "email", value: "owner@example.com" }).success).toBe(true);
     expect(ContactPointSchema.safeParse({ ...phone, kind: "mail", value: "1204 W Beach Blvd, Gulf Shores, AL 36542" }).success).toBe(true);
@@ -276,5 +285,102 @@ describe("runResearchQuery", () => {
     expect(r.ran).toEqual([]);
     expect(r.skipped).not.toContain("b2b");
     expect(calls).toEqual([]);
+  });
+});
+
+describe("mergePropertyModel", () => {
+  const cp = (patch: Partial<ContactPoint>): ContactPoint => ({
+    partyKey: "p",
+    kind: "phone",
+    value: "+12515550100",
+    dnc: "unknown",
+    source: "a",
+    fetchedAt: T,
+    ...patch,
+  });
+  const empty = { properties: [], parties: [], ownerships: [], entityLinks: [] };
+
+  it.each([
+    [["clean", "listed"], "listed"],
+    [["listed", "clean"], "listed"],
+    [["clean", "unknown"], "unknown"],
+    [["unknown", "clean"], "unknown"],
+    [["clean", "clean"], "clean"],
+  ] as const)("DNC %j merges to the most restrictive (%s)", (statuses, expected) => {
+    const merged = mergePropertyModel({ ...empty, contactPoints: statuses.map((dnc) => cp({ dnc })) });
+    expect(merged.contactPoints).toHaveLength(1);
+    expect(merged.contactPoints[0]?.dnc).toBe(expected);
+  });
+
+  it("an outreach restriction from any source sticks", () => {
+    const merged = mergePropertyModel({
+      ...empty,
+      contactPoints: [cp({ licenseTerms: { id: "free" } }), cp({ source: "b", licenseTerms: { outreachRestricted: true } })],
+    });
+    expect(merged.contactPoints[0]?.licenseTerms).toEqual({ id: "free", outreachRestricted: true });
+    expect(merged.contactPoints[0]?.source).toBe("a");
+  });
+
+  it("emails dedupe case-insensitively; a known line type fills an unknown one", () => {
+    const merged = mergePropertyModel({
+      ...empty,
+      contactPoints: [
+        cp({ kind: "email", value: "Owner@Example.com" }),
+        cp({ kind: "email", value: "owner@example.com" }),
+        cp({ lineType: "unknown" }),
+        cp({ lineType: "mobile" }),
+      ],
+    });
+    expect(merged.contactPoints).toHaveLength(2);
+    expect(merged.contactPoints.find((c) => c.kind === "phone")?.lineType).toBe("mobile");
+  });
+
+  it("keeps each distinct ownership role for the same party and parcel", () => {
+    const own = { propertyKey: property.key, partyKey: "p", source: "a", fetchedAt: T };
+    const merged = mergePropertyModel({
+      ...empty,
+      contactPoints: [],
+      ownerships: [
+        { ...own, role: "owner" },
+        { ...own, role: "trustee" },
+        { ...own, role: "owner", source: "b" },
+      ],
+    });
+    expect(merged.ownerships.map((o) => `${o.role}:${o.source}`)).toEqual(["owner:a", "trustee:a"]);
+  });
+});
+
+describe("runCampaign carries the property model into the run", () => {
+  const saved = { ...process.env };
+  beforeEach(() => {
+    _resetBuiltins();
+    _resetSecretCache();
+    for (const k of Object.keys(process.env)) {
+      if (k.endsWith("_API_KEY") || k === "ZOOMINFO_JWT" || k === "CLAY_WEBHOOK_URL") delete process.env[k];
+    }
+  });
+  afterEach(() => {
+    process.env = { ...saved };
+  });
+
+  it("property data a connector returns is stored, never silently discarded", async () => {
+    const calls: string[] = [];
+    registerConnector(
+      recorder("parcel-on-domain", undefined, calls, {
+        properties: [property],
+        contactPoints: [{ partyKey: "person:1", kind: "phone", value: "+12515550100", source: "x", fetchedAt: T, dnc: "listed" }],
+      }),
+    );
+    const provider = {
+      name: "anthropic",
+      model: "stub",
+      generateObject: async () => {
+        throw new Error("no lead, so the model must not be called");
+      },
+    } as unknown as LLMProvider;
+    const { run } = await runCampaign({ id: "run-v6-carry", icp: "x", domains: ["acme.com"], provider, now: () => T });
+    expect(run.schemaVersion).toBe(6);
+    expect(run.properties.map((p) => p.key)).toEqual([property.key]);
+    expect(run.contactPoints[0]?.dnc).toBe("listed");
   });
 });

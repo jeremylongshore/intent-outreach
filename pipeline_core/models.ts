@@ -237,7 +237,8 @@ export const PropertySchema = z
   .refine((p) => p.key === propertyKey(p.countyFips, p.apn), {
     message: "key must equal propertyKey(countyFips, apn)",
     path: ["key"],
-  });
+  })
+  .refine((p) => p.apn === p.apn.trim(), { message: "apn must not carry surrounding whitespace", path: ["apn"] });
 export type Property = z.infer<typeof PropertySchema>;
 
 /** Party — an owner or a person behind one: a natural person or a legal entity. */
@@ -308,7 +309,7 @@ export const ContactPointSchema = z
     verifiedAt: z.string().datetime().optional(),
     licenseTerms: LicenseTermsSchema.optional(),
   })
-  .refine((c) => c.kind !== "phone" || /^\+\d{10,15}$/.test(c.value), {
+  .refine((c) => c.kind !== "phone" || /^\+[1-9]\d{9,14}$/.test(c.value), {
     message: "a phone contact point must be E.164",
     path: ["value"],
   })

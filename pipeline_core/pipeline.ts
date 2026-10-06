@@ -303,6 +303,62 @@ function dedupeBy<T>(items: readonly T[], key: (t: T) => string): T[] {
   return [...seen.values()];
 }
 
+/** The v6 property/owner model a research call returns. */
+export interface PropertyModel {
+  properties: Property[];
+  parties: Party[];
+  ownerships: Ownership[];
+  entityLinks: EntityLink[];
+  contactPoints: ContactPoint[];
+}
+
+const DNC_RANK: Record<ContactPoint["dnc"], number> = { clean: 0, unknown: 1, listed: 2 };
+
+const contactPointKey = (c: ContactPoint) =>
+  `${c.partyKey}|${c.kind}|${c.kind === "email" ? c.value.toLowerCase() : c.value}`;
+
+/**
+ * Merge two reports of the same contact point CONSERVATIVELY: the most
+ * restrictive DNC status wins (listed > unknown > clean) and a restriction from
+ * any source sticks (`outreachRestricted` is OR-ed). A later connector can add
+ * a restriction an earlier one missed; it can never lift one.
+ */
+function mergeContactPoint(a: ContactPoint, b: ContactPoint): ContactPoint {
+  const dnc = DNC_RANK[b.dnc] > DNC_RANK[a.dnc] ? b.dnc : a.dnc;
+  const restricted = Boolean(a.licenseTerms?.outreachRestricted || b.licenseTerms?.outreachRestricted);
+  const licenseTerms =
+    a.licenseTerms || b.licenseTerms
+      ? { ...b.licenseTerms, ...a.licenseTerms, ...(restricted ? { outreachRestricted: true } : {}) }
+      : undefined;
+  return {
+    ...a,
+    dnc,
+    ...(a.lineType === undefined || a.lineType === "unknown" ? (b.lineType ? { lineType: b.lineType } : {}) : {}),
+    ...(licenseTerms ? { licenseTerms } : {}),
+  };
+}
+
+/**
+ * Dedupe a property model by natural key, deterministically (first connector
+ * wins for descriptive fields). Contact points merge conservatively (see
+ * mergeContactPoint); an ownership keeps each distinct role.
+ */
+export function mergePropertyModel(model: PropertyModel): PropertyModel {
+  const points = new Map<string, ContactPoint>();
+  for (const c of model.contactPoints) {
+    const k = contactPointKey(c);
+    const prev = points.get(k);
+    points.set(k, prev ? mergeContactPoint(prev, c) : c);
+  }
+  return {
+    properties: dedupeBy(model.properties, (p) => p.key),
+    parties: dedupeBy(model.parties, (p) => p.key),
+    ownerships: dedupeBy(model.ownerships, (o) => `${o.propertyKey}|${o.partyKey}|${o.role}`),
+    entityLinks: dedupeBy(model.entityLinks, (l) => `${l.entityKey}|${l.personKey}|${l.role}`),
+    contactPoints: [...points.values()],
+  };
+}
+
 /**
  * Research one domain across every configured research connector, in order.
  * A connector that throws (or blows its deadline) is recorded in
@@ -374,11 +430,7 @@ export async function runResearchQuery(
   return {
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
-    properties: dedupeBy(properties, (p) => p.key),
-    parties: dedupeBy(parties, (p) => p.key),
-    ownerships: dedupeBy(ownerships, (o) => `${o.propertyKey}|${o.partyKey}`),
-    entityLinks: dedupeBy(entityLinks, (l) => `${l.entityKey}|${l.personKey}|${l.role}`),
-    contactPoints: dedupeBy(contactPoints, (c) => `${c.partyKey}|${c.kind}|${c.value}`),
+    ...mergePropertyModel({ properties, parties, ownerships, entityLinks, contactPoints }),
     ran,
     skipped,
     failedConnectors,
@@ -921,6 +973,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const allLeads: Lead[] = [];
   const allContacts: Contact[] = [];
   const allEnrichments: Enrichment[] = [];
+  const allProperty: PropertyModel = { properties: [], parties: [], ownerships: [], entityLinks: [], contactPoints: [] };
   const messages: Message[] = [];
   const blockedContacts: { contactKey: string; reason: string }[] = [];
   const errors: RunError[] = [];
@@ -946,6 +999,12 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     const research = await runResearch(domain, icp, connectorOpts);
     research.skipped.forEach((s) => skipped.add(s));
     failedConnectors.push(...research.failedConnectors);
+    // Carried into the run as-is: property data a connector fetched is never silently discarded.
+    allProperty.properties.push(...research.properties);
+    allProperty.parties.push(...research.parties);
+    allProperty.ownerships.push(...research.ownerships);
+    allProperty.entityLinks.push(...research.entityLinks);
+    allProperty.contactPoints.push(...research.contactPoints);
     // A push-only sink (e.g. Clay) "running" is not research having happened.
     if (research.ran.some((name) => !isPushOnly(name))) anyResearchRan = true;
 
@@ -1083,6 +1142,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     leads: dedupeLeads(allLeads),
     contacts: dedupeContacts(allContacts),
     enrichments: allEnrichments,
+    ...mergePropertyModel(allProperty),
     messages,
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],
