@@ -391,6 +391,8 @@ export const MessageSchema = z.object({
    * as-is. Additive (v4); defaults false.
    */
   needsSenderIdentity: z.boolean().default(false),
+  /** Property campaigns (v6, optional): the parcel this letter is about. */
+  propertyKey: z.string().min(1).optional(),
 });
 export type Message = z.infer<typeof MessageSchema>;
 
@@ -419,15 +421,22 @@ export type StoredRunStatus = z.infer<typeof StoredRunStatusSchema>;
 /** Pipeline stage a per-lead failure happened in. */
 export const RunErrorStageSchema = z.enum(["score", "gate", "draft"]);
 
-export const RunErrorSchema = z.object({
-  domain: z.string().min(1),
-  contactKey: z.string().min(1).optional(),
-  stage: RunErrorStageSchema,
-  /** Sanitized, truncated error message (secrets redacted). */
-  message: z.string(),
-  /** AI SDK finish reason when the error carried one (e.g. "length"). */
-  finishReason: z.string().optional(),
-});
+export const RunErrorSchema = z
+  .object({
+    /** The lead's domain (company campaigns). */
+    domain: z.string().min(1).optional(),
+    /** The parcel's `<countyFips>:<apn>` (property campaigns, v6). */
+    propertyKey: z.string().min(1).optional(),
+    contactKey: z.string().min(1).optional(),
+    stage: RunErrorStageSchema,
+    /** Sanitized, truncated error message (secrets redacted). */
+    message: z.string(),
+    /** AI SDK finish reason when the error carried one (e.g. "length"). */
+    finishReason: z.string().optional(),
+  })
+  .refine((e) => e.domain !== undefined || e.propertyKey !== undefined, {
+    message: "a run error needs a domain or a propertyKey",
+  });
 export type RunError = z.infer<typeof RunErrorSchema>;
 
 export const FailedConnectorSchema = z.object({
@@ -475,6 +484,8 @@ export const CampaignRunSchema = z.object({
       z.object({
         contactKey: z.string().min(1),
         reason: z.string().min(1),
+        /** Property campaigns (v6): the parcel the block was about. */
+        propertyKey: z.string().min(1).optional(),
       }),
     )
     .default([]),
@@ -485,7 +496,14 @@ export const CampaignRunSchema = z.object({
   errors: z.array(RunErrorSchema).default([]),
   /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
   rejectedDrafts: z
-    .array(z.object({ contactKey: z.string().min(1), issues: z.array(z.string()) }))
+    .array(
+      z.object({
+        contactKey: z.string().min(1),
+        issues: z.array(z.string()),
+        /** Property campaigns (v6): the parcel the draft was about. */
+        propertyKey: z.string().min(1).optional(),
+      }),
+    )
     .default([]),
   /**
    * Configured connectors that threw (sanitized status only — never the error
@@ -515,7 +533,19 @@ export const CampaignRunSchema = z.object({
    * (groundAngles) — kept so an operator can see what the model tried (v5).
    */
   droppedAngles: z
-    .array(z.object({ domain: z.string().min(1), angle: z.string(), reason: z.string() }))
+    .array(
+      z
+        .object({
+          domain: z.string().min(1).optional(),
+          /** Property campaigns (v6). */
+          propertyKey: z.string().min(1).optional(),
+          angle: z.string(),
+          reason: z.string(),
+        })
+        .refine((d) => d.domain !== undefined || d.propertyKey !== undefined, {
+          message: "a dropped angle needs a domain or a propertyKey",
+        }),
+    )
     .default([]),
   /**
    * Who assembled the record (v5, optional so older lines stay unlabeled rather

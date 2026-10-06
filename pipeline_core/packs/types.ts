@@ -14,8 +14,9 @@
 
 import type { ServiceArea } from "../compliance/index.js";
 import type { ChannelPolicy } from "../compliance/send.js";
-import type { Channel } from "../models.js";
 import type { Capability, Routing } from "../routing.js";
+import type { Channel, ContactPoint, Ownership, Party, Property } from "../models.js";
+import type { UnderwritingFact } from "../property-seam.js";
 import type { DraftRule } from "../draft-guard.js";
 import type { Contact, Enrichment, Lead } from "../models.js";
 
@@ -103,6 +104,29 @@ export interface Pack {
    * `run.rejectedDrafts`, never in `messages`. Example: `fairHousingDraftRule`.
    */
   draftRules?: readonly DraftRule[];
+  /**
+   * Pack v2, property campaigns: the compliance gate for one property + owner,
+   * run (after the engine's suppression check) before scoring. Same contract as
+   * `compliance`: only exactly `{status: "clean"}` passes; a throw blocks.
+   */
+  propertyGate?: (ctx: PropertyGateContext) => ComplianceResult;
+  /**
+   * Pack v2, property campaigns: deal math run in CODE after scoring. Its
+   * figures reach the draft as quotable facts; the model never computes.
+   */
+  underwriting?: (ctx: PropertyGateContext) => readonly UnderwritingFact[];
+}
+
+/** What a property gate (and underwriting) sees for one property + owner. */
+export interface PropertyGateContext {
+  property: Property;
+  /** The owner of record the letter goes to. */
+  owner: Party;
+  /** Every party recorded on the parcel (co-owners, trustees, life tenants), the owner included. */
+  parties: readonly Party[];
+  ownerships: readonly Ownership[];
+  contactPoints: readonly ContactPoint[];
+  now: Date;
 }
 
 /** The pack resolved when a caller names none. */
