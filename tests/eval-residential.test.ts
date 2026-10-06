@@ -192,6 +192,13 @@ describe("residentialDraftGrounding", () => {
     expect(residentialDraftGrounding(bait, letter("Your home on Magnolia Avenue is one I would like to learn more about.")).pass).toBe(false);
   });
 
+  it("reads a spelled-out state as the state code on record (2026-10-06 MiniMax-M3 false positive)", () => {
+    // Offer on record: "coastal Baldwin County, AL and west Pensacola, FL".
+    expect(residentialDraftGrounding(ctx(), letter("I specialize in single-family homes along this stretch of the Alabama coast.")).pass).toBe(true);
+    // Only states the record names: an invented one still fails.
+    expect(residentialDraftGrounding(ctx(), letter("I specialize in single-family homes along the Georgia coast.")).pass).toBe(false);
+  });
+
   it("fails an invented sale price, statistic or name", () => {
     expect(residentialDraftGrounding(ctx(), letter(`${PLAIN} A home nearby sold for $612,000.`)).pass).toBe(false);
     expect(residentialDraftGrounding(ctx(), letter(`${PLAIN} Values here rose 61% last year.`)).pass).toBe(false);
