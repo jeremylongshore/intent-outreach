@@ -94,17 +94,21 @@ connector: `capabilities`, `queryKinds`, `creditsPerCall` (charged against the r
 (opt into the response cache) and `rateLimit` (pass it to every `httpJson` call as `{ key: name, ...rateLimit }`). Never read `process.env` directly,
 never import a cloud SDK, and forward the context `signal` to `httpJson`. Register it in
 `connectors/index.ts` (order = call order: free → paid → legacy → enterprise). Add fixtures. Users can also
-`registerConnector()` their own at runtime. A vendor billed per call reads its key with `useKey(name, credits)`
-(`key-quotas.ts`, re-exported from `_shared.ts`) instead of `useSecret`: it rotates across `NAME` / `NAME__LABEL`
-variants under monthly quotas in `quotas.json`. Connector landscape: `000-docs/018-DR-LAND`.
+`registerConnector()` their own at runtime. A vendor that ships an MCP server is wrapped with
+`createMcpConnector` (`connectors/mcp.ts`): pin the reviewed tool definitions (`mcpToolsDigest`), bind the one tool
+it calls, build its arguments in code, and give a zod schema for its response. Never hand a vendor's MCP toolbox to
+the model. A vendor billed per call reads its key with `useKey(name, credits)` (`key-quotas.ts`, re-exported from
+`_shared.ts`) instead of `useSecret`: it rotates across `NAME` / `NAME__LABEL` variants under monthly quotas in
+`quotas.json`. Connector landscape: `000-docs/018-DR-LAND`.
 
 ### Adding a model provider
 
 Approval is **per model**, recorded in `evals/supported.ts`. `SUPPORTED_PROVIDERS` is derived from it, so
 never hand-edit that list. A new provider needs an adapter in `providers.ts` (`ProviderName`,
 `DEFAULT_MODEL`, a dynamically imported optional `@ai-sdk/*` dependency). To approve a model, run with a
-real key: `npm run evals:promote -- --provider <name> --model <id>` (keyed harness, repeat ≥3, every
-fixture must pass every run). On a pass it writes `evals/results/<record>.json` and upserts a
+real key: `npm run evals:promote -- --provider <name> --model <id> [--pack residential-re]` (keyed
+harness, repeat ≥3, every fixture must pass every run). Approval is per `{provider, model, pack}`;
+`SUPPORTED_PROVIDERS` comes from the `b2b-sdr` entries only. On a pass it writes `evals/results/<record>.json` and upserts a
 `verified: true` entry in `supported.ts`; commit both. It never changes `DEFAULT_MODEL`: that is a separate
 reviewed edit, and the script prints the line. `INTENT_OUTREACH_ALLOW_UNGATED=1` overrides the gate for
 local testing. See `evals/README.md`.

@@ -1,0 +1,57 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "probate-estate-owner",
+  "kind": "gate",
+  "note": "The owner of record is an estate: probate goes to the manual-review queue even with no distress tag on the parcel.",
+  "property": {
+    "key": "01003:05-09-27-0-000-108.000",
+    "apn": "05-09-27-0-000-108.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "25 Dune Dr",
+      "city": "Gulf Shores",
+      "state": "AL",
+      "zip": "36542"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "entity:AL:estate-ellis",
+      "kind": "entity",
+      "name": "Estate of Margaret Ellis",
+      "source": "fixture-county-gis",
+      "entityType": "estate",
+      "mailingAddress": {
+        "line1": "88 Music Sq E",
+        "city": "Nashville",
+        "state": "TN",
+        "zip": "37203"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-09-27-0-000-108.000",
+      "partyKey": "entity:AL:estate-ellis",
+      "role": "owner",
+      "asOf": "2019-11-05",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expectBlocked": "manual-review:probate"
+}

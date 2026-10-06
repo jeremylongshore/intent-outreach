@@ -38545,7 +38545,9 @@ function factSchema(value) {
     source: SourceSchema,
     fetchedAt: external_exports.string().datetime(),
     responseHash: Sha256HexSchema.optional(),
-    licenseTerms: LicenseTermsSchema.optional()
+    licenseTerms: LicenseTermsSchema.optional(),
+    /** When the value came through a vendor MCP server: which server, version and tool. */
+    via: external_exports.object({ server: external_exports.string().min(1), version: external_exports.string().min(1), tool: external_exports.string().min(1) }).optional()
   });
 }
 var FactSchema = factSchema(external_exports.unknown());
@@ -40422,11 +40424,24 @@ function quantityFactSet(facts) {
   return set2;
 }
 var QUANTITY_QUALIFIER_WINDOW = 4;
+var STREET_SUFFIXES = new Set(
+  "st street ave avenue rd road dr drive blvd boulevard ln lane way ct court cir circle hwy highway pkwy parkway pl place trl trail loop ter terrace sq square pt point".split(" ")
+);
+function isHouseNumber(text, toks, q) {
+  if (q.first !== q.last || !/^\d{1,6}$/.test(toks[q.first].lower)) return false;
+  for (let k = q.last + 1; k <= q.last + 3 && k < toks.length; k++) {
+    const t = toks[k];
+    if (t.kind !== "word" || !/^[A-Z]/.test(text.slice(t.start, t.end))) return false;
+    if (k > q.last + 1 && STREET_SUFFIXES.has(t.lower.replace(/\.$/, ""))) return true;
+  }
+  return false;
+}
 function quantityIssuesIn(text, factSet) {
   const issues = [];
   const { toks, quantities, qualifiers } = scanQuantities(text, false);
   const quantityStarts = new Set(quantities.map((q) => q.first));
   for (const q of quantities) {
+    if (isHouseNumber(text, toks, q)) continue;
     const ql = qualifiers.find((x) => x.first > q.last);
     if (!ql || ql.first - q.last - 1 > QUANTITY_QUALIFIER_WINDOW) continue;
     let attached = true;
@@ -41169,6 +41184,7 @@ var APPROVED_MODELS = (
     {
       "provider": "anthropic",
       "model": "claude-sonnet-4-6",
+      "pack": "b2b-sdr",
       "resultFile": null,
       "verified": false,
       "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
@@ -41176,6 +41192,7 @@ var APPROVED_MODELS = (
     {
       "provider": "openai",
       "model": "gpt-4o",
+      "pack": "b2b-sdr",
       "resultFile": null,
       "verified": false,
       "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
@@ -41183,14 +41200,16 @@ var APPROVED_MODELS = (
     {
       "provider": "minimax",
       "model": "MiniMax-M3",
+      "pack": "b2b-sdr",
       "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
       "verified": true,
       "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
     }
   ]
 );
-function supportedProviderNames(entries = APPROVED_MODELS) {
-  return [...new Set(entries.map((e) => e.provider))];
+var DEFAULT_EVAL_PACK = "b2b-sdr";
+function supportedProviderNames(entries = APPROVED_MODELS, pack = DEFAULT_EVAL_PACK) {
+  return [...new Set(entries.filter((e) => e.pack === pack).map((e) => e.provider))];
 }
 
 // pipeline_core/providers.ts
@@ -41709,6 +41728,7 @@ function failureStatus(err) {
   if (err instanceof HttpError) return err.status;
   const name = err?.name;
   if (err instanceof ConnectorTimeoutError || name === "TimeoutError" || name === "AbortError") return "timeout";
+  if (name === "McpPinMismatchError") return "pin-mismatch";
   return "error";
 }
 function recordConnectorFailure(connector, phase, err, raw, failed) {

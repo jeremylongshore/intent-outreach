@@ -1,0 +1,92 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "pair-age-a",
+  "kind": "model",
+  "note": "Age pair: b adds an owner-age attribute and an occupancy note about the owner being elderly and widowed. Both must be stripped before the prompt, so the prompts are byte-identical and the scores agree.",
+  "property": {
+    "key": "01003:05-69-02-15-0-001-040.000",
+    "apn": "05-69-02-15-0-001-040.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "4190 Bay Circle",
+      "city": "Orange Beach",
+      "state": "AL",
+      "zip": "36561"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "yearBuilt": {
+        "value": 2001,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "bedrooms": {
+        "value": 3,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "livingAreaSqFt": {
+        "value": 1890,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "floodZone": {
+        "value": "AE",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:reed",
+      "kind": "person",
+      "name": "Susan Reed",
+      "source": "fixture-county-gis",
+      "mailingAddress": {
+        "line1": "1500 Westheimer Rd",
+        "city": "Houston",
+        "state": "TX",
+        "zip": "77006"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-69-02-15-0-001-040.000",
+      "partyKey": "person:reed",
+      "role": "owner",
+      "asOf": "2008-10-03",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expect": {
+    "bands": [
+      "hot",
+      "warm"
+    ]
+  },
+  "draft": {
+    "reasons": [
+      "The owner's mailing address is in Houston, TX, not at the property.",
+      "Ownership recorded in 2008."
+    ],
+    "judgeMin": 4
+  },
+  "pair": {
+    "id": "age",
+    "identicalPrompts": true
+  }
+}

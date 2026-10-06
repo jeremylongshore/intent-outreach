@@ -14,6 +14,12 @@ All notable changes to Intent Outreach are documented here. Format follows
   0600 month-scoped ledger (`key-usage.json`), and throws `KeyQuotaExhaustedError` when all are spent. Crossing 80% of a
   quota adds a run warning. `intent-outreach keys <ENV_NAME>` shows each variant's usage.
 
+- **Vendor MCP servers as fixed connectors** (#83 phase 4c). `createMcpConnector(spec)` wraps a data vendor's MCP
+  server (DealMachine, BatchData, Regrid, ATTOM...) as an ordinary connector: the definitions of the tool it may call
+  are pinned by sha256 (`mcpToolsDigest`) and a changed definition refuses to run (tool poisoning), only the bound tool
+  is ever called with arguments built in code from the typed query, every response is schema-checked, and the server,
+  version, tool and response hash are recorded on every fact (`Fact.via`). The model never sees the vendor's toolbox.
+
 - **A separate model per seam** (#83 phase 8). `runCampaign` and `runPropertyCampaign` take an optional
   `scoreProvider` (a cheap model that scores; `provider` drafts), and the CLI `run` and `property-run` take
   `--score-provider` / `--score-model`. Both models resolve through the eval gate like any provider; costs are

@@ -1,0 +1,73 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "dnc-suppressed-owner",
+  "kind": "gate",
+  "note": "The owner's phone is on the DNC registry and on the local opt-out list: the suppression check blocks the whole owner, mail included.",
+  "property": {
+    "key": "01003:05-09-27-0-000-104.000",
+    "apn": "05-09-27-0-000-104.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "17 Dune Dr",
+      "city": "Gulf Shores",
+      "state": "AL",
+      "zip": "36542"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:dnc",
+      "kind": "person",
+      "name": "Carla Jennings",
+      "source": "fixture-county-gis",
+      "mailingAddress": {
+        "line1": "88 Music Sq E",
+        "city": "Nashville",
+        "state": "TN",
+        "zip": "37203"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-09-27-0-000-104.000",
+      "partyKey": "person:dnc",
+      "role": "owner",
+      "asOf": "2006-02-10",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "contactPoints": [
+    {
+      "partyKey": "person:dnc",
+      "kind": "phone",
+      "value": "+12515550142",
+      "lineType": "mobile",
+      "dnc": "listed",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "suppressions": [
+    {
+      "kind": "phone",
+      "value": "+1 (251) 555-0142"
+    }
+  ],
+  "expectBlocked": "suppressed:phone"
+}

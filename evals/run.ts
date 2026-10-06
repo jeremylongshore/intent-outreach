@@ -19,6 +19,18 @@
  *                          end; it does NOT measure model quality (the stub is
  *                          grounded by construction) and never writes a record.
  *
+ * Packs (--pack): approval is per {provider, model, pack}. `b2b-sdr` runs the
+ * fixtures under evals/fixtures/{score,draft}; `residential-re` runs
+ * evals/fixtures/residential through the property seams (evals/residential.ts):
+ *
+ *   gate fixture passes  ⇔ blocked by the product gate chain with the exact reason (no model call)
+ *   score fixture passes ⇔ gate clean + schema + per-pack score band + grounded reasons
+ *   draft fixture passes ⇔ draft rules (guard, fair housing, distress, quantities) + grounding
+ *                          + recipient (entity owners) + decline only where expected
+ *   pair passes          ⇔ protected-class pair scores within tolerance, same band, both drafts clean
+ *
+ * Default pack: b2b-sdr. The CLI's --offline (the CI wiring check) covers every pack.
+ *
  * Providers: anthropic, openai, minimax, xai. The harness is the qualifier, so it may run
  * a provider/model that has not passed the gate yet (getProviderUnchecked);
  * product code cannot. Approval lives in evals/supported.ts (see evals/promote.ts).
@@ -26,6 +38,7 @@
  *   tsx evals/run.ts --offline
  *   tsx evals/run.ts --providers anthropic                    # needs ANTHROPIC_API_KEY
  *   tsx evals/run.ts --providers anthropic --model claude-sonnet-5-5 --repeat 3 --judge
+ *   tsx evals/run.ts --providers minimax --model MiniMax-M3 --pack residential-re --judge
  *
  * Exit code: 0 if all requested providers pass, 1 otherwise.
  */
@@ -65,7 +78,31 @@ import {
   type ScoreExpect,
   type ScoreResult,
 } from "./scorers.js";
-import { approvedEntry } from "./supported.js";
+import {
+  entityRecipient,
+  gateBlocked,
+  loadResidentialFixtures,
+  pairParity,
+  prepareResidential,
+  promptsFor,
+  reasonGrounding,
+  RESIDENTIAL_PACK,
+  residentialDraftGrounding,
+  residentialDraftRules,
+  residentialJudge,
+  residentialScoreBand,
+  type PairRunInput,
+  type PreparedFixture,
+} from "./residential.js";
+import {
+  draftPropertyMessage,
+  PropertyScoreOutputSchema,
+  scoreProperty,
+  type PropertyDraftContext,
+} from "../pipeline_core/property-seam.js";
+import { DraftOutputSchema, type DraftText } from "../pipeline_core/seam.js";
+import { approvedEntry, DEFAULT_EVAL_PACK, EVAL_PACKS, isEvalPack, type EvalPack } from "./supported.js";
+import type { JudgeOutput } from "./scorers.js";
 
 // ───────────────────────────────── fixtures ──────────────────────────────────
 
@@ -74,7 +111,8 @@ const FIXTURES_DIR = join(HERE, "fixtures");
 export const DEFAULT_RESULTS_DIR = join(HERE, "results");
 export const DEFAULT_KEYED_REPEAT = 3;
 export const DEFAULT_JUDGE_FLOOR = 4;
-export const RECORD_VERSION = 1;
+/** 2: records carry `pack`; seams include gate and pair. A record without `pack` is b2b-sdr. */
+export const RECORD_VERSION = 2;
 
 export interface ScoreFixture extends ScoreContext {
   name: string;
@@ -108,7 +146,10 @@ export function loadFixtures<T>(kind: "score" | "draft", fixturesDir = FIXTURES_
 
 // ───────────────────────── deterministic stub provider ───────────────────────
 
-type StubProvider = LLMProvider & { _setDraftContext(ctx: DraftContext | null): void };
+type StubProvider = LLMProvider & {
+  _setDraftContext(ctx: DraftContext | null): void;
+  _setPropertyContext(ctx: PropertyDraftContext | null): void;
+};
 
 /**
  * The OFFLINE wiring-check provider. It builds drafts from the CURRENT
@@ -119,9 +160,24 @@ type StubProvider = LLMProvider & { _setDraftContext(ctx: DraftContext | null): 
  */
 function makeStubProvider(name: ProviderName): StubProvider {
   let currentDraft: DraftContext | null = null;
+  let currentProperty: PropertyDraftContext | null = null;
 
   function superset() {
     const ctx = currentDraft;
+    if (currentProperty) {
+      // A plain letter about the property, quoting only its street address: grounded by construction.
+      const street = currentProperty.property.address?.line1 ?? "your property";
+      return {
+        score: 50,
+        band: "warm",
+        reasons: [],
+        decline: false,
+        declineReason: null,
+        subject: currentProperty.channel === "email" ? "Your property" : null,
+        body: `I am a local listing agent and I work with owners of homes like the one at ${street}. If selling is ever on your mind, I can put together a no-obligation estimate.`,
+        cta: "Would a free estimate of what it would sell for be useful?",
+      };
+    }
     const lead = ctx?.lead.companyName ?? "your team";
     const firstAngle = ctx && ctx.angles.length > 0 ? ctx.angles[0]! : null;
     const channel = ctx?.channel ?? "email";
@@ -129,6 +185,9 @@ function makeStubProvider(name: ProviderName): StubProvider {
       ? `Hi, I work with teams like ${lead}. ${firstAngle} I'd love to help you do more of that with less manual work.`
       : `Hi, I work with founders on outbound, and thought ${lead} might be a fit. No assumptions about your current setup.`;
     return {
+      score: 50,
+      band: "warm",
+      reasons: [],
       fitScore: 50,
       fitReason: "Stub score (offline wiring check; not a judgment).",
       angles: ctx ? ctx.angles.slice(0, 3) : [],
@@ -149,6 +208,9 @@ function makeStubProvider(name: ProviderName): StubProvider {
     _setDraftContext(ctx: DraftContext | null) {
       currentDraft = ctx;
     },
+    _setPropertyContext(ctx: PropertyDraftContext | null) {
+      currentProperty = ctx;
+    },
   };
 }
 
@@ -166,9 +228,11 @@ export interface RunOutcome {
   error?: string;
 }
 
+export type Seam = "score" | "draft" | "gate" | "pair";
+
 export interface FixtureResult {
   fixture: string;
-  seam: "score" | "draft";
+  seam: Seam;
   runs: RunOutcome[];
   passes: number;
   passRate: number;
@@ -194,6 +258,8 @@ export interface JudgeSummary {
 export interface ProviderResult {
   provider: string;
   model: string;
+  /** The pack whose fixtures ran (approval is per {provider, model, pack}). */
+  pack: EvalPack;
   offline: boolean;
   /** "wiring-check" (offline stub) or "keyed" (the real gate). */
   mode: "wiring-check" | "keyed";
@@ -221,6 +287,8 @@ export type ProviderFactory = (name: ProviderName, model: string | undefined) =>
 
 export interface RunEvalsOptions {
   providers?: ProviderName[];
+  /** Packs to evaluate. Default ["b2b-sdr"]; the CLI's --offline without --pack selects every pack. */
+  packs?: EvalPack[];
   offline?: boolean;
   /** Model override for every requested provider (keyed). Default: the provider default. */
   model?: string;
@@ -270,7 +338,7 @@ function failedRun(err: unknown, scorerName: string): RunOutcome {
   };
 }
 
-function aggregate(fixture: string, seam: "score" | "draft", runs: RunOutcome[]): FixtureResult {
+function aggregate(fixture: string, seam: Seam, runs: RunOutcome[]): FixtureResult {
   const passes = runs.filter((r) => r.pass).length;
   const firstFail = runs.find((r) => !r.pass);
   return {
@@ -285,22 +353,75 @@ function aggregate(fixture: string, seam: "score" | "draft", runs: RunOutcome[])
   };
 }
 
-async function evalOneProvider(name: ProviderName, opts: RunEvalsOptions): Promise<ProviderResult> {
+/** One draft queued for the optional judge: the closure knows which rubric applies. */
+interface JudgeItem {
+  fixture: string;
+  run: number;
+  judge: (provider: LLMProvider) => Promise<{ object: JudgeOutput; usage: { costUsd: number } }>;
+}
+
+type HarnessProvider = LLMProvider & {
+  _setDraftContext?(c: DraftContext | null): void;
+  _setPropertyContext?(c: PropertyDraftContext | null): void;
+};
+
+async function evalOneProvider(name: ProviderName, pack: EvalPack, opts: RunEvalsOptions): Promise<ProviderResult> {
   const offline = opts.offline ?? false;
   const repeat = opts.repeat ?? (offline ? 1 : DEFAULT_KEYED_REPEAT);
   if (!Number.isInteger(repeat) || repeat < 1) throw new Error(`--repeat must be a positive integer (got ${repeat})`);
   if (offline && opts.judge) throw new Error("--judge needs a real provider; it cannot run with --offline");
 
-  const provider: LLMProvider & { _setDraftContext?(c: DraftContext | null): void } = offline
+  const provider: HarnessProvider = offline
     ? makeStubProvider(name)
     : await (opts.providerFactory ?? defaultFactory)(name, opts.model);
 
-  if (!offline && !approvedEntry(name, provider.model)) {
+  if (!offline && !approvedEntry(name, provider.model, undefined, pack)) {
     process.stderr.write(
-      `eval: ${name} model "${provider.model}" has no approved record yet; this run qualifies it (see evals/promote.ts).\n`,
+      `eval: ${name} model "${provider.model}" has no approved ${pack} record yet; this run qualifies it (see evals/promote.ts).\n`,
     );
   }
 
+  const { fixtures, judged, mins, promptRefs } =
+    pack === "residential-re"
+      ? await evalResidential(provider, repeat, offline, opts)
+      : await evalB2b(provider, repeat, offline, opts);
+
+  const judge = opts.judge ? await runJudge(provider, judged, opts.judgeFloor ?? DEFAULT_JUDGE_FLOOR, mins) : null;
+
+  const allRuns = fixtures.flatMap((f) => f.runs);
+  const fixturesPass = fixtures.length > 0 && fixtures.every((f) => f.pass);
+  const result: ProviderResult = {
+    provider: name,
+    model: provider.model,
+    pack,
+    offline,
+    mode: offline ? "wiring-check" : "keyed",
+    repeat,
+    fixtures,
+    judge,
+    passRate: fixtures.length === 0 ? 0 : fixtures.filter((f) => f.pass).length / fixtures.length,
+    runPassRate: allRuns.length === 0 ? 0 : allRuns.filter((r) => r.pass).length / allRuns.length,
+    supported: fixturesPass && (judge ? judge.pass : true),
+    totalCostUsd: fixtures.reduce((a, f) => a + f.costUsd, 0) + (judge?.costUsd ?? 0),
+    promptRefs,
+    recordPath: null,
+  };
+
+  if (!offline && (opts.writeRecord ?? true)) {
+    result.recordPath = writeRecord(result, opts.resultsDir ?? DEFAULT_RESULTS_DIR, (opts.now ?? (() => new Date()))());
+  }
+  return result;
+}
+
+interface PackEval {
+  fixtures: FixtureResult[];
+  judged: JudgeItem[];
+  mins: Map<string, number>;
+  promptRefs: { score: string[]; draft: string };
+}
+
+/** The b2b-sdr pack: score + draft fixtures through seam.ts. */
+async function evalB2b(provider: HarnessProvider, repeat: number, offline: boolean, opts: RunEvalsOptions): Promise<PackEval> {
   const scoreFixtures = loadFixtures<ScoreFixture>("score", opts.fixturesDir);
   const draftFixtures = loadFixtures<DraftFixture>("draft", opts.fixturesDir);
   const fixtures: FixtureResult[] = [];
@@ -335,7 +456,7 @@ async function evalOneProvider(name: ProviderName, opts: RunEvalsOptions): Promi
   }
 
   // DRAFT seam.
-  const judged: { fixture: string; run: number; ctx: DraftContext; output: DraftOutput }[] = [];
+  const judged: JudgeItem[] = [];
   for (const fx of draftFixtures) {
     const ctx: DraftContext = {
       icp: fx.icp,
@@ -364,7 +485,13 @@ async function evalOneProvider(name: ProviderName, opts: RunEvalsOptions): Promi
           outputTokens: res.usage.outputTokens,
           output: res.object,
         });
-        judged.push({ fixture: fx.name, run: i, ctx, output: res.object });
+        const out: DraftOutput = res.object;
+        judged.push({
+          fixture: fx.name,
+          run: i,
+          judge: (p) =>
+            llmJudge(p, { icp: ctx.icp, angles: ctx.angles, lead: ctx.lead, contact: ctx.contact, channel: ctx.channel }, out),
+        });
       } catch (err) {
         if (isDecline(err)) {
           // The model declined: correct for an out-of-ICP fixture, a false decline otherwise.
@@ -390,40 +517,177 @@ async function evalOneProvider(name: ProviderName, opts: RunEvalsOptions): Promi
     fixtures.push(aggregate(fx.name, "draft", runs));
   }
 
-  const judgeMins = new Map(
+  const mins = new Map(
     draftFixtures.flatMap((fx) => (typeof fx.judgeMin === "number" ? [[fx.name, fx.judgeMin] as const] : [])),
   );
-  const judge = opts.judge
-    ? await runJudge(provider, judged, opts.judgeFloor ?? DEFAULT_JUDGE_FLOOR, judgeMins)
-    : null;
-
-  const allRuns = fixtures.flatMap((f) => f.runs);
-  const fixturesPass = fixtures.length > 0 && fixtures.every((f) => f.pass);
-  const result: ProviderResult = {
-    provider: name,
-    model: provider.model,
-    offline,
-    mode: offline ? "wiring-check" : "keyed",
-    repeat,
+  return {
     fixtures,
-    judge,
-    passRate: fixtures.length === 0 ? 0 : fixtures.filter((f) => f.pass).length / fixtures.length,
-    runPassRate: allRuns.length === 0 ? 0 : allRuns.filter((r) => r.pass).length / allRuns.length,
-    supported: fixturesPass && (judge ? judge.pass : true),
-    totalCostUsd: fixtures.reduce((a, f) => a + f.costUsd, 0) + (judge?.costUsd ?? 0),
+    judged,
+    mins,
     promptRefs: { score: DEFAULT_SCORE_PROMPTS.map(promptRef), draft: promptRef(DEFAULT_DRAFT_PROMPT) },
-    recordPath: null,
   };
+}
 
-  if (!offline && (opts.writeRecord ?? true)) {
-    result.recordPath = writeRecord(result, opts.resultsDir ?? DEFAULT_RESULTS_DIR, (opts.now ?? (() => new Date()))());
+const outcome = (scorers: Record<string, ScoreResult>, usage: Usage, output?: unknown): RunOutcome => ({
+  pass: Object.values(scorers).every((s) => s.pass),
+  scorers,
+  costUsd: usage.costUsd,
+  inputTokens: usage.inputTokens,
+  outputTokens: usage.outputTokens,
+  ...(output !== undefined ? { output } : {}),
+});
+const NO_USAGE: Usage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+
+/**
+ * The residential-re pack (evals/residential.ts): gate fixtures through the
+ * product gate chain with no model call; model fixtures through scoreProperty
+ * and draftPropertyMessage; then one result per protected-class pair.
+ */
+async function evalResidential(
+  provider: HarnessProvider,
+  repeat: number,
+  offline: boolean,
+  opts: RunEvalsOptions,
+): Promise<PackEval> {
+  const prepared = loadResidentialFixtures(opts.fixturesDir ?? FIXTURES_DIR).map(prepareResidential);
+  const fixtures: FixtureResult[] = [];
+  const judged: JudgeItem[] = [];
+  const mins = new Map<string, number>();
+  /** Per fixture name, per run: what the pair scorer needs. */
+  const pairInputs = new Map<string, PairRunInput[]>();
+
+  for (const p of prepared) {
+    const { fx } = p;
+    if (fx.kind === "gate") {
+      // Deterministic: the gate never calls the model. Run k times like every fixture.
+      const runs = Array.from({ length: repeat }, () => outcome({ gate: gateBlocked(fx.expectBlocked ?? "", p.gate) }, NO_USAGE));
+      fixtures.push(aggregate(fx.name, "gate", runs));
+      continue;
+    }
+    if (!p.gate.ok || !p.scoreCtx) {
+      const reason = p.gate.ok ? "no owner" : p.gate.reason;
+      const runs = Array.from({ length: repeat }, () =>
+        outcome({ fixtureError: { pass: false, findings: [`model fixture is blocked by the gate (${reason})`] } }, NO_USAGE),
+      );
+      fixtures.push(aggregate(fx.name, "score", runs));
+      continue;
+    }
+    const perRun: PairRunInput[] = Array.from({ length: repeat }, () => ({}));
+    pairInputs.set(fx.name, perRun);
+
+    // SCORE seam.
+    provider._setPropertyContext?.(null);
+    const scoreRuns: RunOutcome[] = [];
+    for (let i = 0; i < repeat; i++) {
+      const run = perRun[i] as PairRunInput; // allocated above, one per run
+      try {
+        const res = await scoreProperty(provider, p.scoreCtx);
+        const scorers: Record<string, ScoreResult> = {
+          schemaConformance: schemaOf(PropertyScoreOutputSchema, "PropertyScoreOutputSchema", res.object),
+          reasonGrounding: reasonGrounding(res.object.reasons, res.droppedReasons),
+        };
+        // A stub's constant score proves nothing, so bands are a keyed-only gate.
+        if (!offline) scorers.scoreBand = residentialScoreBand(fx.expect?.bands, res.object);
+        run.score = res.object;
+        scoreRuns.push(outcome(scorers, res.usage, { ...res.object, droppedReasons: res.droppedReasons }));
+      } catch (err) {
+        scoreRuns.push(failedRun(err, "scoreCall"));
+      }
+    }
+    fixtures.push(aggregate(fx.name, "score", scoreRuns));
+
+    // DRAFT seam.
+    const dctx = p.draftCtx;
+    const expect = fx.draft;
+    if (!dctx || !expect) continue;
+    if (typeof expect.judgeMin === "number") mins.set(fx.name, expect.judgeMin);
+    provider._setPropertyContext?.(dctx);
+    const draftRuns: RunOutcome[] = [];
+    for (let i = 0; i < repeat; i++) {
+      const run = perRun[i] as PairRunInput; // allocated above, one per run
+      try {
+        const res = await draftPropertyMessage(provider, dctx);
+        const out: DraftText = res.object;
+        const scorers: Record<string, ScoreResult> = {
+          schemaConformance: schemaOf(DraftOutputSchema, "DraftOutputSchema", res.object),
+          draftRules: residentialDraftRules(dctx, out),
+          draftGrounding: residentialDraftGrounding(dctx, out),
+        };
+        if (expect.addressEntity) scorers.recipient = entityRecipient(dctx, out);
+        run.draft = out;
+        draftRuns.push(outcome(scorers, res.usage, res.object));
+        judged.push({ fixture: fx.name, run: i, judge: (jp) => residentialJudge(jp, dctx, out) });
+      } catch (err) {
+        if (isDecline(err)) {
+          const e = err as DraftRejectedError;
+          run.declined = true;
+          if (expect.expectDecline) {
+            draftRuns.push(outcome({ expectedDecline: { pass: true, findings: e.issues } }, e.usage));
+          } else {
+            draftRuns.push(failedRun(err, "falseDecline"));
+          }
+          continue;
+        }
+        // The product guard (with the pack's fair-housing and distress rules) rejected the draft.
+        draftRuns.push(failedRun(err, err instanceof DraftRejectedError ? "draftGuard" : "draftCall"));
+      }
+    }
+    provider._setPropertyContext?.(null);
+    fixtures.push(aggregate(fx.name, "draft", draftRuns));
   }
-  return result;
+
+  // PAIRS: fixtures sharing pair.id, compared run by run.
+  const byPair = new Map<string, PreparedFixture[]>();
+  for (const p of prepared) if (p.fx.pair) byPair.set(p.fx.pair.id, [...(byPair.get(p.fx.pair.id) ?? []), p]);
+  for (const [id, members] of [...byPair].sort(([x], [y]) => x.localeCompare(y))) {
+    const runs: RunOutcome[] = [];
+    if (members.length !== 2) {
+      runs.push(outcome({ pairParity: { pass: false, findings: [`pair "${id}" has ${members.length} fixtures; expected 2`] } }, NO_USAGE));
+    } else {
+      const [a, b] = members as [PreparedFixture, PreparedFixture];
+      const ia = pairInputs.get(a.fx.name) ?? [];
+      const ib = pairInputs.get(b.fx.name) ?? [];
+      const identical = !!(a.fx.pair?.identicalPrompts && b.fx.pair?.identicalPrompts);
+      const prompts = identical ? { a: promptsFor(a), b: promptsFor(b) } : undefined;
+      for (let i = 0; i < repeat; i++) {
+        runs.push(
+          outcome(
+            {
+              pairParity: pairParity(ia[i] ?? {}, ib[i] ?? {}, {
+                identicalPrompts: identical,
+                ...(prompts ? { prompts } : {}),
+                expectDraft: !!(a.fx.draft && b.fx.draft),
+              }),
+            },
+            NO_USAGE,
+            { a: a.fx.name, b: b.fx.name, scores: [ia[i]?.score?.score ?? null, ib[i]?.score?.score ?? null] },
+          ),
+        );
+      }
+    }
+    fixtures.push(aggregate(`pair:${id}`, "pair", runs));
+  }
+
+  return {
+    fixtures,
+    judged,
+    mins,
+    promptRefs: { score: RESIDENTIAL_PACK.prompts.score.map(promptRef), draft: promptRef(RESIDENTIAL_PACK.prompts.draft) },
+  };
+}
+
+function schemaOf(schema: z.ZodTypeAny, label: string, output: unknown): ScoreResult {
+  const parsed = schema.safeParse(output);
+  if (parsed.success) return { pass: true, findings: [] };
+  return {
+    pass: false,
+    findings: [`output failed ${label}`, ...parsed.error.issues.map((i) => `${i.path.join(".") || "<root>"}: ${i.message}`)],
+  };
 }
 
 async function runJudge(
   provider: LLMProvider,
-  drafts: { fixture: string; run: number; ctx: DraftContext; output: DraftOutput }[],
+  drafts: JudgeItem[],
   floor: number,
   mins: ReadonlyMap<string, number> = new Map(),
 ): Promise<JudgeSummary> {
@@ -432,11 +696,7 @@ async function runJudge(
   let costUsd = 0;
   for (const d of drafts) {
     try {
-      const { object, usage } = await llmJudge(
-        provider,
-        { icp: d.ctx.icp, angles: d.ctx.angles, lead: d.ctx.lead, contact: d.ctx.contact, channel: d.ctx.channel },
-        d.output,
-      );
+      const { object, usage } = await d.judge(provider);
       costUsd += usage.costUsd;
       ratings.push({
         fixture: d.fixture,
@@ -469,7 +729,10 @@ export function safeSegment(s: string): string {
   return s.replace(/[^A-Za-z0-9._@-]+/g, "_");
 }
 
-/** evals/results/<YYYY-MM-DD>-<provider>-<model>-<promptRef>.json (promptRef = the draft prompt's "<file>@<sha8>"). */
+/**
+ * evals/results/<YYYY-MM-DD>-<provider>-<model>-<promptRef>.json (promptRef = the draft prompt's "<file>@<sha8>").
+ * Each pack has its own draft prompt, so records of different packs never share a name.
+ */
 export function recordFileName(provider: string, model: string, ref: string, date: Date): string {
   const day = date.toISOString().slice(0, 10);
   return `${day}-${safeSegment(provider)}-${safeSegment(model)}-${safeSegment(ref)}.json`;
@@ -480,12 +743,13 @@ export interface ResultRecord {
   createdAt: string;
   provider: string;
   model: string;
+  pack: EvalPack;
   promptRef: string;
   promptRefs: { score: string[]; draft: string };
   repeat: number;
   fixtures: {
     fixture: string;
-    seam: "score" | "draft";
+    seam: Seam;
     pass: boolean;
     passes: number;
     runs: number;
@@ -519,6 +783,7 @@ export function buildRecord(r: ProviderResult, date: Date): ResultRecord {
     createdAt: date.toISOString(),
     provider: r.provider,
     model: r.model,
+    pack: r.pack,
     promptRef: r.promptRefs.draft,
     promptRefs: r.promptRefs,
     repeat: r.repeat,
@@ -584,9 +849,13 @@ function writeRecord(r: ProviderResult, dir: string, date: Date): string {
 export async function runEvals(opts: RunEvalsOptions = {}): Promise<EvalRunResult> {
   const offline = opts.offline ?? false;
   const providers = opts.providers ?? (["anthropic"] as ProviderName[]);
+  const packs = opts.packs ?? [DEFAULT_EVAL_PACK as EvalPack];
+  for (const pk of packs) if (!isEvalPack(pk)) throw new Error(`unknown pack "${String(pk)}" (known: ${EVAL_PACKS.join(", ")})`);
   const results: ProviderResult[] = [];
-  for (const p of providers) {
-    results.push(await evalOneProvider(p, opts));
+  for (const pk of packs) {
+    for (const p of providers) {
+      results.push(await evalOneProvider(p, pk, opts));
+    }
   }
   return { offline, providers: results, allSupported: results.length > 0 && results.every((r) => r.supported) };
 }
@@ -608,7 +877,7 @@ export function formatReport(result: EvalRunResult): string {
   for (const p of result.providers) {
     lines.push("");
     lines.push(
-      `Provider: ${p.provider}  (model: ${p.model})  repeat: ${p.repeat}  cost: $${p.totalCostUsd.toFixed(6)}`,
+      `Provider: ${p.provider}  (model: ${p.model})  pack: ${p.pack}  repeat: ${p.repeat}  cost: $${p.totalCostUsd.toFixed(6)}`,
     );
     for (const f of p.fixtures) {
       const mark = f.pass ? "PASS" : "FAIL";
@@ -630,7 +899,7 @@ export function formatReport(result: EvalRunResult): string {
     }
     lines.push(`  fixtures passing all runs: ${pct(p.passRate)}  run pass rate: ${pct(p.runPassRate)}`);
     const verdict = p.offline ? (p.supported ? "WIRED" : "WIRING BROKEN") : p.supported ? "PASS" : "FAIL";
-    lines.push(`  → ${p.provider}/${p.model}: ${verdict}`);
+    lines.push(`  → ${p.provider}/${p.model} [${p.pack}]: ${verdict}`);
     if (p.recordPath) lines.push(`  record: ${p.recordPath}`);
   }
   lines.push("");
@@ -663,6 +932,16 @@ export function parseArgs(argv: string[]): RunEvalsOptions {
   const repeatRaw = flagValue(argv, "--repeat");
   const floorRaw = flagValue(argv, "--judge-floor");
   const resultsDir = flagValue(argv, "--results-dir");
+  const packRaw = flagValue(argv, "--pack");
+  let packs: EvalPack[] | undefined;
+  if (packRaw !== undefined) {
+    if (packRaw === "all") packs = [...EVAL_PACKS];
+    else if (isEvalPack(packRaw)) packs = [packRaw];
+    else throw new Error(`--pack must be one of ${EVAL_PACKS.join(", ")} or all (got ${packRaw})`);
+  } else if (offline) {
+    // The free wiring check (CI) covers every pack's seams, gates and scorers.
+    packs = [...EVAL_PACKS];
+  }
   const repeat = repeatRaw === undefined ? undefined : Number(repeatRaw);
   if (repeat !== undefined && (!Number.isInteger(repeat) || repeat < 1)) {
     throw new Error(`--repeat must be a positive integer (got ${repeatRaw})`);
@@ -680,6 +959,7 @@ export function parseArgs(argv: string[]): RunEvalsOptions {
     ...(judgeFloor !== undefined ? { judgeFloor } : {}),
     ...(argv.includes("--no-record") ? { writeRecord: false } : {}),
     ...(resultsDir ? { resultsDir } : {}),
+    ...(packs ? { packs } : {}),
   };
 }
 
