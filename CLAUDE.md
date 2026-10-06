@@ -159,8 +159,9 @@ committed. Stack: TypeScript/Node (ESM), zod, Vercel AI SDK (`ai` + `@ai-sdk/*`)
 
 ## Docs & conventions
 
-Docs live in `000-docs/` under `NNN-CC-ABCD-description.md`; start at `000-docs/000-INDEX.md`. Current docs
-are `017`–`022`. `001`–`016` and `023`–`030` (pre-rebuild files renumbered to fix number collisions) describe
+Docs live in `000-docs/` under `NNN-CC-ABCD-description.md`; start at `000-docs/000-INDEX.md`. **Picking this repo
+up cold? Read `036-AA-AUDT-appaudit-devops-playbook.md` first** (current state, PR ledger, owner decisions, resume
+procedure). Current docs are `017`–`022` and `031`–`036`. `001`–`016` and `023`–`030` (pre-rebuild files renumbered to fix number collisions) describe
 the retired Gemini-on-Vertex system and are historical; loose pre-rebuild files live in `000-docs/archive/`.
 Key current docs: `017-AT-DECR` (rebuild decision record), `018-DR-LAND` (connector landscape),
 `021-AT-PLAN` (hardening plan), `022-AA-AACR` (hardening after-action review and open follow-ups).
