@@ -171,6 +171,7 @@ export function printHelp(): void {
       "                          $INTENT_OUTREACH_HOME/profiles, then the bundled profiles",
       "  --provider <name>       anthropic | openai | minimax | xai (default: auto-detect)",
       "  --model <id>            override the model id",
+      "  --score-provider <name> / --score-model <id>   a separate (cheaper) model for scoring; --provider drafts",
       "  --channel <email|linkedin>   default: email (or the profile's)",
       "  --min-score <0-100>     skip drafting below this fit score (default: 0)",
       `  --max-contacts <1-${MAX_CONTACTS_LIMIT}>   contacts to draft per lead (default: 1)`,
@@ -213,6 +214,18 @@ function cmdProviders(): void {
   process.stdout.write(`\nauto-detected provider: ${detected}\n`);
 }
 
+/** Resolve the optional score-seam provider (cheap scorer); undefined ⇒ the main provider scores too. */
+async function scoreProviderFrom(values: Record<string, unknown>) {
+  const m = values["score-model"];
+  // --score-model alone keeps the run's --provider (never silently auto-detects a different vendor).
+  const p = values["score-provider"] ?? values.provider;
+  if (typeof values["score-provider"] !== "string" && typeof m !== "string") return undefined;
+  return getProvider({
+    ...(typeof p === "string" ? { provider: p as ProviderName } : {}),
+    ...(typeof m === "string" ? { model: m } : {}),
+  });
+}
+
 async function cmdRun(args: string[]): Promise<void> {
   let values;
   try {
@@ -224,6 +237,8 @@ async function cmdRun(args: string[]): Promise<void> {
         profile: { type: "string" },
         provider: { type: "string" },
         model: { type: "string" },
+        "score-provider": { type: "string" },
+        "score-model": { type: "string" },
         channel: { type: "string" },
         "min-score": { type: "string" },
         "max-contacts": { type: "string" },
@@ -277,6 +292,7 @@ async function cmdRun(args: string[]): Promise<void> {
   const buyerTitles = resolveBuyerTitles(flagBuyerTitles, profile);
 
   // Resolve an explicit provider only when overridden; else core auto-detects from env.
+  const scoreProvider = await scoreProviderFrom(values);
   const provider =
     values.provider || values.model
       ? await getProvider({
@@ -296,6 +312,7 @@ async function cmdRun(args: string[]): Promise<void> {
     ...(maxContacts !== undefined ? { maxContactsPerLead: maxContacts } : {}),
     ...(buyerTitles ? { buyerTitles } : {}),
     ...(budgetCredits !== undefined ? { budgetCredits } : {}),
+    ...(scoreProvider ? { scoreProvider } : {}),
     // Only connectors that declare cacheTtlMs are cached; files are 0600 under the local home.
     cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
   });
@@ -400,6 +417,8 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
         profile: { type: "string" },
         provider: { type: "string" },
         model: { type: "string" },
+        "score-provider": { type: "string" },
+        "score-model": { type: "string" },
         pack: { type: "string" },
         "min-score": { type: "string" },
         "max-properties": { type: "string" },
@@ -450,12 +469,14 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
         })
       : undefined;
 
+  const propScoreProvider = await scoreProviderFrom(values);
   const { run, cost } = await runPropertyCampaign({
     id: makeRunId(),
     icp,
     queries,
     ...(typeof values.pack === "string" ? { pack: values.pack } : {}),
     ...(provider ? { provider } : {}),
+    ...(propScoreProvider ? { scoreProvider: propScoreProvider } : {}),
     ...(sender ? { sender } : {}),
     ...(minScore !== undefined ? { minScore } : {}),
     ...(maxProperties !== undefined ? { maxProperties } : {}),
