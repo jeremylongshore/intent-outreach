@@ -11,6 +11,13 @@ import type { z } from "zod";
 import { registerSecretForRedaction } from "../http.js";
 import { getSecret, hasSecret } from "../secrets.js";
 
+/**
+ * Several keys per connector with monthly quotas (key-quotas.ts): use this
+ * instead of useSecret when a vendor bills per call. Charges `credits` to the
+ * chosen key before the call; throws when every key is out of quota.
+ */
+export { useKey, KeyQuotaExhaustedError } from "../key-quotas.js";
+
 /** Read a secret and register it so it can never appear in an HttpError message. */
 export function useSecret(name: string): string {
   const v = getSecret(name);
@@ -19,6 +26,16 @@ export function useSecret(name: string): string {
 }
 
 const KEEP_RAW_ENV = "INTENT_OUTREACH_KEEP_RAW";
+const PUBLIC_RECORDS_ENV = "INTENT_OUTREACH_PUBLIC_RECORDS";
+
+/**
+ * Keyless public-records connectors (county and state parcel rolls, FEMA flood
+ * zones) are ON by default and turned off with INTENT_OUTREACH_PUBLIC_RECORDS=0.
+ * They only ever answer property queries. Off values: 0, false, off, no.
+ */
+export function publicRecordsEnabled(): boolean {
+  return !(hasSecret(PUBLIC_RECORDS_ENV) && /^(0|false|off|no)$/i.test(getSecret(PUBLIC_RECORDS_ENV).trim()));
+}
 
 /** True only when the user explicitly opted in to retaining full vendor payloads. */
 export function keepRawOptIn(): boolean {

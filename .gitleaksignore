@@ -1,0 +1,5 @@
+# Reviewed false positives only, one exact fingerprint per line (commit:file:rule:line).
+# e26136aa (PR #94): the Florida Sunbiz public SFTP password the state publishes on
+# dos.fl.gov/sunbiz/other-services/data-downloads/. It was removed from the doc in 06ab0397;
+# this entry only lets the PR-range scan pass over the earlier commit.
+e26136aafa3cd3b8b2be67a288bee1fc3adf3ad8:000-docs/035-DR-DATA-residential-free-data-sources.md:curl-auth-user:322

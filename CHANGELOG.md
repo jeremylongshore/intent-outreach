@@ -8,6 +8,125 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Inbound first replies with speed-to-lead** (#83 phase 7). `runInbound()` (`pipeline_core/inbound.ts`) and
+  `intent-outreach inbound --offer <text> < inquiry.json` draft the first reply to a website inquiry: suppression on
+  every email, phone and address the person gave, then consent for the reply channel (SMS needs written consent;
+  a revocation always blocks), then one draft call with the inquiry fenced as untrusted text (`inbound-reply.v1.md`),
+  `guardDraft` (no link, email or phone the inquiry did not give) plus the pack's draft rules, then the code-applied
+  footer. The run records `inbound.speedToLeadMs` (submission to drafted reply). It never sends: the reply waits for
+  approval like any draft. A run error may now carry just a `contactKey`, and packs may name an `inbound` prompt.
+
+- **Several keys per connector, with monthly quotas** (#83 phase 4b). A key may come in labelled variants
+  (`APOLLO_API_KEY`, `APOLLO_API_KEY__TEAM`, `APOLLO_API_KEY__PERSONAL`). `useKey(name, credits)` picks the first variant
+  with room under its optional monthly quota (`~/.intent-outreach/quotas.json`), charges it before the call in a locked
+  0600 month-scoped ledger (`key-usage.json`), and throws `KeyQuotaExhaustedError` when all are spent. Crossing 80% of a
+  quota adds a run warning. `intent-outreach keys <ENV_NAME>` shows each variant's usage.
+
+- **Vendor MCP servers as fixed connectors** (#83 phase 4c). `createMcpConnector(spec)` wraps a data vendor's MCP
+  server (DealMachine, BatchData, Regrid, ATTOM...) as an ordinary connector: the definitions of the tool it may call
+  are pinned by sha256 (`mcpToolsDigest`) and a changed definition refuses to run (tool poisoning), only the bound tool
+  is ever called with arguments built in code from the typed query, every response is schema-checked, and the server,
+  version, tool and response hash are recorded on every fact (`Fact.via`). The model never sees the vendor's toolbox.
+
+- **A separate model per seam** (#83 phase 8). `runCampaign` and `runPropertyCampaign` take an optional
+  `scoreProvider` (a cheap model that scores; `provider` drafts), and the CLI `run` and `property-run` take
+  `--score-provider` / `--score-model`. Both models resolve through the eval gate like any provider; costs are
+  metered per model; the run records `seamModels` (score and draft provider + model) when they differ.
+
+- **Event monitors** (#83 phase 8). `intent-outreach monitor add <id> --zips ... | --parcels fips:apn`, `monitor list`
+  and `monitor check <id> [--draft --icp ...]`. A check re-runs the query through the normal research path,
+  fingerprints each parcel (owner, value, listing status, distress signals) and diffs it against the last snapshot
+  (`$INTENT_OUTREACH_HOME/monitors/<id>.json`, 0600): `new-parcel`, `owner-change`, `value-change` (threshold,
+  default 10%), `listing-change`, `distress-change`. The first check records a baseline; a check whose research
+  failed keeps the old snapshot so an outage never reads as every parcel being new. `--draft` runs a property
+  campaign over only the changed parcels; drafts wait in the approval queue.
+
+- **MCP tools `list_runs`, `suppress` and `underwrite`** (#83 phase 8). `list_runs` summarizes the newest
+  runs in the local store (status, pack, drafts, blocks, credits, cost; corrupt lines are counted). `suppress`
+  adds or lists opt-outs of any kind from inside Claude Code; removing an opt-out is deliberately CLI-only
+  (`intent-outreach suppress remove`), so an agent steered by third-party text can never undo one. `underwrite` runs one
+  `@intent-outreach/deal-math` calculation in code and returns `{value, inputs, assumptionsUsed, version}`,
+  so an agent quotes computed figures instead of doing arithmetic. The engine now declares the deal-math
+  workspace package as a dependency.
+
+- **Free public-records connectors and `property-run`** (#83 phase 6b). `fl-dor-parcels` (Florida statewide
+  DOR roll: owner, mailing address, situs, just value, use code, year built, last sale, centroid; masked
+  confidential owners dropped; one party per owner across parcels) and `fema-nfhl` (flood zone + SFHA by
+  parcel point, most hazardous zone wins) are keyless and on by default for property queries only
+  (`INTENT_OUTREACH_PUBLIC_RECORDS=0` turns them off). Connectors gain `enrichProperties`, run by
+  `runPropertyCampaign` after research (adds facts, never overwrites). Properties gain `location`; parties
+  gain `licenseTerms`, and `residential-re` drafts only to owners whose source explicitly allows outreach
+  (undeclared or restricted blocks) and never to government owners. CLI
+  `intent-outreach property-run --icp ... (--zips ... | --parcels fips:apn,...)`.
+
+- **Human approval queue** (#83 phase 8). Every drafted message waits for a person: `approvals pending`
+  shows each draft in full with a digest, and `approvals approve <runId> <contactKey> --digest <hex>` /
+  `approvals reject` record the decision in an append-only `approvals.jsonl` (0600) bound to the exact text,
+  so an edit voids the approval and a later decision supersedes an earlier one. The send-time check now
+  requires an approval on every channel (`approval:missing` / `approval:rejected`), and `check-send` looks
+  it up by `runId` + `contactKey`. MCP tools `list_pending`, `approve` (digest required) and `reject`; the
+  skill calls them only on the user's explicit word. A draft without its sender footer cannot be approved.
+
+- **Property campaigns and the `residential-re` pack** (#83 phase 6a). `runPropertyCampaign({ queries })`
+  researches parcels by typed query (with the pack's routing, the credit budget and the cache), gates each
+  owner of record (the engine's suppression check on the mailing address and contact points, then the
+  pack's `propertyGate`), scores with signals computed in code (absentee and out-of-state owner, entity
+  owner, years since the recorded transfer, flood zone) over FCRA-stripped attributes, runs the pack's
+  deal-math `underwriting` in code, drafts through the guard and the pack's draft rules, appends the
+  channel footer in code, and records one validated v6 run. `residential-re` gates on the Gulf Coast
+  AL/FL service area, sends probate/divorce/pre-foreclosure signals to manual review, blocks known active
+  listings and running exclusive agreements, rejects fair-housing language, and requires the license
+  disclosure on every channel. New prompts `residential-score.v1.md` and `residential-draft.v1.md`.
+
+- **Provider routing, credit budgets, a response cache and rate limits** (#83 phase 4a). Connectors declare
+  `capabilities`, `creditsPerCall`, `cacheTtlMs` and `rateLimit`. A pack's `dataSources` fixes the
+  routing per capability: `first-hit` (a waterfall: stop at the first non-empty answer, so later paid
+  sources are never called), `ordered-fallback` or `all`. `run --budget-credits <n>` (or
+  `runCampaign({ budgetCredits })`) charges each paid call before it is made; once a call would cross the
+  ceiling no further paid call is made, and the run records `credits` (limit, spent, exhausted, per
+  connector). Research output of a connector with `cacheTtlMs` is cached (on disk, 0600, under the local
+  home), so a repeat lookup makes no request and costs nothing. `httpJson({ rateLimit })` enforces
+  per-minute (waits) and per-day (stops) vendor limits before every attempt.
+
+- **Fair-housing and real estate risk gates** (#83 phase 3b). Pack v2 `draftRules` run inside the draft
+  guard on every drafting path (pipeline seam and MCP `save_run`); a failing rule sends the draft to
+  `rejectedDrafts`, and a rule that throws rejects it. `fairHousingDraftRule` ports comehomealabama's
+  HARD/WARN lint and adds age and familial-status terms, so a draft never references the owner's
+  retirement, children or marital status. `compliance/risk.ts` adds the manual-review verdict (probate,
+  divorce, pre-foreclosure → `manual-review:<category>`), the active-listing check (an exclusive
+  agreement still in effect, or an unknown status, blocks) and `stripFcraSensitive` (credit and
+  personal-financial attributes never reach a prompt).
+
+- **Send-time compliance** (#83 phase 3a). `checkSendable` / `assertSendable` evaluate one message to one
+  contact point on one channel at the moment of sending and return every blocking reason: suppression,
+  DNC (phone channels need `clean`), consent from a ledger (SMS needs written consent; a revocation voids
+  every channel), a conservative recipient-local phone window (8am–8pm, Monday–Saturday, Texas from 9am;
+  every US zone when the location is unknown), the exact channel footer at the end of the body, and
+  outreach-restricted data. `intent-outreach check-send` exposes it to dispatchers in other languages
+  (exit 0 sendable; any non-zero means do not send). New `sms`, `mail` and `call_script`
+  message channels (folded into the unreleased schema v6) each get a code-applied footer; a sender's
+  `licenses` add the brokerage + license line to every channel. Pack v2 gains `channels`, tighten-only
+  per-channel policy overrides.
+
+- **`@intent-outreach/deal-math`** (`packages/deal-math`, #83 phase 5): NOI, cap rate, DSCR, cash-on-cash,
+  level payments, seller financing with balloon, 1031 deadlines (informational) and the condo trade-up
+  model, in integer cents and basis points with half-even rounding and explicit assumptions. Every result
+  carries its inputs, assumptions and version. `tradeUp` matches coastal's `trade_up.py` on all 73 cases of a
+  golden fixture generated from the Python. The repo is now an npm workspace (`packages/*`); the engine
+  stays at the root, which is the plugin root.
+
+||||||| 8be0c4b1
+- **Run schema v6: the property/owner model and a typed research query** (#83 phase 2). Runs gain
+  `properties` (keyed `<countyFips>:<apn>`), `parties`, `ownerships`, `entityLinks` and `contactPoints`
+  (all defaulted `[]`) and an optional `queries`. Every vendor value on a property is a `Fact` with its
+  source, fetch time, response hash and license terms; a phone `ContactPoint` must be E.164 and its DNC
+  status defaults to `unknown` (fail closed). `runResearchQuery(query)` runs a `domain`, `area` or
+  `parcel` query across the connectors that declare that kind (`Connector.queryKinds`, default
+  `["domain"]`), in registration order; `runResearch(domain)` is now a wrapper over it. Additive: every
+  v1–v5 line still parses. Older binaries cannot read v6 runs.
+- **Phone and mailing-address suppression** (`suppress add <value> [--kind phone|address]`), the
+  service-area geofence as pack data, and the TCPA quiet-hours window corrected to 8am–9pm (#85).
+
 - **The drafter declines leads that clearly sit outside the ICP.** Draft output gains `decline` and
   `declineReason`. A decline is never sent: it is recorded in `run.rejectedDrafts` as
   `"declined: <reason>"` and metered. Prompt `outreach.v3.md` adds the rule (thin data is not a reason
@@ -26,6 +145,18 @@ All notable changes to Intent Outreach are documented here. Format follows
   `evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json`). Auto-detect order is
   now anthropic, openai, minimax, xai, and Anthropic stays the default. Costs are metered at
   MiniMax's published $0.30/$1.20 per MTok (#67).
+
+### Fixed
+
+- **Fair-housing lint caught "perfect for families" but not "a great area for young families".** The outreach HARD list
+  now covers familial-status steering phrases: young families, young family, for families, family neighborhood, young
+  couples, newlyweds and young professionals.
+- **The quantity guard read a street address's house number as a statistic** (#103). "412 Lagoon Ave since 2004" was
+  rejected as an invented time period; a bare integer followed by capitalized words ending in a street suffix is now a
+  label. "412 homes sold since 2019" is still caught.
+- **The residential eval scorer flagged "Alabama" when the record said "AL"** (#105). State codes on record now ground
+  the spelled-out state name; a state the record does not name still fails. Two keyed MiniMax-M3 residential runs are
+  kept as evidence (not promoted: 93% of fixtures, 98% of runs).
 
 ## [0.3.0] - 2026-10-04
 

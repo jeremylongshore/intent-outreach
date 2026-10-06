@@ -300,3 +300,15 @@ describe("groundingHeuristic quantity rule", () => {
     expect(res).toEqual({ pass: true, findings: [] });
   });
 });
+
+describe("checkQuantities: a street address's house number is not a quantity", () => {
+  const facts = ["Owner of record since 2004.", "Situs: 412 LAGOON AVE, PENSACOLA FL 32507"];
+  it("passes an address followed by a stated time qualifier", () => {
+    expect(checkQuantities(["You have owned 412 Lagoon Ave since 2004."], facts)).toEqual([]);
+    expect(checkQuantities(["Your home at 18 N Main St. since 2004"], facts)).toEqual([]);
+  });
+  it("still flags a real quantity with an unstated qualifier", () => {
+    expect(checkQuantities(["412 homes sold since 2019."], facts)).toHaveLength(1);
+    expect(checkQuantities(["We closed 40 Lagoon deals a year."], facts)).toHaveLength(1);
+  });
+});

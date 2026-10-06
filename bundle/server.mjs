@@ -1095,7 +1095,7 @@ function formatError(error62, mapper = (issue2) => issue2.message) {
   return fieldErrors;
 }
 function treeifyError(error62, mapper = (issue2) => issue2.message) {
-  const result = { errors: [] };
+  const result2 = { errors: [] };
   const processError = (error63, path = []) => {
     var _a3;
     for (const issue2 of error63.issues) {
@@ -1108,10 +1108,10 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
       } else {
         const fullpath = [...path, ...issue2.path];
         if (fullpath.length === 0) {
-          result.errors.push(mapper(issue2));
+          result2.errors.push(mapper(issue2));
           continue;
         }
-        let curr = result;
+        let curr = result2;
         let i = 0;
         while (i < fullpath.length) {
           const el = fullpath[i];
@@ -1141,7 +1141,7 @@ function treeifyError(error62, mapper = (issue2) => issue2.message) {
     }
   };
   processError(error62);
-  return result;
+  return result2;
 }
 function toDotPath(_path) {
   const segs = [];
@@ -1240,17 +1240,17 @@ function failure(Err, issues, ctx) {
 function validateFallback(schema, value, _ctx) {
   const ctx = _ctx ? { ..._ctx, async: false, abortEarly: true } : { async: false, abortEarly: true };
   const fallbackRun = schema._zod.bag.fallbackRun;
-  let result;
+  let result2;
   if (fallbackRun) {
     ctx[COMPILE_FALLBACK] = true;
-    result = fallbackRun({ value, issues: [] }, ctx);
+    result2 = fallbackRun({ value, issues: [] }, ctx);
   } else {
-    result = schema._zod.run({ value, issues: [] }, ctx);
+    result2 = schema._zod.run({ value, issues: [] }, ctx);
   }
-  if (result instanceof Promise) {
+  if (result2 instanceof Promise) {
     throw new $ZodAsyncError();
   }
-  return result.issues.length === 0;
+  return result2.issues.length === 0;
 }
 var _parse, parse, _parseAsync, parseAsync, _safeParse, safeParse, _safeParseAsync, safeParseAsync, COMPILE_INVALID, COMPILE_FALLBACK, validate, validateAsync, _encode, encode, _decode, decode, _encodeAsync, encodeAsync, _decodeAsync, decodeAsync, _safeEncode, safeEncode, _safeDecode, safeDecode, _safeEncodeAsync, safeEncodeAsync, _safeDecodeAsync, safeDecodeAsync;
 var init_parse = __esm({
@@ -1261,16 +1261,16 @@ var init_parse = __esm({
     _parse = (_Err) => {
       const fn = (schema, value, _ctx, _params) => {
         const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
-        const result = schema._zod.run({ value, issues: [] }, ctx);
-        if (result instanceof Promise) {
+        const result2 = schema._zod.run({ value, issues: [] }, ctx);
+        if (result2 instanceof Promise) {
           throw new $ZodAsyncError();
         }
-        if (result.issues.length) {
-          const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+        if (result2.issues.length) {
+          const e = new (_params?.Err ?? _Err)(result2.issues.map((iss) => finalizeIssue(iss, ctx, config())));
           captureStackTrace(e, _params?.callee ?? fn);
           throw e;
         }
-        return result.value;
+        return result2.value;
       };
       return fn;
     };
@@ -1278,34 +1278,34 @@ var init_parse = __esm({
     _parseAsync = (_Err) => {
       const fn = async (schema, value, _ctx, params) => {
         const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
-        let result = schema._zod.run({ value, issues: [] }, ctx);
-        if (result instanceof Promise)
-          result = await result;
-        if (result.issues.length) {
-          const e = new (params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+        let result2 = schema._zod.run({ value, issues: [] }, ctx);
+        if (result2 instanceof Promise)
+          result2 = await result2;
+        if (result2.issues.length) {
+          const e = new (params?.Err ?? _Err)(result2.issues.map((iss) => finalizeIssue(iss, ctx, config())));
           captureStackTrace(e, params?.callee ?? fn);
           throw e;
         }
-        return result.value;
+        return result2.value;
       };
       return fn;
     };
     parseAsync = /* @__PURE__ */ _parseAsync($ZodRealError);
     _safeParse = (_Err) => (schema, value, _ctx) => {
       const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
-      const result = schema._zod.run({ value, issues: [] }, ctx);
-      if (result instanceof Promise) {
+      const result2 = schema._zod.run({ value, issues: [] }, ctx);
+      if (result2 instanceof Promise) {
         throw new $ZodAsyncError();
       }
-      return result.issues.length ? failure(_Err, result.issues, ctx) : { success: true, data: result.value };
+      return result2.issues.length ? failure(_Err, result2.issues, ctx) : { success: true, data: result2.value };
     };
     safeParse = /* @__PURE__ */ _safeParse($ZodRealError);
     _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
       const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
-      let result = schema._zod.run({ value, issues: [] }, ctx);
-      if (result instanceof Promise)
-        result = await result;
-      return result.issues.length ? failure(_Err, result.issues, ctx) : { success: true, data: result.value };
+      let result2 = schema._zod.run({ value, issues: [] }, ctx);
+      if (result2 instanceof Promise)
+        result2 = await result2;
+      return result2.issues.length ? failure(_Err, result2.issues, ctx) : { success: true, data: result2.value };
     };
     safeParseAsync = /* @__PURE__ */ _safeParseAsync($ZodRealError);
     COMPILE_INVALID = /* @__PURE__ */ Symbol.for("zod.compile.invalid");
@@ -1322,10 +1322,10 @@ var init_parse = __esm({
     });
     validateAsync = async (schema, value, _ctx) => {
       const ctx = _ctx ? { ..._ctx, async: true, abortEarly: true } : { async: true, abortEarly: true };
-      let result = schema._zod.run({ value, issues: [] }, ctx);
-      if (result instanceof Promise)
-        result = await result;
-      return result.issues.length === 0;
+      let result2 = schema._zod.run({ value, issues: [] }, ctx);
+      if (result2 instanceof Promise)
+        result2 = await result2;
+      return result2.issues.length === 0;
     };
     _encode = (_Err) => {
       const parse3 = _parse(_Err);
@@ -1561,9 +1561,9 @@ var init_regexes = __esm({
 });
 
 // node_modules/zod/v4/core/checks.js
-function handleCheckPropertyResult(result, payload, property) {
-  if (result.issues.length) {
-    payload.issues.push(...prefixIssues(property, result.issues));
+function handleCheckPropertyResult(result2, payload, property) {
+  if (result2.issues.length) {
+    payload.issues.push(...prefixIssues(property, result2.issues));
   }
 }
 var $ZodCheck, _whenHasSize, _whenHasLength, numericOriginMap, $ZodCheckLessThan, $ZodCheckGreaterThan, $ZodCheckMultipleOf, $ZodCheckNumberFormat, $ZodCheckBigIntFormat, $ZodCheckMaxSize, $ZodCheckMinSize, $ZodCheckSizeEquals, $ZodCheckMaxLength, $ZodCheckMinLength, $ZodCheckLengthEquals, $ZodCheckStringFormat, $ZodCheckRegex, $ZodCheckLowerCase, $ZodCheckUpperCase, $ZodCheckIncludes, $ZodCheckStartsWith, $ZodCheckEndsWith, $ZodCheckProperty, $ZodCheckProperties, $ZodCheckMimeType, $ZodCheckOverwrite;
@@ -1981,14 +1981,14 @@ var init_checks = __esm({
     $ZodCheckProperty = /* @__PURE__ */ $constructor("$ZodCheckProperty", (inst, def) => {
       $ZodCheck.init(inst, def);
       inst._zod.check = (payload) => {
-        const result = def.schema._zod.run({
+        const result2 = def.schema._zod.run({
           value: payload.value[def.property],
           issues: []
         }, {});
-        if (result instanceof Promise) {
-          return result.then((result2) => handleCheckPropertyResult(result2, payload, def.property));
+        if (result2 instanceof Promise) {
+          return result2.then((result3) => handleCheckPropertyResult(result3, payload, def.property));
         }
-        handleCheckPropertyResult(result, payload, def.property);
+        handleCheckPropertyResult(result2, payload, def.property);
         return;
       };
     });
@@ -2007,12 +2007,12 @@ var init_checks = __esm({
         const input2 = payload.value;
         let proms;
         for (const [key, schema] of entries) {
-          const result = schema._zod.run({ value: input2[key], issues: [] }, {});
-          if (result instanceof Promise) {
+          const result2 = schema._zod.run({ value: input2[key], issues: [] }, {});
+          if (result2 instanceof Promise) {
             proms ?? (proms = []);
-            proms.push(result.then((result2) => handleCheckPropertyResult(result2, payload, key)));
+            proms.push(result2.then((result3) => handleCheckPropertyResult(result3, payload, key)));
           } else {
-            handleCheckPropertyResult(result, payload, key);
+            handleCheckPropertyResult(result2, payload, key);
           }
         }
         if (proms)
@@ -2259,26 +2259,26 @@ function isValidJWT2(token, algorithm = null) {
     return false;
   }
 }
-function handleArrayResult(result, final, index) {
-  if (result.issues.length) {
-    final.issues.push(...prefixIssues(index, result.issues));
+function handleArrayResult(result2, final, index) {
+  if (result2.issues.length) {
+    final.issues.push(...prefixIssues(index, result2.issues));
   }
-  final.value[index] = result.value;
+  final.value[index] = result2.value;
 }
-function handlePropertyResult(result, final, key, input2, optin, optout) {
+function handlePropertyResult(result2, final, key, input2, optin, optout) {
   const isPresent = key in input2;
   const isOptionalOut = optout === "optional";
   if (!isPresent && isOptionalOut && optin === "optional") {
     return;
   }
-  if (result.issues.length) {
+  if (result2.issues.length) {
     if (optin !== void 0 && isOptionalOut && !isPresent) {
       return;
     }
-    final.issues.push(...prefixIssues(key, result.issues));
+    final.issues.push(...prefixIssues(key, result2.issues));
   }
   if (!isPresent && optin === void 0) {
-    if (!result.issues.length) {
+    if (!result2.issues.length) {
       final.issues.push({
         code: "invalid_type",
         expected: "nonoptional",
@@ -2288,12 +2288,12 @@ function handlePropertyResult(result, final, key, input2, optin, optout) {
     }
     return;
   }
-  if (result.value === void 0) {
+  if (result2.value === void 0) {
     if (isPresent || optin === "defaulted" && !isOptionalOut) {
       final.value[key] = void 0;
     }
   } else {
-    final.value[key] = result.value;
+    final.value[key] = result2.value;
   }
 }
 function normalizeDef(def) {
@@ -2366,9 +2366,9 @@ function handleCatchall(proms, input2, payload, ctx, def, inst, abortEarly) {
   });
 }
 function handleUnionResults(results, final, inst, ctx) {
-  for (const result of results) {
-    if (result.issues.length === 0) {
-      final.value = result.value;
+  for (const result2 of results) {
+    if (result2.issues.length === 0) {
+      final.value = result2.value;
       return final;
     }
   }
@@ -2381,7 +2381,7 @@ function handleUnionResults(results, final, inst, ctx) {
     code: "invalid_union",
     input: final.value,
     inst,
-    errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+    errors: results.map((result2) => result2.issues.map((iss) => finalizeIssue(iss, ctx, config())))
   });
   return final;
 }
@@ -2400,7 +2400,7 @@ function handleExclusiveUnionResults(results, final, inst, ctx) {
       code: "invalid_union",
       input: final.value,
       inst,
-      errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+      errors: results.map((result2) => result2.issues.map((iss) => finalizeIssue(iss, ctx, config())))
     });
   } else {
     final.issues.push({
@@ -2492,7 +2492,7 @@ function mergeValues2(a, b) {
   }
   return { valid: false, mergeErrorPath: [] };
 }
-function handleIntersectionResults(result, left, right) {
+function handleIntersectionResults(result2, left, right) {
   const unrecKeys = /* @__PURE__ */ new Map();
   let unrecIssue;
   const keyIssues = /* @__PURE__ */ new Map();
@@ -2518,30 +2518,30 @@ function handleIntersectionResults(result, left, right) {
   };
   for (const iss of left.issues) {
     if (!collect(iss, "l"))
-      result.issues.push(iss);
+      result2.issues.push(iss);
   }
   for (const iss of right.issues) {
     if (!collect(iss, "r"))
-      result.issues.push(iss);
+      result2.issues.push(iss);
   }
   const bothKeys = [...unrecKeys].filter(([, f]) => f.l && f.r).map(([k]) => k);
   if (bothKeys.length) {
     const aggregated = unrecIssue ? bothKeys.filter((k) => unrecIssue.keys.includes(k)) : [];
     if (aggregated.length)
-      result.issues.push({ ...unrecIssue, keys: aggregated });
+      result2.issues.push({ ...unrecIssue, keys: aggregated });
     for (const k of bothKeys) {
       if (!aggregated.includes(k) && keyIssues.has(k))
-        result.issues.push(keyIssues.get(k));
+        result2.issues.push(keyIssues.get(k));
     }
   }
   const merged = mergeValues2(left.value, right.value);
   if (!merged.valid) {
-    if (aborted(result))
-      return result;
+    if (aborted(result2))
+      return result2;
     throw new Error(`Unmergable intersection. Error path: ${JSON.stringify(merged.mergeErrorPath)}`);
   }
-  result.value = merged.data;
-  return result;
+  result2.value = merged.data;
+  return result2;
 }
 function getTupleOptStart(items, key) {
   for (let i = items.length - 1; i >= 0; i--) {
@@ -2551,11 +2551,11 @@ function getTupleOptStart(items, key) {
   }
   return 0;
 }
-function handleTupleResult(result, final, index) {
-  if (result.issues.length) {
-    final.issues.push(...prefixIssues(index, result.issues));
+function handleTupleResult(result2, final, index) {
+  if (result2.issues.length) {
+    final.issues.push(...prefixIssues(index, result2.issues));
   }
-  final.value[index] = result.value;
+  final.value[index] = result2.value;
 }
 function handleTupleResults(itemResults, final, items, input2, optoutStart) {
   for (let i = 0; i < items.length; i++) {
@@ -2613,14 +2613,14 @@ function handleMapResult(keyResult, valueResult, final, key, input2, inst, ctx) 
   }
   final.value.set(keyResult.value, valueResult.value);
 }
-function handleSetResult(result, final) {
-  if (result.issues.length) {
-    final.issues.push(...result.issues);
+function handleSetResult(result2, final) {
+  if (result2.issues.length) {
+    final.issues.push(...result2.issues);
   }
-  final.value.add(result.value);
+  final.value.add(result2.value);
 }
-function handleOptionalResult(payload, result) {
-  payload.value = result.issues.length ? void 0 : result.value;
+function handleOptionalResult(payload, result2) {
+  payload.value = result2.issues.length ? void 0 : result2.value;
   return payload;
 }
 function handleDefaultResult(payload, def) {
@@ -2640,18 +2640,18 @@ function handleNonOptionalResult(payload, inst) {
   }
   return payload;
 }
-function handleCatchResult(payload, result, def, ctx) {
-  if (!result.issues.length) {
-    payload.value = result.value;
-    if (result.memo)
+function handleCatchResult(payload, result2, def, ctx) {
+  if (!result2.issues.length) {
+    payload.value = result2.value;
+    if (result2.memo)
       payload.memo = true;
     return payload;
   }
   payload.value = def.catchValue({
-    ...result,
+    ...result2,
     value: payload.value,
     error: {
-      issues: result.issues.map((iss) => finalizeIssue(iss, ctx, config()))
+      issues: result2.issues.map((iss) => finalizeIssue(iss, ctx, config()))
     },
     input: payload.value
   });
@@ -2664,24 +2664,24 @@ function handlePipeResult(left, next, ctx) {
   }
   return next._zod.run({ value: left.value, issues: left.issues }, ctx);
 }
-function handleCodecAResult(result, def, ctx) {
-  if (result.issues.length) {
-    result.aborted = true;
-    return result;
+function handleCodecAResult(result2, def, ctx) {
+  if (result2.issues.length) {
+    result2.aborted = true;
+    return result2;
   }
   const direction = ctx.direction || "forward";
   if (direction === "forward") {
-    const transformed = def.transform(result.value, result);
+    const transformed = def.transform(result2.value, result2);
     if (transformed instanceof Promise) {
-      return transformed.then((value) => handleCodecTxResult(result, value, def.out, ctx));
+      return transformed.then((value) => handleCodecTxResult(result2, value, def.out, ctx));
     }
-    return handleCodecTxResult(result, transformed, def.out, ctx);
+    return handleCodecTxResult(result2, transformed, def.out, ctx);
   } else {
-    const transformed = def.reverseTransform(result.value, result);
+    const transformed = def.reverseTransform(result2.value, result2);
     if (transformed instanceof Promise) {
-      return transformed.then((value) => handleCodecTxResult(result, value, def.in, ctx));
+      return transformed.then((value) => handleCodecTxResult(result2, value, def.in, ctx));
     }
-    return handleCodecTxResult(result, transformed, def.in, ctx);
+    return handleCodecTxResult(result2, transformed, def.in, ctx);
   }
 }
 function handleCodecTxResult(left, value, nextSchema, ctx) {
@@ -2742,8 +2742,8 @@ function partPattern(schema) {
   }
   return leafPattern(schema);
 }
-function handleRefineResult(result, payload, input2, inst) {
-  if (!result) {
+function handleRefineResult(result2, payload, input2, inst) {
+  if (!result2) {
     const _iss = {
       code: "custom",
       input: input2,
@@ -2861,13 +2861,13 @@ var init_schemas = __esm({
             }
             return handleCanaryResult(canary, payload, ctx);
           }
-          const result = inst._zod.parse(payload, ctx);
-          if (result instanceof Promise) {
+          const result2 = inst._zod.parse(payload, ctx);
+          if (result2 instanceof Promise) {
             if (ctx.async === false)
               throw new $ZodAsyncError();
-            return result.then((result2) => runChecks(result2, checks, ctx));
+            return result2.then((result3) => runChecks(result3, checks, ctx));
           }
-          return runChecks(result, checks, ctx);
+          return runChecks(result2, checks, ctx);
         };
       }
     }, {
@@ -3386,15 +3386,15 @@ var init_schemas = __esm({
         const abortEarly = ctx?.abortEarly;
         for (let i = 0; i < input2.length; i++) {
           const item = input2[i];
-          const result = def.element._zod.run({
+          const result2 = def.element._zod.run({
             value: item,
             issues: []
           }, ctx);
-          if (result instanceof Promise) {
-            proms.push(result.then((result2) => handleArrayResult(result2, payload, i)));
+          if (result2 instanceof Promise) {
+            proms.push(result2.then((result3) => handleArrayResult(result3, payload, i)));
           } else {
-            handleArrayResult(result, payload, i);
-            if (abortEarly && result.issues.length !== 0 && aborted(result))
+            handleArrayResult(result2, payload, i);
+            if (abortEarly && result2.issues.length !== 0 && aborted(result2))
               break;
           }
         }
@@ -3635,17 +3635,17 @@ var init_schemas = __esm({
         let async = false;
         const results = [];
         for (const option of def.options) {
-          const result = option._zod.run({
+          const result2 = option._zod.run({
             value: payload.value,
             issues: []
           }, ctx);
-          if (result instanceof Promise) {
-            results.push(result);
+          if (result2 instanceof Promise) {
+            results.push(result2);
             async = true;
           } else {
-            if (result.issues.length === 0)
-              return result;
-            results.push(result);
+            if (result2.issues.length === 0)
+              return result2;
+            results.push(result2);
           }
         }
         if (!async)
@@ -3666,15 +3666,15 @@ var init_schemas = __esm({
         let async = false;
         const results = [];
         for (const option of def.options) {
-          const result = option._zod.run({
+          const result2 = option._zod.run({
             value: payload.value,
             issues: []
           }, ctx);
-          if (result instanceof Promise) {
-            results.push(result);
+          if (result2 instanceof Promise) {
+            results.push(result2);
             async = true;
           } else {
-            results.push(result);
+            results.push(result2);
           }
         }
         if (!async)
@@ -3833,11 +3833,11 @@ var init_schemas = __esm({
               seen = payload.issues.length;
             }
             i++;
-            const result = def.rest._zod.run({ value: el, issues: [] }, ctx);
-            if (result instanceof Promise) {
-              proms.push(result.then((r) => handleTupleResult(r, payload, i)));
+            const result2 = def.rest._zod.run({ value: el, issues: [] }, ctx);
+            if (result2 instanceof Promise) {
+              proms.push(result2.then((r) => handleTupleResult(r, payload, i)));
             } else {
-              handleTupleResult(result, payload, i);
+              handleTupleResult(result2, payload, i);
             }
           }
         }
@@ -3890,19 +3890,19 @@ var init_schemas = __esm({
               const outKey = keyResult.value;
               if (outKey === "__proto__")
                 continue;
-              const result = def.valueType._zod.run({ value: input2[key], issues: [] }, ctx);
-              if (result instanceof Promise) {
-                proms.push(result.then((result2) => {
-                  if (result2.issues.length) {
-                    payload.issues.push(...prefixIssues(key, result2.issues));
+              const result2 = def.valueType._zod.run({ value: input2[key], issues: [] }, ctx);
+              if (result2 instanceof Promise) {
+                proms.push(result2.then((result3) => {
+                  if (result3.issues.length) {
+                    payload.issues.push(...prefixIssues(key, result3.issues));
                   }
-                  payload.value[outKey] = result2.value;
+                  payload.value[outKey] = result3.value;
                 }));
               } else {
-                if (result.issues.length) {
-                  payload.issues.push(...prefixIssues(key, result.issues));
+                if (result2.issues.length) {
+                  payload.issues.push(...prefixIssues(key, result2.issues));
                 }
-                payload.value[outKey] = result.value;
+                payload.value[outKey] = result2.value;
               }
             }
           }
@@ -3971,19 +3971,19 @@ var init_schemas = __esm({
             const outKey = keyResult.value;
             if (outKey === "__proto__")
               continue;
-            const result = def.valueType._zod.run({ value: input2[key], issues: [] }, ctx);
-            if (result instanceof Promise) {
-              proms.push(result.then((result2) => {
-                if (result2.issues.length) {
-                  payload.issues.push(...prefixIssues(key, result2.issues));
+            const result2 = def.valueType._zod.run({ value: input2[key], issues: [] }, ctx);
+            if (result2 instanceof Promise) {
+              proms.push(result2.then((result3) => {
+                if (result3.issues.length) {
+                  payload.issues.push(...prefixIssues(key, result3.issues));
                 }
-                payload.value[outKey] = result2.value;
+                payload.value[outKey] = result3.value;
               }));
             } else {
-              if (result.issues.length) {
-                payload.issues.push(...prefixIssues(key, result.issues));
+              if (result2.issues.length) {
+                payload.issues.push(...prefixIssues(key, result2.issues));
               }
-              payload.value[outKey] = result.value;
+              payload.value[outKey] = result2.value;
             }
           }
           if (unrecognized && unrecognized.length > 0) {
@@ -4067,11 +4067,11 @@ var init_schemas = __esm({
               break;
             seen = payload.issues.length;
           }
-          const result = def.valueType._zod.run({ value: item, issues: [] }, ctx);
-          if (result instanceof Promise) {
-            proms.push(result.then((result2) => handleSetResult(result2, payload)));
+          const result2 = def.valueType._zod.run({ value: item, issues: [] }, ctx);
+          if (result2 instanceof Promise) {
+            proms.push(result2.then((result3) => handleSetResult(result3, payload)));
           } else
-            handleSetResult(result, payload);
+            handleSetResult(result2, payload);
         }
         if (proms.length)
           return Promise.all(proms).then(() => payload);
@@ -4177,10 +4177,10 @@ var init_schemas = __esm({
         if (payload.value === void 0) {
           if (def.innerType._zod.optin !== "defaulted")
             return payload;
-          const result = def.innerType._zod.run({ value: payload.value, issues: [] }, ctx);
-          if (result instanceof Promise)
-            return result.then((result2) => handleOptionalResult(payload, result2));
-          return handleOptionalResult(payload, result);
+          const result2 = def.innerType._zod.run({ value: payload.value, issues: [] }, ctx);
+          if (result2 instanceof Promise)
+            return result2.then((result3) => handleOptionalResult(payload, result3));
+          return handleOptionalResult(payload, result2);
         }
         return def.innerType._zod.run(payload, ctx);
       };
@@ -4222,11 +4222,11 @@ var init_schemas = __esm({
           payload.value = def.defaultValue;
           return payload;
         }
-        const result = def.innerType._zod.run(payload, ctx);
-        if (result instanceof Promise) {
-          return result.then((result2) => handleDefaultResult(result2, def));
+        const result2 = def.innerType._zod.run(payload, ctx);
+        if (result2 instanceof Promise) {
+          return result2.then((result3) => handleDefaultResult(result3, def));
         }
-        return handleDefaultResult(result, def);
+        return handleDefaultResult(result2, def);
       };
     });
     $ZodPrefault = /* @__PURE__ */ $constructor("$ZodPrefault", (inst, def) => {
@@ -4250,11 +4250,11 @@ var init_schemas = __esm({
         return v ? new Set([...v].filter((x) => x !== void 0)) : void 0;
       });
       inst._zod.parse = (payload, ctx) => {
-        const result = def.innerType._zod.run(payload, ctx);
-        if (result instanceof Promise) {
-          return result.then((result2) => handleNonOptionalResult(result2, inst));
+        const result2 = def.innerType._zod.run(payload, ctx);
+        if (result2 instanceof Promise) {
+          return result2.then((result3) => handleNonOptionalResult(result3, inst));
         }
-        return handleNonOptionalResult(result, inst);
+        return handleNonOptionalResult(result2, inst);
       };
     });
     $ZodSuccess = /* @__PURE__ */ $constructor("$ZodSuccess", (inst, def) => {
@@ -4263,14 +4263,14 @@ var init_schemas = __esm({
         if (ctx.direction === "backward") {
           throw new $ZodEncodeError("ZodSuccess");
         }
-        const result = def.innerType._zod.run(payload, ctx);
-        if (result instanceof Promise) {
-          return result.then((result2) => {
-            payload.value = result2.issues.length === 0;
+        const result2 = def.innerType._zod.run(payload, ctx);
+        if (result2 instanceof Promise) {
+          return result2.then((result3) => {
+            payload.value = result3.issues.length === 0;
             return payload;
           });
         }
-        payload.value = result.issues.length === 0;
+        payload.value = result2.issues.length === 0;
         return payload;
       };
     });
@@ -4283,11 +4283,11 @@ var init_schemas = __esm({
         if (ctx.direction === "backward") {
           return def.innerType._zod.run(payload, ctx);
         }
-        const result = def.innerType._zod.run({ value: payload.value, issues: [] }, ctx);
-        if (result instanceof Promise) {
-          return result.then((result2) => handleCatchResult(payload, result2, def, ctx));
+        const result2 = def.innerType._zod.run({ value: payload.value, issues: [] }, ctx);
+        if (result2 instanceof Promise) {
+          return result2.then((result3) => handleCatchResult(payload, result3, def, ctx));
         }
-        return handleCatchResult(payload, result, def, ctx);
+        return handleCatchResult(payload, result2, def, ctx);
       };
     });
     $ZodNaN = /* @__PURE__ */ $constructor("$ZodNaN", (inst, def) => {
@@ -4362,11 +4362,11 @@ var init_schemas = __esm({
         if (ctx.direction === "backward") {
           return def.innerType._zod.run(payload, ctx);
         }
-        const result = def.innerType._zod.run(payload, ctx);
-        if (result instanceof Promise) {
-          return result.then(handleReadonlyResult);
+        const result2 = def.innerType._zod.run(payload, ctx);
+        if (result2 instanceof Promise) {
+          return result2.then(handleReadonlyResult);
         }
-        return handleReadonlyResult(result);
+        return handleReadonlyResult(result2);
       };
     });
     $ZodTemplateLiteral = /* @__PURE__ */ $constructor("$ZodTemplateLiteral", (inst, def) => {
@@ -4420,11 +4420,11 @@ var init_schemas = __esm({
         }
         return Object.defineProperty(function(...args) {
           const parsedArgs = inst._def.input ? parse(inst._def.input, args) : args;
-          const result = Reflect.apply(func, this, parsedArgs);
+          const result2 = Reflect.apply(func, this, parsedArgs);
           if (inst._def.output) {
-            return parse(inst._def.output, result);
+            return parse(inst._def.output, result2);
           }
-          return result;
+          return result2;
         }, "_zod", { value: inst._zod, enumerable: false });
       };
       inst.implementAsync = (func) => {
@@ -4433,11 +4433,11 @@ var init_schemas = __esm({
         }
         return Object.defineProperty(async function(...args) {
           const parsedArgs = inst._def.input ? await parseAsync(inst._def.input, args) : args;
-          const result = await Reflect.apply(func, this, parsedArgs);
+          const result2 = await Reflect.apply(func, this, parsedArgs);
           if (inst._def.output) {
-            return await parseAsync(inst._def.output, result);
+            return await parseAsync(inst._def.output, result2);
           }
-          return result;
+          return result2;
         }, "_zod", { value: inst._zod, enumerable: false });
       };
       inst._zod.parse = (payload, _ctx) => {
@@ -4543,12 +4543,12 @@ function isRecursive(inst, stack, resolve3) {
   if (stack.has(inst))
     return PROVEN;
   stack.add(inst);
-  let result = NONE;
+  let result2 = NONE;
   const check2 = (child) => {
-    if (result !== PROVEN && child?._zod) {
+    if (result2 !== PROVEN && child?._zod) {
       const answer = isRecursive(child, stack, resolve3);
-      if (answer > result)
-        result = answer;
+      if (answer > result2)
+        result2 = answer;
     }
   };
   const shape = (sh, spread) => {
@@ -4564,8 +4564,8 @@ function isRecursive(inst, stack, resolve3) {
     return answer;
   };
   const merge2 = (answer) => {
-    if (answer > result)
-      result = answer;
+    if (answer > result2)
+      result2 = answer;
   };
   const def = inst._zod.def;
   const kind = def.type;
@@ -4666,7 +4666,7 @@ function isRecursive(inst, stack, resolve3) {
     }
   }
   stack.delete(inst);
-  return settle(inst, result);
+  return settle(inst, result2);
 }
 function settle(inst, answer) {
   if (answer !== ASSUMED)
@@ -4788,19 +4788,19 @@ var init_memoizer = __esm({
             }
             handoff = bucket;
             const depth = open.length;
-            const result = base(payload, ctx);
+            const result2 = base(payload, ctx);
             handoff = void 0;
             const entry = open.length > depth ? open.pop() : void 0;
-            if (result instanceof Promise) {
-              return result.then((r) => {
+            if (result2 instanceof Promise) {
+              return result2.then((r) => {
                 if (entry)
                   entry.issues = r.issues.length ? cloneIssues(r.issues) : NO_ISSUES;
                 return r;
               });
             }
             if (entry)
-              entry.issues = result.issues.length ? cloneIssues(result.issues) : NO_ISSUES;
-            return result;
+              entry.issues = result2.issues.length ? cloneIssues(result2.issues) : NO_ISSUES;
+            return result2;
           };
           inst._zod.parse = wrapped;
           if (inst._zod.run === base)
@@ -9059,12 +9059,12 @@ var init_lt = __esm({
         }
       };
       function getSizing(origin, unitType, inclusive, targetShouldBe) {
-        const result = Sizable[origin] ?? null;
-        if (result === null)
-          return result;
+        const result2 = Sizable[origin] ?? null;
+        if (result2 === null)
+          return result2;
         return {
-          unit: result.unit[unitType],
-          verb: result.verb[targetShouldBe][inclusive ? "inclusive" : "notInclusive"]
+          unit: result2.unit[unitType],
+          verb: result2.verb[targetShouldBe][inclusive ? "inclusive" : "notInclusive"]
         };
       }
       const FormatDictionary = {
@@ -13007,10 +13007,10 @@ function newVar(ctx) {
   return `v${ctx.varCounter++}`;
 }
 function runtimeRun(schema, value) {
-  const result = schema._zod.run({ value, issues: [] }, {});
-  if (result && typeof result.then === "function")
+  const result2 = schema._zod.run({ value, issues: [] }, {});
+  if (result2 && typeof result2.then === "function")
     return INVALID2;
-  const r = result;
+  const r = result2;
   return r.issues.length === 0 ? r.value : INVALID2;
 }
 function compileChild(doc, ctx, schema, accessor, needsValue = true) {
@@ -13274,8 +13274,8 @@ function generateCustomRefineCheck(doc, ctx, check2, accessor) {
     const checkFn = check2._zod.check;
     const helperFn = (value) => {
       const fakePayload = { value, issues: [], addIssue: pushIssue };
-      const result = checkFn(fakePayload);
-      if (result instanceof Promise)
+      const result2 = checkFn(fakePayload);
+      if (result2 instanceof Promise)
         throwAsync();
       return fakePayload.issues.length === 0 ? fakePayload.value : INVALID2;
     };
@@ -14339,10 +14339,10 @@ function generatePipeCheck(doc, ctx, schema, accessor) {
     const transformFn = def.transform;
     const helperFn = (value) => {
       const fakePayload = { value, issues: [], addIssue: pushIssue };
-      const result = transformFn(value, fakePayload);
-      if (result instanceof Promise)
+      const result2 = transformFn(value, fakePayload);
+      if (result2 instanceof Promise)
         return INVALID2;
-      return fakePayload.issues.length === 0 ? result : INVALID2;
+      return fakePayload.issues.length === 0 ? result2 : INVALID2;
     };
     const helperConst = addUserConstant(ctx, helperFn);
     const transformedVar = newVar(ctx);
@@ -14374,10 +14374,10 @@ function generateCustomCheck(doc, ctx, schema, accessor) {
   return accessor;
 }
 function runtimeCatch(innerSchema, catchValue, value) {
-  const result = innerSchema._zod.run({ value, issues: [] }, {});
-  if (result && typeof result.then === "function")
+  const result2 = innerSchema._zod.run({ value, issues: [] }, {});
+  if (result2 && typeof result2.then === "function")
     return INVALID2;
-  const r = result;
+  const r = result2;
   if (r.issues.length === 0)
     return r.value;
   return catchValue();
@@ -14414,10 +14414,10 @@ function generateTransformCheck(doc, ctx, schema, accessor) {
     const transformFn = def.transform;
     const helperFn = (value) => {
       const fakePayload = { value, issues: [], addIssue: pushIssue };
-      const result = transformFn(value, fakePayload);
-      if (result instanceof Promise)
+      const result2 = transformFn(value, fakePayload);
+      if (result2 instanceof Promise)
         return INVALID2;
-      return fakePayload.issues.length === 0 ? result : INVALID2;
+      return fakePayload.issues.length === 0 ? result2 : INVALID2;
     };
     const helperConst = addUserConstant(ctx, helperFn);
     const outputVar = newVar(ctx);
@@ -15593,12 +15593,12 @@ function initializeContext(params) {
   };
 }
 function handleUnrepresentable(schema, ctx, json2, params, message) {
-  const result = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message }) : ctx.unrepresentable;
-  if (result === "any")
+  const result2 = typeof ctx.unrepresentable === "function" ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message }) : ctx.unrepresentable;
+  if (result2 === "any")
     return false;
-  if (result === void 0 || result === "throw")
+  if (result2 === void 0 || result2 === "throw")
     throw new Error(message);
-  Object.assign(json2, result);
+  Object.assign(json2, result2);
   return true;
 }
 function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
@@ -15613,13 +15613,13 @@ function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
     }
     return seen.schema;
   }
-  const result = { schema: {}, count: 1, cycle: void 0, path: _params.path };
-  ctx.seen.set(schema, result);
+  const result2 = { schema: {}, count: 1, cycle: void 0, path: _params.path };
+  ctx.seen.set(schema, result2);
   ctx.sharedDefsExtractedFor = void 0;
   ctx.sharedEmitDoneFor = void 0;
   const overrideSchema = schema._zod.toJSONSchema?.();
   if (overrideSchema) {
-    result.schema = overrideSchema;
+    result2.schema = overrideSchema;
   } else {
     const params = {
       ..._params,
@@ -15627,9 +15627,9 @@ function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
       path: _params.path
     };
     if (schema._zod.processJSONSchema) {
-      schema._zod.processJSONSchema(ctx, result.schema, params);
+      schema._zod.processJSONSchema(ctx, result2.schema, params);
     } else {
-      const _json = result.schema;
+      const _json = result2.schema;
       const processor = ctx.processors[def.type];
       if (!processor) {
         throw new Error(`[toJSONSchema]: Non-representable type encountered: ${def.type}`);
@@ -15638,22 +15638,22 @@ function processSchema(schema, ctx, _params = { path: [], schemaPath: [] }) {
     }
     const parent = schema._zod.parent;
     if (parent) {
-      if (!result.ref)
-        result.ref = parent;
+      if (!result2.ref)
+        result2.ref = parent;
       processSchema(parent, ctx, params);
       ctx.seen.get(parent).isParent = true;
     }
   }
   const meta3 = ctx.metadataRegistry.get(schema);
   if (meta3)
-    assignProps(result.schema, meta3);
+    assignProps(result2.schema, meta3);
   if (ctx.io === "input" && isTransforming(schema)) {
-    delete result.schema.examples;
-    delete result.schema.default;
+    delete result2.schema.examples;
+    delete result2.schema.default;
   }
-  if (ctx.io === "input" && "_prefault" in result.schema)
-    (_a3 = result.schema).default ?? (_a3.default = result.schema._prefault);
-  delete result.schema._prefault;
+  if (ctx.io === "input" && "_prefault" in result2.schema)
+    (_a3 = result2.schema).default ?? (_a3.default = result2.schema._prefault);
+  delete result2.schema._prefault;
   const _result = ctx.seen.get(schema);
   return _result.schema;
 }
@@ -15956,13 +15956,13 @@ function finalize(ctx, schema) {
       }
     }
   }
-  const result = {};
+  const result2 = {};
   if (ctx.target === "draft-2020-12") {
-    result.$schema = "https://json-schema.org/draft/2020-12/schema";
+    result2.$schema = "https://json-schema.org/draft/2020-12/schema";
   } else if (ctx.target === "draft-07") {
-    result.$schema = "http://json-schema.org/draft-07/schema#";
+    result2.$schema = "http://json-schema.org/draft-07/schema#";
   } else if (ctx.target === "draft-04") {
-    result.$schema = "http://json-schema.org/draft-04/schema#";
+    result2.$schema = "http://json-schema.org/draft-04/schema#";
   } else if (ctx.target === "openapi-3.0") {
   } else {
   }
@@ -15970,12 +15970,12 @@ function finalize(ctx, schema) {
     const id = ctx.external.registry.get(schema)?.id;
     if (!id)
       throw new Error("Schema is missing an `id` property");
-    result.$id = ctx.external.uri(id);
+    result2.$id = ctx.external.uri(id);
   }
-  assignProps(result, root.defId ? root.schema : root.def ?? root.schema);
+  assignProps(result2, root.defId ? root.schema : root.def ?? root.schema);
   const rootMetaId = ctx.metadataRegistry.get(schema)?.id;
-  if (rootMetaId !== void 0 && result.id === rootMetaId)
-    delete result.id;
+  if (rootMetaId !== void 0 && result2.id === rootMetaId)
+    delete result2.id;
   const defs = ctx.external?.defs ?? {};
   if (!ctx.external || ctx.sharedEmitDoneFor !== ctx.external) {
     for (const entry of ctx.seen.entries()) {
@@ -15993,14 +15993,14 @@ function finalize(ctx, schema) {
   } else {
     if (Object.keys(defs).length > 0) {
       if (ctx.target === "draft-2020-12") {
-        result.$defs = defs;
+        result2.$defs = defs;
       } else {
-        result.definitions = defs;
+        result2.definitions = defs;
       }
     }
   }
   try {
-    const finalized = JSON.parse(JSON.stringify(result));
+    const finalized = JSON.parse(JSON.stringify(result2));
     Object.defineProperty(finalized, "~standard", {
       value: {
         ...schema["~standard"],
@@ -16927,8 +16927,8 @@ var init_json_schema_generator = __esm({
         this.ctx.sharedDefsExtractedFor = void 0;
         this.ctx.sharedEmitDoneFor = void 0;
         extractDefs(this.ctx, schema);
-        const result = finalize(this.ctx, schema);
-        const { "~standard": _, ...plainResult } = result;
+        const result2 = finalize(this.ctx, schema);
+        const { "~standard": _, ...plainResult } = result2;
         return plainResult;
       }
     };
@@ -19350,13 +19350,13 @@ function checkObjectGuards(objectSchema, guards) {
     }
     if (guards.keySchema) {
       for (const key of keys) {
-        const result = guards.keySchema.safeParse(key);
-        if (result.success)
+        const result2 = guards.keySchema.safeParse(key);
+        if (result2.success)
           continue;
         payload.issues.push({
           code: "invalid_key",
           origin: "record",
-          issues: result.error.issues,
+          issues: result2.error.issues,
           input: key,
           path: [key],
           continue: true
@@ -19695,11 +19695,11 @@ function convertBaseSchema(schema, ctx) {
         } else if (schemasToIntersect.length === 1) {
           zodSchema = schemasToIntersect[0];
         } else {
-          let result = z.intersection(schemasToIntersect[0], schemasToIntersect[1]);
+          let result2 = z.intersection(schemasToIntersect[0], schemasToIntersect[1]);
           for (let i = 2; i < schemasToIntersect.length; i++) {
-            result = z.intersection(result, schemasToIntersect[i]);
+            result2 = z.intersection(result2, schemasToIntersect[i]);
           }
-          zodSchema = result;
+          zodSchema = result2;
         }
         if (schema.additionalProperties === false) {
           const propertyKeys = Object.keys(shape);
@@ -19826,12 +19826,12 @@ function convertSchema(schema, ctx) {
     if (schema.allOf.length === 0) {
       baseSchema = hasExplicitType ? baseSchema : z.any();
     } else {
-      let result = hasExplicitType ? baseSchema : convertSchema(schema.allOf[0], ctx);
+      let result2 = hasExplicitType ? baseSchema : convertSchema(schema.allOf[0], ctx);
       const startIdx = hasExplicitType ? 0 : 1;
       for (let i = startIdx; i < schema.allOf.length; i++) {
-        result = z.intersection(result, convertSchema(schema.allOf[i], ctx));
+        result2 = z.intersection(result2, convertSchema(schema.allOf[i], ctx));
       }
-      baseSchema = result;
+      baseSchema = result2;
     }
   }
   if (schema.nullable === true && ctx.version === "openapi-3.0") {
@@ -20782,11 +20782,11 @@ var require_codegen = __commonJS({
         const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
         return `${varKind} ${this.name}${rhs};` + _n;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         if (!names[this.name.str])
           return;
         if (this.rhs)
-          this.rhs = optimizeExpr(this.rhs, names, constants3);
+          this.rhs = optimizeExpr(this.rhs, names, constants4);
         return this;
       }
       get names() {
@@ -20803,10 +20803,10 @@ var require_codegen = __commonJS({
       render({ _n }) {
         return `${this.lhs} = ${this.rhs};` + _n;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         if (this.lhs instanceof code_1.Name && !names[this.lhs.str] && !this.sideEffects)
           return;
-        this.rhs = optimizeExpr(this.rhs, names, constants3);
+        this.rhs = optimizeExpr(this.rhs, names, constants4);
         return this;
       }
       get names() {
@@ -20867,8 +20867,8 @@ var require_codegen = __commonJS({
       optimizeNodes() {
         return `${this.code}` ? this : void 0;
       }
-      optimizeNames(names, constants3) {
-        this.code = optimizeExpr(this.code, names, constants3);
+      optimizeNames(names, constants4) {
+        this.code = optimizeExpr(this.code, names, constants4);
         return this;
       }
       get names() {
@@ -20897,12 +20897,12 @@ var require_codegen = __commonJS({
         }
         return nodes.length > 0 ? this : void 0;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         const { nodes } = this;
         let i = nodes.length;
         while (i--) {
           const n = nodes[i];
-          if (n.optimizeNames(names, constants3))
+          if (n.optimizeNames(names, constants4))
             continue;
           subtractNames(names, n.names);
           nodes.splice(i, 1);
@@ -20955,12 +20955,12 @@ var require_codegen = __commonJS({
           return void 0;
         return this;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         var _a3;
-        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants3);
-        if (!(super.optimizeNames(names, constants3) || this.else))
+        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants4);
+        if (!(super.optimizeNames(names, constants4) || this.else))
           return;
-        this.condition = optimizeExpr(this.condition, names, constants3);
+        this.condition = optimizeExpr(this.condition, names, constants4);
         return this;
       }
       get names() {
@@ -20983,10 +20983,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.iteration})` + super.render(opts);
       }
-      optimizeNames(names, constants3) {
-        if (!super.optimizeNames(names, constants3))
+      optimizeNames(names, constants4) {
+        if (!super.optimizeNames(names, constants4))
           return;
-        this.iteration = optimizeExpr(this.iteration, names, constants3);
+        this.iteration = optimizeExpr(this.iteration, names, constants4);
         return this;
       }
       get names() {
@@ -21022,10 +21022,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
       }
-      optimizeNames(names, constants3) {
-        if (!super.optimizeNames(names, constants3))
+      optimizeNames(names, constants4) {
+        if (!super.optimizeNames(names, constants4))
           return;
-        this.iterable = optimizeExpr(this.iterable, names, constants3);
+        this.iterable = optimizeExpr(this.iterable, names, constants4);
         return this;
       }
       get names() {
@@ -21067,11 +21067,11 @@ var require_codegen = __commonJS({
         (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
         return this;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         var _a3, _b;
-        super.optimizeNames(names, constants3);
-        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants3);
-        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants3);
+        super.optimizeNames(names, constants4);
+        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants4);
+        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants4);
         return this;
       }
       get names() {
@@ -21372,7 +21372,7 @@ var require_codegen = __commonJS({
     function addExprNames(names, from) {
       return from instanceof code_1._CodeOrName ? addNames(names, from.names) : names;
     }
-    function optimizeExpr(expr, names, constants3) {
+    function optimizeExpr(expr, names, constants4) {
       if (expr instanceof code_1.Name)
         return replaceName(expr);
       if (!canOptimize(expr))
@@ -21387,14 +21387,14 @@ var require_codegen = __commonJS({
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants3[n.str];
+        const c = constants4[n.str];
         if (c === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
         return c;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants3[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants4[c.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -22297,10 +22297,10 @@ var require_keyword = __commonJS({
       if (def.async && !schemaEnv.$async)
         throw new Error("async keyword in sync schema");
     }
-    function useKeyword(gen, keyword, result) {
-      if (result === void 0)
+    function useKeyword(gen, keyword, result2) {
+      if (result2 === void 0)
         throw new Error(`keyword "${keyword}" failed to compile`);
-      return gen.scopeValue("keyword", typeof result == "function" ? { ref: result } : { ref: result, code: (0, codegen_1.stringify)(result) });
+      return gen.scopeValue("keyword", typeof result2 == "function" ? { ref: result2 } : { ref: result2, code: (0, codegen_1.stringify)(result2) });
     }
     function validSchemaType(schema, schemaType, allowUndefined = false) {
       return !schemaType.length || schemaType.some((st) => st === "array" ? Array.isArray(schema) : st === "object" ? schema && typeof schema == "object" && !Array.isArray(schema) : typeof schema == st || allowUndefined && typeof schema == "undefined");
@@ -22607,8 +22607,8 @@ var require_resolve = __commonJS({
       }
       return count;
     }
-    function getFullPath(resolver, id = "", normalize) {
-      if (normalize !== false)
+    function getFullPath(resolver, id = "", normalize2) {
+      if (normalize2 !== false)
         id = normalizeId(id);
       const p = resolver.parse(id);
       return _getFullPath(resolver, p);
@@ -23041,18 +23041,18 @@ var require_validate = __commonJS({
         const { schemaCode } = this;
         this.fail((0, codegen_1._)`${schemaCode} !== undefined && (${(0, codegen_1.or)(this.invalid$data(), condition)})`);
       }
-      error(append, errorParams, errorPaths) {
+      error(append2, errorParams, errorPaths) {
         if (errorParams) {
           this.setParams(errorParams);
-          this._error(append, errorPaths);
+          this._error(append2, errorPaths);
           this.setParams({});
           return;
         }
-        this._error(append, errorPaths);
+        this._error(append2, errorPaths);
       }
-      _error(append, errorPaths) {
+      _error(append2, errorPaths) {
         ;
-        (append ? errors_1.reportExtraError : errors_1.reportError)(this, this.def.error, errorPaths);
+        (append2 ? errors_1.reportExtraError : errors_1.reportError)(this, this.def.error, errorPaths);
       }
       $dataError() {
         (0, errors_1.reportError)(this, this.def.$dataError || errors_1.keyword$DataError);
@@ -24203,7 +24203,7 @@ var require_fast_uri = __commonJS({
       }
       return decodedScheme;
     }
-    function normalize(uri, options) {
+    function normalize2(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
         normalizeString(uri, options);
@@ -24581,7 +24581,7 @@ var require_fast_uri = __commonJS({
     }
     var fastUri = {
       SCHEMES,
-      normalize,
+      normalize: normalize2,
       resolve: resolve3,
       resolveComponent,
       equal,
@@ -24920,8 +24920,8 @@ var require_core = __commonJS({
             return this;
           }
           case "object": {
-            const cacheKey = schemaKeyRef;
-            this._cache.delete(cacheKey);
+            const cacheKey2 = schemaKeyRef;
+            this._cache.delete(cacheKey2);
             let id = schemaKeyRef[this.opts.schemaId];
             if (id) {
               id = (0, resolve_1.normalizeId)(id);
@@ -28079,9 +28079,9 @@ var ParseInputLazyPath = class {
     return this._cachedPath;
   }
 };
-var handleResult = (ctx, result) => {
-  if (isValid(result)) {
-    return { success: true, data: result.value };
+var handleResult = (ctx, result2) => {
+  if (isValid(result2)) {
+    return { success: true, data: result2.value };
   } else {
     if (!ctx.common.issues.length) {
       throw new Error("Validation failed but no issues detected.");
@@ -28152,21 +28152,21 @@ var ZodType = class {
     };
   }
   _parseSync(input2) {
-    const result = this._parse(input2);
-    if (isAsync(result)) {
+    const result2 = this._parse(input2);
+    if (isAsync(result2)) {
       throw new Error("Synchronous parse encountered promise.");
     }
-    return result;
+    return result2;
   }
   _parseAsync(input2) {
-    const result = this._parse(input2);
-    return Promise.resolve(result);
+    const result2 = this._parse(input2);
+    return Promise.resolve(result2);
   }
   parse(data, params) {
-    const result = this.safeParse(data, params);
-    if (result.success)
-      return result.data;
-    throw result.error;
+    const result2 = this.safeParse(data, params);
+    if (result2.success)
+      return result2.data;
+    throw result2.error;
   }
   safeParse(data, params) {
     const ctx = {
@@ -28181,8 +28181,8 @@ var ZodType = class {
       data,
       parsedType: getParsedType(data)
     };
-    const result = this._parseSync({ data, path: ctx.path, parent: ctx });
-    return handleResult(ctx, result);
+    const result2 = this._parseSync({ data, path: ctx.path, parent: ctx });
+    return handleResult(ctx, result2);
   }
   "~validate"(data) {
     const ctx = {
@@ -28198,9 +28198,9 @@ var ZodType = class {
     };
     if (!this["~standard"].async) {
       try {
-        const result = this._parseSync({ data, path: [], parent: ctx });
-        return isValid(result) ? {
-          value: result.value
+        const result2 = this._parseSync({ data, path: [], parent: ctx });
+        return isValid(result2) ? {
+          value: result2.value
         } : {
           issues: ctx.common.issues
         };
@@ -28214,17 +28214,17 @@ var ZodType = class {
         };
       }
     }
-    return this._parseAsync({ data, path: [], parent: ctx }).then((result) => isValid(result) ? {
-      value: result.value
+    return this._parseAsync({ data, path: [], parent: ctx }).then((result2) => isValid(result2) ? {
+      value: result2.value
     } : {
       issues: ctx.common.issues
     });
   }
   async parseAsync(data, params) {
-    const result = await this.safeParseAsync(data, params);
-    if (result.success)
-      return result.data;
-    throw result.error;
+    const result2 = await this.safeParseAsync(data, params);
+    if (result2.success)
+      return result2.data;
+    throw result2.error;
   }
   async safeParseAsync(data, params) {
     const ctx = {
@@ -28240,8 +28240,8 @@ var ZodType = class {
       parsedType: getParsedType(data)
     };
     const maybeAsyncResult = this._parse({ data, path: ctx.path, parent: ctx });
-    const result = await (isAsync(maybeAsyncResult) ? maybeAsyncResult : Promise.resolve(maybeAsyncResult));
-    return handleResult(ctx, result);
+    const result2 = await (isAsync(maybeAsyncResult) ? maybeAsyncResult : Promise.resolve(maybeAsyncResult));
+    return handleResult(ctx, result2);
   }
   refine(check2, message) {
     const getIssueProperties = (val) => {
@@ -28254,13 +28254,13 @@ var ZodType = class {
       }
     };
     return this._refinement((val, ctx) => {
-      const result = check2(val);
+      const result2 = check2(val);
       const setError = () => ctx.addIssue({
         code: ZodIssueCode.custom,
         ...getIssueProperties(val)
       });
-      if (typeof Promise !== "undefined" && result instanceof Promise) {
-        return result.then((data) => {
+      if (typeof Promise !== "undefined" && result2 instanceof Promise) {
+        return result2.then((data) => {
           if (!data) {
             setError();
             return false;
@@ -28269,7 +28269,7 @@ var ZodType = class {
           }
         });
       }
-      if (!result) {
+      if (!result2) {
         setError();
         return false;
       } else {
@@ -29764,14 +29764,14 @@ var ZodArray = class _ZodArray extends ZodType {
     if (ctx.common.async) {
       return Promise.all([...ctx.data].map((item, i) => {
         return def.type._parseAsync(new ParseInputLazyPath(ctx, item, ctx.path, i));
-      })).then((result2) => {
-        return ParseStatus.mergeArray(status, result2);
+      })).then((result3) => {
+        return ParseStatus.mergeArray(status, result3);
       });
     }
-    const result = [...ctx.data].map((item, i) => {
+    const result2 = [...ctx.data].map((item, i) => {
       return def.type._parseSync(new ParseInputLazyPath(ctx, item, ctx.path, i));
     });
-    return ParseStatus.mergeArray(status, result);
+    return ParseStatus.mergeArray(status, result2);
   }
   get element() {
     return this._def.type;
@@ -30177,18 +30177,18 @@ var ZodUnion = class extends ZodType {
     const { ctx } = this._processInputParams(input2);
     const options = this._def.options;
     function handleResults(results) {
-      for (const result of results) {
-        if (result.result.status === "valid") {
-          return result.result;
+      for (const result2 of results) {
+        if (result2.result.status === "valid") {
+          return result2.result;
         }
       }
-      for (const result of results) {
-        if (result.result.status === "dirty") {
-          ctx.common.issues.push(...result.ctx.common.issues);
-          return result.result;
+      for (const result2 of results) {
+        if (result2.result.status === "dirty") {
+          ctx.common.issues.push(...result2.ctx.common.issues);
+          return result2.result;
         }
       }
-      const unionErrors = results.map((result) => new ZodError(result.ctx.common.issues));
+      const unionErrors = results.map((result2) => new ZodError(result2.ctx.common.issues));
       addIssueToContext(ctx, {
         code: ZodIssueCode.invalid_union,
         unionErrors
@@ -30226,15 +30226,15 @@ var ZodUnion = class extends ZodType {
           },
           parent: null
         };
-        const result = option._parseSync({
+        const result2 = option._parseSync({
           data: ctx.data,
           path: ctx.path,
           parent: childCtx
         });
-        if (result.status === "valid") {
-          return result;
-        } else if (result.status === "dirty" && !dirty) {
-          dirty = { result, ctx: childCtx };
+        if (result2.status === "valid") {
+          return result2;
+        } else if (result2.status === "dirty" && !dirty) {
+          dirty = { result: result2, ctx: childCtx };
         }
         if (childCtx.common.issues.length) {
           issues.push(childCtx.common.issues);
@@ -30783,9 +30783,9 @@ var ZodFunction = class _ZodFunction extends ZodType {
           error62.addIssue(makeArgsIssue(args, e));
           throw error62;
         });
-        const result = await Reflect.apply(fn, this, parsedArgs);
-        const parsedReturns = await me._def.returns._def.type.parseAsync(result, params).catch((e) => {
-          error62.addIssue(makeReturnsIssue(result, e));
+        const result2 = await Reflect.apply(fn, this, parsedArgs);
+        const parsedReturns = await me._def.returns._def.type.parseAsync(result2, params).catch((e) => {
+          error62.addIssue(makeReturnsIssue(result2, e));
           throw error62;
         });
         return parsedReturns;
@@ -30797,10 +30797,10 @@ var ZodFunction = class _ZodFunction extends ZodType {
         if (!parsedArgs.success) {
           throw new ZodError([makeArgsIssue(args, parsedArgs.error)]);
         }
-        const result = Reflect.apply(fn, this, parsedArgs.data);
-        const parsedReturns = me._def.returns.safeParse(result, params);
+        const result2 = Reflect.apply(fn, this, parsedArgs.data);
+        const parsedReturns = me._def.returns.safeParse(result2, params);
         if (!parsedReturns.success) {
-          throw new ZodError([makeReturnsIssue(result, parsedReturns.error)]);
+          throw new ZodError([makeReturnsIssue(result2, parsedReturns.error)]);
         }
         return parsedReturns.data;
       });
@@ -31052,43 +31052,43 @@ var ZodEffects = class extends ZodType {
         return Promise.resolve(processed).then(async (processed2) => {
           if (status.value === "aborted")
             return INVALID;
-          const result = await this._def.schema._parseAsync({
+          const result2 = await this._def.schema._parseAsync({
             data: processed2,
             path: ctx.path,
             parent: ctx
           });
-          if (result.status === "aborted")
+          if (result2.status === "aborted")
             return INVALID;
-          if (result.status === "dirty")
-            return DIRTY(result.value);
+          if (result2.status === "dirty")
+            return DIRTY(result2.value);
           if (status.value === "dirty")
-            return DIRTY(result.value);
-          return result;
+            return DIRTY(result2.value);
+          return result2;
         });
       } else {
         if (status.value === "aborted")
           return INVALID;
-        const result = this._def.schema._parseSync({
+        const result2 = this._def.schema._parseSync({
           data: processed,
           path: ctx.path,
           parent: ctx
         });
-        if (result.status === "aborted")
+        if (result2.status === "aborted")
           return INVALID;
-        if (result.status === "dirty")
-          return DIRTY(result.value);
+        if (result2.status === "dirty")
+          return DIRTY(result2.value);
         if (status.value === "dirty")
-          return DIRTY(result.value);
-        return result;
+          return DIRTY(result2.value);
+        return result2;
       }
     }
     if (effect.type === "refinement") {
       const executeRefinement = (acc) => {
-        const result = effect.refinement(acc, checkCtx);
+        const result2 = effect.refinement(acc, checkCtx);
         if (ctx.common.async) {
-          return Promise.resolve(result);
+          return Promise.resolve(result2);
         }
-        if (result instanceof Promise) {
+        if (result2 instanceof Promise) {
           throw new Error("Async refinement encountered during synchronous parse operation. Use .parseAsync instead.");
         }
         return acc;
@@ -31126,18 +31126,18 @@ var ZodEffects = class extends ZodType {
         });
         if (!isValid(base))
           return INVALID;
-        const result = effect.transform(base.value, checkCtx);
-        if (result instanceof Promise) {
+        const result2 = effect.transform(base.value, checkCtx);
+        if (result2 instanceof Promise) {
           throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
         }
-        return { status: status.value, value: result };
+        return { status: status.value, value: result2 };
       } else {
         return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((base) => {
           if (!isValid(base))
             return INVALID;
-          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({
+          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result2) => ({
             status: status.value,
-            value: result
+            value: result2
           }));
         });
       }
@@ -31234,18 +31234,18 @@ var ZodCatch = class extends ZodType {
         issues: []
       }
     };
-    const result = this._def.innerType._parse({
+    const result2 = this._def.innerType._parse({
       data: newCtx.data,
       path: newCtx.path,
       parent: {
         ...newCtx
       }
     });
-    if (isAsync(result)) {
-      return result.then((result2) => {
+    if (isAsync(result2)) {
+      return result2.then((result3) => {
         return {
           status: "valid",
-          value: result2.status === "valid" ? result2.value : this._def.catchValue({
+          value: result3.status === "valid" ? result3.value : this._def.catchValue({
             get error() {
               return new ZodError(newCtx.common.issues);
             },
@@ -31256,7 +31256,7 @@ var ZodCatch = class extends ZodType {
     } else {
       return {
         status: "valid",
-        value: result.status === "valid" ? result.value : this._def.catchValue({
+        value: result2.status === "valid" ? result2.value : this._def.catchValue({
           get error() {
             return new ZodError(newCtx.common.issues);
           },
@@ -31369,14 +31369,14 @@ var ZodPipeline = class _ZodPipeline extends ZodType {
 };
 var ZodReadonly = class extends ZodType {
   _parse(input2) {
-    const result = this._def.innerType._parse(input2);
+    const result2 = this._def.innerType._parse(input2);
     const freeze = (data) => {
       if (isValid(data)) {
         data.value = Object.freeze(data.value);
       }
       return data;
     };
-    return isAsync(result) ? result.then((data) => freeze(data)) : freeze(result);
+    return isAsync(result2) ? result2.then((data) => freeze(data)) : freeze(result2);
   }
   unwrap() {
     return this._def.innerType;
@@ -31563,21 +31563,21 @@ function objectFromShape(shape) {
 }
 function safeParse2(schema, data) {
   if (isZ4Schema(schema)) {
-    const result2 = safeParse(schema, data);
-    return result2;
+    const result3 = safeParse(schema, data);
+    return result3;
   }
   const v3Schema = schema;
-  const result = v3Schema.safeParse(data);
-  return result;
+  const result2 = v3Schema.safeParse(data);
+  return result2;
 }
 async function safeParseAsync2(schema, data) {
   if (isZ4Schema(schema)) {
-    const result2 = await safeParseAsync(schema, data);
-    return result2;
+    const result3 = await safeParseAsync(schema, data);
+    return result3;
   }
   const v3Schema = schema;
-  const result = await v3Schema.safeParseAsync(data);
-  return result;
+  const result2 = await v3Schema.safeParseAsync(data);
+  return result2;
 }
 function getObjectShape(schema) {
   if (!schema)
@@ -33751,14 +33751,14 @@ function escapeLiteralCheckValue(literal2, refs) {
 }
 var ALPHA_NUMERIC = new Set("ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvxyz0123456789");
 function escapeNonAlphaNumeric(source) {
-  let result = "";
+  let result2 = "";
   for (let i = 0; i < source.length; i++) {
     if (!ALPHA_NUMERIC.has(source[i])) {
-      result += "\\";
+      result2 += "\\";
     }
-    result += source[i];
+    result2 += source[i];
   }
-  return result;
+  return result2;
 }
 function addFormat(schema, value, message, refs) {
   if (schema.format || schema.anyOf?.some((x) => x.format)) {
@@ -34155,7 +34155,7 @@ function parseNumberDef(def, refs) {
 // node_modules/zod-to-json-schema/dist/esm/parsers/object.js
 function parseObjectDef(def, refs) {
   const forceOptionalIntoNullable = refs.target === "openAi";
-  const result = {
+  const result2 = {
     type: "object",
     properties: {}
   };
@@ -34184,19 +34184,19 @@ function parseObjectDef(def, refs) {
     if (parsedDef === void 0) {
       continue;
     }
-    result.properties[propName] = parsedDef;
+    result2.properties[propName] = parsedDef;
     if (!propOptional) {
       required2.push(propName);
     }
   }
   if (required2.length) {
-    result.required = required2;
+    result2.required = required2;
   }
   const additionalProperties = decideAdditionalProperties(def, refs);
   if (additionalProperties !== void 0) {
-    result.additionalProperties = additionalProperties;
+    result2.additionalProperties = additionalProperties;
   }
-  return result;
+  return result2;
 }
 function decideAdditionalProperties(def, refs) {
   if (def.catchall._def.typeName !== "ZodNever") {
@@ -34560,11 +34560,11 @@ function getMethodLiteral(schema) {
   return value;
 }
 function parseWithCompat(schema, data) {
-  const result = safeParse2(schema, data);
-  if (!result.success) {
-    throw result.error;
+  const result2 = safeParse2(schema, data);
+  if (!result2.success) {
+    throw result2.error;
   }
-  return result.data;
+  return result2.data;
 }
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/shared/protocol.js
@@ -34608,6 +34608,9 @@ var Protocol = class {
       this.setRequestHandler(GetTaskPayloadRequestSchema, async (request, extra) => {
         const handleTaskResult = async () => {
           const taskId = request.params.taskId;
+          if (!await this._taskStore.getTask(taskId, extra.sessionId)) {
+            throw new McpError(ErrorCode.InvalidParams, `Task not found: ${taskId}`);
+          }
           if (this._taskMessageQueue) {
             let queuedMessage;
             while (queuedMessage = await this._taskMessageQueue.dequeue(taskId, extra.sessionId)) {
@@ -34638,16 +34641,16 @@ var Protocol = class {
             throw new McpError(ErrorCode.InvalidParams, `Task not found: ${taskId}`);
           }
           if (!isTerminal(task.status)) {
-            await this._waitForTaskUpdate(taskId, extra.signal);
+            await this._waitForTaskUpdate(taskId, extra.signal, extra.sessionId);
             return await handleTaskResult();
           }
           if (isTerminal(task.status)) {
-            const result = await this._taskStore.getTaskResult(taskId, extra.sessionId);
-            this._clearTaskQueue(taskId);
+            const result2 = await this._taskStore.getTaskResult(taskId, extra.sessionId);
+            this._clearTaskQueue(taskId, extra.sessionId);
             return {
-              ...result,
+              ...result2,
               _meta: {
-                ...result._meta,
+                ...result2._meta,
                 [RELATED_TASK_META_KEY]: {
                   taskId
                 }
@@ -34680,7 +34683,7 @@ var Protocol = class {
             throw new McpError(ErrorCode.InvalidParams, `Cannot cancel task in terminal status: ${task.status}`);
           }
           await this._taskStore.updateTaskStatus(request.params.taskId, "cancelled", "Client cancelled task execution.", extra.sessionId);
-          this._clearTaskQueue(request.params.taskId);
+          this._clearTaskQueue(request.params.taskId, extra.sessionId);
           const cancelledTask = await this._taskStore.getTask(request.params.taskId, extra.sessionId);
           if (!cancelledTask) {
             throw new McpError(ErrorCode.InvalidParams, `Task not found after cancellation: ${request.params.taskId}`);
@@ -34808,6 +34811,19 @@ var Protocol = class {
     const handler = this._requestHandlers.get(request.method) ?? this.fallbackRequestHandler;
     const capturedTransport = this._transport;
     const relatedTaskId = request.params?._meta?.[RELATED_TASK_META_KEY]?.taskId;
+    const sessionId = capturedTransport?.sessionId;
+    const store = this._taskStore;
+    let relatedTaskFound = true;
+    let relatedTaskLookup;
+    if (relatedTaskId && store && this._taskMessageQueue && sessionId !== void 0) {
+      relatedTaskFound = false;
+      relatedTaskLookup = (async () => {
+        if (!await store.getTask(relatedTaskId, sessionId)) {
+          throw new McpError(ErrorCode.InvalidParams, `Task not found: ${relatedTaskId}`);
+        }
+        relatedTaskFound = true;
+      })();
+    }
     if (handler === void 0) {
       const errorResponse = {
         jsonrpc: "2.0",
@@ -34817,7 +34833,10 @@ var Protocol = class {
           message: "Method not found"
         }
       };
-      if (relatedTaskId && this._taskMessageQueue) {
+      if (relatedTaskId && relatedTaskLookup) {
+        const queuedError = { type: "error", message: errorResponse, timestamp: Date.now() };
+        relatedTaskLookup.then(() => this._enqueueTaskMessage(relatedTaskId, queuedError, sessionId), () => capturedTransport?.send(errorResponse)).catch((error62) => this._onerror(new Error(`Failed to send an error response: ${error62}`)));
+      } else if (relatedTaskId && this._taskMessageQueue) {
         this._enqueueTaskMessage(relatedTaskId, {
           type: "error",
           message: errorResponse,
@@ -34868,16 +34887,19 @@ var Protocol = class {
       closeSSEStream: extra?.closeSSEStream,
       closeStandaloneSSEStream: extra?.closeStandaloneSSEStream
     };
-    Promise.resolve().then(() => {
+    (relatedTaskLookup ?? Promise.resolve()).then(() => {
+      if (relatedTaskLookup && abortController.signal.aborted) {
+        throw new McpError(ErrorCode.ConnectionClosed, "Request was cancelled");
+      }
       if (taskCreationParams) {
         this.assertTaskHandlerCapability(request.method);
       }
-    }).then(() => handler(request, fullExtra)).then(async (result) => {
+    }).then(() => handler(request, fullExtra)).then(async (result2) => {
       if (abortController.signal.aborted) {
         return;
       }
       const response = {
-        result,
+        result: result2,
         jsonrpc: "2.0",
         id: request.id
       };
@@ -34903,7 +34925,7 @@ var Protocol = class {
           ...error62["data"] !== void 0 && { data: error62["data"] }
         }
       };
-      if (relatedTaskId && this._taskMessageQueue) {
+      if (relatedTaskId && this._taskMessageQueue && relatedTaskFound) {
         await this._enqueueTaskMessage(relatedTaskId, {
           type: "error",
           message: errorResponse,
@@ -34963,9 +34985,9 @@ var Protocol = class {
     this._cleanupTimeout(messageId);
     let isTaskResponse = false;
     if (isJSONRPCResultResponse(response) && response.result && typeof response.result === "object") {
-      const result = response.result;
-      if (result.task && typeof result.task === "object") {
-        const task = result.task;
+      const result2 = response.result;
+      if (result2.task && typeof result2.task === "object") {
+        const task = result2.task;
         if (typeof task.taskId === "string") {
           isTaskResponse = true;
           this._taskProgressTokens.set(task.taskId, messageId);
@@ -35022,8 +35044,8 @@ var Protocol = class {
     const { task } = options ?? {};
     if (!task) {
       try {
-        const result = await this.request(request, resultSchema, options);
-        yield { type: "result", result };
+        const result2 = await this.request(request, resultSchema, options);
+        yield { type: "result", result: result2 };
       } catch (error62) {
         yield {
           type: "error",
@@ -35046,8 +35068,8 @@ var Protocol = class {
         yield { type: "taskStatus", task: task2 };
         if (isTerminal(task2.status)) {
           if (task2.status === "completed") {
-            const result = await this.getTaskResult({ taskId }, resultSchema, options);
-            yield { type: "result", result };
+            const result2 = await this.getTaskResult({ taskId }, resultSchema, options);
+            yield { type: "result", result: result2 };
           } else if (task2.status === "failed") {
             yield {
               type: "error",
@@ -35062,8 +35084,8 @@ var Protocol = class {
           return;
         }
         if (task2.status === "input_required") {
-          const result = await this.getTaskResult({ taskId }, resultSchema, options);
-          yield { type: "result", result };
+          const result2 = await this.getTaskResult({ taskId }, resultSchema, options);
+          yield { type: "result", result: result2 };
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
@@ -35383,7 +35405,7 @@ var Protocol = class {
       throw new Error("Cannot enqueue task message: taskStore and taskMessageQueue are not configured");
     }
     const maxQueueSize = this._options?.maxTaskQueueSize;
-    await this._taskMessageQueue.enqueue(taskId, message, sessionId, maxQueueSize);
+    await this._taskMessageQueue.enqueue(taskId, message, sessionId ?? this._transport?.sessionId, maxQueueSize);
   }
   /**
    * Clears the message queue for a task and rejects any pending request resolvers.
@@ -35412,12 +35434,13 @@ var Protocol = class {
    * Uses polling to check for updates at the task's configured poll interval.
    * @param taskId The task ID to wait for
    * @param signal Abort signal to cancel the wait
+   * @param sessionId Session of the request that waits, passed to the task store
    * @returns Promise that resolves when an update occurs or rejects if aborted
    */
-  async _waitForTaskUpdate(taskId, signal) {
+  async _waitForTaskUpdate(taskId, signal, sessionId) {
     let interval = this._options?.defaultTaskPollInterval ?? 1e3;
     try {
-      const task = await this._taskStore?.getTask(taskId);
+      const task = await this._taskStore?.getTask(taskId, sessionId);
       if (task?.pollInterval) {
         interval = task.pollInterval;
       }
@@ -35457,8 +35480,8 @@ var Protocol = class {
         }
         return task;
       },
-      storeTaskResult: async (taskId, status, result) => {
-        await taskStore.storeTaskResult(taskId, status, result, sessionId);
+      storeTaskResult: async (taskId, status, result2) => {
+        await taskStore.storeTaskResult(taskId, status, result2, sessionId);
         const task = await taskStore.getTask(taskId, sessionId);
         if (task) {
           const notification = TaskStatusNotificationSchema.parse({
@@ -35505,20 +35528,20 @@ function isPlainObject2(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function mergeCapabilities(base, additional) {
-  const result = { ...base };
+  const result2 = { ...base };
   for (const key in additional) {
     const k = key;
     const addValue = additional[k];
     if (addValue === void 0)
       continue;
-    const baseValue = result[k];
+    const baseValue = result2[k];
     if (isPlainObject2(baseValue) && isPlainObject2(addValue)) {
-      result[k] = { ...baseValue, ...addValue };
+      result2[k] = { ...baseValue, ...addValue };
     } else {
-      result[k] = addValue;
+      result2[k] = addValue;
     }
   }
-  return result;
+  return result2;
 }
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/validation/ajv-provider.js
@@ -35916,16 +35939,16 @@ var Server = class extends Protocol {
           throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call request: ${errorMessage}`);
         }
         const { params } = validatedRequest.data;
-        const result = await Promise.resolve(handler(request, extra));
+        const result2 = await Promise.resolve(handler(request, extra));
         if (params.task) {
-          const taskValidationResult = safeParse2(CreateTaskResultSchema, result);
+          const taskValidationResult = safeParse2(CreateTaskResultSchema, result2);
           if (!taskValidationResult.success) {
             const errorMessage = taskValidationResult.error instanceof Error ? taskValidationResult.error.message : String(taskValidationResult.error);
             throw new McpError(ErrorCode.InvalidParams, `Invalid task creation result: ${errorMessage}`);
           }
           return taskValidationResult.data;
         }
-        const validationResult = safeParse2(CallToolResultSchema, result);
+        const validationResult = safeParse2(CallToolResultSchema, result2);
         if (!validationResult.success) {
           const errorMessage = validationResult.error instanceof Error ? validationResult.error.message : String(validationResult.error);
           throw new McpError(ErrorCode.InvalidParams, `Invalid tools/call result: ${errorMessage}`);
@@ -36134,11 +36157,11 @@ var Server = class extends Protocol {
           throw new Error("Client does not support form elicitation.");
         }
         const formParams = params.mode === "form" ? params : { ...params, mode: "form" };
-        const result = await this.request({ method: "elicitation/create", params: formParams }, ElicitResultSchema, options);
-        if (result.action === "accept" && result.content && formParams.requestedSchema) {
+        const result2 = await this.request({ method: "elicitation/create", params: formParams }, ElicitResultSchema, options);
+        if (result2.action === "accept" && result2.content && formParams.requestedSchema) {
           try {
             const validator = this._jsonSchemaValidator.getValidator(formParams.requestedSchema);
-            const validationResult = validator(result.content);
+            const validationResult = validator(result2.content);
             if (!validationResult.valid) {
               throw new McpError(ErrorCode.InvalidParams, `Elicitation response content does not match requested schema: ${validationResult.errorMessage}`);
             }
@@ -36149,7 +36172,7 @@ var Server = class extends Protocol {
             throw new McpError(ErrorCode.InternalError, `Error validating elicitation response: ${error62 instanceof Error ? error62.message : String(error62)}`);
           }
         }
-        return result;
+        return result2;
       }
     }
   }
@@ -36225,7 +36248,7 @@ var McpZodTypeKind;
 // node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
 var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
 function validateToolName(name) {
-  const warnings = [];
+  const warnings2 = [];
   if (name.length === 0) {
     return {
       isValid: false,
@@ -36239,34 +36262,34 @@ function validateToolName(name) {
     };
   }
   if (name.includes(" ")) {
-    warnings.push("Tool name contains spaces, which may cause parsing issues");
+    warnings2.push("Tool name contains spaces, which may cause parsing issues");
   }
   if (name.includes(",")) {
-    warnings.push("Tool name contains commas, which may cause parsing issues");
+    warnings2.push("Tool name contains commas, which may cause parsing issues");
   }
   if (name.startsWith("-") || name.endsWith("-")) {
-    warnings.push("Tool name starts or ends with a dash, which may cause parsing issues in some contexts");
+    warnings2.push("Tool name starts or ends with a dash, which may cause parsing issues in some contexts");
   }
   if (name.startsWith(".") || name.endsWith(".")) {
-    warnings.push("Tool name starts or ends with a dot, which may cause parsing issues in some contexts");
+    warnings2.push("Tool name starts or ends with a dot, which may cause parsing issues in some contexts");
   }
   if (!TOOL_NAME_REGEX.test(name)) {
     const invalidChars = name.split("").filter((char) => !/[A-Za-z0-9._-]/.test(char)).filter((char, index, arr) => arr.indexOf(char) === index);
-    warnings.push(`Tool name contains invalid characters: ${invalidChars.map((c) => `"${c}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
+    warnings2.push(`Tool name contains invalid characters: ${invalidChars.map((c) => `"${c}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
     return {
       isValid: false,
-      warnings
+      warnings: warnings2
     };
   }
   return {
     isValid: true,
-    warnings
+    warnings: warnings2
   };
 }
-function issueToolNameWarning(name, warnings) {
-  if (warnings.length > 0) {
+function issueToolNameWarning(name, warnings2) {
+  if (warnings2.length > 0) {
     console.warn(`Tool name validation warning for "${name}":`);
-    for (const warning of warnings) {
+    for (const warning of warnings2) {
       console.warn(`  - ${warning}`);
     }
     console.warn("Tool registration will proceed, but this may cause compatibility issues.");
@@ -36275,9 +36298,9 @@ function issueToolNameWarning(name, warnings) {
   }
 }
 function validateAndWarnToolName(name) {
-  const result = validateToolName(name);
-  issueToolNameWarning(name, result.warnings);
-  return result.isValid;
+  const result2 = validateToolName(name);
+  issueToolNameWarning(name, result2.warnings);
+  return result2.isValid;
 }
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/experimental/tasks/mcp-server.js
@@ -36300,6 +36323,42 @@ init_external();
 init_external();
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
+function toolInputElementCount(value, max) {
+  let count = 0;
+  const stack = [value];
+  while (stack.length > 0) {
+    const node2 = stack.pop();
+    if (node2 === null || typeof node2 !== "object")
+      continue;
+    if (Array.isArray(node2)) {
+      for (const child of node2) {
+        if (++count > max)
+          return count;
+        if (child !== null && typeof child === "object")
+          stack.push(child);
+      }
+    } else {
+      for (const key in node2) {
+        if (!Object.prototype.hasOwnProperty.call(node2, key))
+          continue;
+        if (++count > max)
+          return count;
+        const child = node2[key];
+        if (child !== null && typeof child === "object")
+          stack.push(child);
+      }
+    }
+  }
+  return count;
+}
+function resolveMaxToolInputElements(value) {
+  if (value === void 0 || value === Infinity)
+    return void 0;
+  if (typeof value !== "number" || Number.isNaN(value) || value < 1) {
+    throw new RangeError(`maxToolInputElements must be a number of at least 1, or Infinity, got ${String(value)}`);
+  }
+  return value;
+}
 var McpServer = class {
   constructor(serverInfo, options) {
     this._registeredResources = {};
@@ -36311,6 +36370,7 @@ var McpServer = class {
     this._resourceHandlersInitialized = false;
     this._promptHandlersInitialized = false;
     this.server = new Server(serverInfo, options);
+    this._maxToolInputElements = resolveMaxToolInputElements(options?.maxToolInputElements);
   }
   /**
    * Access experimental features.
@@ -36403,12 +36463,12 @@ var McpServer = class {
           return await this.handleAutomaticTaskPolling(tool, request, extra);
         }
         const args = await this.validateToolInput(tool, request.params.arguments, request.params.name);
-        const result = await this.executeToolHandler(tool, args, extra);
+        const result2 = await this.executeToolHandler(tool, args, extra);
         if (isTaskRequest) {
-          return result;
+          return result2;
         }
-        await this.validateToolOutput(tool, result, request.params.name);
-        return result;
+        await this.validateToolOutput(tool, result2, request.params.name);
+        return result2;
       } catch (error62) {
         if (error62 instanceof McpError) {
           if (error62.code === ErrorCode.UrlElicitationRequired) {
@@ -36441,12 +36501,15 @@ var McpServer = class {
    * Validates tool input arguments against the tool's input schema.
    */
   async validateToolInput(tool, args, toolName) {
+    if (this._maxToolInputElements !== void 0 && toolInputElementCount(args, this._maxToolInputElements) > this._maxToolInputElements) {
+      throw new McpError(ErrorCode.InvalidParams, `Invalid arguments for tool ${toolName}: arguments contain more than the maximum of ${this._maxToolInputElements} elements`);
+    }
     if (!tool.inputSchema) {
       return void 0;
     }
     const inputObj = normalizeObjectSchema(tool.inputSchema);
     const schemaToParse = inputObj ?? tool.inputSchema;
-    const parseResult = await safeParseAsync2(schemaToParse, args);
+    const parseResult = await safeParseAsync2(schemaToParse, args ?? {});
     if (!parseResult.success) {
       const error62 = "error" in parseResult ? parseResult.error : "Unknown error";
       const errorMessage = getParseErrorMessage(error62);
@@ -36457,21 +36520,21 @@ var McpServer = class {
   /**
    * Validates tool output against the tool's output schema.
    */
-  async validateToolOutput(tool, result, toolName) {
+  async validateToolOutput(tool, result2, toolName) {
     if (!tool.outputSchema) {
       return;
     }
-    if (!("content" in result)) {
+    if (!("content" in result2)) {
       return;
     }
-    if (result.isError) {
+    if (result2.isError) {
       return;
     }
-    if (!result.structuredContent) {
+    if (!result2.structuredContent) {
       throw new McpError(ErrorCode.InvalidParams, `Output validation error: Tool ${toolName} has an output schema but no structured content was provided`);
     }
     const outputObj = normalizeObjectSchema(tool.outputSchema);
-    const parseResult = await safeParseAsync2(outputObj, result.structuredContent);
+    const parseResult = await safeParseAsync2(outputObj, result2.structuredContent);
     if (!parseResult.success) {
       const error62 = "error" in parseResult ? parseResult.error : "Unknown error";
       const errorMessage = getParseErrorMessage(error62);
@@ -36615,8 +36678,8 @@ var McpServer = class {
         if (!template.resourceTemplate.listCallback) {
           continue;
         }
-        const result = await template.resourceTemplate.listCallback(extra);
-        for (const resource of result.resources) {
+        const result2 = await template.resourceTemplate.listCallback(extra);
+        for (const resource of result2.resources) {
           templateResources.push({
             ...template.metadata,
             // the defined resource metadata should override the template metadata if present
@@ -36684,7 +36747,7 @@ var McpServer = class {
       }
       if (prompt.argsSchema) {
         const argsObj = normalizeObjectSchema(prompt.argsSchema);
-        const parseResult = await safeParseAsync2(argsObj, request.params.arguments);
+        const parseResult = await safeParseAsync2(argsObj, request.params.arguments ?? {});
         if (!parseResult.success) {
           const error62 = "error" in parseResult ? parseResult.error : "Unknown error";
           const errorMessage = getParseErrorMessage(error62);
@@ -37214,11 +37277,82 @@ function getConfiguredConnectors(phase) {
     (c) => c.phases.includes(phase) && c.isConfigured()
   );
 }
+function acceptsQuery(connector, kind) {
+  return (connector.queryKinds ?? ["domain"]).includes(kind);
+}
 function getSkippedConnectors(phase) {
   return getConnectors().filter(
     (c) => c.phases.includes(phase) && !c.isConfigured()
   );
 }
+
+// pipeline_core/rate-limit.ts
+var RateLimitExceededError = class extends Error {
+  constructor(key, perDay) {
+    super(`${key}: daily request limit of ${perDay} reached`);
+    this.key = key;
+    this.perDay = perDay;
+    this.name = "RateLimitExceededError";
+  }
+  key;
+  perDay;
+};
+var MINUTE = 6e4;
+var DAY = 24 * 60 * MINUTE;
+var RateLimiter = class {
+  constructor(clock2 = Date.now, sleep5 = defaultSleep) {
+    this.clock = clock2;
+    this.sleep = sleep5;
+  }
+  clock;
+  sleep;
+  states = /* @__PURE__ */ new Map();
+  /** Take one request slot for `key`, waiting for a per-minute token if needed. */
+  async acquire(key, limit, signal) {
+    const perMinute = positive(limit.perMinute);
+    const perDay = positive(limit.perDay);
+    if (perMinute === void 0 && perDay === void 0) return;
+    let s = this.states.get(key);
+    if (!s) {
+      s = { tokens: perMinute !== void 0 ? Math.max(perMinute, 1) : 0, updatedAt: this.clock(), day: [] };
+      this.states.set(key, s);
+    }
+    for (; ; ) {
+      const now = this.clock();
+      if (perDay !== void 0) {
+        while (s.day.length > 0 && s.day[0] <= now - DAY) s.day.shift();
+        if (s.day.length >= perDay) throw new RateLimitExceededError(key, perDay);
+      }
+      if (perMinute === void 0) break;
+      s.tokens = Math.min(Math.max(perMinute, 1), s.tokens + (now - s.updatedAt) * perMinute / MINUTE);
+      s.updatedAt = now;
+      if (s.tokens >= 1) {
+        s.tokens -= 1;
+        break;
+      }
+      await this.sleep(Math.ceil((1 - s.tokens) * MINUTE / perMinute), signal);
+    }
+    if (perDay !== void 0) s.day.push(this.clock());
+  }
+};
+function positive(n) {
+  return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : void 0;
+}
+function defaultSleep(ms, signal) {
+  return new Promise((resolve3, reject) => {
+    if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
+    const t = setTimeout(resolve3, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(t);
+        reject(signal.reason ?? new Error("aborted"));
+      },
+      { once: true }
+    );
+  });
+}
+var rateLimiter = new RateLimiter();
 
 // pipeline_core/http.ts
 var MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -37370,6 +37504,7 @@ async function httpJson(url2, opts = {}) {
   }
   assertAllowedUrl(u);
   for (let attempt = 0; ; attempt++) {
+    if (opts.rateLimit) await rateLimiter.acquire(opts.rateLimit.key, opts.rateLimit, signal);
     try {
       return await attemptOnce(u, opts);
     } catch (err) {
@@ -37543,6 +37678,14 @@ function normalizeDomain(input2) {
   return s;
 }
 
+// pipeline_core/key-quotas.ts
+var QuotasSchema = external_exports.record(external_exports.string(), external_exports.object({ monthlyCredits: external_exports.number().positive() }));
+var LedgerSchema = external_exports.object({ month: external_exports.string().regex(/^\d{4}-\d{2}$/), used: external_exports.record(external_exports.string(), external_exports.number().nonnegative()) });
+var warnings = [];
+function drainQuotaWarnings() {
+  return warnings.splice(0, warnings.length);
+}
+
 // pipeline_core/connectors/_shared.ts
 function useSecret(name) {
   const v = getSecret(name);
@@ -37550,6 +37693,10 @@ function useSecret(name) {
   return v;
 }
 var KEEP_RAW_ENV = "INTENT_OUTREACH_KEEP_RAW";
+var PUBLIC_RECORDS_ENV = "INTENT_OUTREACH_PUBLIC_RECORDS";
+function publicRecordsEnabled() {
+  return !(hasSecret(PUBLIC_RECORDS_ENV) && /^(0|false|off|no)$/i.test(getSecret(PUBLIC_RECORDS_ENV).trim()));
+}
 function keepRawOptIn() {
   return hasSecret(KEEP_RAW_ENV) && getSecret(KEEP_RAW_ENV).trim() === "1";
 }
@@ -38181,8 +38328,8 @@ var ExaResultSchema = external_exports.object({
 }).passthrough();
 var ExaSearchSchema = external_exports.object({ results: external_exports.array(ExaResultSchema).nullish() }).passthrough();
 var clock = () => /* @__PURE__ */ new Date();
-function topSnippet(result) {
-  const raw = result.highlights?.[0] ?? result.text?.slice(0, 200) ?? result.title;
+function topSnippet(result2) {
+  const raw = result2.highlights?.[0] ?? result2.text?.slice(0, 200) ?? result2.title;
   return raw?.trim() || void 0;
 }
 var exaConnector = {
@@ -38240,6 +38387,712 @@ var exaConnector = {
       fetchedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
     return { enrichments: [enrichment], raw: res };
+  }
+};
+
+// pipeline_core/connectors/fema-nfhl.ts
+import { createHash } from "node:crypto";
+var FEMA_NFHL_URL = "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query";
+var SOURCE = "fema-nfhl";
+var TERMS = { id: "fema-nfhl", outreachRestricted: false, attribution: "FEMA National Flood Hazard Layer" };
+var ZoneSchema = external_exports.object({
+  attributes: external_exports.object({
+    FLD_ZONE: external_exports.string().nullable().optional(),
+    ZONE_SUBTY: external_exports.string().nullable().optional(),
+    SFHA_TF: external_exports.string().nullable().optional()
+  }).passthrough()
+});
+var ResponseSchema = external_exports.object({ features: external_exports.array(ZoneSchema).default([]) });
+function hazard(z2) {
+  const zone = (z2.FLD_ZONE ?? "").toUpperCase();
+  const sfha = z2.SFHA_TF === "T" ? 100 : 0;
+  return sfha + (/^V[0-9E]*$/.test(zone) ? 3 : /^A[0-9EHOR]*$|^A99$/.test(zone) ? 2 : zone ? 1 : 0);
+}
+function mostHazardous(zones) {
+  return [...zones].sort((a, b) => hazard(b) - hazard(a))[0];
+}
+var femaNfhlConnector = {
+  name: SOURCE,
+  displayName: "FEMA flood zones (NFHL)",
+  tier: "free",
+  keyEnvVar: null,
+  phases: ["enrich"],
+  capabilities: ["flood"],
+  rateLimit: { perMinute: 60 },
+  note: "Free, keyless (INTENT_OUTREACH_PUBLIC_RECORDS=0 turns it off). Flood zone by parcel point; informational, never an insurance or lending determination.",
+  isConfigured() {
+    return publicRecordsEnabled();
+  },
+  async enrichProperties({ properties, signal }) {
+    const out = [];
+    const failures = [];
+    for (let i = 0; i < properties.length; i++) {
+      const p = properties[i];
+      if (!p.location || p.attributes.floodZone) continue;
+      try {
+        const body = await httpJson(FEMA_NFHL_URL, {
+          signal,
+          retries: 3,
+          rateLimit: { key: SOURCE, perMinute: 60 },
+          query: {
+            geometry: `${p.location.lon},${p.location.lat}`,
+            geometryType: "esriGeometryPoint",
+            inSR: "4326",
+            spatialRel: "esriSpatialRelIntersects",
+            outFields: "FLD_ZONE,ZONE_SUBTY,SFHA_TF",
+            returnGeometry: "false",
+            f: "json"
+          }
+        });
+        const zone = mostHazardous(parseVendor(ResponseSchema, body).features.map((f) => f.attributes));
+        if (!zone?.FLD_ZONE) continue;
+        const fetchedAt = (/* @__PURE__ */ new Date()).toISOString();
+        const responseHash = createHash("sha256").update(JSON.stringify(body)).digest("hex");
+        const fact = (value) => ({ value, source: SOURCE, fetchedAt, responseHash, licenseTerms: TERMS });
+        out.push({
+          ...p,
+          attributes: {
+            floodZone: fact(zone.FLD_ZONE),
+            sfha: fact(zone.SFHA_TF === "T"),
+            ...zone.ZONE_SUBTY ? { floodZoneSubtype: fact(zone.ZONE_SUBTY) } : {}
+          }
+        });
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        failures.push({ item: i, reason: err instanceof HttpError ? "http" : "error", ...err instanceof HttpError ? { status: err.status } : {} });
+      }
+    }
+    return { properties: out, failures };
+  }
+};
+
+// pipeline_core/connectors/fl-dor-parcels.ts
+import { createHash as createHash2 } from "node:crypto";
+
+// pipeline_core/models.ts
+var SCHEMA_VERSION = 6;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
+var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
+var SchemaVersionSchema = external_exports.union([
+  external_exports.literal(V_FIRST),
+  external_exports.literal(V_SECOND),
+  ...V_REST.map((v) => external_exports.literal(v))
+]);
+var SourceSchema = external_exports.string().min(1);
+var LeadSchema = external_exports.object({
+  domain: external_exports.string().min(1),
+  companyName: external_exports.string().min(1),
+  industry: external_exports.string().optional(),
+  /** Free-text headcount band, e.g. "11-50". Connectors disagree on format. */
+  size: external_exports.string().optional(),
+  description: external_exports.string().optional(),
+  source: SourceSchema
+});
+var ContactSchema = external_exports.object({
+  name: external_exports.string().min(1),
+  leadDomain: external_exports.string().min(1),
+  email: external_exports.string().email().optional(),
+  title: external_exports.string().optional(),
+  // A LinkedIn handle OR full URL — providers return both shapes, so don't reject
+  // an otherwise-valid contact (and thus the whole run) over a non-URL handle.
+  linkedin: external_exports.string().optional(),
+  source: SourceSchema,
+  /**
+   * True when the provider withheld the surname (the last token is a lone
+   * initial, e.g. "Kristina L"). The contact is kept, but the drafter addresses
+   * them by first name only. Optional + additive: older lines simply omit it.
+   */
+  nameIncomplete: external_exports.boolean().optional()
+});
+var EnrichmentSchema = external_exports.object({
+  /** What this enrichment is attached to. */
+  subjectType: external_exports.enum(["lead", "contact"]),
+  /** Natural key of the subject: a domain (lead) or an email (contact). */
+  subjectKey: external_exports.string().min(1),
+  provider: SourceSchema,
+  /** Normalized highlights the scorer/draft seam reads. */
+  funding: external_exports.object({
+    lastRound: external_exports.string().optional(),
+    totalRaisedUsd: external_exports.number().nonnegative().optional(),
+    lastRoundDate: external_exports.string().optional(),
+    investors: external_exports.array(external_exports.string()).optional()
+  }).optional(),
+  verifiedEmail: external_exports.string().email().optional(),
+  /**
+   * Optional back-reference to the Contact's `name` when the enrichment found an
+   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
+   * pipeline fold the found email into the working contact list. Optional/additive.
+   */
+  contactName: external_exports.string().min(1).optional(),
+  phone: external_exports.string().optional(),
+  /** Raw provider payload, retained for audit; never trusted as schema. */
+  data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
+  fetchedAt: external_exports.string().datetime()
+});
+var Sha256HexSchema = external_exports.string().regex(/^[0-9a-f]{64}$/, "expected a sha256 hex digest");
+var LicenseTermsSchema = external_exports.object({
+  /** Short identifier of the terms, e.g. "dealmachine-tos-2026" or "public-record". */
+  id: external_exports.string().min(1).optional(),
+  outreachRestricted: external_exports.boolean().optional(),
+  /** Days the vendor allows this fact to be retained. */
+  retentionDays: external_exports.number().int().positive().optional(),
+  /** Required attribution text, if the terms demand one. */
+  attribution: external_exports.string().min(1).optional()
+});
+function factSchema(value) {
+  return external_exports.object({
+    value,
+    source: SourceSchema,
+    fetchedAt: external_exports.string().datetime(),
+    responseHash: Sha256HexSchema.optional(),
+    licenseTerms: LicenseTermsSchema.optional(),
+    /** When the value came through a vendor MCP server: which server, version and tool. */
+    via: external_exports.object({ server: external_exports.string().min(1), version: external_exports.string().min(1), tool: external_exports.string().min(1) }).optional()
+  });
+}
+var FactSchema = factSchema(external_exports.unknown());
+var UsStateSchema = external_exports.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code");
+var CountyFipsSchema = external_exports.string().regex(/^\d{5}$/, "expected a 5-digit county FIPS code");
+var AddressSchema = external_exports.object({
+  line1: external_exports.string().min(1),
+  line2: external_exports.string().min(1).optional(),
+  city: external_exports.string().min(1),
+  state: UsStateSchema,
+  zip: external_exports.string().regex(/^\d{5}(?:-\d{4})?$/, "expected ZIP5 or ZIP+4"),
+  county: external_exports.string().min(1).optional(),
+  countyFips: CountyFipsSchema.optional()
+});
+function propertyKey(countyFips, apn) {
+  return `${countyFips}:${apn.trim().toUpperCase()}`;
+}
+var PropertySchema = external_exports.object({
+  key: external_exports.string().min(1),
+  apn: external_exports.string().min(1),
+  countyFips: CountyFipsSchema,
+  address: AddressSchema.optional(),
+  /** A point on the parcel (centroid or label point), WGS84. Used for flood and other spatial lookups. */
+  location: external_exports.object({ lat: external_exports.number().min(-90).max(90), lon: external_exports.number().min(-180).max(180) }).optional(),
+  attributes: external_exports.record(external_exports.string().min(1), FactSchema).default({}),
+  source: SourceSchema
+}).refine((p) => p.key === propertyKey(p.countyFips, p.apn), {
+  message: "key must equal propertyKey(countyFips, apn)",
+  path: ["key"]
+}).refine((p) => p.apn === p.apn.trim(), { message: "apn must not carry surrounding whitespace", path: ["apn"] });
+var PartySchema = external_exports.object({
+  /** Stable id within the run, e.g. "person:<connector-id>" or "entity:AL:000123456". */
+  key: external_exports.string().min(1),
+  kind: external_exports.enum(["person", "entity"]),
+  name: external_exports.string().min(1),
+  /** For entities only. */
+  entityType: external_exports.enum(["llc", "corporation", "trust", "estate", "partnership", "government", "other"]).optional(),
+  mailingAddress: AddressSchema.optional(),
+  source: SourceSchema,
+  /**
+   * Terms of the record this party (and its mailing address) came from. A
+   * property pack may write to a party only when `outreachRestricted` is
+   * explicitly false; absent or undeclared is treated as restricted.
+   */
+  licenseTerms: LicenseTermsSchema.optional()
+});
+var OwnershipSchema = external_exports.object({
+  propertyKey: external_exports.string().min(1),
+  partyKey: external_exports.string().min(1),
+  /** Fraction held, 0 < share <= 1, when the record states it. */
+  share: external_exports.number().gt(0).lte(1).optional(),
+  role: external_exports.enum(["owner", "co-owner", "trustee", "life-tenant"]).default("owner"),
+  /** Recording or deed date (ISO date), when known. */
+  asOf: external_exports.string().date().optional(),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime()
+});
+var EntityLinkSchema = external_exports.object({
+  entityKey: external_exports.string().min(1),
+  personKey: external_exports.string().min(1),
+  role: external_exports.enum(["member", "manager", "officer", "registered-agent", "organizer", "other"]),
+  confidence: external_exports.number().min(0).max(1),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime()
+});
+var DncStatusSchema = external_exports.enum(["clean", "listed", "unknown"]);
+var ContactPointSchema = external_exports.object({
+  partyKey: external_exports.string().min(1),
+  kind: external_exports.enum(["phone", "email", "mail"]),
+  /** E.164 phone, email address, or a one-line mailing address. */
+  value: external_exports.string().min(1),
+  /** Phones only. "unknown" means the line type was not established. */
+  lineType: external_exports.enum(["mobile", "landline", "voip", "unknown"]).optional(),
+  /** Phones only; defaults to "unknown" (fail closed). */
+  dnc: DncStatusSchema.default("unknown"),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime(),
+  verifiedAt: external_exports.string().datetime().optional(),
+  licenseTerms: LicenseTermsSchema.optional()
+}).refine((c) => c.kind !== "phone" || /^\+[1-9]\d{9,14}$/.test(c.value), {
+  message: "a phone contact point must be E.164",
+  path: ["value"]
+}).refine((c) => c.kind !== "email" || external_exports.string().email().safeParse(c.value).success, {
+  message: "an email contact point must be a valid email",
+  path: ["value"]
+});
+var ResearchQuerySchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("domain"), domain: external_exports.string().min(1) }),
+  external_exports.object({
+    kind: external_exports.literal("area"),
+    geography: external_exports.object({
+      state: UsStateSchema.optional(),
+      countyFips: external_exports.array(CountyFipsSchema).optional(),
+      zips: external_exports.array(external_exports.string().regex(/^\d{5}$/)).optional()
+    }).refine((g) => Boolean(g.state || g.countyFips?.length || g.zips?.length), {
+      message: "an area query needs a state, county FIPS codes or ZIPs"
+    }),
+    /** Pack buy-box filters, already compiled to plain values. */
+    filters: external_exports.record(external_exports.string().min(1), external_exports.unknown()).default({})
+  }),
+  external_exports.object({
+    kind: external_exports.literal("parcel"),
+    countyFips: CountyFipsSchema.optional(),
+    apn: external_exports.string().min(1).optional(),
+    address: AddressSchema.optional()
+  }).refine((q) => Boolean(q.countyFips && q.apn || q.address), {
+    message: "a parcel query needs countyFips + apn, or an address"
+  })
+]);
+var CHANNELS = ["email", "linkedin", "sms", "mail", "call_script"];
+var ChannelSchema = external_exports.enum(CHANNELS);
+var MessageSchema = external_exports.object({
+  /** FK to the Contact this message is for (email if known, else name@domain). */
+  contactKey: external_exports.string().min(1),
+  channel: ChannelSchema,
+  subject: external_exports.string().optional(),
+  body: external_exports.string().min(1),
+  cta: external_exports.string().min(1),
+  /** 0-100 fit score the model assigned at the score() seam. */
+  fitScore: external_exports.number().min(0).max(100).optional(),
+  /** Provenance: which model + prompt version produced this. */
+  model: external_exports.string().min(1),
+  promptVersion: external_exports.string().min(1),
+  createdAt: external_exports.string().datetime(),
+  /**
+   * True when the channel's required sender identity was not configured, so its
+   * footer could NOT be appended: name + company + postal address for email and
+   * mail, name + company for sms and call_script. Such a draft must not be sent
+   * as-is. Additive (v4); defaults false.
+   */
+  needsSenderIdentity: external_exports.boolean().default(false),
+  /** Property campaigns (v6, optional): the parcel this letter is about. */
+  propertyKey: external_exports.string().min(1).optional()
+});
+var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
+var LEGACY_RUN_STATUSES = ["pending", "drafted"];
+var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
+var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
+var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
+var RunErrorSchema = external_exports.object({
+  /** The lead's domain (company campaigns). */
+  domain: external_exports.string().min(1).optional(),
+  /** The parcel's `<countyFips>:<apn>` (property campaigns, v6). */
+  propertyKey: external_exports.string().min(1).optional(),
+  contactKey: external_exports.string().min(1).optional(),
+  stage: RunErrorStageSchema,
+  /** Sanitized, truncated error message (secrets redacted). */
+  message: external_exports.string(),
+  /** AI SDK finish reason when the error carried one (e.g. "length"). */
+  finishReason: external_exports.string().optional()
+}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0 || e.contactKey !== void 0, {
+  message: "a run error needs a domain, a propertyKey or a contactKey"
+});
+var FailedConnectorSchema = external_exports.object({
+  name: external_exports.string().min(1),
+  phase: external_exports.enum(["research", "enrich"]),
+  /** HTTP status, "timeout", or "error". */
+  status: external_exports.union([external_exports.number().int(), external_exports.string().min(1)])
+});
+var CampaignRunSchema = external_exports.object({
+  /** Caller-supplied or generated run id (no Date.now/random inside core). */
+  id: external_exports.string().min(1),
+  // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
+  // existing v1 line on read (store.ts re-validates each line). New writes emit
+  // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
+  schemaVersion: SchemaVersionSchema,
+  icp: external_exports.string().min(1),
+  domains: external_exports.array(external_exports.string().min(1)),
+  /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
+  vertical: external_exports.string().min(1).default("b2b-sdr"),
+  /** Model + provider that ran the LLM seams. */
+  provider: external_exports.string().min(1),
+  model: external_exports.string().min(1),
+  status: StoredRunStatusSchema,
+  leads: external_exports.array(LeadSchema).default([]),
+  contacts: external_exports.array(ContactSchema).default([]),
+  enrichments: external_exports.array(EnrichmentSchema).default([]),
+  messages: external_exports.array(MessageSchema).default([]),
+  /** Cumulative spend across LLM seams, if metered. */
+  costUsd: external_exports.number().nonnegative().optional(),
+  /** Names of connectors that were skipped (no key / unsupported) this run. */
+  skippedConnectors: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Contacts the pack's compliance gate blocked before drafting — the audit trail
+   * for "did not contact, and why". Always empty for b2b-sdr (no-op gate); the
+   * append-only RunStore IS the compliance record for verticals that do block.
+   */
+  blockedContacts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      reason: external_exports.string().min(1),
+      /** Property campaigns (v6): the parcel the block was about. */
+      propertyKey: external_exports.string().min(1).optional()
+    })
+  ).default([]),
+  /**
+   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
+   * A provider error on domain 2 no longer loses domain 1's drafts.
+   */
+  errors: external_exports.array(RunErrorSchema).default([]),
+  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
+  rejectedDrafts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      issues: external_exports.array(external_exports.string()),
+      /** Property campaigns (v6): the parcel the draft was about. */
+      propertyKey: external_exports.string().min(1).optional()
+    })
+  ).default([]),
+  /**
+   * Configured connectors that threw (sanitized status only — never the error
+   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
+   * "not configured" only (v3).
+   */
+  failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
+  /**
+   * Run-level compliance warnings that did not block a contact but must be seen
+   * before anything is sent — e.g. email drafts produced without a configured
+   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
+   */
+  complianceWarnings: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Prompt provenance for the run's LLM seams (v5, additive): each entry is
+   * "<prompt-file>@<sha8>". `score` lists the joined score-seam files; `draft` is
+   * the draft-seam file. Empty for agent-saved runs (the agent drafted, not a seam).
+   */
+  promptRefs: external_exports.object({
+    score: external_exports.array(external_exports.string().min(1)).optional(),
+    draft: external_exports.string().min(1).optional()
+  }).default({}),
+  /**
+   * Score-seam angles removed because they cited a fact absent from the inputs
+   * (groundAngles) — kept so an operator can see what the model tried (v5).
+   */
+  droppedAngles: external_exports.array(
+    external_exports.object({
+      domain: external_exports.string().min(1).optional(),
+      /** Property campaigns (v6). */
+      propertyKey: external_exports.string().min(1).optional(),
+      angle: external_exports.string(),
+      reason: external_exports.string()
+    }).refine((d) => d.domain !== void 0 || d.propertyKey !== void 0, {
+      message: "a dropped angle needs a domain or a propertyKey"
+    })
+  ).default([]),
+  /**
+   * Who assembled the record (v5, optional so older lines stay unlabeled rather
+   * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
+   * where the drafts and the `model` field are caller-claimed.
+   */
+  origin: external_exports.enum(["pipeline", "agent"]).optional(),
+  /** The typed research queries this run executed (v6, optional). */
+  queries: external_exports.array(ResearchQuerySchema).optional(),
+  /**
+   * Which provider + model ran each LLM seam when they differ (v6, optional):
+   * a cheap model scores, a stronger one drafts. Absent ⇒ `provider`/`model` ran both.
+   */
+  seamModels: external_exports.object({
+    score: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) }),
+    draft: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) })
+  }).optional(),
+  /**
+   * An inbound reply (v6, optional): where the inquiry came from, when it
+   * arrived, when the reply was drafted, and the speed-to-lead in between.
+   */
+  inbound: external_exports.object({
+    source: external_exports.string().min(1),
+    receivedAt: external_exports.string().datetime({ offset: true }),
+    draftedAt: external_exports.string().datetime(),
+    speedToLeadMs: external_exports.number().int().nonnegative()
+  }).optional(),
+  /** Vendor-credit accounting when the run had a budget (v6, optional). */
+  credits: external_exports.object({
+    limit: external_exports.number().nonnegative(),
+    spent: external_exports.number().nonnegative(),
+    exhausted: external_exports.boolean(),
+    byConnector: external_exports.record(external_exports.string(), external_exports.number().nonnegative())
+  }).optional(),
+  /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
+  properties: external_exports.array(PropertySchema).default([]),
+  parties: external_exports.array(PartySchema).default([]),
+  ownerships: external_exports.array(OwnershipSchema).default([]),
+  entityLinks: external_exports.array(EntityLinkSchema).default([]),
+  contactPoints: external_exports.array(ContactPointSchema).default([]),
+  createdAt: external_exports.string().datetime(),
+  finishedAt: external_exports.string().datetime().optional()
+});
+
+// pipeline_core/connectors/fl-dor-parcels.ts
+var FL_DOR_URL = "https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer/0/query";
+var FL_DOR_COUNTY = { "12033": 27, "12091": 56 };
+var FIPS_BY_CO_NO = Object.fromEntries(
+  Object.entries(FL_DOR_COUNTY).map(([fips, co]) => [co, fips])
+);
+var SOURCE2 = "fl-dor-parcels";
+var TERMS2 = {
+  id: "fl-dor-roll",
+  outreachRestricted: false,
+  attribution: "Florida Department of Revenue tax roll (via FDEP/FGIO); data owned by each county property appraiser"
+};
+var isFloridaZip = (z2) => /^3[2-4]\d{3}$/.test(z2);
+var PAGE = 500;
+var OUT_FIELDS = [
+  "PARCEL_ID",
+  "CO_NO",
+  "OWN_NAME",
+  "OWN_ADDR1",
+  "OWN_ADDR2",
+  "OWN_CITY",
+  "OWN_STATE",
+  "OWN_ZIPCD",
+  "OWN_STATE_",
+  "PHY_ADDR1",
+  "PHY_ADDR2",
+  "PHY_CITY",
+  "PHY_ZIPCD",
+  "JV",
+  "JV_HMSTD",
+  "DOR_UC",
+  "ACT_YR_BLT",
+  "TOT_LVG_AR",
+  "SALE_PRC1",
+  "SALE_YR1",
+  "SALE_MO1",
+  "LND_SQFOOT"
+].join(",");
+var Num = external_exports.union([external_exports.number(), external_exports.string()]).nullable().optional();
+var Str = external_exports.string().nullable().optional();
+var FeatureSchema = external_exports.object({
+  attributes: external_exports.object({
+    PARCEL_ID: external_exports.string(),
+    CO_NO: external_exports.number(),
+    OWN_NAME: Str,
+    OWN_ADDR1: Str,
+    OWN_ADDR2: Str,
+    OWN_CITY: Str,
+    OWN_STATE: Str,
+    OWN_ZIPCD: Num,
+    OWN_STATE_: Str,
+    PHY_ADDR1: Str,
+    PHY_ADDR2: Str,
+    PHY_CITY: Str,
+    PHY_ZIPCD: Num,
+    JV: Num,
+    JV_HMSTD: Num,
+    DOR_UC: Str,
+    ACT_YR_BLT: Num,
+    TOT_LVG_AR: Num,
+    SALE_PRC1: Num,
+    SALE_YR1: Num,
+    SALE_MO1: Str,
+    LND_SQFOOT: Num
+  }).passthrough(),
+  centroid: external_exports.object({ x: external_exports.number(), y: external_exports.number() }).optional()
+});
+var ResponseSchema2 = external_exports.object({
+  features: external_exports.array(FeatureSchema).default([]),
+  exceededTransferLimit: external_exports.boolean().optional(),
+  error: external_exports.object({ message: external_exports.string().optional() }).passthrough().optional()
+});
+var clean = (v) => {
+  if (typeof v !== "string") return void 0;
+  const t = v.replace(/\s+/g, " ").trim();
+  return t ? t : void 0;
+};
+var num = (v) => {
+  const n = typeof v === "string" ? Number(v.trim()) : v;
+  return typeof n === "number" && Number.isFinite(n) ? n : void 0;
+};
+var zip5 = (v) => {
+  const n = num(v);
+  if (n === void 0 || n <= 0) return void 0;
+  return String(Math.trunc(n)).padStart(5, "0").slice(0, 5);
+};
+var masked = (...vals) => vals.some((v) => typeof v === "string" && /\*{3,}/.test(v));
+var ESTATE_RE = /\b(EST|ESTATE|ESTATE OF|DECD|DECEASED|HEIRS?)\b/i;
+var TRUST_RE = /\b(TRUSTS?|TRUSTEES?|TRS|TR)\b/i;
+var GOV_RE = /\b(COUNTY|CITY OF|STATE OF|BOARD OF|SCHOOL|UNITED STATES|USA|TOWN OF|AUTH\w*|DISTRICT|DEPT|DEPART\w*|UTILIT\w*|GOVERNM\w*|HOUSING AUTH\w*)\b/i;
+var ENTITY_RE = /\b(LLC|L\.?L\.?C|INC|CORP\w*|COMPANY|LTD|LP|LLP|PARTNERSHIP|BANK|ASSOCIA\w*|ASSN|HOLDINGS?|PROPERTIES|INVESTMENTS?|CHURCH|MINISTRIES)\b/i;
+function entityType(name) {
+  if (ESTATE_RE.test(name)) return "estate";
+  if (GOV_RE.test(name)) return "government";
+  if (TRUST_RE.test(name)) return "trust";
+  if (/\bL\.?L\.?C\b/i.test(name)) return "llc";
+  if (/\b(INC|CORP\w*)\b/i.test(name)) return "corporation";
+  if (/\b(LP|LLP|PARTNERSHIP|LTD)\b/i.test(name)) return "partnership";
+  return "other";
+}
+var isEntityName = (name) => ESTATE_RE.test(name) || GOV_RE.test(name) || TRUST_RE.test(name) || ENTITY_RE.test(name);
+function partyKey(name, mailing, parcelKey) {
+  const where = mailing ? `${mailing.line1}|${mailing.line2 ?? ""}|${mailing.city}|${mailing.zip}` : `no-mailing|${parcelKey}`;
+  const basis = `${name.toUpperCase()}|${where.toUpperCase()}`;
+  return `fl-dor:${createHash2("sha256").update(basis).digest("hex").slice(0, 16)}`;
+}
+function mapFlDorRow(row, fetchedAt, responseHash) {
+  const a = row.attributes;
+  const fips = FIPS_BY_CO_NO[a.CO_NO];
+  const apn = clean(a.PARCEL_ID);
+  if (!fips || !apn) return void 0;
+  if (masked(a.OWN_NAME, a.OWN_ADDR1, a.PHY_ADDR1)) return void 0;
+  const fact = (value) => ({ value, source: SOURCE2, fetchedAt, responseHash, licenseTerms: TERMS2 });
+  const attributes = {};
+  const jv = num(a.JV);
+  if (jv !== void 0 && jv > 0) attributes.justValueCents = fact(Math.round(jv * 100));
+  const uc = clean(a.DOR_UC);
+  if (uc) attributes.landUseCode = fact(uc);
+  const yb = num(a.ACT_YR_BLT);
+  if (yb !== void 0 && yb > 1700) attributes.yearBuilt = fact(yb);
+  const lv = num(a.TOT_LVG_AR);
+  if (lv !== void 0 && lv > 0) attributes.livingAreaSqft = fact(lv);
+  const ls = num(a.LND_SQFOOT);
+  if (ls !== void 0 && ls > 0) attributes.landSqft = fact(ls);
+  const hs = num(a.JV_HMSTD);
+  if (hs !== void 0) attributes.homesteadExemption = fact(hs > 0);
+  const salePrice = num(a.SALE_PRC1);
+  const saleYear = num(a.SALE_YR1);
+  const saleMonth = clean(a.SALE_MO1);
+  if (salePrice !== void 0 && salePrice > 0) attributes.lastSalePriceCents = fact(Math.round(salePrice * 100));
+  const month = saleMonth && /^\d{1,2}$/.test(saleMonth) ? Number(saleMonth) : void 0;
+  const year = saleYear !== void 0 && saleYear > 1800 && saleYear < 2200 ? Math.trunc(saleYear) : void 0;
+  const saleDate = year !== void 0 && month !== void 0 && month >= 1 && month <= 12 ? `${year}-${String(month).padStart(2, "0")}-01` : void 0;
+  if (saleDate) attributes.lastSaleDate = fact(saleDate);
+  else if (year !== void 0) attributes.lastSaleYear = fact(year);
+  const situsZip = zip5(a.PHY_ZIPCD);
+  const situs = clean(a.PHY_ADDR1);
+  const city = clean(a.PHY_CITY);
+  const address = situs && city && situsZip ? { line1: situs, ...clean(a.PHY_ADDR2) ? { line2: clean(a.PHY_ADDR2) } : {}, city, state: "FL", zip: situsZip, countyFips: fips } : void 0;
+  const property = {
+    key: propertyKey(fips, apn),
+    apn: apn.toUpperCase(),
+    countyFips: fips,
+    ...address ? { address } : {},
+    ...row.centroid ? { location: { lat: row.centroid.y, lon: row.centroid.x } } : {},
+    attributes,
+    source: SOURCE2
+  };
+  const name = clean(a.OWN_NAME);
+  if (!name) return { property };
+  const mState = clean(a.OWN_STATE)?.toUpperCase();
+  const mZip = zip5(a.OWN_ZIPCD);
+  const mLine = clean(a.OWN_ADDR1);
+  const mCity = clean(a.OWN_CITY);
+  const foreign = clean(a.OWN_STATE_);
+  const mailing = mLine && mCity && mState && /^[A-Z]{2}$/.test(mState) && mZip && !foreign ? { line1: mLine, ...clean(a.OWN_ADDR2) ? { line2: clean(a.OWN_ADDR2) } : {}, city: mCity, state: mState, zip: mZip } : void 0;
+  const isEntity = isEntityName(name);
+  const party = {
+    key: partyKey(name, mailing, propertyKey(fips, apn)),
+    kind: isEntity ? "entity" : "person",
+    name,
+    ...isEntity ? { entityType: entityType(name) } : {},
+    ...mailing ? { mailingAddress: mailing } : {},
+    source: SOURCE2,
+    licenseTerms: TERMS2
+  };
+  const ownership = {
+    propertyKey: property.key,
+    partyKey: party.key,
+    role: "owner",
+    ...saleDate ? { asOf: saleDate } : {},
+    source: SOURCE2,
+    fetchedAt
+  };
+  return { property, party, ownership };
+}
+var sqlString = (v) => `'${v.replace(/'/g, "''")}'`;
+var likePrefix = (v) => sqlString(`${v.replace(/[%_]/g, "").toUpperCase()}%`);
+var ALL_COUNTIES = Object.values(FL_DOR_COUNTY);
+function flDorWhere(query) {
+  if (query.kind === "parcel") {
+    const co = query.countyFips ? FL_DOR_COUNTY[query.countyFips] : void 0;
+    if (co && query.apn) return `CO_NO=${co} AND PARCEL_ID=${sqlString(query.apn.replace(/[-\s.]/g, "").toUpperCase())}`;
+    if (query.address && query.address.state === "FL") {
+      const zip = query.address.zip.slice(0, 5);
+      return `CO_NO IN (${ALL_COUNTIES.join(",")}) AND PHY_ZIPCD=${Number(zip)} AND PHY_ADDR1 LIKE ${likePrefix(query.address.line1)}`;
+    }
+    return void 0;
+  }
+  if (query.kind === "area") {
+    const zips = (query.geography.zips ?? []).filter(isFloridaZip);
+    const asked = query.geography.countyFips;
+    const counties = (asked ?? []).map((f) => FL_DOR_COUNTY[f]).filter((c) => c !== void 0);
+    if (asked && asked.length > 0 && counties.length === 0) return void 0;
+    if (zips.length === 0 && counties.length === 0) return void 0;
+    const parts = [`CO_NO IN (${(counties.length > 0 ? counties : ALL_COUNTIES).join(",")})`];
+    if (zips.length > 0) parts.push(`PHY_ZIPCD IN (${zips.map(Number).join(",")})`);
+    return parts.join(" AND ");
+  }
+  return void 0;
+}
+var flDorParcelsConnector = {
+  name: SOURCE2,
+  displayName: "Florida statewide parcels (DOR roll)",
+  tier: "free",
+  keyEnvVar: null,
+  phases: ["research"],
+  queryKinds: ["parcel", "area"],
+  capabilities: ["parcel", "property.search"],
+  cacheTtlMs: 7 * 24 * 36e5,
+  // an annual roll: a week-old answer is as good as a fresh one
+  rateLimit: { perMinute: 60 },
+  note: "Free, keyless (INTENT_OUTREACH_PUBLIC_RECORDS=0 turns it off). Annual DOR roll snapshot; owner names cut at 30 characters. Confidential owners are dropped.",
+  isConfigured() {
+    return publicRecordsEnabled();
+  },
+  async research({ query, signal }) {
+    const empty = { leads: [], contacts: [] };
+    if (!query) return empty;
+    const where = flDorWhere(query);
+    if (!where) return empty;
+    const asked = Number(query.kind === "area" ? query.filters.maxRecords : void 0);
+    const max = query.kind === "area" ? Number.isFinite(asked) && asked >= 1 ? Math.min(Math.trunc(asked), 5e3) : 500 : 50;
+    const properties = [];
+    const parties = [];
+    const ownerships = [];
+    for (let offset = 0; offset < max; offset += PAGE) {
+      const body = await httpJson(FL_DOR_URL, {
+        signal,
+        retries: 2,
+        rateLimit: { key: SOURCE2, perMinute: 60 },
+        query: {
+          where,
+          outFields: OUT_FIELDS,
+          returnGeometry: "false",
+          returnCentroid: "true",
+          outSR: "4326",
+          orderByFields: "OBJECTID",
+          resultOffset: offset,
+          resultRecordCount: Math.min(PAGE, max - offset),
+          f: "json"
+        }
+      });
+      const page = parseVendor(ResponseSchema2, body);
+      if (page.error) throw new Error(`fl-dor-parcels: query failed (${page.error.message ?? "unknown"})`);
+      const fetchedAt = (/* @__PURE__ */ new Date()).toISOString();
+      const hash2 = createHash2("sha256").update(JSON.stringify(body)).digest("hex");
+      for (const row of page.features) {
+        const mapped = mapFlDorRow(row, fetchedAt, hash2);
+        if (!mapped) continue;
+        properties.push(mapped.property);
+        if (mapped.party) parties.push(mapped.party);
+        if (mapped.ownership) ownerships.push(mapped.ownership);
+      }
+      if (!page.exceededTransferLimit || page.features.length === 0) break;
+    }
+    return { leads: [], contacts: [], properties, parties, ownerships };
   }
 };
 
@@ -38672,6 +39525,9 @@ var BUILTIN_CONNECTORS = [
   hunterConnector,
   peopledatalabsConnector,
   exaConnector,
+  // free public records (keyless, property queries only)
+  flDorParcelsConnector,
+  femaNfhlConnector,
   // paid
   crunchbaseConnector,
   leadmagicConnector,
@@ -38689,253 +39545,526 @@ function registerBuiltinConnectors() {
   registered = true;
 }
 
-// pipeline_core/models.ts
-var SCHEMA_VERSION = 5;
-var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5];
-var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
-var SchemaVersionSchema = external_exports.union([
-  external_exports.literal(V_FIRST),
-  external_exports.literal(V_SECOND),
-  ...V_REST.map((v) => external_exports.literal(v))
-]);
-var SourceSchema = external_exports.string().min(1);
-var LeadSchema = external_exports.object({
-  domain: external_exports.string().min(1),
-  companyName: external_exports.string().min(1),
-  industry: external_exports.string().optional(),
-  /** Free-text headcount band, e.g. "11-50". Connectors disagree on format. */
-  size: external_exports.string().optional(),
-  description: external_exports.string().optional(),
-  source: SourceSchema
-});
-var ContactSchema = external_exports.object({
-  name: external_exports.string().min(1),
-  leadDomain: external_exports.string().min(1),
-  email: external_exports.string().email().optional(),
-  title: external_exports.string().optional(),
-  // A LinkedIn handle OR full URL — providers return both shapes, so don't reject
-  // an otherwise-valid contact (and thus the whole run) over a non-URL handle.
-  linkedin: external_exports.string().optional(),
-  source: SourceSchema,
-  /**
-   * True when the provider withheld the surname (the last token is a lone
-   * initial, e.g. "Kristina L"). The contact is kept, but the drafter addresses
-   * them by first name only. Optional + additive: older lines simply omit it.
-   */
-  nameIncomplete: external_exports.boolean().optional()
-});
-var EnrichmentSchema = external_exports.object({
-  /** What this enrichment is attached to. */
-  subjectType: external_exports.enum(["lead", "contact"]),
-  /** Natural key of the subject: a domain (lead) or an email (contact). */
-  subjectKey: external_exports.string().min(1),
-  provider: SourceSchema,
-  /** Normalized highlights the scorer/draft seam reads. */
-  funding: external_exports.object({
-    lastRound: external_exports.string().optional(),
-    totalRaisedUsd: external_exports.number().nonnegative().optional(),
-    lastRoundDate: external_exports.string().optional(),
-    investors: external_exports.array(external_exports.string()).optional()
-  }).optional(),
-  verifiedEmail: external_exports.string().email().optional(),
-  /**
-   * Optional back-reference to the Contact's `name` when the enrichment found an
-   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
-   * pipeline fold the found email into the working contact list. Optional/additive.
-   */
-  contactName: external_exports.string().min(1).optional(),
-  phone: external_exports.string().optional(),
-  /** Raw provider payload, retained for audit; never trusted as schema. */
-  data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
-  fetchedAt: external_exports.string().datetime()
-});
-var MessageSchema = external_exports.object({
-  /** FK to the Contact this message is for (email if known, else name@domain). */
-  contactKey: external_exports.string().min(1),
-  channel: external_exports.enum(["email", "linkedin"]),
-  subject: external_exports.string().optional(),
-  body: external_exports.string().min(1),
-  cta: external_exports.string().min(1),
-  /** 0-100 fit score the model assigned at the score() seam. */
-  fitScore: external_exports.number().min(0).max(100).optional(),
-  /** Provenance: which model + prompt version produced this. */
-  model: external_exports.string().min(1),
-  promptVersion: external_exports.string().min(1),
-  createdAt: external_exports.string().datetime(),
-  /**
-   * True when this is an EMAIL draft and no sender identity (name, company,
-   * postal address) was configured, so the CAN-SPAM footer could NOT be appended.
-   * Such a draft must not be sent as-is. Additive (v4); defaults false.
-   */
-  needsSenderIdentity: external_exports.boolean().default(false)
-});
-var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
-var LEGACY_RUN_STATUSES = ["pending", "drafted"];
-var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
-var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
-var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
-var RunErrorSchema = external_exports.object({
-  domain: external_exports.string().min(1),
-  contactKey: external_exports.string().min(1).optional(),
-  stage: RunErrorStageSchema,
-  /** Sanitized, truncated error message (secrets redacted). */
-  message: external_exports.string(),
-  /** AI SDK finish reason when the error carried one (e.g. "length"). */
-  finishReason: external_exports.string().optional()
-});
-var FailedConnectorSchema = external_exports.object({
-  name: external_exports.string().min(1),
-  phase: external_exports.enum(["research", "enrich"]),
-  /** HTTP status, "timeout", or "error". */
-  status: external_exports.union([external_exports.number().int(), external_exports.string().min(1)])
-});
-var CampaignRunSchema = external_exports.object({
-  /** Caller-supplied or generated run id (no Date.now/random inside core). */
-  id: external_exports.string().min(1),
-  // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
-  // existing v1 line on read (store.ts re-validates each line). New writes emit
-  // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
-  schemaVersion: SchemaVersionSchema,
-  icp: external_exports.string().min(1),
-  domains: external_exports.array(external_exports.string().min(1)),
-  /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
-  vertical: external_exports.string().min(1).default("b2b-sdr"),
-  /** Model + provider that ran the LLM seams. */
-  provider: external_exports.string().min(1),
-  model: external_exports.string().min(1),
-  status: StoredRunStatusSchema,
-  leads: external_exports.array(LeadSchema).default([]),
-  contacts: external_exports.array(ContactSchema).default([]),
-  enrichments: external_exports.array(EnrichmentSchema).default([]),
-  messages: external_exports.array(MessageSchema).default([]),
-  /** Cumulative spend across LLM seams, if metered. */
-  costUsd: external_exports.number().nonnegative().optional(),
-  /** Names of connectors that were skipped (no key / unsupported) this run. */
-  skippedConnectors: external_exports.array(external_exports.string()).default([]),
-  /**
-   * Contacts the pack's compliance gate blocked before drafting — the audit trail
-   * for "did not contact, and why". Always empty for b2b-sdr (no-op gate); the
-   * append-only RunStore IS the compliance record for verticals that do block.
-   */
-  blockedContacts: external_exports.array(
-    external_exports.object({
-      contactKey: external_exports.string().min(1),
-      reason: external_exports.string().min(1)
-    })
-  ).default([]),
-  /**
-   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
-   * A provider error on domain 2 no longer loses domain 1's drafts.
-   */
-  errors: external_exports.array(RunErrorSchema).default([]),
-  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
-  rejectedDrafts: external_exports.array(external_exports.object({ contactKey: external_exports.string().min(1), issues: external_exports.array(external_exports.string()) })).default([]),
-  /**
-   * Configured connectors that threw (sanitized status only — never the error
-   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
-   * "not configured" only (v3).
-   */
-  failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
-  /**
-   * Run-level compliance warnings that did not block a contact but must be seen
-   * before anything is sent — e.g. email drafts produced without a configured
-   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
-   */
-  complianceWarnings: external_exports.array(external_exports.string()).default([]),
-  /**
-   * Prompt provenance for the run's LLM seams (v5, additive): each entry is
-   * "<prompt-file>@<sha8>". `score` lists the joined score-seam files; `draft` is
-   * the draft-seam file. Empty for agent-saved runs (the agent drafted, not a seam).
-   */
-  promptRefs: external_exports.object({
-    score: external_exports.array(external_exports.string().min(1)).optional(),
-    draft: external_exports.string().min(1).optional()
-  }).default({}),
-  /**
-   * Score-seam angles removed because they cited a fact absent from the inputs
-   * (groundAngles) — kept so an operator can see what the model tried (v5).
-   */
-  droppedAngles: external_exports.array(external_exports.object({ domain: external_exports.string().min(1), angle: external_exports.string(), reason: external_exports.string() })).default([]),
-  /**
-   * Who assembled the record (v5, optional so older lines stay unlabeled rather
-   * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
-   * where the drafts and the `model` field are caller-claimed.
-   */
-  origin: external_exports.enum(["pipeline", "agent"]).optional(),
-  createdAt: external_exports.string().datetime(),
-  finishedAt: external_exports.string().datetime().optional()
-});
+// pipeline_core/approvals.ts
+import { createHash as createHash3, randomUUID } from "node:crypto";
+import { constants, mkdir, open as open2, readFile, rename, stat, truncate, unlink } from "node:fs/promises";
+import { dirname, join as join2 } from "node:path";
 
-// pipeline_core/validator.ts
-function deepFreeze(value, seen = /* @__PURE__ */ new WeakSet()) {
-  if (value === null || typeof value !== "object" || seen.has(value)) return value;
-  seen.add(value);
-  for (const key of Reflect.ownKeys(value)) {
-    deepFreeze(value[key], seen);
+// pipeline_core/compliance/index.ts
+var ZIP5_RE = /^\d{5}$/;
+function defineServiceArea(id, zips) {
+  if (typeof id !== "string" || !id.trim()) throw new Error("service area id is empty");
+  const set2 = /* @__PURE__ */ new Set();
+  for (const z2 of zips) {
+    const zip = typeof z2 === "string" ? z2.trim() : "";
+    if (!ZIP5_RE.test(zip)) throw new Error(`service area ${id}: ${JSON.stringify(z2)} is not a 5-digit ZIP`);
+    set2.add(zip);
   }
-  return Object.freeze(value);
+  if (set2.size === 0) throw new Error(`service area ${id} has no ZIPs`);
+  return Object.freeze({ id, zips: set2 });
 }
-var ValidationError = class extends Error {
-  constructor(kind, issues) {
-    super(
-      `validation failed for ${kind}: ${issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`
-    );
-    this.kind = kind;
-    this.issues = issues;
-    this.name = "ValidationError";
+var E164_RE = /^\+[1-9]\d{9,14}$/;
+function normalizePhone(phone) {
+  if (typeof phone !== "string") {
+    throw new Error("phone must be a string");
   }
-  kind;
-  issues;
+  const stripped = phone.replace(/[\s\-.()]/g, "");
+  if (!stripped) {
+    throw new Error("phone is empty after normalization");
+  }
+  let candidate;
+  if (stripped.startsWith("+")) {
+    candidate = stripped;
+  } else if (stripped.length === 10 && /^\d+$/.test(stripped)) {
+    candidate = "+1" + stripped;
+  } else if (stripped.length === 11 && /^\d+$/.test(stripped) && stripped.startsWith("1")) {
+    candidate = "+" + stripped;
+  } else {
+    throw new Error(`phone ${JSON.stringify(phone)} is not in a recognized US format`);
+  }
+  if (!E164_RE.test(candidate)) {
+    throw new Error(`phone ${JSON.stringify(phone)} is not valid E.164`);
+  }
+  return candidate;
+}
+function inServiceArea(zipCode, area) {
+  if (typeof zipCode !== "string" || !area || !(area.zips instanceof Set)) {
+    return false;
+  }
+  const cleaned = zipCode.trim();
+  if (!ZIP5_RE.test(cleaned)) {
+    return false;
+  }
+  return area.zips.has(cleaned);
+}
+
+// pipeline_core/compliance/suppression.ts
+var SUPPRESSION_KINDS = ["email", "domain", "phone", "address"];
+var EMPTY_SUPPRESSION_LIST = Object.freeze({
+  emails: /* @__PURE__ */ new Set(),
+  domains: /* @__PURE__ */ new Set(),
+  phones: /* @__PURE__ */ new Set(),
+  addresses: /* @__PURE__ */ new Set()
+});
+var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+function normalizeSuppressionDomain(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) throw new Error("domain is empty");
+  let host = input2.trim().toLowerCase();
+  host = host.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
+  host = host.replace(/^[^@/]*@/, "");
+  host = host.split(/[/?#]/)[0] ?? "";
+  host = host.replace(/:\d+$/, "").replace(/\.$/, "");
+  const labels = host.split(".");
+  if (labels[0] === "www" && labels.length > 2) labels.shift();
+  const tld = labels[labels.length - 1] ?? "";
+  if (labels.length < 2 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
+    throw new Error(`${JSON.stringify(input2)} is not a valid domain`);
+  }
+  return labels.join(".");
+}
+function normalizeSuppressionEmail(input2) {
+  if (typeof input2 !== "string") throw new Error("email must be a string");
+  const e = input2.trim().toLowerCase();
+  if (!EMAIL_RE.test(e)) throw new Error(`${JSON.stringify(input2)} is not a valid email`);
+  const at = e.lastIndexOf("@");
+  return `${e.slice(0, at)}@${normalizeSuppressionDomain(e.slice(at + 1))}`;
+}
+function normalizeSuppressionPhone(input2) {
+  return normalizePhone(input2);
+}
+var ADDRESS_ABBREVIATIONS = {
+  STREET: "ST",
+  AVENUE: "AVE",
+  ROAD: "RD",
+  DRIVE: "DR",
+  BOULEVARD: "BLVD",
+  LANE: "LN",
+  COURT: "CT",
+  CIRCLE: "CIR",
+  PLACE: "PL",
+  PARKWAY: "PKWY",
+  HIGHWAY: "HWY",
+  TERRACE: "TER",
+  TRAIL: "TRL",
+  WAY: "WAY",
+  SQUARE: "SQ",
+  POINT: "PT",
+  COVE: "CV",
+  LOOP: "LOOP",
+  NORTH: "N",
+  SOUTH: "S",
+  EAST: "E",
+  WEST: "W",
+  NORTHEAST: "NE",
+  NORTHWEST: "NW",
+  SOUTHEAST: "SE",
+  SOUTHWEST: "SW",
+  BUILDING: "BLDG",
+  FLOOR: "FL"
 };
-function gate(kind, schema, raw) {
-  const parsed = schema.safeParse(raw);
-  if (parsed.success) {
-    return { ok: true, value: deepFreeze(parsed.data) };
-  }
-  return { ok: false, error: new ValidationError(kind, parsed.error.issues) };
-}
-function gateOrThrow(kind, schema, raw) {
-  const r = gate(kind, schema, raw);
-  if (!r.ok) throw r.error;
-  return r.value;
-}
-var validateMessage = (raw) => gate("Message", MessageSchema, raw);
-var validateCampaignRun = (raw) => gate("CampaignRun", CampaignRunSchema, raw);
-var assertCampaignRun = (raw) => gateOrThrow("CampaignRun", CampaignRunSchema, raw);
-
-// evals/supported.ts
-var APPROVED_MODELS = (
-  // BEGIN APPROVED_MODELS (generated by evals/promote.ts — JSON only)
-  [
-    {
-      "provider": "anthropic",
-      "model": "claude-sonnet-4-6",
-      "resultFile": null,
-      "verified": false,
-      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
-    },
-    {
-      "provider": "openai",
-      "model": "gpt-4o",
-      "resultFile": null,
-      "verified": false,
-      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
-    },
-    {
-      "provider": "minimax",
-      "model": "MiniMax-M3",
-      "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
-      "verified": true,
-      "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
+var UNIT_DESIGNATORS = /* @__PURE__ */ new Set(["#", "APT", "APARTMENT", "UNIT", "STE", "SUITE"]);
+var STATE_CODES = {
+  ALABAMA: "AL",
+  ALASKA: "AK",
+  ARIZONA: "AZ",
+  ARKANSAS: "AR",
+  CALIFORNIA: "CA",
+  COLORADO: "CO",
+  CONNECTICUT: "CT",
+  DELAWARE: "DE",
+  "DISTRICT OF COLUMBIA": "DC",
+  FLORIDA: "FL",
+  GEORGIA: "GA",
+  HAWAII: "HI",
+  IDAHO: "ID",
+  ILLINOIS: "IL",
+  INDIANA: "IN",
+  IOWA: "IA",
+  KANSAS: "KS",
+  KENTUCKY: "KY",
+  LOUISIANA: "LA",
+  MAINE: "ME",
+  MARYLAND: "MD",
+  MASSACHUSETTS: "MA",
+  MICHIGAN: "MI",
+  MINNESOTA: "MN",
+  MISSISSIPPI: "MS",
+  MISSOURI: "MO",
+  MONTANA: "MT",
+  NEBRASKA: "NE",
+  NEVADA: "NV",
+  "NEW HAMPSHIRE": "NH",
+  "NEW JERSEY": "NJ",
+  "NEW MEXICO": "NM",
+  "NEW YORK": "NY",
+  "NORTH CAROLINA": "NC",
+  "NORTH DAKOTA": "ND",
+  OHIO: "OH",
+  OKLAHOMA: "OK",
+  OREGON: "OR",
+  PENNSYLVANIA: "PA",
+  "RHODE ISLAND": "RI",
+  "SOUTH CAROLINA": "SC",
+  "SOUTH DAKOTA": "SD",
+  TENNESSEE: "TN",
+  TEXAS: "TX",
+  UTAH: "UT",
+  VERMONT: "VT",
+  VIRGINIA: "VA",
+  WASHINGTON: "WA",
+  "WEST VIRGINIA": "WV",
+  WISCONSIN: "WI",
+  WYOMING: "WY",
+  "PUERTO RICO": "PR"
+};
+var STATE_NAMES = Object.keys(STATE_CODES).sort((a, b) => b.length - a.length);
+var ZIP_TAIL_RE = /\b(\d{5})(?:-\d{4})?$/;
+function normalizeMailingAddress(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) throw new Error("address is empty");
+  let a = input2.toUpperCase().replace(/#/g, " # ");
+  a = a.replace(/\bP\.?\s*O\.?\s*BOX\b/g, "PO BOX").replace(/\bPOST\s+OFFICE\s+BOX\b/g, "PO BOX");
+  a = a.replace(/[.,;]/g, " ").replace(/\s+/g, " ").trim();
+  const zip = ZIP_TAIL_RE.exec(a);
+  if (!zip) throw new Error(`${JSON.stringify(input2)} has no trailing 5-digit ZIP`);
+  let head = a.slice(0, zip.index).trim();
+  let state;
+  for (const name of STATE_NAMES) {
+    if (head === name || head.endsWith(` ${name}`)) {
+      state = STATE_CODES[name];
+      head = head.slice(0, head.length - name.length).trim();
+      break;
     }
-  ]
-);
-function supportedProviderNames(entries = APPROVED_MODELS) {
-  return [...new Set(entries.map((e) => e.provider))];
+  }
+  const tokens = [];
+  for (const raw of head.split(" ")) {
+    if (!raw) continue;
+    const prev = tokens[tokens.length - 1];
+    if (UNIT_DESIGNATORS.has(raw)) {
+      if (prev !== "UNIT" && prev !== "BOX") tokens.push("UNIT");
+      continue;
+    }
+    tokens.push(ADDRESS_ABBREVIATIONS[raw] ?? raw);
+  }
+  if (state) tokens.push(state);
+  if (tokens.length < 3 || !/\d/.test(tokens.join(" "))) {
+    throw new Error(`${JSON.stringify(input2)} is not a full mailing address (street, city, state, ZIP)`);
+  }
+  return `${tokens.join(" ")} ${zip[1]}`;
+}
+function normalizeByKind(kind, value) {
+  switch (kind) {
+    case "email":
+      return normalizeSuppressionEmail(value);
+    case "domain":
+      return normalizeSuppressionDomain(value);
+    case "phone":
+      return normalizeSuppressionPhone(value);
+    case "address":
+      return normalizeMailingAddress(value);
+    default:
+      throw new Error(`unknown suppression kind ${JSON.stringify(kind)}`);
+  }
+}
+function normalizeSuppression(kind, value) {
+  return normalizeByKind(kind, value);
+}
+var PHONE_SHAPE_RE = /^\+?[\d\s\-.()]{7,}$/;
+function parseSuppressionValue(input2, kind) {
+  const raw = typeof input2 === "string" ? input2.trim() : "";
+  if (kind !== void 0) return { kind, value: normalizeByKind(kind, raw) };
+  if (raw.includes("@")) return { kind: "email", value: normalizeSuppressionEmail(raw) };
+  if (PHONE_SHAPE_RE.test(raw)) return { kind: "phone", value: normalizeSuppressionPhone(raw) };
+  if (/\s/.test(raw)) return { kind: "address", value: normalizeMailingAddress(raw) };
+  return { kind: "domain", value: normalizeSuppressionDomain(raw) };
+}
+function buildSuppressionList(entries) {
+  const sets = {
+    email: /* @__PURE__ */ new Set(),
+    domain: /* @__PURE__ */ new Set(),
+    phone: /* @__PURE__ */ new Set(),
+    address: /* @__PURE__ */ new Set()
+  };
+  for (const e of entries) {
+    const set2 = sets[e.kind];
+    if (!set2) throw new Error(`unknown suppression kind ${JSON.stringify(e.kind)}`);
+    set2.add(normalizeByKind(e.kind, e.value));
+  }
+  return { emails: sets.email, domains: sets.domain, phones: sets.phone, addresses: sets.address };
+}
+function isEmptyList(list) {
+  return list.emails.size + list.domains.size + list.phones.size + list.addresses.size === 0;
+}
+function domainSuppressed(list, domain2) {
+  const labels = domain2.split(".");
+  for (let i = 0; i <= labels.length - 2; i++) {
+    if (list.domains.has(labels.slice(i).join("."))) return true;
+  }
+  return false;
+}
+function checkSuppression(list, subject) {
+  if (isEmptyList(list)) return { status: "clean" };
+  const checkEmailDomain = list.emails.size + list.domains.size > 0;
+  if (checkEmailDomain && subject.email !== void 0) {
+    let email3;
+    try {
+      email3 = normalizeSuppressionEmail(subject.email);
+    } catch {
+      return { status: "blocked", reason: "suppression:malformed-email" };
+    }
+    if (list.emails.has(email3)) return { status: "blocked", reason: "suppressed:email" };
+    if (domainSuppressed(list, email3.slice(email3.lastIndexOf("@") + 1))) {
+      return { status: "blocked", reason: "suppressed:domain" };
+    }
+  }
+  for (const d of checkEmailDomain ? subject.domains : []) {
+    let domain2;
+    try {
+      domain2 = normalizeSuppressionDomain(d);
+    } catch {
+      return { status: "blocked", reason: "suppression:malformed-domain" };
+    }
+    if (domainSuppressed(list, domain2)) return { status: "blocked", reason: "suppressed:domain" };
+  }
+  if (list.phones.size > 0) {
+    for (const p of subject.phones ?? []) {
+      let phone;
+      try {
+        phone = normalizeSuppressionPhone(p);
+      } catch {
+        return { status: "blocked", reason: "suppression:malformed-phone" };
+      }
+      if (list.phones.has(phone)) return { status: "blocked", reason: "suppressed:phone" };
+    }
+  }
+  if (list.addresses.size > 0) {
+    for (const a of subject.addresses ?? []) {
+      let address;
+      try {
+        address = normalizeMailingAddress(a);
+      } catch {
+        return { status: "blocked", reason: "suppression:malformed-address" };
+      }
+      if (list.addresses.has(address)) return { status: "blocked", reason: "suppressed:address" };
+    }
+  }
+  return { status: "clean" };
+}
+function suppressionGate(list) {
+  return {
+    check: (ctx) => checkSuppression(list, {
+      ...ctx.contact.email !== void 0 ? { email: ctx.contact.email } : {},
+      domains: [ctx.lead.domain, ctx.contact.leadDomain],
+      phones: ctx.enrichments.flatMap((e) => e.phone !== void 0 ? [e.phone] : [])
+    })
+  };
+}
+function composeGates(...gates) {
+  return {
+    check(ctx) {
+      for (const gate2 of gates) {
+        const verdict = gate2.check(ctx);
+        if (!verdict || verdict.status !== "clean") return verdict;
+      }
+      return { status: "clean" };
+    }
+  };
 }
 
-// pipeline_core/providers.ts
-var SUPPORTED_PROVIDERS = new Set(supportedProviderNames());
+// pipeline_core/compliance/fair-housing.ts
+var FAIR_HOUSING_HARD = [
+  // familial status
+  "no children",
+  "no kids",
+  "adults only",
+  "adult building",
+  "couples only",
+  "singles only",
+  "perfect for families",
+  "ideal for families",
+  "perfect for a family",
+  "ideal for young families",
+  "empty nesters only",
+  // steering / exclusion proxies
+  "exclusive neighborhood",
+  "exclusive community",
+  "integrated neighborhood",
+  "traditional neighborhood values",
+  "safe neighborhood",
+  "low crime",
+  "crime-free",
+  "desirable neighbors",
+  "right kind of people",
+  // religion / national origin / race
+  "christian community",
+  "ethnic neighborhood",
+  "hispanic neighborhood",
+  "white neighborhood",
+  "black neighborhood",
+  // disability
+  "no wheelchairs",
+  "able-bodied"
+];
+var OUTREACH_AGE_FAMILIAL_HARD = [
+  "retire",
+  "retired",
+  "retiree",
+  "retirees",
+  "retiring",
+  "retirement",
+  "seniors",
+  "senior citizen",
+  "senior citizens",
+  "elderly",
+  "your age",
+  "at your stage of life",
+  "golden years",
+  "empty nest",
+  "empty nester",
+  "empty nesters",
+  "kids",
+  "children",
+  "grandkids",
+  "grandchildren",
+  "growing family",
+  "starting a family",
+  "new baby",
+  "pregnant",
+  "widow",
+  "widowed",
+  "widower",
+  "divorce",
+  "divorced",
+  "divorcing",
+  "perfect for your family",
+  "ideal for your family",
+  "your family",
+  "your spouse",
+  "your husband",
+  "your wife",
+  // Describing who an area or home is "for" by family or age (familial status steering).
+  "young families",
+  "young family",
+  "for families",
+  "family neighborhood",
+  "young couples",
+  "young couple",
+  "newlyweds",
+  "young professionals"
+];
+var FAIR_HOUSING_WARN = [
+  "family-friendly",
+  "family oriented",
+  "family-oriented",
+  "great schools",
+  "good schools",
+  "top schools",
+  "school district",
+  "walking distance to church",
+  "near churches",
+  "close to church",
+  "quiet neighborhood",
+  "safest",
+  "bachelor",
+  "mother-in-law suite",
+  "master bedroom",
+  "master suite",
+  "exclusive",
+  "private community"
+];
+function normalize(text) {
+  return text.toLowerCase().replace(/[\u2010-\u2015\u2212-]/g, " ").replace(/neighbour/g, "neighbor").replace(/\s+/g, " ");
+}
+var escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function compile2(terms) {
+  return terms.map((term) => {
+    const words = normalize(term).trim().split(" ").map(escapeRegExp);
+    const last = words.pop();
+    const stem = last.endsWith("s") && last.length > 3 ? last.slice(0, -1) : last;
+    const body = [...words, `${stem}(?:s|es)?`].join(" ");
+    return { term, re: new RegExp(`(?<![a-z0-9])${body}(?![a-z0-9])`) };
+  });
+}
+var HARD_RES = compile2([...FAIR_HOUSING_HARD, ...OUTREACH_AGE_FAMILIAL_HARD]);
+var WARN_RES = compile2(FAIR_HOUSING_WARN);
+function lintFairHousing(text) {
+  const t = normalize(text);
+  return {
+    hard: HARD_RES.filter((h) => h.re.test(t)).map((h) => h.term),
+    warn: WARN_RES.filter((w) => w.re.test(t)).map((w) => w.term)
+  };
+}
+var fairHousingDraftRule = (draft) => {
+  const fields = [
+    ["subject", draft.subject ?? ""],
+    ["body", draft.body],
+    ["cta", draft.cta]
+  ];
+  return fields.flatMap(
+    ([field, text]) => lintFairHousing(text).hard.map((term) => `fair-housing: "${term}" in ${field}`)
+  );
+};
+
+// pipeline_core/compliance/risk.ts
+var MANUAL_REVIEW_PATTERNS = [
+  ["probate", /\bprobat/],
+  ["probate", /\bdeceased\b/],
+  ["probate", /^estate$/],
+  ["probate", /\bestate sale\b/],
+  ["probate", /\bestate of\b/],
+  ["probate", /\bheirs?\b/],
+  ["probate", /\blife estate\b/],
+  ["divorce", /\bdivorc/],
+  ["divorce", /\bdissolution of marriage\b/],
+  ["pre-foreclosure", /\bforeclos/],
+  ["pre-foreclosure", /\blis pendens\b/],
+  ["pre-foreclosure", /\bnotice of (?:default|trustee sale|sale)\b/],
+  ["pre-foreclosure", /^nod$/],
+  ["pre-foreclosure", /\btax (?:sale|lien sale|deed)\b/]
+];
+var normalizeTag = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function manualReviewVerdict(signals) {
+  const categories = /* @__PURE__ */ new Set();
+  for (const raw of signals) {
+    const tag = normalizeTag(raw);
+    for (const [category, pattern] of MANUAL_REVIEW_PATTERNS) if (pattern.test(tag)) categories.add(category);
+  }
+  if (categories.size === 0) return { status: "clean" };
+  return { status: "blocked", reason: `manual-review:${[...categories].sort().join(",")}` };
+}
+var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+var ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+function agreementEnd(value) {
+  if (ISO_DATE.test(value)) {
+    const day = Date.parse(`${value}T00:00:00Z`);
+    return Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== value ? Number.NaN : day + 36 * 36e5;
+  }
+  return ISO_DATETIME.test(value) ? Date.parse(value) : Number.NaN;
+}
+function listingContactVerdict(listing, now) {
+  const ends = listing.agreementEndsAt !== void 0 ? agreementEnd(listing.agreementEndsAt) : void 0;
+  if (ends !== void 0 && Number.isNaN(ends)) return { status: "blocked", reason: "listing:agreement-date-invalid" };
+  const stillRuns = ends !== void 0 && ends > now.getTime();
+  const status = normalizeTag(String(listing.status ?? "")).replace(/ /g, "-");
+  switch (status) {
+    case "active":
+    case "pending":
+    case "coming-soon":
+      return { status: "blocked", reason: `listing:${status}` };
+    case "withdrawn":
+      return ends !== void 0 && !stillRuns ? { status: "clean" } : { status: "blocked", reason: "listing:withdrawn-under-agreement" };
+    case "expired":
+    case "cancelled":
+    case "canceled":
+      return stillRuns ? { status: "blocked", reason: "listing:agreement-still-in-effect" } : { status: "clean" };
+    case "sold":
+    case "off-market":
+      return { status: "clean" };
+    default:
+      return { status: "blocked", reason: "listing:status-unknown" };
+  }
+}
 
 // pipeline_core/draft-guard.ts
 var MAX_BODY_WORDS = 120;
@@ -38950,7 +40079,7 @@ var BANNED_PHRASES = [
   "i hope you're doing well",
   "i hope you are doing well"
 ];
-var EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)*\.[A-Z]{2,}/gi;
+var EMAIL_RE2 = /[A-Z0-9._%+-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)*\.[A-Z]{2,}/gi;
 var URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"'`)\]]+/gi;
 var BARE_HOST_RE = /\b(?:[a-z0-9-]+\.)+(?:com|io|ai|co|net|org|app|dev|xyz|me|so|gg|ly|link|info|biz|us|uk|tech|site|online|page|to|sh|cc)\b(?:\/[^\s<>"'`)\]]*)?/gi;
 var PHONE_RE = /(?:\+?\d[\d\s().-]{7,}\d)/g;
@@ -38961,10 +40090,10 @@ function trimTrailingPunct(s) {
   return s.replace(/[.,;:!?]+$/, "");
 }
 function extractEmails(text) {
-  return (text.match(EMAIL_RE) ?? []).map((e) => e.toLowerCase());
+  return (text.match(EMAIL_RE2) ?? []).map((e) => e.toLowerCase());
 }
 function extractUrls(text) {
-  const withoutEmails = text.replace(EMAIL_RE, " ");
+  const withoutEmails = text.replace(EMAIL_RE2, " ");
   const found = /* @__PURE__ */ new Set();
   for (const m of withoutEmails.match(URL_RE) ?? []) found.add(normalizeUrl(m));
   const withoutUrls = withoutEmails.replace(URL_RE, " ");
@@ -39058,6 +40187,13 @@ function guardDraft(draft, inputs) {
   if (/^\s*(?:re|fwd?)\s*:/i.test(draft.body)) issues.push('body: fake reply prefix ("Re:")');
   if (inputs.facts) issues.push(...checkQuantities([draft.subject ?? "", draft.body, draft.cta], inputs.facts));
   issues.push(...checkVoice(draft, inputs.voice));
+  for (const rule of inputs.rules ?? []) {
+    try {
+      issues.push(...rule(draft));
+    } catch (err) {
+      issues.push(`draft-rule-error: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
 var DASH_RULES = [
@@ -39069,13 +40205,13 @@ var DASH_RULES = [
   // The ASCII em dash: "word--word".
   { label: "double hyphen used as a dash", re: /(?<=[\p{L}\p{N}])--(?=[\p{L}\p{N}])/u }
 ];
-function escapeRegExp(s) {
+function escapeRegExp2(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function phraseMatcher(phrase) {
   const norm = normApostrophes(phrase).trim().replace(/\s+/g, " ");
   if (!norm) return void 0;
-  const body = norm.split(" ").map(escapeRegExp).join("\\s+");
+  const body = norm.split(" ").map(escapeRegExp2).join("\\s+");
   return new RegExp(`(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])`, "iu");
 }
 function checkVoice(draft, voice) {
@@ -39307,11 +40443,24 @@ function quantityFactSet(facts) {
   return set2;
 }
 var QUANTITY_QUALIFIER_WINDOW = 4;
+var STREET_SUFFIXES = new Set(
+  "st street ave avenue rd road dr drive blvd boulevard ln lane way ct court cir circle hwy highway pkwy parkway pl place trl trail loop ter terrace sq square pt point".split(" ")
+);
+function isHouseNumber(text, toks, q) {
+  if (q.first !== q.last || !/^\d{1,6}$/.test(toks[q.first].lower)) return false;
+  for (let k = q.last + 1; k <= q.last + 3 && k < toks.length; k++) {
+    const t = toks[k];
+    if (t.kind !== "word" || !/^[A-Z]/.test(text.slice(t.start, t.end))) return false;
+    if (k > q.last + 1 && STREET_SUFFIXES.has(t.lower.replace(/\.$/, ""))) return true;
+  }
+  return false;
+}
 function quantityIssuesIn(text, factSet) {
   const issues = [];
   const { toks, quantities, qualifiers } = scanQuantities(text, false);
   const quantityStarts = new Set(quantities.map((q) => q.first));
   for (const q of quantities) {
+    if (isHouseNumber(text, toks, q)) continue;
     const ql = qualifiers.find((x) => x.first > q.last);
     if (!ql || ql.first - q.last - 1 > QUANTITY_QUALIFIER_WINDOW) continue;
     let attached = true;
@@ -39405,6 +40554,686 @@ function factsOf(p) {
   return nonEmpty(out);
 }
 
+// pipeline_core/property-seam.ts
+var PropertyScoreOutputSchema = external_exports.object({
+  score: external_exports.number().int().min(0).max(100),
+  band: external_exports.enum(["hot", "warm", "cold"]),
+  reasons: external_exports.array(external_exports.string()).max(3)
+});
+
+// pipeline_core/approvals.ts
+var ApprovalRecordSchema = external_exports.object({
+  runId: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1),
+  channel: ChannelSchema,
+  messageSha256: external_exports.string().regex(/^[0-9a-f]{64}$/),
+  decision: external_exports.enum(["approved", "rejected"]),
+  /** Who decided: an OS user for the CLI, "mcp:<client>" for the MCP tools. */
+  by: external_exports.string().min(1),
+  at: external_exports.string().datetime(),
+  note: external_exports.string().min(1).optional()
+});
+function messageDigest(m) {
+  return createHash3("sha256").update(JSON.stringify([m.channel, m.subject ?? null, m.body, m.cta ?? null])).digest("hex");
+}
+function approvalVerdict(records, runId, contactKey, message) {
+  const digest = messageDigest(message);
+  let state = "missing";
+  for (const r of records) {
+    if (r.runId === runId && r.contactKey === contactKey && r.messageSha256 === digest) state = r.decision;
+  }
+  return state;
+}
+function defaultApprovalsPath() {
+  return join2(intentOutreachHome(), "approvals.jsonl");
+}
+async function readApprovals(path = defaultApprovalsPath()) {
+  let text;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+  const out = [];
+  const lines = text.split("\n");
+  const tornTail = !text.endsWith("\n") ? lines.length - 1 : -1;
+  lines.forEach((line, i) => {
+    if (!line.trim() || i === tornTail) return;
+    let parsed;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      throw new Error(`approvals: line ${i + 1} of ${path} is not valid JSON; fix or remove it`);
+    }
+    const r = ApprovalRecordSchema.safeParse(parsed);
+    if (!r.success) throw new Error(`approvals: line ${i + 1} of ${path} is invalid; fix or remove it`);
+    out.push(r.data);
+  });
+  return out;
+}
+var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+async function withLock(path, fn) {
+  await mkdir(dirname(path), { recursive: true, mode: 448 });
+  const lockPath = `${path}.lock`;
+  const token = randomUUID();
+  const deadline = Date.now() + 1e4;
+  let lock;
+  while (!lock) {
+    try {
+      lock = await open2(lockPath, "wx", 384);
+      await lock.write(token);
+    } catch (err) {
+      if (err.code !== "EEXIST") throw err;
+      try {
+        if (Date.now() - (await stat(lockPath)).mtimeMs > 3e4) {
+          const stolen = `${lockPath}.stale.${token}`;
+          await rename(lockPath, stolen);
+          await unlink(stolen).catch(() => void 0);
+          continue;
+        }
+      } catch {
+      }
+      if (Date.now() >= deadline) throw new Error(`approvals: timed out waiting for lock ${lockPath}`);
+      await sleep2(20);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await lock.close().catch(() => void 0);
+    const holder = await readFile(lockPath, "utf8").catch(() => void 0);
+    if (holder === token) await unlink(lockPath).catch(() => void 0);
+  }
+}
+async function repairTornTail(path) {
+  let text;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return;
+    throw err;
+  }
+  if (text.length === 0 || text.endsWith("\n")) return;
+  await truncate(path, Buffer.byteLength(text.slice(0, text.lastIndexOf("\n") + 1)));
+}
+async function append(path, record2) {
+  await withLock(path, async () => {
+    await repairTornTail(path);
+    const fh = await open2(path, constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND, 384);
+    try {
+      await fh.chmod(384);
+      await fh.write(`${JSON.stringify(record2)}
+`);
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  });
+}
+async function listPending(store, path = defaultApprovalsPath()) {
+  const records = await readApprovals(path);
+  const out = [];
+  for (const run of await store.listRuns()) {
+    for (const m of run.messages) {
+      if (approvalVerdict(records, run.id, m.contactKey, m) !== "missing") continue;
+      out.push({
+        runId: run.id,
+        contactKey: m.contactKey,
+        channel: m.channel,
+        ...m.subject ? { subject: m.subject } : {},
+        body: m.body,
+        cta: m.cta,
+        ...m.fitScore !== void 0 ? { fitScore: m.fitScore } : {},
+        createdAt: m.createdAt,
+        digest: messageDigest(m).slice(0, 12),
+        needsSenderIdentity: m.needsSenderIdentity
+      });
+    }
+  }
+  return out;
+}
+async function decide(input2) {
+  const run = await input2.store.getRun(input2.runId);
+  if (!run) throw new Error(`approvals: no run ${JSON.stringify(input2.runId)}`);
+  const matches = run.messages.filter((m2) => m2.contactKey === input2.contactKey);
+  if (matches.length === 0) throw new Error(`approvals: run ${input2.runId} has no message for ${input2.contactKey}`);
+  if (matches.length > 1) throw new Error(`approvals: run ${input2.runId} has ${matches.length} messages for ${input2.contactKey}`);
+  const m = matches[0];
+  const digest = messageDigest(m);
+  if (input2.decision === "approved") {
+    const prefix = (input2.digest ?? "").trim().toLowerCase();
+    if (prefix.length < 8 || !digest.startsWith(prefix)) {
+      throw new Error("approvals: approving needs the message digest shown by `approvals pending` (at least 8 characters)");
+    }
+    if (m.needsSenderIdentity) throw new Error("approvals: this draft has no sender-identity footer and cannot be approved");
+  }
+  const record2 = ApprovalRecordSchema.parse({
+    runId: run.id,
+    contactKey: m.contactKey,
+    channel: m.channel,
+    messageSha256: digest,
+    decision: input2.decision,
+    by: input2.by,
+    at: input2.now(),
+    ...input2.note?.trim() ? { note: input2.note.trim() } : {}
+  });
+  await append(input2.path ?? defaultApprovalsPath(), record2);
+  return record2;
+}
+
+// packages/deal-math/src/core.ts
+var DEAL_MATH_VERSION = "1.0.0";
+function result(value, inputs, assumptionsUsed) {
+  return Object.freeze({
+    value: Object.isFrozen(value) || typeof value !== "object" || value === null ? value : Object.freeze(value),
+    inputs: Object.freeze({ ...inputs }),
+    assumptionsUsed: Object.freeze({ ...assumptionsUsed }),
+    version: DEAL_MATH_VERSION
+  });
+}
+var Cents = external_exports.number().int().refine(Number.isSafeInteger, "cents must be a safe integer");
+var NonNegCents = Cents.refine((n) => n >= 0, "must be >= 0 cents");
+var Bps = external_exports.number().int().min(0).max(1e5);
+function roundHalfEven(x) {
+  if (!Number.isFinite(x)) throw new Error(`cannot round ${x}`);
+  const floor = Math.floor(x);
+  const diff = x - floor;
+  if (diff > 0.5) return floor + 1;
+  if (diff < 0.5) return floor;
+  return floor % 2 === 0 ? floor : floor + 1;
+}
+function divRoundHalfEven(num2, den) {
+  if (!Number.isSafeInteger(num2) || !Number.isSafeInteger(den) || den <= 0) {
+    throw new Error(`divRoundHalfEven needs safe integers and a positive divisor (got ${num2}/${den})`);
+  }
+  const q = Math.floor(num2 / den);
+  const r = num2 - q * den;
+  if (r * 2 > den) return q + 1;
+  if (r * 2 < den) return q;
+  return q % 2 === 0 ? q : q + 1;
+}
+function applyBps(cents, bps) {
+  return divRoundHalfEven(cents * bps, 1e4);
+}
+function parseOrThrow(fn, schema, value) {
+  const r = schema.safeParse(value);
+  if (!r.success) {
+    const issues = r.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+    throw new Error(`${fn}: invalid input: ${issues}`);
+  }
+  return r.data;
+}
+
+// packages/deal-math/src/income.ts
+var NoiInputs = external_exports.object({
+  /** Annual gross scheduled rent at full occupancy. */
+  grossScheduledRentCents: NonNegCents,
+  /** Annual other income (laundry, parking, fees). */
+  otherIncomeCents: NonNegCents.default(0),
+  /** Annual operating expenses (taxes, insurance, repairs, management, reserves). Excludes debt service. */
+  operatingExpensesCents: NonNegCents
+});
+var NoiAssumptions = external_exports.object({
+  /** Vacancy and credit loss, applied to gross scheduled rent. */
+  vacancyBps: Bps.max(1e4)
+});
+function noi(inputs, assumptions) {
+  const i = parseOrThrow("noi", NoiInputs, inputs);
+  const a = parseOrThrow("noi", NoiAssumptions, assumptions);
+  const vacancyLossCents = applyBps(i.grossScheduledRentCents, a.vacancyBps);
+  const effectiveGrossIncomeCents = i.grossScheduledRentCents - vacancyLossCents + i.otherIncomeCents;
+  return result(
+    { effectiveGrossIncomeCents, vacancyLossCents, noiCents: effectiveGrossIncomeCents - i.operatingExpensesCents },
+    i,
+    a
+  );
+}
+var PositiveCents = Cents.refine((n) => n > 0, "must be > 0 cents");
+var CapRateInputs = external_exports.object({ noiCents: Cents, priceCents: PositiveCents });
+function capRate(inputs) {
+  const i = parseOrThrow("capRate", CapRateInputs, inputs);
+  return result(divRoundHalfEven(i.noiCents * 1e4, i.priceCents), i, {});
+}
+var DscrInputs = external_exports.object({ noiCents: Cents, annualDebtServiceCents: PositiveCents });
+function dscr(inputs) {
+  const i = parseOrThrow("dscr", DscrInputs, inputs);
+  return result(divRoundHalfEven(i.noiCents * 1e4, i.annualDebtServiceCents), i, {});
+}
+var CashOnCashInputs = external_exports.object({
+  /** Annual pre-tax cash flow = NOI − annual debt service. */
+  annualPreTaxCashFlowCents: Cents,
+  /** Down payment + closing costs + initial repairs. */
+  totalCashInvestedCents: PositiveCents
+});
+function cashOnCash(inputs) {
+  const i = parseOrThrow("cashOnCash", CashOnCashInputs, inputs);
+  return result(divRoundHalfEven(i.annualPreTaxCashFlowCents * 1e4, i.totalCashInvestedCents), i, {});
+}
+
+// packages/deal-math/src/amortize.ts
+var PaymentInputs = external_exports.object({
+  principalCents: NonNegCents,
+  annualRateBps: Bps,
+  termMonths: external_exports.number().int().min(1).max(600)
+});
+function levelPayment(principalCents, annualRateBps, termMonths, unitCents = 1) {
+  if (principalCents <= 0) return 0;
+  const principal = principalCents / unitCents;
+  if (annualRateBps <= 0) return roundHalfEven(principal / termMonths) * unitCents;
+  const monthlyRate = annualRateBps / 1e4 / 12;
+  const growth = (1 + monthlyRate) ** termMonths;
+  return roundHalfEven(principal * monthlyRate * growth / (growth - 1)) * unitCents;
+}
+function monthlyPayment(inputs) {
+  const i = parseOrThrow("monthlyPayment", PaymentInputs, inputs);
+  return result(levelPayment(i.principalCents, i.annualRateBps, i.termMonths), i, {});
+}
+var SellerFinanceInputs = external_exports.object({
+  priceCents: NonNegCents,
+  downPaymentCents: NonNegCents,
+  /** Return the month-by-month schedule too (it can be hundreds of rows). */
+  includeSchedule: external_exports.boolean().default(false)
+}).refine((i) => i.downPaymentCents <= i.priceCents, { message: "down payment exceeds price", path: ["downPaymentCents"] });
+var SellerFinanceAssumptions = external_exports.object({
+  annualRateBps: Bps,
+  /** Months the payment is computed over (e.g. 360 for a 30-year schedule). */
+  amortizationMonths: external_exports.number().int().min(1).max(600),
+  /** Month the remaining balance comes due as a balloon; absent = fully amortizing. */
+  balloonMonth: external_exports.number().int().min(1).max(600).optional()
+}).refine((a) => a.balloonMonth === void 0 || a.balloonMonth <= a.amortizationMonths, {
+  message: "balloon month is after the amortization term",
+  path: ["balloonMonth"]
+});
+function sellerFinance(inputs, assumptions) {
+  const i = parseOrThrow("sellerFinance", SellerFinanceInputs, inputs);
+  const a = parseOrThrow("sellerFinance", SellerFinanceAssumptions, assumptions);
+  const loan = i.priceCents - i.downPaymentCents;
+  const payment = levelPayment(loan, a.annualRateBps, a.amortizationMonths);
+  const lastMonth = a.balloonMonth ?? a.amortizationMonths;
+  const schedule = [];
+  let balance = loan;
+  let totalInterest = 0;
+  let month = 0;
+  while (balance > 0 && month < lastMonth) {
+    month += 1;
+    const interest = divRoundHalfEven(balance * a.annualRateBps, 12e4);
+    const due = month === a.amortizationMonths ? balance + interest : Math.min(payment, balance + interest);
+    const principal = due - interest;
+    balance -= principal;
+    totalInterest += interest;
+    if (i.includeSchedule) {
+      schedule.push({ month, paymentCents: due, interestCents: interest, principalCents: principal, balanceCents: balance });
+    }
+  }
+  return result(
+    {
+      loanAmountCents: loan,
+      monthlyPaymentCents: payment,
+      paymentsMade: month,
+      totalInterestCents: totalInterest,
+      balloonCents: a.balloonMonth !== void 0 ? balance : 0,
+      ...i.includeSchedule ? { schedule } : {}
+    },
+    i,
+    a
+  );
+}
+
+// packages/deal-math/src/exchange.ts
+var IsoDate = external_exports.string().date();
+var ExchangeInputs = external_exports.object({
+  /** Date the relinquished property transferred (closing), YYYY-MM-DD. */
+  relinquishedCloseDate: IsoDate,
+  /** Due date of the transferor's return for that year, with extensions, if known. */
+  taxReturnDueDate: IsoDate.optional()
+}).refine((i) => i.taxReturnDueDate === void 0 || i.taxReturnDueDate >= i.relinquishedCloseDate, {
+  message: "the return due date is before the transfer",
+  path: ["taxReturnDueDate"]
+});
+function addDays(isoDate, days) {
+  const d = /* @__PURE__ */ new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function exchange1031Timeline(inputs) {
+  const i = parseOrThrow("exchange1031Timeline", ExchangeInputs, inputs);
+  const day180 = addDays(i.relinquishedCloseDate, 180);
+  const assumed = i.taxReturnDueDate === void 0;
+  const returnDue = i.taxReturnDueDate ?? `${Number(i.relinquishedCloseDate.slice(0, 4)) + 1}-04-15`;
+  const byReturn = returnDue < day180;
+  const basis = !byReturn ? "180-days" : assumed ? "assumed-unextended-return-due-date" : "tax-return-due-date";
+  return result(
+    {
+      identificationDeadline: addDays(i.relinquishedCloseDate, 45),
+      exchangeDeadline: byReturn ? returnDue : day180,
+      exchangeDeadlineBasis: basis,
+      informationalOnly: true,
+      note: "Informational only, not tax advice. Confirm deadlines with a qualified intermediary and a CPA." + (basis === "assumed-unextended-return-due-date" ? " No return due date was given, so the unextended April 15 date was assumed; filing an extension can move the deadline out to the 180th day." : "")
+    },
+    i,
+    {}
+  );
+}
+
+// packages/deal-math/src/trade-up.ts
+var TradeUpInputs = external_exports.object({
+  condoValueCents: NonNegCents,
+  newHomePriceCents: NonNegCents,
+  // SELL side (the condo being exited)
+  mortgageBalanceCents: NonNegCents.default(0),
+  condoHoaMonthlyCents: NonNegCents.default(0),
+  condoInsuranceMonthlyCents: NonNegCents.default(0),
+  condoTaxAnnualCents: NonNegCents.default(0),
+  /** Amortized active or looming special assessment, monthly. */
+  condoAssessmentMonthlyCents: NonNegCents.default(0),
+  // BUY side (the new home)
+  builderIncentiveCents: NonNegCents.default(0),
+  /** Move + buy-side closing, taken off the cash pocketed. */
+  buyClosingCostsCents: NonNegCents.default(0),
+  newHoaMonthlyCents: NonNegCents.default(0),
+  newInsuranceMonthlyCents: NonNegCents.default(0),
+  newTaxAnnualCents: NonNegCents.default(0)
+});
+var TradeUpAssumptions = external_exports.object({
+  /** Commission + seller closing as a share of the condo value (coastal default 750 = 7.5%). */
+  sellCostBps: Bps.max(1e4),
+  /** Used only when the proceeds do not cover the new home. */
+  loanRateBps: Bps,
+  loanTermYears: external_exports.number().int().min(1).max(50)
+});
+var COASTAL_TRADE_UP_ASSUMPTIONS = Object.freeze({
+  sellCostBps: 750,
+  loanRateBps: 675,
+  loanTermYears: 30
+});
+var DOLLAR = 100;
+var monthlyTax = (annualCents) => divRoundHalfEven(annualCents, 12 * DOLLAR) * DOLLAR;
+function money(cents) {
+  return `$${(cents / DOLLAR).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+}
+function headline(cash, monthly, annual, assessment, cashBuy) {
+  const parts = [];
+  if (cash > 0) parts.push(`${cashBuy ? "Buy your next home for cash and pocket" : "Pocket"} ~${money(cash)}`);
+  if (monthly > 0) parts.push(`cut your monthly carry by ~${money(monthly)} (~${money(annual)}/yr)`);
+  else if (monthly < 0) parts.push(`add ~${money(-monthly)}/mo in carry`);
+  if (assessment > 0) parts.push("eliminate special-assessment risk");
+  if (parts.length === 0) return "No material trade-up benefit at these inputs.";
+  const text = parts.join(", ");
+  return `${text[0].toUpperCase()}${text.slice(1)}.`;
+}
+function tradeUp(inputs, assumptions) {
+  const i = parseOrThrow("tradeUp", TradeUpInputs, inputs);
+  const a = parseOrThrow("tradeUp", TradeUpAssumptions, assumptions);
+  const sellCosts = roundHalfEven(i.condoValueCents / DOLLAR * (a.sellCostBps / 1e4)) * DOLLAR;
+  const netProceeds = i.condoValueCents - i.mortgageBalanceCents - sellCosts;
+  const condoCarry = i.condoHoaMonthlyCents + i.condoInsuranceMonthlyCents + monthlyTax(i.condoTaxAnnualCents) + i.condoAssessmentMonthlyCents;
+  const newHomeNet = i.newHomePriceCents - i.builderIncentiveCents;
+  const cashBuy = netProceeds >= newHomeNet;
+  const newLoan = cashBuy ? 0 : newHomeNet - netProceeds;
+  const newPi = cashBuy ? 0 : levelPayment(newLoan, a.loanRateBps, a.loanTermYears * 12, DOLLAR);
+  const cashPocketed = cashBuy ? Math.max(netProceeds - newHomeNet - i.buyClosingCostsCents, 0) : 0;
+  const newCarry = i.newHoaMonthlyCents + i.newInsuranceMonthlyCents + monthlyTax(i.newTaxAnnualCents) + newPi;
+  const monthlySavings = condoCarry - newCarry;
+  const annualSavings = monthlySavings * 12;
+  return result(
+    {
+      netProceedsCents: netProceeds,
+      sellCostsCents: sellCosts,
+      condoCarryMonthlyCents: condoCarry,
+      newHomeNetPriceCents: newHomeNet,
+      cashBuyFeasible: cashBuy,
+      newLoanAmountCents: newLoan,
+      newPiMonthlyCents: newPi,
+      newCarryMonthlyCents: newCarry,
+      cashPocketedCents: cashPocketed,
+      monthlySavingsCents: monthlySavings,
+      annualSavingsCents: annualSavings,
+      assessmentRiskEliminatedMonthlyCents: i.condoAssessmentMonthlyCents,
+      headline: headline(cashPocketed, monthlySavings, annualSavings, i.condoAssessmentMonthlyCents, cashBuy)
+    },
+    i,
+    a
+  );
+}
+
+// pipeline_core/suppressions.ts
+import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, rename as rename2, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { dirname as dirname2, join as join3 } from "node:path";
+function defaultSuppressionsPath() {
+  return join3(intentOutreachHome(), "suppressions.jsonl");
+}
+function parseEntry(raw, line, path) {
+  const fail = (why) => {
+    throw new Error(`suppressions: line ${line} of ${path} is invalid (${why}); fix or remove it`);
+  };
+  if (!raw || typeof raw !== "object") return fail("not an object");
+  const o = raw;
+  if (!SUPPRESSION_KINDS.includes(o.kind)) {
+    return fail(`kind must be ${SUPPRESSION_KINDS.join("|")}`);
+  }
+  const kind = o.kind;
+  if (typeof o.value !== "string") return fail("value must be a string");
+  let value;
+  try {
+    value = normalizeSuppression(kind, o.value);
+  } catch (err) {
+    return fail(err instanceof Error ? err.message : "unparseable value");
+  }
+  const addedAt = typeof o.addedAt === "string" ? o.addedAt : fail("addedAt must be a string");
+  return {
+    kind,
+    value,
+    addedAt,
+    ...typeof o.reason === "string" && o.reason ? { reason: o.reason } : {}
+  };
+}
+async function readSuppressions(path = defaultSuppressionsPath()) {
+  let text;
+  try {
+    text = await readFile2(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+  const out = [];
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (raw === void 0 || !raw.trim()) continue;
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new Error(`suppressions: line ${i + 1} of ${path} is not valid JSON; fix or remove it`);
+    }
+    out.push(parseEntry(parsed, i + 1, path));
+  }
+  return out;
+}
+async function loadSuppressionList(path = defaultSuppressionsPath()) {
+  return buildSuppressionList(await readSuppressions(path));
+}
+var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
+async function withLock2(path, fn, timeoutMs = 1e4, staleMs = 3e4) {
+  const lockPath = `${path}.lock`;
+  const deadline = Date.now() + timeoutMs;
+  let lock;
+  let delay = 5;
+  while (!lock) {
+    try {
+      lock = await open3(lockPath, "wx", 384);
+    } catch (err) {
+      if (err.code !== "EEXIST") throw err;
+      try {
+        if (Date.now() - (await stat2(lockPath)).mtimeMs > staleMs) {
+          await unlink2(lockPath).catch(() => void 0);
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      if (Date.now() >= deadline) throw new Error(`suppressions: timed out waiting for lock ${lockPath}`);
+      await sleep3(delay);
+      delay = Math.min(delay * 2, 200);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await lock.close().catch(() => void 0);
+    await unlink2(lockPath).catch(() => void 0);
+  }
+}
+async function writeAll(path, entries) {
+  await mkdir2(dirname2(path), { recursive: true, mode: 448 });
+  const tmp = `${path}.${process.pid}.tmp`;
+  const fh = await open3(tmp, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_TRUNC, 384);
+  try {
+    await fh.chmod(384);
+    await fh.write(entries.map((e) => JSON.stringify(e)).join("\n") + (entries.length ? "\n" : ""));
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await rename2(tmp, path);
+}
+async function addSuppression(input2, opts = {}) {
+  const path = opts.path ?? defaultSuppressionsPath();
+  const { kind, value } = parseSuppressionValue(input2, opts.kind);
+  return withLockAt(path, async () => {
+    const entries = await readSuppressions(path);
+    const existing = entries.find((e) => e.kind === kind && e.value === value);
+    if (existing) return { entry: existing, added: false };
+    const entry = {
+      kind,
+      value,
+      addedAt: (opts.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()))(),
+      ...opts.reason?.trim() ? { reason: opts.reason.trim() } : {}
+    };
+    await writeAll(path, [...entries, entry]);
+    return { entry, added: true };
+  });
+}
+async function withLockAt(path, fn) {
+  await mkdir2(dirname2(path), { recursive: true, mode: 448 });
+  return withLock2(path, fn);
+}
+
+// pipeline_core/routing.ts
+import { createHash as createHash4, randomUUID as randomUUID2 } from "node:crypto";
+function capabilityForQuery(query) {
+  switch (query.kind) {
+    case "domain":
+      return "company.research";
+    case "area":
+      return "property.search";
+    case "parcel":
+      return "parcel";
+  }
+}
+function orderByRouting(eligible, routing) {
+  if (!routing?.connectors) return [...eligible];
+  const byName = new Map(eligible.map((c) => [c.name, c]));
+  return routing.connectors.flatMap((n) => byName.has(n) ? [byName.get(n)] : []);
+}
+var BudgetExceededError = class extends Error {
+  constructor(connector, needed, remaining) {
+    super(`credit budget exhausted: ${connector} needs ${needed}, ${remaining} left`);
+    this.connector = connector;
+    this.needed = needed;
+    this.remaining = remaining;
+    this.name = "BudgetExceededError";
+  }
+  connector;
+  needed;
+  remaining;
+};
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const o = value;
+  return `{${Object.keys(o).filter((k) => o[k] !== void 0).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(",")}}`;
+}
+function cacheKey(connector, capability, subject) {
+  return createHash4("sha256").update(`${connector}|${capability}|${stableStringify(subject)}`).digest("hex");
+}
+
+// pipeline_core/validator.ts
+function deepFreeze(value, seen = /* @__PURE__ */ new WeakSet()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const key of Reflect.ownKeys(value)) {
+    deepFreeze(value[key], seen);
+  }
+  return Object.freeze(value);
+}
+var ValidationError = class extends Error {
+  constructor(kind, issues) {
+    super(
+      `validation failed for ${kind}: ${issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`
+    );
+    this.kind = kind;
+    this.issues = issues;
+    this.name = "ValidationError";
+  }
+  kind;
+  issues;
+};
+function gate(kind, schema, raw) {
+  const parsed = schema.safeParse(raw);
+  if (parsed.success) {
+    return { ok: true, value: deepFreeze(parsed.data) };
+  }
+  return { ok: false, error: new ValidationError(kind, parsed.error.issues) };
+}
+function gateOrThrow(kind, schema, raw) {
+  const r = gate(kind, schema, raw);
+  if (!r.ok) throw r.error;
+  return r.value;
+}
+var validateMessage = (raw) => gate("Message", MessageSchema, raw);
+var validateCampaignRun = (raw) => gate("CampaignRun", CampaignRunSchema, raw);
+var assertCampaignRun = (raw) => gateOrThrow("CampaignRun", CampaignRunSchema, raw);
+
+// evals/supported.ts
+var APPROVED_MODELS = (
+  // BEGIN APPROVED_MODELS (generated by evals/promote.ts — JSON only)
+  [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-6",
+      "pack": "b2b-sdr",
+      "resultFile": null,
+      "verified": false,
+      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "pack": "b2b-sdr",
+      "resultFile": null,
+      "verified": false,
+      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M3",
+      "pack": "b2b-sdr",
+      "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
+      "verified": true,
+      "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
+    }
+  ]
+);
+var DEFAULT_EVAL_PACK = "b2b-sdr";
+function supportedProviderNames(entries = APPROVED_MODELS, pack = DEFAULT_EVAL_PACK) {
+  return [...new Set(entries.filter((e) => e.pack === pack).map((e) => e.provider))];
+}
+
+// pipeline_core/providers.ts
+var SUPPORTED_PROVIDERS = new Set(supportedProviderNames());
+
 // pipeline_core/packs/types.ts
 var DEFAULT_PACK_ID = "b2b-sdr";
 var noopCompliance = {
@@ -39443,164 +41272,101 @@ var b2bSdrPack = {
   }
 };
 
+// pipeline_core/packs/service-areas.ts
+var GULF_COAST_AL_FL = defineServiceArea("gulf-coast-al-fl", [
+  // Baldwin County, AL — coastal / south-of-I-10
+  "36542",
+  // Gulf Shores
+  "36561",
+  // Orange Beach
+  "36535",
+  // Foley
+  "36567",
+  // Robertsdale
+  "36551",
+  // Loxley
+  "36527",
+  // Spanish Fort
+  "36533",
+  // Fairhope
+  "36530",
+  // Elberta
+  "36580",
+  // Summerdale
+  // Escambia County, FL — west Pensacola + Perdido Key
+  "32507",
+  // West Pensacola / Perdido Key
+  "32506"
+  // West Pensacola
+]);
+var BUILTIN = /* @__PURE__ */ new Map([[GULF_COAST_AL_FL.id, GULF_COAST_AL_FL]]);
+
+// pipeline_core/packs/residential-re.ts
+function attr(ctx, key) {
+  return ctx.property.attributes[key]?.value;
+}
+function ownershipSignals(ctx) {
+  const out = [];
+  const parties = ctx.parties.length > 0 ? ctx.parties : [ctx.owner];
+  if (ctx.owner.kind === "entity" && ctx.owner.entityType === "estate") out.push("estate");
+  for (const p of parties) out.push(p.name);
+  if (ctx.ownerships.some((o) => o.role === "life-tenant")) out.push("life estate");
+  return out;
+}
+var DISTRESS_TERMS = /\b(foreclos\w*|pre-?foreclosure|probate|liens?|lis pendens|back taxes|taxes owed|delinquen\w*|behind on|late on (?:your )?(?:mortgage|payments?|taxes)|bankrupt\w*|estate sale|tax sale|auction)\b/i;
+var distressLanguageDraftRule = (draft) => [["subject", draft.subject ?? ""], ["body", draft.body], ["cta", draft.cta]].flatMap(([field, text]) => {
+  const m = DISTRESS_TERMS.exec(text.replace(/[\u2010-\u2015]/g, "-"));
+  return m ? [`distress-language: "${m[0].toLowerCase()}" in ${field}`] : [];
+});
+function residentialPropertyGate(ctx) {
+  const terms = ctx.owner.licenseTerms;
+  if (terms?.outreachRestricted === true) return { status: "blocked", reason: "license:outreach-restricted" };
+  if (terms?.outreachRestricted !== false) return { status: "blocked", reason: "license:undeclared" };
+  if (ctx.owner.entityType === "government") return { status: "blocked", reason: "owner:government" };
+  const zip = ctx.property.address?.zip?.slice(0, 5);
+  if (!zip) return { status: "blocked", reason: "service-area:unknown-address" };
+  if (!inServiceArea(zip, GULF_COAST_AL_FL)) return { status: "blocked", reason: "service-area:outside" };
+  const distress = attr(ctx, "distressSignals");
+  if (distress !== void 0 && (!Array.isArray(distress) || !distress.every((s) => typeof s === "string"))) {
+    return { status: "blocked", reason: "manual-review:unreadable-signals" };
+  }
+  const review = manualReviewVerdict([...distress ?? [], ...ownershipSignals(ctx)]);
+  if (review.status !== "clean") return review;
+  const listing = attr(ctx, "listingStatus");
+  if (listing !== void 0) {
+    if (!listing || typeof listing !== "object" || typeof listing.status !== "string") {
+      return { status: "blocked", reason: "listing:unreadable" };
+    }
+    const verdict = listingContactVerdict(listing, ctx.now);
+    if (verdict.status !== "clean") return verdict;
+  }
+  return { status: "clean" };
+}
+var LICENSED = { requireLicenseDisclosure: true };
+var residentialRePack = {
+  id: "residential-re",
+  displayName: "Residential real estate (listing agent)",
+  // The B2B loop's gate is unused by property campaigns; propertyGate is the gate.
+  compliance: noopCompliance,
+  prompts: { score: ["residential-score.v1.md"], draft: "residential-draft.v1.md" },
+  serviceArea: GULF_COAST_AL_FL,
+  propertyGate: residentialPropertyGate,
+  draftRules: [fairHousingDraftRule, distressLanguageDraftRule],
+  channels: { email: LICENSED, mail: LICENSED, sms: LICENSED, call_script: LICENSED, linkedin: LICENSED }
+};
+
 // pipeline_core/packs/index.ts
 var registered2 = false;
 function registerBuiltinPacks() {
   if (registered2) return;
-  for (const pack of [b2bSdrPack]) {
+  for (const pack of [b2bSdrPack, residentialRePack]) {
     if (getPack(pack.id) === void 0) registerPack(pack);
   }
   registered2 = true;
 }
 
-// pipeline_core/compliance/suppression.ts
-var EMPTY_SUPPRESSION_LIST = Object.freeze({
-  emails: /* @__PURE__ */ new Set(),
-  domains: /* @__PURE__ */ new Set()
-});
-var EMAIL_RE2 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
-var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
-function normalizeSuppressionDomain(input2) {
-  if (typeof input2 !== "string" || !input2.trim()) throw new Error("domain is empty");
-  let host = input2.trim().toLowerCase();
-  host = host.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
-  host = host.replace(/^[^@/]*@/, "");
-  host = host.split(/[/?#]/)[0] ?? "";
-  host = host.replace(/:\d+$/, "").replace(/\.$/, "");
-  const labels = host.split(".");
-  if (labels[0] === "www" && labels.length > 2) labels.shift();
-  const tld = labels[labels.length - 1] ?? "";
-  if (labels.length < 2 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
-    throw new Error(`${JSON.stringify(input2)} is not a valid domain`);
-  }
-  return labels.join(".");
-}
-function normalizeSuppressionEmail(input2) {
-  if (typeof input2 !== "string") throw new Error("email must be a string");
-  const e = input2.trim().toLowerCase();
-  if (!EMAIL_RE2.test(e)) throw new Error(`${JSON.stringify(input2)} is not a valid email`);
-  const at = e.lastIndexOf("@");
-  return `${e.slice(0, at)}@${normalizeSuppressionDomain(e.slice(at + 1))}`;
-}
-function buildSuppressionList(entries) {
-  const emails = /* @__PURE__ */ new Set();
-  const domains = /* @__PURE__ */ new Set();
-  for (const e of entries) {
-    if (e.kind === "email") emails.add(normalizeSuppressionEmail(e.value));
-    else if (e.kind === "domain") domains.add(normalizeSuppressionDomain(e.value));
-    else throw new Error(`unknown suppression kind ${JSON.stringify(e.kind)}`);
-  }
-  return { emails, domains };
-}
-function domainSuppressed(list, domain2) {
-  const labels = domain2.split(".");
-  for (let i = 0; i <= labels.length - 2; i++) {
-    if (list.domains.has(labels.slice(i).join("."))) return true;
-  }
-  return false;
-}
-function checkSuppression(list, subject) {
-  if (list.emails.size === 0 && list.domains.size === 0) return { status: "clean" };
-  if (subject.email !== void 0) {
-    let email3;
-    try {
-      email3 = normalizeSuppressionEmail(subject.email);
-    } catch {
-      return { status: "blocked", reason: "suppression:malformed-email" };
-    }
-    if (list.emails.has(email3)) return { status: "blocked", reason: "suppressed:email" };
-    if (domainSuppressed(list, email3.slice(email3.lastIndexOf("@") + 1))) {
-      return { status: "blocked", reason: "suppressed:domain" };
-    }
-  }
-  for (const d of subject.domains) {
-    let domain2;
-    try {
-      domain2 = normalizeSuppressionDomain(d);
-    } catch {
-      return { status: "blocked", reason: "suppression:malformed-domain" };
-    }
-    if (domainSuppressed(list, domain2)) return { status: "blocked", reason: "suppressed:domain" };
-  }
-  return { status: "clean" };
-}
-function suppressionGate(list) {
-  return {
-    check: (ctx) => checkSuppression(list, {
-      ...ctx.contact.email !== void 0 ? { email: ctx.contact.email } : {},
-      domains: [ctx.lead.domain, ctx.contact.leadDomain]
-    })
-  };
-}
-function composeGates(...gates) {
-  return {
-    check(ctx) {
-      for (const gate2 of gates) {
-        const verdict = gate2.check(ctx);
-        if (!verdict || verdict.status !== "clean") return verdict;
-      }
-      return { status: "clean" };
-    }
-  };
-}
-
-// pipeline_core/suppressions.ts
-import { constants, mkdir, open as open2, readFile, rename, stat, unlink } from "node:fs/promises";
-import { dirname, join as join2 } from "node:path";
-function defaultSuppressionsPath() {
-  return join2(intentOutreachHome(), "suppressions.jsonl");
-}
-function parseEntry(raw, line, path) {
-  const fail = (why) => {
-    throw new Error(`suppressions: line ${line} of ${path} is invalid (${why}); fix or remove it`);
-  };
-  if (!raw || typeof raw !== "object") return fail("not an object");
-  const o = raw;
-  if (o.kind !== "email" && o.kind !== "domain") return fail("kind must be email|domain");
-  if (typeof o.value !== "string") return fail("value must be a string");
-  let value;
-  try {
-    value = o.kind === "email" ? normalizeSuppressionEmail(o.value) : normalizeSuppressionDomain(o.value);
-  } catch (err) {
-    return fail(err instanceof Error ? err.message : "unparseable value");
-  }
-  const addedAt = typeof o.addedAt === "string" ? o.addedAt : fail("addedAt must be a string");
-  return {
-    kind: o.kind,
-    value,
-    addedAt,
-    ...typeof o.reason === "string" && o.reason ? { reason: o.reason } : {}
-  };
-}
-async function readSuppressions(path = defaultSuppressionsPath()) {
-  let text;
-  try {
-    text = await readFile(path, "utf8");
-  } catch (err) {
-    if (err.code === "ENOENT") return [];
-    throw err;
-  }
-  const out = [];
-  const lines = text.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    if (raw === void 0 || !raw.trim()) continue;
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      throw new Error(`suppressions: line ${i + 1} of ${path} is not valid JSON; fix or remove it`);
-    }
-    out.push(parseEntry(parsed, i + 1, path));
-  }
-  return out;
-}
-async function loadSuppressionList(path = defaultSuppressionsPath()) {
-  return buildSuppressionList(await readSuppressions(path));
-}
-
 // pipeline_core/footer.ts
+var SMS_OPT_OUT_TEXT = "Reply STOP to opt out.";
 var DEFAULT_OPT_OUT_TEXT = `Not the right person or not interested? Reply "unsubscribe" and I won't contact you again.`;
 var FOOTER_DELIMITER = "-- ";
 var nonBlank = external_exports.string().trim().min(1);
@@ -39616,15 +41382,29 @@ var SenderIdentitySchema = external_exports.object({
   /** Opt-out sentence. Defaults to DEFAULT_OPT_OUT_TEXT. */
   optOutText: nonBlank.optional(),
   /** Append the opt-out sentence to LinkedIn drafts too (no postal footer). Default false. */
-  optOutOnLinkedin: external_exports.boolean().optional()
+  optOutOnLinkedin: external_exports.boolean().optional(),
+  /**
+   * Real estate licenses to disclose on every outbound message, e.g.
+   * `{ state: "AL", number: "000123", brokerage: "Example Realty" }`.
+   */
+  licenses: external_exports.array(
+    external_exports.object({
+      state: external_exports.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code"),
+      number: nonBlank,
+      brokerage: nonBlank
+    })
+  ).optional()
 });
 var isBlank = (v) => typeof v !== "string" || v.trim() === "";
-function missingSenderFields(sender) {
+function missingSenderFields(sender, channel = "email") {
   const missing = [];
   if (isBlank(sender?.name)) missing.push("name");
   if (isBlank(sender?.company)) missing.push("company");
-  if (isBlank(sender?.postalAddress)) missing.push("postalAddress");
+  if ((channel === "email" || channel === "mail") && isBlank(sender?.postalAddress)) missing.push("postalAddress");
   return missing;
+}
+function licenseLines(sender) {
+  return (sender?.licenses ?? []).map((l) => `${oneLine(l.brokerage)}, ${l.state} license #${oneLine(l.number)}`);
 }
 var oneLine = (s) => s.replace(/\s*[\r\n]+\s*/g, " ").trim();
 function optOutOf(sender) {
@@ -39637,8 +41417,35 @@ function emailFooter(sender) {
     `${oneLine(sender.name)}, ${oneLine(sender.company)}`,
     address,
     ...sender.replyToEmail ? [`Reply-To: ${sender.replyToEmail.trim()}`] : [],
+    ...licenseLines(sender),
     optOutOf(sender)
   ].join("\n");
+}
+function smsFooter(sender) {
+  const licenses = licenseLines(sender);
+  return [`- ${oneLine(sender.name)}, ${oneLine(sender.company)}`, ...licenses, SMS_OPT_OUT_TEXT].join("\n");
+}
+function callScriptFooter(sender) {
+  const licenses = licenseLines(sender);
+  return [
+    "[Required disclosures]",
+    `Open with: "This is ${oneLine(sender.name)} with ${oneLine(sender.company)}."`,
+    ...licenses.map((l) => `State the license: ${l}.`),
+    "If they ask not to be called again: end the call politely and add the number to the suppression list."
+  ].join("\n");
+}
+function footerFor(sender, channel) {
+  switch (channel) {
+    case "email":
+    case "mail":
+      return emailFooter(sender);
+    case "sms":
+      return smsFooter(sender);
+    case "call_script":
+      return callScriptFooter(sender);
+    default:
+      return void 0;
+  }
 }
 function appendBlock(body, block) {
   const trimmed = body.replace(/\s+$/, "");
@@ -39652,10 +41459,11 @@ function applyComplianceFooter(message, sender) {
     const body = sender?.optOutOnLinkedin === true ? appendBlock(message.body, optOutOf(sender)) : message.body;
     return { ...message, body, needsSenderIdentity: false };
   }
-  if (!sender || missingSenderFields(sender).length > 0) {
+  if (!sender || missingSenderFields(sender, message.channel).length > 0) {
     return { ...message, needsSenderIdentity: true };
   }
-  return { ...message, body: appendBlock(message.body, emailFooter(sender)), needsSenderIdentity: false };
+  const footer = footerFor(sender, message.channel) ?? "";
+  return { ...message, body: appendBlock(message.body, footer), needsSenderIdentity: false };
 }
 
 // pipeline_core/profiles.ts
@@ -39755,12 +41563,12 @@ function loadProfile(path) {
   } catch (err) {
     throw new Error(`loadProfile: cannot read "${path}": ${String(err)}`);
   }
-  const result = ReportProfileSchema.safeParse(raw);
-  if (!result.success) {
-    const issues = result.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+  const result2 = ReportProfileSchema.safeParse(raw);
+  if (!result2.success) {
+    const issues = result2.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
     throw new Error(`loadProfile: invalid profile at "${path}": ${issues}`);
   }
-  return result.data;
+  return result2.data;
 }
 function applyProfileToCampaignInput(profile, _base) {
   const { outreach, filtering } = profile;
@@ -39786,10 +41594,46 @@ function applyProfileToCampaignInput(profile, _base) {
 
 // pipeline_core/pipeline.ts
 import { existsSync } from "node:fs";
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join3, resolve as resolve2 } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute2, join as join4, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
 var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
+function chargeOrStop(connector, phase, budget, failed) {
+  const cost = connector.creditsPerCall ?? 0;
+  if (!budget || cost <= 0) return true;
+  try {
+    budget.charge(connector.name, cost);
+    return true;
+  } catch (err) {
+    if (!(err instanceof BudgetExceededError)) throw err;
+    if (!failed.some((f) => f.name === connector.name && f.phase === phase && f.status === "budget-exhausted")) {
+      failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    }
+    return false;
+  }
+}
+var isArr = (v) => Array.isArray(v);
+async function cacheRead(cache, key, now) {
+  try {
+    const v = await cache.get(key, now);
+    if (!v || typeof v !== "object" || !isArr(v.leads) || !isArr(v.contacts)) return void 0;
+    for (const k of ["properties", "parties", "ownerships", "entityLinks", "contactPoints"]) {
+      if (v[k] !== void 0 && !isArr(v[k])) return void 0;
+    }
+    return v;
+  } catch {
+    return void 0;
+  }
+}
+async function cacheWrite(cache, key, value, ttlMs, now) {
+  try {
+    await cache.set(key, value, ttlMs, now);
+  } catch {
+  }
+}
+function researchHit(out) {
+  return out.leads.length + out.contacts.length > 0 || [out.properties, out.parties, out.ownerships, out.entityLinks, out.contactPoints].some((a) => (a?.length ?? 0) > 0);
+}
 function buyerTitlesArg(opts) {
   const titles = cleanBuyerTitles(opts.buyerTitles);
   return titles.length > 0 ? { buyerTitles: titles } : {};
@@ -39903,6 +41747,7 @@ function failureStatus(err) {
   if (err instanceof HttpError) return err.status;
   const name = err?.name;
   if (err instanceof ConnectorTimeoutError || name === "TimeoutError" || name === "AbortError") return "timeout";
+  if (name === "McpPinMismatchError") return "pin-mismatch";
   return "error";
 }
 function recordConnectorFailure(connector, phase, err, raw, failed) {
@@ -39915,37 +41760,113 @@ function recordItemFailures(connector, phase, failures, failed) {
     failed.push({ name: connector.name, phase, status: f.status ?? f.reason });
   }
 }
+function dedupeBy(items, key) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const item of items) {
+    const k = key(item);
+    if (!seen.has(k)) seen.set(k, item);
+  }
+  return [...seen.values()];
+}
+var DNC_RANK = { clean: 0, unknown: 1, listed: 2 };
+var contactPointKey = (c) => `${c.partyKey}|${c.kind}|${c.kind === "email" ? c.value.toLowerCase() : c.value}`;
+function mergeContactPoint(a, b) {
+  const dnc = DNC_RANK[b.dnc] > DNC_RANK[a.dnc] ? b.dnc : a.dnc;
+  const restricted = Boolean(a.licenseTerms?.outreachRestricted || b.licenseTerms?.outreachRestricted);
+  const licenseTerms = a.licenseTerms || b.licenseTerms ? { ...b.licenseTerms, ...a.licenseTerms, ...restricted ? { outreachRestricted: true } : {} } : void 0;
+  return {
+    ...a,
+    dnc,
+    ...a.lineType === void 0 || a.lineType === "unknown" ? b.lineType ? { lineType: b.lineType } : {} : {},
+    ...licenseTerms ? { licenseTerms } : {}
+  };
+}
+function mergePropertyModel(model) {
+  const points = /* @__PURE__ */ new Map();
+  for (const c of model.contactPoints) {
+    const k = contactPointKey(c);
+    const prev = points.get(k);
+    points.set(k, prev ? mergeContactPoint(prev, c) : c);
+  }
+  return {
+    properties: dedupeBy(model.properties, (p) => p.key),
+    parties: dedupeBy(model.parties, (p) => p.key),
+    ownerships: dedupeBy(model.ownerships, (o) => `${o.propertyKey}|${o.partyKey}|${o.role}`),
+    entityLinks: dedupeBy(model.entityLinks, (l) => `${l.entityKey}|${l.personKey}|${l.role}`),
+    contactPoints: [...points.values()]
+  };
+}
 async function runResearch(domain2, icp, opts = {}) {
+  return runResearchQuery({ kind: "domain", domain: domain2 }, icp, opts);
+}
+async function runResearchQuery(query, icp, opts = {}) {
   registerBuiltinConnectors();
-  const target = normalizeDomain2(domain2);
+  const typed = query.kind === "domain" ? { kind: "domain", domain: normalizeDomain2(query.domain) } : query;
+  const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("research");
+  const connectors = orderByRouting(
+    getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind)),
+    opts.routing
+  );
+  const policy = opts.routing?.policy ?? "all";
+  const clock2 = opts.clock ?? Date.now;
+  const cached2 = [];
+  let budgetExhausted = false;
   const leads = [];
   const contacts = [];
+  const properties = [];
+  const parties = [];
+  const ownerships = [];
+  const entityLinks = [];
+  const contactPoints = [];
   const raw = {};
   const ran = [];
-  const skipped = getSkippedConnectors("research").map((c) => c.name);
+  const skipped = getSkippedConnectors("research").filter((c) => acceptsQuery(c, typed.kind)).map((c) => c.name);
   const failedConnectors = [];
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
-      const out = await callWithDeadline(
-        (signal) => connector.research({ domain: target, icp, ...targeting, signal }),
-        timeoutMs
-      );
+      const ttl = connector.cacheTtlMs ?? 0;
+      const key = opts.cache && ttl > 0 ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting }) : void 0;
+      let out = key ? await cacheRead(opts.cache, key, clock2()) : void 0;
+      if (out) {
+        cached2.push(connector.name);
+      } else {
+        if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
+          budgetExhausted = true;
+          continue;
+        }
+        out = await callWithDeadline(
+          (signal) => connector.research({ domain: target, query: typed, icp, ...targeting, signal }),
+          timeoutMs
+        );
+        if (key && (out.failures?.length ?? 0) === 0) {
+          const { raw: _raw, ...cacheable } = out;
+          await cacheWrite(opts.cache, key, cacheable, ttl, clock2());
+        }
+      }
       leads.push(...out.leads);
       contacts.push(...out.contacts);
+      properties.push(...out.properties ?? []);
+      parties.push(...out.parties ?? []);
+      ownerships.push(...out.ownerships ?? []);
+      entityLinks.push(...out.entityLinks ?? []);
+      contactPoints.push(...out.contactPoints ?? []);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
       recordItemFailures(connector, "research", out.failures, failedConnectors);
+      if (policy === "ordered-fallback" || policy === "first-hit" && researchHit(out)) break;
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
   }
   return {
+    cached: cached2,
+    budgetExhausted: budgetExhausted || (opts.budget?.exhausted ?? false),
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
+    ...mergePropertyModel({ properties, parties, ownerships, entityLinks, contactPoints }),
     ran,
     skipped,
     failedConnectors,
@@ -39989,7 +41910,9 @@ async function runEnrich(lead, contacts, opts = {}) {
   registerBuiltinConnectors();
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("enrich");
+  const connectors = orderByRouting(getConfiguredConnectors("enrich"), opts.routing);
+  const policy = opts.routing?.policy ?? "all";
+  let budgetExhausted = false;
   const enrichments = [];
   const raw = {};
   const ran = [];
@@ -39998,6 +41921,10 @@ async function runEnrich(lead, contacts, opts = {}) {
   let working = contacts.map((c) => ({ ...c }));
   for (const connector of connectors) {
     if (!connector.enrich) continue;
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
+      budgetExhausted = true;
+      continue;
+    }
     try {
       const current = working;
       const out = await callWithDeadline(
@@ -40009,11 +41936,12 @@ async function runEnrich(lead, contacts, opts = {}) {
       ran.push(connector.name);
       recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
+      if (policy === "ordered-fallback" || policy === "first-hit" && out.enrichments.length > 0) break;
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }
   }
-  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw, budgetExhausted };
 }
 var MAX_ERROR_MESSAGE = 500;
 function sanitizeErrorMessage(err) {
@@ -40056,11 +41984,12 @@ function finalizeDraft(candidate, sender) {
   if (!footed.ok) return { ok: false, issues: zodIssues(footed.error.issues) };
   return { ok: true, message: footed.value };
 }
-function senderComplianceWarnings(draftsMissingSender, sender) {
+function senderComplianceWarnings(draftsMissingSender, sender, channel = "email") {
   if (draftsMissingSender <= 0) return [];
-  const missing = missingSenderFields(sender).join(", ");
+  const missing = missingSenderFields(sender, channel).join(", ");
+  const what = channel === "email" ? "CAN-SPAM footer" : `${channel} footer`;
   return [
-    `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured (missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`
+    `${draftsMissingSender} ${channel} draft(s) have NO ${what}: sender identity is not configured (missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`
   ];
 }
 function draftIdentifiers(p) {
@@ -40117,7 +42046,8 @@ async function applyMessageCompliance(input2) {
         // Same fact text the seam grounds against, so an agent-written draft cannot
         // turn "40 acquisitions" into "40 acquisitions a year" either.
         facts: factsOf({ icp: input2.icp, lead, contacts: [contact], enrichments, userText: [...input2.userText ?? []] }),
-        ...input2.voice ? { voice: input2.voice } : {}
+        ...input2.voice ? { voice: input2.voice } : {},
+        ...input2.draftRules ? { rules: input2.draftRules } : {}
       }
     );
     if (!verdict.ok) {
@@ -40150,7 +42080,7 @@ async function applyMessageCompliance(input2) {
     blockedContacts,
     rejectedDrafts,
     errors,
-    complianceWarnings: senderComplianceWarnings(draftsMissingSender, input2.sender)
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input2.sender), ...drainQuotaWarnings()]
   };
 }
 var PROFILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
@@ -40161,10 +42091,10 @@ function resolveProfilePath(ref, cwd = process.cwd()) {
     return isAbsolute2(trimmed) ? trimmed : resolve2(cwd, trimmed);
   }
   if (!PROFILE_NAME_RE.test(trimmed)) throw new Error(`profile: invalid name ${JSON.stringify(trimmed)}`);
-  const here = dirname2(fileURLToPath(import.meta.url));
-  const roots = [join3(cwd, "profiles"), join3(intentOutreachHome(), "profiles"), join3(here, "..", "profiles")];
+  const here = dirname3(fileURLToPath(import.meta.url));
+  const roots = [join4(cwd, "profiles"), join4(intentOutreachHome(), "profiles"), join4(here, "..", "profiles")];
   for (const root of roots) {
-    const candidate = join3(root, `${trimmed}.json`);
+    const candidate = join4(root, `${trimmed}.json`);
     if (existsSync(candidate)) return candidate;
   }
   throw new Error(`profile not found: ${trimmed} (looked in: ${roots.join(", ")})`);
@@ -40174,8 +42104,8 @@ function loadProfileRef(ref, cwd) {
 }
 
 // pipeline_core/store.ts
-import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, stat as stat2, unlink as unlink2 } from "node:fs/promises";
-import { dirname as dirname3, join as join4 } from "node:path";
+import { constants as constants3, mkdir as mkdir3, open as open4, readFile as readFile3, stat as stat3, unlink as unlink3 } from "node:fs/promises";
+import { dirname as dirname4, join as join5 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
     super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
@@ -40193,10 +42123,10 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
-  return join4(intentOutreachHome(), "runs.jsonl");
+  return join5(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
-var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+var sleep4 = (ms) => new Promise((r) => setTimeout(r, ms));
 var JsonlRunStore = class {
   constructor(path = defaultStorePath(), opts = {}) {
     this.path = path;
@@ -40211,7 +42141,7 @@ var JsonlRunStore = class {
   async saveRun(run, opts = {}) {
     const checked = assertCampaignRun(run);
     const line = JSON.stringify(checked) + "\n";
-    await mkdir2(dirname3(this.path), { recursive: true, mode: 448 });
+    await mkdir3(dirname4(this.path), { recursive: true, mode: 448 });
     await this.withLock(async () => {
       if (!opts.overwrite) {
         const { runs } = await this.scan();
@@ -40232,15 +42162,21 @@ var JsonlRunStore = class {
     const { runs } = await this.scan();
     return [...new Set(runs.map((r) => r.run.id))];
   }
+  async listRuns() {
+    const { runs } = await this.scan();
+    const latest = /* @__PURE__ */ new Map();
+    for (const r of runs) latest.set(r.run.id, r.run);
+    return [...latest.values()];
+  }
   async corruptLines() {
     return (await this.scan()).corrupt;
   }
   // ── write path ──────────────────────────────────────────────────────────────
   /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
   async append(line) {
-    const fh = await open3(
+    const fh = await open4(
       this.path,
-      constants2.O_RDWR | constants2.O_APPEND | constants2.O_CREAT,
+      constants3.O_RDWR | constants3.O_APPEND | constants3.O_CREAT,
       384
     );
     try {
@@ -40272,20 +42208,20 @@ var JsonlRunStore = class {
     let lock;
     while (!lock) {
       try {
-        lock = await open3(lockPath, "wx", 384);
+        lock = await open4(lockPath, "wx", 384);
       } catch (err) {
         if (err.code !== "EEXIST") throw err;
         try {
-          const st = await stat2(lockPath);
+          const st = await stat3(lockPath);
           if (Date.now() - st.mtimeMs > this.staleLockMs) {
-            await unlink2(lockPath).catch(() => void 0);
+            await unlink3(lockPath).catch(() => void 0);
             continue;
           }
         } catch {
           continue;
         }
         if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
-        await sleep2(delay + Math.floor(Math.random() * delay));
+        await sleep4(delay + Math.floor(Math.random() * delay));
         delay = Math.min(delay * 2, 200);
       }
     }
@@ -40295,14 +42231,14 @@ var JsonlRunStore = class {
       return await fn();
     } finally {
       await lock.close().catch(() => void 0);
-      await unlink2(lockPath).catch(() => void 0);
+      await unlink3(lockPath).catch(() => void 0);
     }
   }
   // ── read path ───────────────────────────────────────────────────────────────
   async scan() {
     let text;
     try {
-      text = await readFile2(this.path, "utf8");
+      text = await readFile3(this.path, "utf8");
     } catch (err) {
       if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
@@ -40513,7 +42449,8 @@ async function handleSaveRun(rawArgs, deps = {}) {
     model: args.model,
     now,
     userText: [styleOverride],
-    voice
+    voice,
+    draftRules: pack.draftRules
   });
   const errors = [...args.errors, ...gated.errors];
   const rejectedDrafts = [...args.rejectedDrafts, ...gated.rejectedDrafts];
@@ -40579,6 +42516,119 @@ async function handleSaveRun(rawArgs, deps = {}) {
     throw err;
   }
 }
+var ListPendingInput = {
+  limit: external_exports.number().int().min(1).max(200).optional().describe("Max drafts to return (default 50).")
+};
+async function handleListPending(args, deps = {}) {
+  try {
+    const store = deps.store ?? new JsonlRunStore();
+    const pending = await listPending(store, deps.approvalsPath);
+    return asText({ total: pending.length, pending: pending.slice(0, args.limit ?? 50) });
+  } catch (err) {
+    return toolError(`could not list pending drafts: ${errMsg(err)}`);
+  }
+}
+var DecideInput = {
+  runId: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1),
+  digest: external_exports.string().min(8).optional().describe("Required to approve: the digest list_pending showed for this exact message."),
+  note: external_exports.string().max(500).optional()
+};
+async function decideVia(decision, args, deps) {
+  try {
+    const record2 = await decide({
+      store: deps.store ?? new JsonlRunStore(),
+      runId: args.runId,
+      contactKey: args.contactKey,
+      decision,
+      by: "mcp",
+      note: args.note,
+      digest: args.digest,
+      now: deps.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()),
+      ...deps.approvalsPath ? { path: deps.approvalsPath } : {}
+    });
+    return asText(record2);
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+}
+var handleApprove = (args, deps = {}) => decideVia("approved", args, deps);
+var handleReject = (args, deps = {}) => decideVia("rejected", args, deps);
+var ListRunsInput = {
+  limit: external_exports.number().int().min(1).max(200).optional().describe("Most recent runs to return (default 20).")
+};
+async function handleListRuns(args, deps = {}) {
+  try {
+    const store = deps.store ?? new JsonlRunStore();
+    const runs = await store.listRuns();
+    const corrupt = (await store.corruptLines()).length;
+    const summaries = [...runs].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id)).slice(0, args.limit ?? 20).map((r) => ({
+      id: r.id,
+      vertical: r.vertical,
+      status: r.status,
+      createdAt: r.createdAt,
+      messages: r.messages.length,
+      blockedContacts: r.blockedContacts.length,
+      rejectedDrafts: r.rejectedDrafts.length,
+      leads: r.leads.length,
+      properties: r.properties.length,
+      ...r.credits ? { credits: r.credits } : {},
+      ...r.costUsd !== void 0 ? { costUsd: r.costUsd } : {}
+    }));
+    return asText({ total: runs.length, ...corrupt > 0 ? { corruptLinesSkipped: corrupt } : {}, runs: summaries });
+  } catch (err) {
+    return toolError(`could not list runs: ${errMsg(err)}`);
+  }
+}
+var SuppressInput = {
+  /** No "remove": undoing an opt-out re-allows contact, so it is a person's call at the CLI only. */
+  action: external_exports.enum(["add", "list"]),
+  value: external_exports.string().min(1).max(300).optional().describe("Email, domain, phone or mailing address (required for add/remove)."),
+  kind: external_exports.enum(SUPPRESSION_KINDS).optional(),
+  reason: external_exports.string().max(300).optional()
+};
+async function handleSuppress(args, deps = {}) {
+  try {
+    const path = deps.path;
+    if (args.action === "list") return asText(await readSuppressions(path));
+    if (!args.value) return toolError("value is required for add and remove");
+    if (args.action === "add") {
+      const r = await addSuppression(args.value, {
+        ...path ? { path } : {},
+        ...args.kind ? { kind: args.kind } : {},
+        ...args.reason ? { reason: args.reason } : {}
+      });
+      return asText({ added: r.added, entry: r.entry });
+    }
+    return toolError(
+      "removing an opt-out is not available to the agent; a person runs `intent-outreach suppress remove <value>`"
+    );
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+}
+var CALCULATORS = {
+  noi: (i, a) => noi(i, a),
+  capRate: (i) => capRate(i),
+  dscr: (i) => dscr(i),
+  cashOnCash: (i) => cashOnCash(i),
+  monthlyPayment: (i) => monthlyPayment(i),
+  sellerFinance: (i, a) => sellerFinance(i, a),
+  exchange1031Timeline: (i) => exchange1031Timeline(i),
+  tradeUp: (i, a) => tradeUp(i, a)
+};
+var UnderwriteInput = {
+  calculation: external_exports.enum(Object.keys(CALCULATORS)),
+  inputs: external_exports.record(external_exports.string(), external_exports.unknown()).describe("Money in integer cents, rates in basis points (6.75% = 675)."),
+  assumptions: external_exports.record(external_exports.string(), external_exports.unknown()).optional().describe("Required by noi, sellerFinance and tradeUp; explicit, never defaulted.")
+};
+function handleUnderwrite(args) {
+  try {
+    return asText(CALCULATORS[args.calculation](args.inputs, args.assumptions ?? {}));
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+}
 
 // mcp/server.ts
 registerBuiltinConnectors();
@@ -40619,6 +42669,60 @@ server.registerTool(
     inputSchema: SaveRunInput
   },
   async (args) => handleSaveRun(args)
+);
+server.registerTool(
+  "list_pending",
+  {
+    title: "List drafts waiting for approval",
+    description: "List drafted messages in the LOCAL run store that no person has approved or rejected yet, with the full text and a digest. Nothing may be sent until a person approves the exact text. Show the drafts to the user; never approve on your own judgment.",
+    inputSchema: ListPendingInput
+  },
+  async (args) => handleListPending(args)
+);
+server.registerTool(
+  "approve",
+  {
+    title: "Record a person's approval of one draft",
+    description: "Record that the USER approved one exact draft (runId + contactKey + the digest list_pending showed). Call this only after the user has read that draft and explicitly said to approve it. Editing a draft afterwards voids the approval. Approving does not send anything.",
+    inputSchema: DecideInput
+  },
+  async (args) => handleApprove(args)
+);
+server.registerTool(
+  "reject",
+  {
+    title: "Record a rejection of one draft",
+    description: "Record that the user rejected one draft (runId + contactKey). It cannot pass the send-time check unless a person later approves that exact text again (the latest decision wins).",
+    inputSchema: DecideInput
+  },
+  async (args) => handleReject(args)
+);
+server.registerTool(
+  "list_runs",
+  {
+    title: "List recent campaign runs",
+    description: "Summaries of the most recent runs in the LOCAL run store: status, pack, drafts, blocks, rejections, credits and cost.",
+    inputSchema: ListRunsInput
+  },
+  async (args) => handleListRuns(args)
+);
+server.registerTool(
+  "suppress",
+  {
+    title: "Manage the opt-out list",
+    description: "Add to or list the local suppression list (email, domain, phone or mailing address). Add whenever someone asks not to be contacted; every run and the send-time check honor it. Removing an opt-out is not available here: a person does it with `intent-outreach suppress remove`.",
+    inputSchema: SuppressInput
+  },
+  async (args) => handleSuppress(args)
+);
+server.registerTool(
+  "underwrite",
+  {
+    title: "Compute deal math",
+    description: "Run one deal-math calculation in code (noi, capRate, dscr, cashOnCash, monthlyPayment, sellerFinance, exchange1031Timeline, tradeUp). Money is integer cents, rates are basis points. Quote the returned figures exactly; never do the arithmetic yourself. The 1031 timeline is informational, not tax advice.",
+    inputSchema: UnderwriteInput
+  },
+  async (args) => handleUnderwrite(args)
 );
 async function main() {
   const transport = new StdioServerTransport();

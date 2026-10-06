@@ -1,0 +1,579 @@
+{
+  "displayFieldName": "PATPCL_PIN",
+  "fieldAliases": {
+    "OBJECTID": "OBJECTID",
+    "SDE.GIS.PARCELSPCLP.AREA": "AREA",
+    "PERIMETER": "PERIMETER",
+    "PCLP_": "PCLP_",
+    "PCLP_ID": "PCLP_ID",
+    "PATPCL_PIN": "PIN",
+    "PATPCL_STRAP": "PATPCL_STRAP",
+    "PATPCL_FRONT": "PATPCL_FRONT",
+    "PATPCL_DEPTH": "PATPCL_DEPTH",
+    "PATPCL_BACK": "PATPCL_BACK",
+    "PATPCL_GIS_ACRE": "PATPCL_GIS_ACRE",
+    "PATPCL_LGL_ACRE": "PATPCL_LGL_ACRE",
+    "PATPCL_OWNER": "OWNER",
+    "PATPCL_ADDR1": "PATPCL_ADDR1",
+    "PATPCL_ADDR2": "PATPCL_ADDR2",
+    "PATPCL_ADDR3": "PATPCL_ADDR3",
+    "PATPCL_CITY": "PATPCL_CITY",
+    "PATPCL_STATE": "PATPCL_STATE",
+    "PATPCL_ZIPCODE": "PATPCL_ZIPCODE",
+    "PATPCL_CNTRY": "PATPCL_CNTRY",
+    "PATPCL_LEGL1": "PATPCL_LEGL1",
+    "PATPCL_LEGL2": "PATPCL_LEGL2",
+    "PATPCL_LEGL3": "PATPCL_LEGL3",
+    "PATPCL_XFCODE1": "PATPCL_XFCODE1",
+    "PATPCL_XFEYB1": "PATPCL_XFEYB1",
+    "PATPCL_XFUTPRIC1": "PATPCL_XFUTPRIC1",
+    "PATPCL_XFCODE2": "PATPCL_XFCODE2",
+    "PATPCL_XFEYB2": "PATPCL_XFEYB2",
+    "PATPCL_XFUTPRIC2": "PATPCL_XFUTPRIC2",
+    "PATPCL_XFCODE3": "PATPCL_XFCODE3",
+    "PATPCL_XFEYB3": "PATPCL_XFEYB3",
+    "PATPCL_XFUTPRIC3": "PATPCL_XFUTPRIC3",
+    "PATPCL_BLDGAYB": "PATPCL_BLDGAYB",
+    "PATPCL_BLDGEYB": "PATPCL_BLDGEYB",
+    "PATPCL_BLDGEQUAL": "PATPCL_BLDGEQUAL",
+    "PATPCL_AGVAL": "PATPCL_AGVAL",
+    "PATPCL_ASSEDVAL": "PATPCL_ASSEDVAL",
+    "PATPCL_BLDGVAL": "PATPCL_BLDGVAL",
+    "PATPCL_EFFRATE1": "PATPCL_EFFRATE1",
+    "PATPCL_EFFRATE2": "PATPCL_EFFRATE2",
+    "PATPCL_EFFRATE3": "PATPCL_EFFRATE3",
+    "PATPCL_EXCODE": "PATPCL_EXCODE",
+    "PATPCL_EXMPTVAL": "PATPCL_EXMPTVAL",
+    "PATPCL_JUSTVAL": "PATPCL_JUSTVAL",
+    "PATPCL_MKTLAND": "PATPCL_MKTLAND",
+    "PATPCL_QUAL1": "PATPCL_QUAL1",
+    "PATPCL_QUAL2": "PATPCL_QUAL2",
+    "PATPCL_QUAL3": "PATPCL_QUAL3",
+    "PATPCL_SALE1": "PATPCL_SALE1",
+    "PATPCL_SALE2": "PATPCL_SALE2",
+    "PATPCL_SALE3": "PATPCL_SALE3",
+    "PATPCL_SALEBK1": "PATPCL_SALEBK1",
+    "PATPCL_SALEPG1": "PATPCL_SALEPG1",
+    "PATPCL_SALEBK2": "PATPCL_SALEBK2",
+    "PATPCL_SALEPG2": "PATPCL_SALEPG2",
+    "PATPCL_SALEBK3": "PATPCL_SALEBK3",
+    "PATPCL_SALEPG3": "PATPCL_SALEPG3",
+    "PATPCL_TAXDIST": "PATPCL_TAXDIST",
+    "PATPCL_TAXVAL": "PATPCL_TAXVAL",
+    "PATPCL_TOTALAPPR": "PATPCL_TOTALAPPR",
+    "PATPCL_USECODE": "PATPCL_USECODE",
+    "PATPCL_USEDESC": "PATPCL_USEDESC",
+    "PATPCL_XFOBVAL": "PATPCL_XFOBVAL",
+    "PATPCL_SEC_NO": "PATPCL_SEC_NO",
+    "PATPCL_TS_NO": "PATPCL_TS_NO",
+    "PATPCL_RG_NO": "PATPCL_RG_NO",
+    "PATPCL_SUB_NO": "PATPCL_SUB_NO",
+    "PATPCL_BLK_NO": "PATPCL_BLK_NO",
+    "PATPCL_PCL_NO": "PATPCL_PCL_NO",
+    "PATPCL_SUB_KEY": "PATPCL_SUB_KEY",
+    "PATPCL_BLK_KEY": "PATPCL_BLK_KEY",
+    "SPLIT_DT": "SPLIT_DT",
+    "CENSUS_CD": "CENSUS_CD",
+    "PATPCL_SALEDT1": "PATPCL_SALEDT1",
+    "PATPCL_SALEDT2": "PATPCL_SALEDT2",
+    "PATPCL_SALEDT3": "PATPCL_SALEDT3"
+  },
+  "fields": [
+    {
+      "name": "OBJECTID",
+      "type": "esriFieldTypeOID",
+      "alias": "OBJECTID"
+    },
+    {
+      "name": "SDE.GIS.PARCELSPCLP.AREA",
+      "type": "esriFieldTypeDouble",
+      "alias": "AREA"
+    },
+    {
+      "name": "PERIMETER",
+      "type": "esriFieldTypeDouble",
+      "alias": "PERIMETER"
+    },
+    {
+      "name": "PCLP_",
+      "type": "esriFieldTypeInteger",
+      "alias": "PCLP_"
+    },
+    {
+      "name": "PCLP_ID",
+      "type": "esriFieldTypeInteger",
+      "alias": "PCLP_ID"
+    },
+    {
+      "name": "PATPCL_PIN",
+      "type": "esriFieldTypeString",
+      "alias": "PIN",
+      "length": 23
+    },
+    {
+      "name": "PATPCL_STRAP",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_STRAP",
+      "length": 25
+    },
+    {
+      "name": "PATPCL_FRONT",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_FRONT"
+    },
+    {
+      "name": "PATPCL_DEPTH",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_DEPTH"
+    },
+    {
+      "name": "PATPCL_BACK",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_BACK"
+    },
+    {
+      "name": "PATPCL_GIS_ACRE",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_GIS_ACRE"
+    },
+    {
+      "name": "PATPCL_LGL_ACRE",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_LGL_ACRE"
+    },
+    {
+      "name": "PATPCL_OWNER",
+      "type": "esriFieldTypeString",
+      "alias": "OWNER",
+      "length": 30
+    },
+    {
+      "name": "PATPCL_ADDR1",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_ADDR1",
+      "length": 30
+    },
+    {
+      "name": "PATPCL_ADDR2",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_ADDR2",
+      "length": 30
+    },
+    {
+      "name": "PATPCL_ADDR3",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_ADDR3",
+      "length": 30
+    },
+    {
+      "name": "PATPCL_CITY",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_CITY",
+      "length": 20
+    },
+    {
+      "name": "PATPCL_STATE",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_STATE",
+      "length": 2
+    },
+    {
+      "name": "PATPCL_ZIPCODE",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_ZIPCODE",
+      "length": 5
+    },
+    {
+      "name": "PATPCL_CNTRY",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_CNTRY",
+      "length": 30
+    },
+    {
+      "name": "PATPCL_LEGL1",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_LEGL1",
+      "length": 30
+    },
+    {
+      "name": "PATPCL_LEGL2",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_LEGL2",
+      "length": 30
+    },
+    {
+      "name": "PATPCL_LEGL3",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_LEGL3",
+      "length": 30
+    },
+    {
+      "name": "PATPCL_XFCODE1",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_XFCODE1",
+      "length": 6
+    },
+    {
+      "name": "PATPCL_XFEYB1",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_XFEYB1"
+    },
+    {
+      "name": "PATPCL_XFUTPRIC1",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_XFUTPRIC1"
+    },
+    {
+      "name": "PATPCL_XFCODE2",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_XFCODE2",
+      "length": 6
+    },
+    {
+      "name": "PATPCL_XFEYB2",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_XFEYB2"
+    },
+    {
+      "name": "PATPCL_XFUTPRIC2",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_XFUTPRIC2"
+    },
+    {
+      "name": "PATPCL_XFCODE3",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_XFCODE3",
+      "length": 6
+    },
+    {
+      "name": "PATPCL_XFEYB3",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_XFEYB3"
+    },
+    {
+      "name": "PATPCL_XFUTPRIC3",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_XFUTPRIC3"
+    },
+    {
+      "name": "PATPCL_BLDGAYB",
+      "type": "esriFieldTypeSmallInteger",
+      "alias": "PATPCL_BLDGAYB"
+    },
+    {
+      "name": "PATPCL_BLDGEYB",
+      "type": "esriFieldTypeSmallInteger",
+      "alias": "PATPCL_BLDGEYB"
+    },
+    {
+      "name": "PATPCL_BLDGEQUAL",
+      "type": "esriFieldTypeSmallInteger",
+      "alias": "PATPCL_BLDGEQUAL"
+    },
+    {
+      "name": "PATPCL_AGVAL",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_AGVAL"
+    },
+    {
+      "name": "PATPCL_ASSEDVAL",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_ASSEDVAL"
+    },
+    {
+      "name": "PATPCL_BLDGVAL",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_BLDGVAL"
+    },
+    {
+      "name": "PATPCL_EFFRATE1",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_EFFRATE1"
+    },
+    {
+      "name": "PATPCL_EFFRATE2",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_EFFRATE2"
+    },
+    {
+      "name": "PATPCL_EFFRATE3",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_EFFRATE3"
+    },
+    {
+      "name": "PATPCL_EXCODE",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_EXCODE",
+      "length": 4
+    },
+    {
+      "name": "PATPCL_EXMPTVAL",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_EXMPTVAL",
+      "length": 9
+    },
+    {
+      "name": "PATPCL_JUSTVAL",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_JUSTVAL",
+      "length": 9
+    },
+    {
+      "name": "PATPCL_MKTLAND",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_MKTLAND"
+    },
+    {
+      "name": "PATPCL_QUAL1",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_QUAL1",
+      "length": 1
+    },
+    {
+      "name": "PATPCL_QUAL2",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_QUAL2",
+      "length": 1
+    },
+    {
+      "name": "PATPCL_QUAL3",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_QUAL3",
+      "length": 1
+    },
+    {
+      "name": "PATPCL_SALE1",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALE1"
+    },
+    {
+      "name": "PATPCL_SALE2",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALE2"
+    },
+    {
+      "name": "PATPCL_SALE3",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALE3"
+    },
+    {
+      "name": "PATPCL_SALEBK1",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALEBK1"
+    },
+    {
+      "name": "PATPCL_SALEPG1",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALEPG1"
+    },
+    {
+      "name": "PATPCL_SALEBK2",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALEBK2"
+    },
+    {
+      "name": "PATPCL_SALEPG2",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALEPG2"
+    },
+    {
+      "name": "PATPCL_SALEBK3",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALEBK3"
+    },
+    {
+      "name": "PATPCL_SALEPG3",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALEPG3"
+    },
+    {
+      "name": "PATPCL_TAXDIST",
+      "type": "esriFieldTypeSmallInteger",
+      "alias": "PATPCL_TAXDIST"
+    },
+    {
+      "name": "PATPCL_TAXVAL",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_TAXVAL"
+    },
+    {
+      "name": "PATPCL_TOTALAPPR",
+      "type": "esriFieldTypeDouble",
+      "alias": "PATPCL_TOTALAPPR"
+    },
+    {
+      "name": "PATPCL_USECODE",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_USECODE",
+      "length": 6
+    },
+    {
+      "name": "PATPCL_USEDESC",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_USEDESC",
+      "length": 20
+    },
+    {
+      "name": "PATPCL_XFOBVAL",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_XFOBVAL"
+    },
+    {
+      "name": "PATPCL_SEC_NO",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_SEC_NO",
+      "length": 2
+    },
+    {
+      "name": "PATPCL_TS_NO",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_TS_NO",
+      "length": 2
+    },
+    {
+      "name": "PATPCL_RG_NO",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_RG_NO",
+      "length": 2
+    },
+    {
+      "name": "PATPCL_SUB_NO",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_SUB_NO",
+      "length": 4
+    },
+    {
+      "name": "PATPCL_BLK_NO",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_BLK_NO",
+      "length": 4
+    },
+    {
+      "name": "PATPCL_PCL_NO",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_PCL_NO",
+      "length": 4
+    },
+    {
+      "name": "PATPCL_SUB_KEY",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_SUB_KEY",
+      "length": 13
+    },
+    {
+      "name": "PATPCL_BLK_KEY",
+      "type": "esriFieldTypeString",
+      "alias": "PATPCL_BLK_KEY",
+      "length": 18
+    },
+    {
+      "name": "SPLIT_DT",
+      "type": "esriFieldTypeDate",
+      "alias": "SPLIT_DT",
+      "length": 8
+    },
+    {
+      "name": "CENSUS_CD",
+      "type": "esriFieldTypeString",
+      "alias": "CENSUS_CD",
+      "length": 40
+    },
+    {
+      "name": "PATPCL_SALEDT1",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALEDT1"
+    },
+    {
+      "name": "PATPCL_SALEDT2",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALEDT2"
+    },
+    {
+      "name": "PATPCL_SALEDT3",
+      "type": "esriFieldTypeInteger",
+      "alias": "PATPCL_SALEDT3"
+    }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "OBJECTID": 27771,
+        "SDE.GIS.PARCELSPCLP.AREA": 81812.80221613,
+        "PERIMETER": 1402.89515155,
+        "PCLP_": 27771,
+        "PCLP_ID": 27771,
+        "PATPCL_PIN": "23-2S-24-221A-0000-0650",
+        "PATPCL_STRAP": "24S223221A00000650",
+        "PATPCL_FRONT": 150,
+        "PATPCL_DEPTH": 535,
+        "PATPCL_BACK": 0,
+        "PATPCL_GIS_ACRE": 1.87816369,
+        "PATPCL_LGL_ACRE": 0.0,
+        "PATPCL_OWNER": "OKALOOSA COUNTY",
+        "PATPCL_ADDR1": "1250 N EGLIN PKWY SUITE 100",
+        "PATPCL_ADDR2": null,
+        "PATPCL_ADDR3": null,
+        "PATPCL_CITY": "SHALIMR",
+        "PATPCL_STATE": "FL",
+        "PATPCL_ZIPCODE": "32579",
+        "PATPCL_CNTRY": null,
+        "PATPCL_LEGL1": "SEABREEZE S/D",
+        "PATPCL_LEGL2": "W1/2 OF LOT 65 & ALL LOT",
+        "PATPCL_LEGL3": "66",
+        "PATPCL_XFCODE1": "ASPHAT",
+        "PATPCL_XFEYB1": 1989,
+        "PATPCL_XFUTPRIC1": 52289.0,
+        "PATPCL_XFCODE2": "WALKCM",
+        "PATPCL_XFEYB2": 1989,
+        "PATPCL_XFUTPRIC2": 6754.0,
+        "PATPCL_XFCODE3": "DUMP",
+        "PATPCL_XFEYB3": 2001,
+        "PATPCL_XFUTPRIC3": 2995.0,
+        "PATPCL_BLDGAYB": 1989,
+        "PATPCL_BLDGEYB": 2000,
+        "PATPCL_BLDGEQUAL": 4,
+        "PATPCL_AGVAL": 0.0,
+        "PATPCL_ASSEDVAL": 1171818.0,
+        "PATPCL_BLDGVAL": 419112.0,
+        "PATPCL_EFFRATE1": 3768.11,
+        "PATPCL_EFFRATE2": 0.0,
+        "PATPCL_EFFRATE3": 0.0,
+        "PATPCL_EXCODE": " ",
+        "PATPCL_EXMPTVAL": "0",
+        "PATPCL_JUSTVAL": "1171818",
+        "PATPCL_MKTLAND": 693633.0,
+        "PATPCL_QUAL1": "U",
+        "PATPCL_QUAL2": "U",
+        "PATPCL_QUAL3": "U",
+        "PATPCL_SALE1": 3500000,
+        "PATPCL_SALE2": 3430000,
+        "PATPCL_SALE3": 3360300,
+        "PATPCL_SALEBK1": null,
+        "PATPCL_SALEPG1": null,
+        "PATPCL_SALEBK2": 3666,
+        "PATPCL_SALEPG2": 2142,
+        "PATPCL_SALEBK3": 3360,
+        "PATPCL_SALEPG3": 2617,
+        "PATPCL_TAXDIST": 4,
+        "PATPCL_TAXVAL": 388466.0,
+        "PATPCL_TOTALAPPR": 1171818.0,
+        "PATPCL_USECODE": "2100",
+        "PATPCL_USEDESC": "RESTAURANT/CAFE",
+        "PATPCL_XFOBVAL": 42293,
+        "PATPCL_SEC_NO": "23",
+        "PATPCL_TS_NO": "2S",
+        "PATPCL_RG_NO": "24",
+        "PATPCL_SUB_NO": "221A",
+        "PATPCL_BLK_NO": "0000",
+        "PATPCL_PCL_NO": "0650",
+        "PATPCL_SUB_KEY": "23-2S-24-221A",
+        "PATPCL_BLK_KEY": "23-2S-24-221A-0000",
+        "SPLIT_DT": null,
+        "CENSUS_CD": "120910227003",
+        "PATPCL_SALEDT1": 20250501,
+        "PATPCL_SALEDT2": 20230302,
+        "PATPCL_SALEDT3": 20180720
+      }
+    }
+  ]
+}

@@ -170,6 +170,8 @@ own checks:
 ```bash
 intent-outreach suppress add jane@acme.com --reason "replied unsubscribe"
 intent-outreach suppress add globex.com          # a domain also covers its subdomains
+intent-outreach suppress add "(251) 555-0100" --reason "replied STOP"   # phone, stored as E.164
+intent-outreach suppress add "12 Main St, Foley, AL 36535"             # mailing address
 intent-outreach suppress remove globex.com
 intent-outreach suppress list
 ```
@@ -177,6 +179,71 @@ intent-outreach suppress list
 (From a checkout, use `node bundle/cli.mjs suppress …`.) Matching ignores case and whitespace. A suppressed
 contact is recorded in the run's `blockedContacts` and never drafted. If `suppressions.jsonl` has a corrupt
 line, the run refuses to start rather than risk emailing someone who opted out.
+
+## Property campaigns (residential real estate)
+
+`property-run` drafts short letters to the owners of record of homes in the agent's market, with the
+`residential-re` pack:
+
+```bash
+intent-outreach property-run --icp "Listing agent for Perdido Key homes" --zips 32507 --profile ./agent.json
+intent-outreach property-run --icp "..." --parcels 12033:082S305005000002 --budget-credits 50
+```
+
+Public records come from free, keyless sources (`000-docs/035`): the Florida statewide parcel roll and
+FEMA flood zones. Every owner passes the suppression list and the pack's gate first: the service area,
+manual review for probate, divorce and pre-foreclosure, known active listings, government owners, and the
+license terms of the record (outreach must be explicitly allowed by the source). Drafts never mention the
+owner as a person (age, family, marital status...) or any distress (foreclosure, liens...). Your profile's
+`sender` needs `licenses` for the brokerage and license line on every letter. Nothing is mailed: every
+draft waits in the approval queue. Turn the public-records connectors off with
+`INTENT_OUTREACH_PUBLIC_RECORDS=0`.
+
+Coverage today: Florida (Escambia, Okaloosa) through the state roll. Baldwin County, AL is pending the
+owner's confirmation of the data terms with the Revenue Commission; Mobile County publishes no mailing
+address.
+
+## Approval queue
+
+Every saved draft waits for a person. Nothing passes the send-time check until someone approves that
+exact text; editing a draft afterwards voids the approval.
+
+```bash
+intent-outreach approvals pending                                  # each draft in full, with a digest
+intent-outreach approvals approve <runId> <contactKey> --digest <digest> [--note "..."]
+intent-outreach approvals reject  <runId> <contactKey> [--note "..."]
+```
+
+Decisions go to `$INTENT_OUTREACH_HOME/approvals.jsonl` (0600, append-only; a later decision on the same
+text supersedes an earlier one). In Claude Code the same queue is the `list_pending`, `approve` and
+`reject` MCP tools, which the skill calls only on your explicit word. Be clear about what that means: an
+MCP approval is agent-mediated. The server cannot prove a person read the draft; Claude Code's
+tool-permission prompt is the human checkpoint, and the ledger records such decisions as `by: "mcp"`. For
+a strictly human approval, use the CLI, which records your OS user.
+
+## Send-time check (for whatever sends)
+
+Intent Outreach drafts and never sends. Whatever does send (a dispatcher, a person) must check each
+message at the moment of sending, because a STOP, a revoked consent, quiet hours or a DNC result can
+arrive after drafting. In TypeScript call `checkSendable` / `assertSendable` from
+`pipeline_core/compliance/send.ts`; from any other language pipe JSON to the CLI:
+
+```bash
+intent-outreach check-send --profile ./my-profile.json < message.json   # exit 0 = sendable; anything else = do not send
+```
+
+Pass `runId` and `contactKey` with the message: it must match an approved draft exactly. It also checks
+the local suppression list, DNC status (phone channels need exactly `clean`), consent from the
+ledger you pass in (SMS needs written consent; any revocation voids every channel), the recipient-local
+phone window, the channel footer (the exact block for that channel must end the body, including the
+license line when the pack requires it), and data whose license restricts outreach. It prints every
+blocking reason as JSON. Exit 0 means sendable, 3 means not sendable, 2 means bad input; a dispatcher
+must treat **any non-zero exit** as "do not send".
+
+The phone window is deliberately conservative: **8am–8pm recipient-local, Monday–Saturday** (Texas from
+9am), a superset of the TCPA and the Gulf states' telephone-solicitation statutes as we understand them.
+Holidays are not modeled. An unknown or unlisted location is checked against every US time zone. This
+is engineering, not legal advice: have counsel review before automating SMS or calls.
 
 ## Keys (bring your own)
 

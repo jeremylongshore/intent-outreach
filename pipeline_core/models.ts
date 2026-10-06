@@ -5,7 +5,10 @@
  * zod value types. No http, no cloud, no provider, no I/O imports here — this
  * module is CI-guarded to stay framework-free (see .github/workflows/policy.yml).
  *
- * Five value types: Lead, Contact, Enrichment, Message, CampaignRun.
+ * Five B2B value types: Lead, Contact, Enrichment, Message, CampaignRun. Schema
+ * v6 adds the property/owner model for real estate packs: Property, Party,
+ * Ownership, EntityLink and ContactPoint, every vendor value carried as a Fact
+ * with provenance and license terms, plus the typed ResearchQuery.
  * CampaignRun is the system of record. The probabilistic system (the LLM) must
  * never write it directly — everything passes through validator.ts first.
  */
@@ -20,7 +23,7 @@ import { z } from "zod";
  * old v1 JSONL still passes re-validation on read (store.ts re-validates every
  * line). New writes emit the latest version; never narrow this back to one literal.
  */
-export const SCHEMA_VERSION = 5 as const;
+export const SCHEMA_VERSION = 6 as const;
 /**
  * Every schema version a stored record may legitimately carry. The CampaignRun
  * `schemaVersion` union is DERIVED from this list (see SchemaVersionSchema), so
@@ -35,8 +38,14 @@ export const SCHEMA_VERSION = 5 as const;
  * v5 added `promptRefs` (score + draft prompt provenance, defaulted {}),
  * `droppedAngles` (defaulted []) and the optional `origin` ("pipeline" for
  * runCampaign, "agent" for the MCP save_run path). Additive: v1–v4 still parse.
+ *
+ * v6 added the property/owner model (`properties`, `parties`, `ownerships`,
+ * `entityLinks`, `contactPoints`, all defaulted []), the optional `queries`
+ * (the typed research queries a run executed), the optional `credits`
+ * (vendor-credit accounting) and the `sms`, `mail` and `call_script` message
+ * channels. Additive: v1–v5 still parse.
  */
-export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5] as const;
+export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6] as const;
 export type SchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
 
 /** z.union of one literal per supported version — never a single literal. */
@@ -142,6 +151,232 @@ export const EnrichmentSchema = z.object({
 });
 export type Enrichment = z.infer<typeof EnrichmentSchema>;
 
+// ── Property / owner model (schema v6) ─────────────────────────────────────
+//
+// Real estate packs key their world by PARCEL and PERSON, not by company domain.
+// These types are the shared shape every property connector maps onto, so a
+// pack never inherits the B2B "company keyed by domain" assumption. The B2B
+// Lead/Contact types above are untouched; b2b-sdr runs leave these arrays empty.
+
+/** sha256 hex of a raw vendor response body (the evidence behind a Fact). */
+const Sha256HexSchema = z.string().regex(/^[0-9a-f]{64}$/, "expected a sha256 hex digest");
+
+/**
+ * The license a fact was obtained under. `outreachRestricted: true` marks data
+ * whose terms forbid using it to contact the person (a send-time gate refuses
+ * outreach built on it). Absent fields mean the connector did not declare them,
+ * never "unrestricted": a gate may treat an undeclared license as restricted.
+ */
+export const LicenseTermsSchema = z.object({
+  /** Short identifier of the terms, e.g. "dealmachine-tos-2026" or "public-record". */
+  id: z.string().min(1).optional(),
+  outreachRestricted: z.boolean().optional(),
+  /** Days the vendor allows this fact to be retained. */
+  retentionDays: z.number().int().positive().optional(),
+  /** Required attribution text, if the terms demand one. */
+  attribution: z.string().min(1).optional(),
+});
+export type LicenseTerms = z.infer<typeof LicenseTermsSchema>;
+
+/**
+ * Fact — one vendor-supplied value plus where it came from. Every attribute a
+ * property connector returns is a Fact, so any value a draft cites can be traced
+ * to a source, a fetch time and the hash of the response that carried it.
+ */
+export function factSchema<T extends z.ZodType>(value: T) {
+  return z.object({
+    value,
+    source: SourceSchema,
+    fetchedAt: z.string().datetime(),
+    responseHash: Sha256HexSchema.optional(),
+    licenseTerms: LicenseTermsSchema.optional(),
+    /** When the value came through a vendor MCP server: which server, version and tool. */
+    via: z.object({ server: z.string().min(1), version: z.string().min(1), tool: z.string().min(1) }).optional(),
+  });
+}
+export const FactSchema = factSchema(z.unknown());
+export type Fact<T = unknown> = {
+  value: T;
+  source: Source;
+  fetchedAt: string;
+  responseHash?: string;
+  licenseTerms?: LicenseTerms;
+  via?: { server: string; version: string; tool: string };
+};
+
+const UsStateSchema = z.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code");
+const CountyFipsSchema = z.string().regex(/^\d{5}$/, "expected a 5-digit county FIPS code");
+
+/** A US postal address as a vendor reports it (not normalized; see suppression for keys). */
+export const AddressSchema = z.object({
+  line1: z.string().min(1),
+  line2: z.string().min(1).optional(),
+  city: z.string().min(1),
+  state: UsStateSchema,
+  zip: z.string().regex(/^\d{5}(?:-\d{4})?$/, "expected ZIP5 or ZIP+4"),
+  county: z.string().min(1).optional(),
+  countyFips: CountyFipsSchema.optional(),
+});
+export type Address = z.infer<typeof AddressSchema>;
+
+/** Natural key of a parcel: `<countyFips>:<apn>`. APNs repeat across counties. */
+export function propertyKey(countyFips: string, apn: string): string {
+  return `${countyFips}:${apn.trim().toUpperCase()}`;
+}
+
+/**
+ * Property — one parcel. Keyed by county FIPS + APN (assessor parcel number),
+ * the only identifier stable across county GIS, data vendors and ERPNext.
+ * `attributes` is an open map of Facts (beds, year built, assessed value in
+ * cents, flood zone, ...) so a new attribute never needs a schema bump.
+ */
+export const PropertySchema = z
+  .object({
+    key: z.string().min(1),
+    apn: z.string().min(1),
+    countyFips: CountyFipsSchema,
+    address: AddressSchema.optional(),
+    /** A point on the parcel (centroid or label point), WGS84. Used for flood and other spatial lookups. */
+    location: z.object({ lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) }).optional(),
+    attributes: z.record(z.string().min(1), FactSchema).default({}),
+    source: SourceSchema,
+  })
+  .refine((p) => p.key === propertyKey(p.countyFips, p.apn), {
+    message: "key must equal propertyKey(countyFips, apn)",
+    path: ["key"],
+  })
+  .refine((p) => p.apn === p.apn.trim(), { message: "apn must not carry surrounding whitespace", path: ["apn"] });
+export type Property = z.infer<typeof PropertySchema>;
+
+/** Party — an owner or a person behind one: a natural person or a legal entity. */
+export const PartySchema = z.object({
+  /** Stable id within the run, e.g. "person:<connector-id>" or "entity:AL:000123456". */
+  key: z.string().min(1),
+  kind: z.enum(["person", "entity"]),
+  name: z.string().min(1),
+  /** For entities only. */
+  entityType: z.enum(["llc", "corporation", "trust", "estate", "partnership", "government", "other"]).optional(),
+  mailingAddress: AddressSchema.optional(),
+  source: SourceSchema,
+  /**
+   * Terms of the record this party (and its mailing address) came from. A
+   * property pack may write to a party only when `outreachRestricted` is
+   * explicitly false; absent or undeclared is treated as restricted.
+   */
+  licenseTerms: LicenseTermsSchema.optional(),
+});
+export type Party = z.infer<typeof PartySchema>;
+
+/** Ownership — a party holds (a share of) a property. Many-to-many. */
+export const OwnershipSchema = z.object({
+  propertyKey: z.string().min(1),
+  partyKey: z.string().min(1),
+  /** Fraction held, 0 < share <= 1, when the record states it. */
+  share: z.number().gt(0).lte(1).optional(),
+  role: z.enum(["owner", "co-owner", "trustee", "life-tenant"]).default("owner"),
+  /** Recording or deed date (ISO date), when known. */
+  asOf: z.string().date().optional(),
+  source: SourceSchema,
+  fetchedAt: z.string().datetime(),
+});
+export type Ownership = z.infer<typeof OwnershipSchema>;
+
+/**
+ * EntityLink — resolves an entity owner (an LLC) to a person behind it, from a
+ * registry such as a Secretary of State filing. Confidence is explicit because
+ * name matches are probabilistic; a pack decides the threshold to act on.
+ */
+export const EntityLinkSchema = z.object({
+  entityKey: z.string().min(1),
+  personKey: z.string().min(1),
+  role: z.enum(["member", "manager", "officer", "registered-agent", "organizer", "other"]),
+  confidence: z.number().min(0).max(1),
+  source: SourceSchema,
+  fetchedAt: z.string().datetime(),
+});
+export type EntityLink = z.infer<typeof EntityLinkSchema>;
+
+/**
+ * DNC status of a phone contact point. Defaults to "unknown", which every gate
+ * must treat as do-not-contact (fail closed); only a scrub sets "clean".
+ */
+export const DncStatusSchema = z.enum(["clean", "listed", "unknown"]);
+
+/**
+ * ContactPoint — one way to reach a party: a phone, an email or a mailing
+ * address. Channel-level facts the send-time check needs (line type, DNC
+ * status, when it was verified) live here, not on the party.
+ */
+export const ContactPointSchema = z
+  .object({
+    partyKey: z.string().min(1),
+    kind: z.enum(["phone", "email", "mail"]),
+    /** E.164 phone, email address, or a one-line mailing address. */
+    value: z.string().min(1),
+    /** Phones only. "unknown" means the line type was not established. */
+    lineType: z.enum(["mobile", "landline", "voip", "unknown"]).optional(),
+    /** Phones only; defaults to "unknown" (fail closed). */
+    dnc: DncStatusSchema.default("unknown"),
+    source: SourceSchema,
+    fetchedAt: z.string().datetime(),
+    verifiedAt: z.string().datetime().optional(),
+    licenseTerms: LicenseTermsSchema.optional(),
+  })
+  .refine((c) => c.kind !== "phone" || /^\+[1-9]\d{9,14}$/.test(c.value), {
+    message: "a phone contact point must be E.164",
+    path: ["value"],
+  })
+  .refine((c) => c.kind !== "email" || z.string().email().safeParse(c.value).success, {
+    message: "an email contact point must be a valid email",
+    path: ["value"],
+  });
+export type ContactPoint = z.infer<typeof ContactPointSchema>;
+
+/**
+ * ResearchQuery — what a research call is asked. B2B runs ask by company
+ * domain; property packs ask by area (geography + buy-box filters compiled
+ * from the pack) or by one parcel. Connectors declare which kinds they accept,
+ * so a domain connector is never handed a parcel query.
+ */
+export const ResearchQuerySchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("domain"), domain: z.string().min(1) }),
+  z.object({
+    kind: z.literal("area"),
+    geography: z
+      .object({
+        state: UsStateSchema.optional(),
+        countyFips: z.array(CountyFipsSchema).optional(),
+        zips: z.array(z.string().regex(/^\d{5}$/)).optional(),
+      })
+      .refine((g) => Boolean(g.state || g.countyFips?.length || g.zips?.length), {
+        message: "an area query needs a state, county FIPS codes or ZIPs",
+      }),
+    /** Pack buy-box filters, already compiled to plain values. */
+    filters: z.record(z.string().min(1), z.unknown()).default({}),
+  }),
+  z
+    .object({
+      kind: z.literal("parcel"),
+      countyFips: CountyFipsSchema.optional(),
+      apn: z.string().min(1).optional(),
+      address: AddressSchema.optional(),
+    })
+    .refine((q) => Boolean((q.countyFips && q.apn) || q.address), {
+      message: "a parcel query needs countyFips + apn, or an address",
+    }),
+]);
+export type ResearchQuery = z.infer<typeof ResearchQuerySchema>;
+export type ResearchQueryKind = ResearchQuery["kind"];
+
+/**
+ * Outreach channels. `email` and `linkedin` are the B2B channels; `sms`, `mail`
+ * and `call_script` (a script a human caller reads; the engine never dials) are
+ * the property-pack channels, each with its own footer and send-time rules.
+ */
+export const CHANNELS = ["email", "linkedin", "sms", "mail", "call_script"] as const;
+export const ChannelSchema = z.enum(CHANNELS);
+export type Channel = z.infer<typeof ChannelSchema>;
+
 /**
  * Message — drafted outreach. This is MODEL OUTPUT and is the most dangerous
  * thing in the system: it goes out under the customer's domain. It must pass
@@ -150,7 +385,7 @@ export type Enrichment = z.infer<typeof EnrichmentSchema>;
 export const MessageSchema = z.object({
   /** FK to the Contact this message is for (email if known, else name@domain). */
   contactKey: z.string().min(1),
-  channel: z.enum(["email", "linkedin"]),
+  channel: ChannelSchema,
   subject: z.string().optional(),
   body: z.string().min(1),
   cta: z.string().min(1),
@@ -161,11 +396,14 @@ export const MessageSchema = z.object({
   promptVersion: z.string().min(1),
   createdAt: z.string().datetime(),
   /**
-   * True when this is an EMAIL draft and no sender identity (name, company,
-   * postal address) was configured, so the CAN-SPAM footer could NOT be appended.
-   * Such a draft must not be sent as-is. Additive (v4); defaults false.
+   * True when the channel's required sender identity was not configured, so its
+   * footer could NOT be appended: name + company + postal address for email and
+   * mail, name + company for sms and call_script. Such a draft must not be sent
+   * as-is. Additive (v4); defaults false.
    */
   needsSenderIdentity: z.boolean().default(false),
+  /** Property campaigns (v6, optional): the parcel this letter is about. */
+  propertyKey: z.string().min(1).optional(),
 });
 export type Message = z.infer<typeof MessageSchema>;
 
@@ -194,15 +432,23 @@ export type StoredRunStatus = z.infer<typeof StoredRunStatusSchema>;
 /** Pipeline stage a per-lead failure happened in. */
 export const RunErrorStageSchema = z.enum(["score", "gate", "draft"]);
 
-export const RunErrorSchema = z.object({
-  domain: z.string().min(1),
-  contactKey: z.string().min(1).optional(),
-  stage: RunErrorStageSchema,
-  /** Sanitized, truncated error message (secrets redacted). */
-  message: z.string(),
-  /** AI SDK finish reason when the error carried one (e.g. "length"). */
-  finishReason: z.string().optional(),
-});
+export const RunErrorSchema = z
+  .object({
+    /** The lead's domain (company campaigns). */
+    domain: z.string().min(1).optional(),
+    /** The parcel's `<countyFips>:<apn>` (property campaigns, v6). */
+    propertyKey: z.string().min(1).optional(),
+    contactKey: z.string().min(1).optional(),
+    stage: RunErrorStageSchema,
+    /** Sanitized, truncated error message (secrets redacted). */
+    message: z.string(),
+    /** AI SDK finish reason when the error carried one (e.g. "length"). */
+    finishReason: z.string().optional(),
+  })
+  // contactKey alone (v6): an inbound reply has no company domain and no parcel.
+  .refine((e) => e.domain !== undefined || e.propertyKey !== undefined || e.contactKey !== undefined, {
+    message: "a run error needs a domain, a propertyKey or a contactKey",
+  });
 export type RunError = z.infer<typeof RunErrorSchema>;
 
 export const FailedConnectorSchema = z.object({
@@ -250,6 +496,8 @@ export const CampaignRunSchema = z.object({
       z.object({
         contactKey: z.string().min(1),
         reason: z.string().min(1),
+        /** Property campaigns (v6): the parcel the block was about. */
+        propertyKey: z.string().min(1).optional(),
       }),
     )
     .default([]),
@@ -260,7 +508,14 @@ export const CampaignRunSchema = z.object({
   errors: z.array(RunErrorSchema).default([]),
   /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
   rejectedDrafts: z
-    .array(z.object({ contactKey: z.string().min(1), issues: z.array(z.string()) }))
+    .array(
+      z.object({
+        contactKey: z.string().min(1),
+        issues: z.array(z.string()),
+        /** Property campaigns (v6): the parcel the draft was about. */
+        propertyKey: z.string().min(1).optional(),
+      }),
+    )
     .default([]),
   /**
    * Configured connectors that threw (sanitized status only — never the error
@@ -290,7 +545,19 @@ export const CampaignRunSchema = z.object({
    * (groundAngles) — kept so an operator can see what the model tried (v5).
    */
   droppedAngles: z
-    .array(z.object({ domain: z.string().min(1), angle: z.string(), reason: z.string() }))
+    .array(
+      z
+        .object({
+          domain: z.string().min(1).optional(),
+          /** Property campaigns (v6). */
+          propertyKey: z.string().min(1).optional(),
+          angle: z.string(),
+          reason: z.string(),
+        })
+        .refine((d) => d.domain !== undefined || d.propertyKey !== undefined, {
+          message: "a dropped angle needs a domain or a propertyKey",
+        }),
+    )
     .default([]),
   /**
    * Who assembled the record (v5, optional so older lines stay unlabeled rather
@@ -298,6 +565,45 @@ export const CampaignRunSchema = z.object({
    * where the drafts and the `model` field are caller-claimed.
    */
   origin: z.enum(["pipeline", "agent"]).optional(),
+  /** The typed research queries this run executed (v6, optional). */
+  queries: z.array(ResearchQuerySchema).optional(),
+  /**
+   * Which provider + model ran each LLM seam when they differ (v6, optional):
+   * a cheap model scores, a stronger one drafts. Absent ⇒ `provider`/`model` ran both.
+   */
+  seamModels: z
+    .object({
+      score: z.object({ provider: z.string().min(1), model: z.string().min(1) }),
+      draft: z.object({ provider: z.string().min(1), model: z.string().min(1) }),
+    })
+    .optional(),
+  /**
+   * An inbound reply (v6, optional): where the inquiry came from, when it
+   * arrived, when the reply was drafted, and the speed-to-lead in between.
+   */
+  inbound: z
+    .object({
+      source: z.string().min(1),
+      receivedAt: z.string().datetime({ offset: true }),
+      draftedAt: z.string().datetime(),
+      speedToLeadMs: z.number().int().nonnegative(),
+    })
+    .optional(),
+  /** Vendor-credit accounting when the run had a budget (v6, optional). */
+  credits: z
+    .object({
+      limit: z.number().nonnegative(),
+      spent: z.number().nonnegative(),
+      exhausted: z.boolean(),
+      byConnector: z.record(z.string(), z.number().nonnegative()),
+    })
+    .optional(),
+  /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
+  properties: z.array(PropertySchema).default([]),
+  parties: z.array(PartySchema).default([]),
+  ownerships: z.array(OwnershipSchema).default([]),
+  entityLinks: z.array(EntityLinkSchema).default([]),
+  contactPoints: z.array(ContactPointSchema).default([]),
   createdAt: z.string().datetime(),
   finishedAt: z.string().datetime().optional(),
 });
@@ -310,4 +616,10 @@ export const SCHEMAS = {
   Enrichment: EnrichmentSchema,
   Message: MessageSchema,
   CampaignRun: CampaignRunSchema,
+  Property: PropertySchema,
+  Party: PartySchema,
+  Ownership: OwnershipSchema,
+  EntityLink: EntityLinkSchema,
+  ContactPoint: ContactPointSchema,
+  ResearchQuery: ResearchQuerySchema,
 } as const;

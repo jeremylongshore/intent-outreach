@@ -14,7 +14,10 @@
  *   - Error messages are scrubbed of secret query params (redactUrl) AND of any
  *     literal secret value registered via registerSecretForRedaction() or passed
  *     in the per-call `redact` option.
+ *   - Optional per-connector rate limits (`rateLimit`), enforced before every attempt.
  */
+
+import { rateLimiter, type RateLimit } from "./rate-limit.js";
 
 /** Max bytes read from any response body. */
 export const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -135,6 +138,11 @@ export interface HttpOptions {
   retries?: number;
   /** Extra literal values to scrub from error messages for this call. */
   redact?: readonly string[];
+  /**
+   * Enforce a vendor's request limits before EVERY attempt (retries count):
+   * `key` is normally the connector name. See rate-limit.ts.
+   */
+  rateLimit?: (RateLimit & { key: string }) | undefined;
 }
 
 // ---- helpers -----------------------------------------------------------------
@@ -236,6 +244,7 @@ export async function httpJson<T = unknown>(url: string, opts: HttpOptions = {})
   assertAllowedUrl(u);
 
   for (let attempt = 0; ; attempt++) {
+    if (opts.rateLimit) await rateLimiter.acquire(opts.rateLimit.key, opts.rateLimit, signal);
     try {
       return await attemptOnce<T>(u, opts);
     } catch (err) {

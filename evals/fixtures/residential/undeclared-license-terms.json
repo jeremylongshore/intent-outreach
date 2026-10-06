@@ -1,0 +1,52 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "undeclared-license-terms",
+  "kind": "gate",
+  "note": "The owner record came from a source whose terms were never declared: treated as restricted.",
+  "property": {
+    "key": "01003:05-09-27-0-000-109.000",
+    "apn": "05-09-27-0-000-109.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "27 Dune Dr",
+      "city": "Gulf Shores",
+      "state": "AL",
+      "zip": "36542"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:terms",
+      "kind": "person",
+      "name": "Olivia Grant",
+      "source": "fixture-county-gis",
+      "mailingAddress": {
+        "line1": "88 Music Sq E",
+        "city": "Nashville",
+        "state": "TN",
+        "zip": "37203"
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-09-27-0-000-109.000",
+      "partyKey": "person:terms",
+      "role": "owner",
+      "asOf": "2012-01-01",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expectBlocked": "license:undeclared"
+}

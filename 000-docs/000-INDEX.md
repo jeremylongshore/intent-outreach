@@ -1,7 +1,7 @@
 # 000-INDEX — Intent Outreach Documentation Index
 
-**Last Updated:** 2026-10-04
-**Purpose:** Map of the docs in this directory. Current docs are `017`–`022`. Everything in `001`–`016`
+**Last Updated:** 2026-10-06
+**Purpose:** Map of the docs in this directory. Current docs are `017`–`022` and `031` onward. Everything in `001`–`016`
 and `023`–`030` predates the rebuild and describes the retired Gemini-on-Vertex "PipelinePilot" system;
 it is kept for history only, and each of those files carries a "Historical (pre-rebuild)" banner.
 
@@ -26,6 +26,26 @@ The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR 
   the owner decisions, the stream plan and waves, and what shipped in each PR.
 - **`022-AA-AACR-hardening-after-action-review.md`** — after-action review of the hardening: what went
   well, what didn't, and the open follow-ups.
+- **`036-AA-AUDT-appaudit-devops-playbook.md`** — **the handoff (2026-10-06): read this first.** Operator-grade
+  analysis of the whole system and the real estate program: architecture, critical path, decision log, sharp edges,
+  the #85–#105 PR ledger, implementation status, open owner decisions and the exact resume procedure.
+- **`031-AT-DECR-real-estate-engine-one-engine-many-packs.md`** — the real estate decision record: one engine,
+  many packs, thin client repos; the three structural pieces that land first (send-time per-channel compliance,
+  the property/owner model, capability routing with budgets); the repo boundaries with coastal-realty-ops and
+  comehomealabama; alternatives rejected; open owner decisions.
+- **`032-RA-SYNT-real-estate-engine-research-synthesis.md`** — synthesis of the five research reports behind
+  `031` (market, data APIs, compliance, AI-native future-proofing, internal gap review), with sources, the
+  unverified claims marked, and the contradictions the plan resolved.
+- **`033-AT-DECR-social-intent-pack-decision.md`** — go/no-go for a `social-reply` pack that turns public
+  comment friction into human-approved replies: conditional GO behind a 30-day manual pilot, the
+  never-post boundary, and per-platform verdicts with sourced terms. Proposed.
+- **`034-AT-PLAN-social-intent-pack-plan.md`** — the phased build on Pack v2: zod model sketch, scoring
+  rubric, gate and draft rules, the fail-closed test list, the 30-day cadence and kill criteria. Proposed.
+- **`035-DR-DATA-residential-free-data-sources.md`** — the free public data behind the `residential-re` pack,
+  verified live on 2026-10-06: parcel layers for Baldwin, Mobile, Escambia and Okaloosa (query URLs, field
+  mappings, limits, terms), the FL DOR statewide roll, FEMA NFHL flood zones, the Census geocoder, and LLC-to-person
+  sources (OpenCorporates, Sunbiz bulk SFTP, Alabama SOS). Includes per-source verdicts; fixtures are in
+  `tests/fixtures/property/`.
 
 For how the system works and how to run it, read the repo root:
 
@@ -50,7 +70,7 @@ billing scaffold). They are retained only as a historical record — do **not** 
 | `015`–`016` | Autonomous-decision diagnosis, orchestration-fix AAR |
 | `023`–`030` | Original PipelinePilot product docs, renumbered on 2026-10-04 to resolve number collisions (see below) |
 
-If a claim in a historical doc contradicts `017`–`022`, the README, or `CLAUDE.md`, the latter win.
+If a claim in a historical doc contradicts `017`–`022` or `031` onward, the README, or `CLAUDE.md`, the latter win.
 
 ### Renumbered on 2026-10-04 (number collisions)
 

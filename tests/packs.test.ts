@@ -476,9 +476,9 @@ describe("CampaignRun schema v3 (additive)", () => {
 // ── schema v5 back-compat ──────────────────────────────────────────────────
 
 describe("CampaignRun schema v5 (additive: promptRefs, droppedAngles, origin)", () => {
-  it("v5 is the current version and every older version is still supported", () => {
-    expect(SCHEMA_VERSION).toBe(5);
-    expect([...SUPPORTED_SCHEMA_VERSIONS]).toEqual([1, 2, 3, 4, 5]);
+  it("v5 and every older version are still supported (the current version is pinned in schema-v6.test.ts)", () => {
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(5);
+    expect([...SUPPORTED_SCHEMA_VERSIONS].slice(0, 5)).toEqual([1, 2, 3, 4, 5]);
   });
 
   it("every line of the legacy golden fixture parses with the v5 defaults applied", () => {
