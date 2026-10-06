@@ -8,6 +8,17 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Run schema v6: the property/owner model and a typed research query** (#83 phase 2). Runs gain
+  `properties` (keyed `<countyFips>:<apn>`), `parties`, `ownerships`, `entityLinks` and `contactPoints`
+  (all defaulted `[]`) and an optional `queries`. Every vendor value on a property is a `Fact` with its
+  source, fetch time, response hash and license terms; a phone `ContactPoint` must be E.164 and its DNC
+  status defaults to `unknown` (fail closed). `runResearchQuery(query)` runs a `domain`, `area` or
+  `parcel` query across the connectors that declare that kind (`Connector.queryKinds`, default
+  `["domain"]`), in registration order; `runResearch(domain)` is now a wrapper over it. Additive: every
+  v1–v5 line still parses. Older binaries cannot read v6 runs.
+- **Phone and mailing-address suppression** (`suppress add <value> [--kind phone|address]`), the
+  service-area geofence as pack data, and the TCPA quiet-hours window corrected to 8am–9pm (#85).
+
 - **The drafter declines leads that clearly sit outside the ICP.** Draft output gains `decline` and
   `declineReason`. A decline is never sent: it is recorded in `run.rejectedDrafts` as
   `"declined: <reason>"` and metered. Prompt `outreach.v3.md` adds the rule (thin data is not a reason
