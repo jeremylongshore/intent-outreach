@@ -50,7 +50,7 @@ import type { ComplianceContext, ComplianceGate } from "./packs/types.js";
 import { composeGates, suppressionGate, type SuppressionList } from "./compliance/suppression.js";
 import { loadSuppressionList } from "./suppressions.js";
 import { applyComplianceFooter, missingSenderFields, type SenderIdentity } from "./footer.js";
-import { guardDraft, type VoiceRules } from "./draft-guard.js";
+import { guardDraft, type DraftRule, type VoiceRules } from "./draft-guard.js";
 import { loadProfile, type ReportProfile } from "./profiles.js";
 import { intentOutreachHome } from "./secrets.js";
 import { cleanBuyerTitles, rankContactsByTitle } from "./targeting.js";
@@ -734,6 +734,8 @@ export interface MessageComplianceInput {
   userText?: readonly (string | undefined)[];
   /** Operator voice rules (Report Profile `voice`); enforced by the same guard as the seam path. */
   voice?: VoiceRules | undefined;
+  /** The pack's draft rules (Pack v2); same rules the seam path applies. */
+  draftRules?: readonly DraftRule[] | undefined;
 }
 
 export interface MessageComplianceResult {
@@ -809,6 +811,7 @@ export async function applyMessageCompliance(input: MessageComplianceInput): Pro
         // turn "40 acquisitions" into "40 acquisitions a year" either.
         facts: factsOf({ icp: input.icp, lead, contacts: [contact], enrichments, userText: [...(input.userText ?? [])] }),
         ...(input.voice ? { voice: input.voice } : {}),
+        ...(input.draftRules ? { rules: input.draftRules } : {}),
       },
     );
     if (!verdict.ok) {
@@ -1075,6 +1078,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
             angles: scored.object.angles,
             channel,
             draftPrompt: pack.prompts.draft,
+            ...(pack.draftRules ? { draftRules: pack.draftRules } : {}),
             // Never shown to the model; widens the guard allowlist to verified emails/phones.
             enrichments: enrichmentsFor(lead, contact, enrich.enrichments),
             ...(input.styleOverride ? { styleOverride: input.styleOverride } : {}),

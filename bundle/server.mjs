@@ -39190,6 +39190,13 @@ function guardDraft(draft, inputs) {
   if (/^\s*(?:re|fwd?)\s*:/i.test(draft.body)) issues.push('body: fake reply prefix ("Re:")');
   if (inputs.facts) issues.push(...checkQuantities([draft.subject ?? "", draft.body, draft.cta], inputs.facts));
   issues.push(...checkVoice(draft, inputs.voice));
+  for (const rule of inputs.rules ?? []) {
+    try {
+      issues.push(...rule(draft));
+    } catch (err) {
+      issues.push(`draft-rule-error: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
 var DASH_RULES = [
@@ -40545,7 +40552,8 @@ async function applyMessageCompliance(input2) {
         // Same fact text the seam grounds against, so an agent-written draft cannot
         // turn "40 acquisitions" into "40 acquisitions a year" either.
         facts: factsOf({ icp: input2.icp, lead, contacts: [contact], enrichments, userText: [...input2.userText ?? []] }),
-        ...input2.voice ? { voice: input2.voice } : {}
+        ...input2.voice ? { voice: input2.voice } : {},
+        ...input2.draftRules ? { rules: input2.draftRules } : {}
       }
     );
     if (!verdict.ok) {
@@ -40941,7 +40949,8 @@ async function handleSaveRun(rawArgs, deps = {}) {
     model: args.model,
     now,
     userText: [styleOverride],
-    voice
+    voice,
+    draftRules: pack.draftRules
   });
   const errors = [...args.errors, ...gated.errors];
   const rejectedDrafts = [...args.rejectedDrafts, ...gated.rejectedDrafts];
