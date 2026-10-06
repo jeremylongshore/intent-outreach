@@ -81,16 +81,38 @@ export function ownerOf(property: Property, model: PropertyModel): Party | undef
   return pick ? model.parties.find((p) => p.key === pick.partyKey) : undefined;
 }
 
-function gateVerdict(pack: Pack, ctx: PropertyGateContext, suppressions: SuppressionList): { ok: true } | { ok: false; reason: string; error?: string } {
-  const owner = ctx.owner;
-  const mailing = formatAddress(owner.mailingAddress);
-  const suppression = checkSuppression(suppressions, {
-    domains: [],
-    ...(mailing ? { addresses: [mailing] } : {}),
-    phones: ctx.contactPoints.filter((c) => c.kind === "phone").map((c) => c.value),
-    ...(ctx.contactPoints.find((c) => c.kind === "email") ? { email: ctx.contactPoints.find((c) => c.kind === "email")!.value } : {}),
-  });
+/**
+ * The engine's suppression check for one parcel: EVERY party recorded on it
+ * (an opt-out by a co-owner covers mail to the property), EVERY contact point
+ * of theirs of every kind, their mailing addresses, and the property address
+ * itself. A suppressed anything blocks.
+ */
+function propertySuppression(ctx: PropertyGateContext, suppressions: SuppressionList): ComplianceResult {
+  const keys = new Set(ctx.parties.map((p) => p.key));
+  const points = ctx.contactPoints.filter((c) => keys.has(c.partyKey));
+  const addresses = [
+    formatAddress(ctx.property.address),
+    ...ctx.parties.map((p) => formatAddress(p.mailingAddress)),
+    ...points.filter((c) => c.kind === "mail").map((c) => c.value),
+  ].filter((a): a is string => !!a);
+  const phones = points.filter((c) => c.kind === "phone").map((c) => c.value);
+  const emails = points.filter((c) => c.kind === "email").map((c) => c.value);
+  for (const email of emails.length > 0 ? emails : [undefined]) {
+    const r = checkSuppression(suppressions, { domains: [], addresses, phones, ...(email ? { email } : {}) });
+    if (r.status !== "clean") return r;
+  }
+  return { status: "clean" };
+}
+
+function gateVerdict(
+  pack: Pack,
+  ctx: PropertyGateContext,
+  suppressions: SuppressionList,
+  channel: Channel,
+): { ok: true } | { ok: false; reason: string; error?: string } {
+  const suppression = propertySuppression(ctx, suppressions);
   if (suppression.status !== "clean") return { ok: false, reason: suppression.reason ?? "suppressed" };
+  if (channel === "mail" && !ctx.owner.mailingAddress) return { ok: false, reason: "mail:no-address" };
   if (!pack.propertyGate) return { ok: true };
   let verdict: ComplianceResult | undefined;
   try {
@@ -144,39 +166,57 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   const merged = mergePropertyModel(model);
 
   const messages: Message[] = [];
-  const blockedContacts: { contactKey: string; reason: string }[] = [];
-  const rejectedDrafts: { contactKey: string; issues: string[] }[] = [];
+  const blockedContacts: { contactKey: string; reason: string; propertyKey: string }[] = [];
+  const rejectedDrafts: { contactKey: string; issues: string[]; propertyKey: string }[] = [];
   const errors: RunError[] = [];
-  const droppedAngles: { domain: string; angle: string; reason: string }[] = [];
+  const droppedAngles: { propertyKey: string; angle: string; reason: string }[] = [];
+  const warnings: string[] = [];
+  /** Owners already written to in this run: one letter per owner, however many parcels they hold. */
+  const contacted = new Map<string, string>();
+  let scoredCount = 0;
+  let overCap = 0;
   const promptRefs: { score?: string[]; draft?: string } = {};
   let draftsMissingSender = 0;
   const record = (u: Usage) => meter.record(provider.model, u.inputTokens, u.outputTokens);
   const fail = (err: unknown, property: Property, stage: RunError["stage"], contactKey?: string) => {
     if (err instanceof DraftRejectedError) record(err.usage);
     const message = (err instanceof Error ? err.message : String(err)).slice(0, 500);
-    errors.push({ domain: property.key, stage, message, ...(contactKey ? { contactKey } : {}) });
+    errors.push({ propertyKey: property.key, stage, message, ...(contactKey ? { contactKey } : {}) });
   };
 
-  for (const property of merged.properties.slice(0, maxProperties)) {
+  for (const property of merged.properties) {
     const owner = ownerOf(property, merged);
     if (!owner) {
-      blockedContacts.push({ contactKey: property.key, reason: "owner:unknown" });
+      blockedContacts.push({ contactKey: property.key, reason: "owner:unknown", propertyKey: property.key });
       continue;
     }
     const nowDate = new Date(now());
+    const ownerships = merged.ownerships.filter((o: Ownership) => o.propertyKey === property.key);
+    const partyKeys = new Set(ownerships.map((o) => o.partyKey));
     const ctx: PropertyGateContext = {
       property,
       owner,
-      ownerships: merged.ownerships.filter((o: Ownership) => o.propertyKey === property.key),
-      contactPoints: merged.contactPoints.filter((c) => c.partyKey === owner.key),
+      parties: merged.parties.filter((p) => partyKeys.has(p.key)),
+      ownerships,
+      contactPoints: merged.contactPoints.filter((c) => partyKeys.has(c.partyKey)),
       now: nowDate,
     };
-    const gate = gateVerdict(pack, ctx, suppressions);
+    const gate = gateVerdict(pack, ctx, suppressions, channel);
     if (!gate.ok) {
-      if (!blockedContacts.some((b) => b.contactKey === owner.key)) blockedContacts.push({ contactKey: owner.key, reason: gate.reason });
-      if (gate.error) errors.push({ domain: property.key, contactKey: owner.key, stage: "gate", message: gate.error });
+      blockedContacts.push({ contactKey: owner.key, reason: gate.reason, propertyKey: property.key });
+      if (gate.error) errors.push({ propertyKey: property.key, contactKey: owner.key, stage: "gate", message: gate.error });
       continue;
     }
+    if (contacted.has(owner.key)) {
+      warnings.push(`${owner.key} also owns ${property.key}; one letter per owner per run (about ${contacted.get(owner.key)})`);
+      continue;
+    }
+    // The cap counts properties that PASSED the gates, so blocked parcels never use it up.
+    if (scoredCount >= maxProperties) {
+      overCap += 1;
+      continue;
+    }
+    scoredCount += 1;
 
     const signals = propertySignals(property, owner, ctx.ownerships, nowDate);
     let scored: Awaited<ReturnType<typeof scoreProperty>>;
@@ -184,7 +224,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
       scored = await scoreProperty(provider, { icp: input.icp, property, owner, signals, scorePrompts: pack.prompts.score });
       record(scored.usage);
       promptRefs.score = scored.promptRefs;
-      for (const d of scored.droppedReasons) droppedAngles.push({ domain: property.key, angle: d.angle, reason: d.reason });
+      for (const d of scored.droppedReasons) droppedAngles.push({ propertyKey: property.key, angle: d.angle, reason: d.reason });
     } catch (err) {
       fail(err, property, "score", owner.key);
       continue;
@@ -217,7 +257,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     } catch (err) {
       if (err instanceof DraftRejectedError) {
         record(err.usage);
-        rejectedDrafts.push({ contactKey: owner.key, issues: err.issues });
+        rejectedDrafts.push({ contactKey: owner.key, issues: err.issues, propertyKey: property.key });
       } else {
         fail(err, property, "draft", owner.key);
       }
@@ -235,18 +275,22 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
         model: provider.model,
         promptVersion: drafted.promptRef,
         createdAt: now(),
+        propertyKey: property.key,
       },
       input.sender,
     );
     if (!finalized.ok) {
-      rejectedDrafts.push({ contactKey: owner.key, issues: finalized.issues });
+      rejectedDrafts.push({ contactKey: owner.key, issues: finalized.issues, propertyKey: property.key });
       continue;
     }
     if (finalized.message.needsSenderIdentity) draftsMissingSender += 1;
     messages.push(finalized.message);
+    contacted.set(owner.key, property.key);
   }
+  if (overCap > 0) warnings.push(`${overCap} eligible propert(ies) not scored: maxProperties=${maxProperties} reached`);
 
-  const status = deriveRunStatus({ messages: messages.length, leads: merged.properties.length, researchRan, errors: errors.length });
+  // A property run has no enrich phase: with no drafts it is "researched", never "enriched".
+  const status = deriveRunStatus({ messages: messages.length, leads: 0, researchRan, errors: errors.length });
   const run = assertCampaignRun({
     id: input.id,
     schemaVersion: SCHEMA_VERSION,
@@ -264,7 +308,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     errors,
     rejectedDrafts,
     failedConnectors,
-    complianceWarnings: senderComplianceWarnings(draftsMissingSender, input.sender, channel),
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input.sender, channel), ...warnings],
     promptRefs,
     droppedAngles,
     origin: "pipeline",

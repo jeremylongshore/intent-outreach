@@ -120,7 +120,10 @@ export interface Pack {
 /** What a property gate (and underwriting) sees for one property + owner. */
 export interface PropertyGateContext {
   property: Property;
+  /** The owner of record the letter goes to. */
   owner: Party;
+  /** Every party recorded on the parcel (co-owners, trustees, life tenants), the owner included. */
+  parties: readonly Party[];
   ownerships: readonly Ownership[];
   contactPoints: readonly ContactPoint[];
   now: Date;

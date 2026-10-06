@@ -30,6 +30,9 @@ const MANUAL_REVIEW_PATTERNS: readonly [category: string, pattern: RegExp][] = [
   ["probate", /\bdeceased\b/],
   ["probate", /^estate$/],
   ["probate", /\bestate sale\b/],
+  ["probate", /\bestate of\b/],
+  ["probate", /\bheirs?\b/],
+  ["probate", /\blife estate\b/],
   ["divorce", /\bdivorc/],
   ["divorce", /\bdissolution of marriage\b/],
   ["pre-foreclosure", /\bforeclos/],
@@ -128,24 +131,54 @@ export function listingContactVerdict(listing: ListingState, now: Date): Complia
 }
 
 /**
- * Attribute keys that describe the PERSON's credit, finances, identity or a
- * protected characteristic. Owner age and marital status are stripped too: they
- * are fair-housing inputs, not property facts.
+ * Attribute keys are judged by their WORDS, not substrings ("currentCreditScore"
+ * is current + credit + score, so "rent" inside "current" proves nothing):
+ *
+ *   • always personal: credit (except "credit union"), fico, vantage, wealth,
+ *     worth, salary, wage, bankrupt*, judgment*, eviction*, reposs*, collection*,
+ *     garnish*, payday, ssn, dob, birth*, age, marital, gender, sex, race,
+ *     ethnic*, religio*, disab*, child*, familial, household, occupation,
+ *     education, spouse;
+ *   • personal unless the key also names the property context: income (kept
+ *     with rent/rental/gross/operating/property/producing/noi), debt (kept with
+ *     mortgage/lien/loan), delinquen* (kept with tax), payment (kept with
+ *     mortgage/tax/hoa), score (kept only for flood/wind/hurricane), assets
+ *     (always personal).
  */
-export const FCRA_SENSITIVE_KEY =
-  /credit(?![-_ ]?union)|fico|vantage|wealth|financial[-_ ]?score|net[-_ ]?worth|debt|income|salary|wage|bankrupt|judg(?:e)?ment|eviction|repossess|collection|delinquen|garnish|payday|payment[-_ ]?history|assets|ssn|social[-_ ]?security|birth|dob\b|^age$|owner[-_ ]?age|marital|gender|^sex$|race|ethnic|religio|disabilit|children|familial/i;
+const ALWAYS_PERSONAL = [
+  /^credit$/, /^fico$/, /^vantage/, /^wealth/, /^worth$/, /^salar/, /^wages?$/, /^bankrupt/, /^judge?ments?$/,
+  /^evict/, /^reposs/, /^collections?$/, /^garnish/, /^payday$/, /^ssn$/, /^dob$/, /^birth/, /^ages?$/, /^marital$/,
+  /^gender$/, /^sex$/, /^race$/, /^ethnic/, /^religio/, /^disab/, /^child/, /^familial$/, /^household$/,
+  /^occupation$/, /^education$/, /^spouse$/,
+];
+const CONDITIONAL: readonly [RegExp, RegExp][] = [
+  [/^incomes?$/, /^(rent|rental|rents|gross|operating|property|producing|noi)$/],
+  [/^debts?$/, /^(mortgage|liens?|loans?)$/],
+  [/^delinquen/, /^tax(es)?$/],
+  [/^assets?$/, /^$/],
+  [/^scores?$/, /^(flood|wind|hurricane)$/],
+  [/^payments?$/, /^(mortgage|tax|taxes|hoa)$/],
+];
 
-/**
- * Property-level facts that are public records about the PARCEL, kept even when
- * a word above matches: rental or gross property income, income-producing
- * status, tax delinquency, and recorded mortgage, lien, loan and equity data.
- */
-export const PROPERTY_LEVEL_KEY =
-  /rent|noi|gross[-_ ]?(?:rent|income|operating)|income[-_ ]?(?:property|producing)|tax|mortgage|lien|loan|equity|ltv/i;
+/** Split an attribute key into lowercase words (camelCase, snake_case, kebab-case, spaces). */
+export function keyTokens(key: string): string[] {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
 
-/** True when an attribute key must not reach a prompt. */
+/** True when an attribute key describes the PERSON (credit, finances, identity, a protected trait). */
 export function isFcraSensitiveKey(key: string): boolean {
-  return FCRA_SENSITIVE_KEY.test(key) && !PROPERTY_LEVEL_KEY.test(key);
+  const tokens = keyTokens(key);
+  const creditUnion = tokens.some((t, i) => t === "credit" && tokens[i + 1] === "union");
+  if (tokens.some((t) => ALWAYS_PERSONAL.some((re) => re.test(t))) && !creditUnion) return true;
+  for (const [word, context] of CONDITIONAL) {
+    if (tokens.some((t) => word.test(t)) && !tokens.some((t) => context.test(t))) return true;
+  }
+  return false;
 }
 
 /**

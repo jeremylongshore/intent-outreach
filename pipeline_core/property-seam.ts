@@ -20,6 +20,7 @@
  */
 
 import { z } from "zod";
+import { lintFairHousing } from "./compliance/fair-housing.js";
 import { stripFcraSensitive } from "./compliance/risk.js";
 import { normalizeMailingAddress } from "./compliance/suppression.js";
 import type { Usage } from "./cost.js";
@@ -85,11 +86,14 @@ function sameMailbox(a: Address | undefined, b: Address | undefined): boolean | 
 /** Ownership signals, computed in code (never by the model). Unknown stays undefined. */
 export function propertySignals(property: Property, owner: Party, ownerships: readonly Ownership[], now: Date) {
   const same = sameMailbox(property.address, owner.mailingAddress);
+  // The LATEST recorded transfer to this owner (a later deed supersedes an earlier one).
   const lastRecorded = ownerships
-    .filter((o) => o.propertyKey === property.key && o.partyKey === owner.key && o.asOf)
+    .filter(
+      (o) => o.propertyKey === property.key && o.partyKey === owner.key && o.asOf && (o.role === "owner" || o.role === "co-owner"),
+    )
     .map((o) => Date.parse(o.asOf!))
-    .filter((t) => !Number.isNaN(t))
-    .sort((x, y) => x - y)[0];
+    .filter((t) => !Number.isNaN(t) && t <= now.getTime())
+    .sort((x, y) => y - x)[0];
   const years = lastRecorded !== undefined ? Math.floor((now.getTime() - lastRecorded) / (365.25 * 86_400_000)) : undefined;
   const flood = property.attributes.floodZone?.value;
   return Object.fromEntries(
@@ -105,10 +109,25 @@ export function propertySignals(property: Property, owner: Party, ownerships: re
   );
 }
 
-/** The property projection a prompt sees: identity, address and FCRA-safe attribute values. */
+/** Every string inside a value (nested objects and arrays included). */
+function stringsIn(v: unknown): string[] {
+  if (typeof v === "string") return [v];
+  if (Array.isArray(v)) return v.flatMap(stringsIn);
+  if (v && typeof v === "object") return Object.values(v).flatMap(stringsIn);
+  return [];
+}
+
+/**
+ * The property projection a prompt sees: identity, address and attribute
+ * values with (a) person-describing keys stripped (FCRA, protected traits) and
+ * (b) any attribute whose TEXT mentions a protected trait (an "occupancy" note
+ * like "owner is 82, retired") dropped whole.
+ */
 export function propertyView(p: Property) {
   const attributes = Object.fromEntries(
-    Object.entries(stripFcraSensitive(p.attributes)).map(([k, fact]) => [k, (fact as { value: unknown }).value]),
+    Object.entries(stripFcraSensitive(p.attributes))
+      .map(([k, fact]) => [k, (fact as { value: unknown }).value] as const)
+      .filter(([, value]) => stringsIn(value).every((t) => lintFairHousing(t).hard.length === 0)),
   );
   return { parcel: p.apn, countyFips: p.countyFips, address: formatAddress(p.address), attributes };
 }

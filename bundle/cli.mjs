@@ -63390,7 +63390,9 @@ var MessageSchema = external_exports.object({
    * mail, name + company for sms and call_script. Such a draft must not be sent
    * as-is. Additive (v4); defaults false.
    */
-  needsSenderIdentity: external_exports.boolean().default(false)
+  needsSenderIdentity: external_exports.boolean().default(false),
+  /** Property campaigns (v6, optional): the parcel this letter is about. */
+  propertyKey: external_exports.string().min(1).optional()
 });
 var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
 var LEGACY_RUN_STATUSES = ["pending", "drafted"];
@@ -63398,13 +63400,18 @@ var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
 var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
 var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
 var RunErrorSchema = external_exports.object({
-  domain: external_exports.string().min(1),
+  /** The lead's domain (company campaigns). */
+  domain: external_exports.string().min(1).optional(),
+  /** The parcel's `<countyFips>:<apn>` (property campaigns, v6). */
+  propertyKey: external_exports.string().min(1).optional(),
   contactKey: external_exports.string().min(1).optional(),
   stage: RunErrorStageSchema,
   /** Sanitized, truncated error message (secrets redacted). */
   message: external_exports.string(),
   /** AI SDK finish reason when the error carried one (e.g. "length"). */
   finishReason: external_exports.string().optional()
+}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0, {
+  message: "a run error needs a domain or a propertyKey"
 });
 var FailedConnectorSchema = external_exports.object({
   name: external_exports.string().min(1),
@@ -63443,7 +63450,9 @@ var CampaignRunSchema = external_exports.object({
   blockedContacts: external_exports.array(
     external_exports.object({
       contactKey: external_exports.string().min(1),
-      reason: external_exports.string().min(1)
+      reason: external_exports.string().min(1),
+      /** Property campaigns (v6): the parcel the block was about. */
+      propertyKey: external_exports.string().min(1).optional()
     })
   ).default([]),
   /**
@@ -63452,7 +63461,14 @@ var CampaignRunSchema = external_exports.object({
    */
   errors: external_exports.array(RunErrorSchema).default([]),
   /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
-  rejectedDrafts: external_exports.array(external_exports.object({ contactKey: external_exports.string().min(1), issues: external_exports.array(external_exports.string()) })).default([]),
+  rejectedDrafts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      issues: external_exports.array(external_exports.string()),
+      /** Property campaigns (v6): the parcel the draft was about. */
+      propertyKey: external_exports.string().min(1).optional()
+    })
+  ).default([]),
   /**
    * Configured connectors that threw (sanitized status only — never the error
    * text, which can carry a secret-bearing URL). `skippedConnectors` is now
@@ -63478,7 +63494,17 @@ var CampaignRunSchema = external_exports.object({
    * Score-seam angles removed because they cited a fact absent from the inputs
    * (groundAngles) — kept so an operator can see what the model tried (v5).
    */
-  droppedAngles: external_exports.array(external_exports.object({ domain: external_exports.string().min(1), angle: external_exports.string(), reason: external_exports.string() })).default([]),
+  droppedAngles: external_exports.array(
+    external_exports.object({
+      domain: external_exports.string().min(1).optional(),
+      /** Property campaigns (v6). */
+      propertyKey: external_exports.string().min(1).optional(),
+      angle: external_exports.string(),
+      reason: external_exports.string()
+    }).refine((d) => d.domain !== void 0 || d.propertyKey !== void 0, {
+      message: "a dropped angle needs a domain or a propertyKey"
+    })
+  ).default([]),
   /**
    * Who assembled the record (v5, optional so older lines stay unlabeled rather
    * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
@@ -75975,6 +76001,9 @@ var MANUAL_REVIEW_PATTERNS = [
   ["probate", /\bdeceased\b/],
   ["probate", /^estate$/],
   ["probate", /\bestate sale\b/],
+  ["probate", /\bestate of\b/],
+  ["probate", /\bheirs?\b/],
+  ["probate", /\blife estate\b/],
   ["divorce", /\bdivorc/],
   ["divorce", /\bdissolution of marriage\b/],
   ["pre-foreclosure", /\bforeclos/],
@@ -76059,18 +76088,29 @@ var BUILTIN = /* @__PURE__ */ new Map([[GULF_COAST_AL_FL.id, GULF_COAST_AL_FL]])
 function attr(ctx, key) {
   return ctx.property.attributes[key]?.value;
 }
+function ownershipSignals(ctx) {
+  const out = [];
+  const parties = ctx.parties.length > 0 ? ctx.parties : [ctx.owner];
+  if (ctx.owner.kind === "entity" && ctx.owner.entityType === "estate") out.push("estate");
+  for (const p of parties) out.push(p.name);
+  if (ctx.ownerships.some((o) => o.role === "life-tenant")) out.push("life estate");
+  return out;
+}
+var DISTRESS_TERMS = /\b(foreclos\w*|pre-?foreclosure|probate|liens?|lis pendens|back taxes|taxes owed|delinquen\w*|behind on|late on (?:your )?(?:mortgage|payments?|taxes)|bankrupt\w*|estate sale|tax sale|auction)\b/i;
+var distressLanguageDraftRule = (draft) => [["subject", draft.subject ?? ""], ["body", draft.body], ["cta", draft.cta]].flatMap(([field, text2]) => {
+  const m = DISTRESS_TERMS.exec(text2.replace(/[\u2010-\u2015]/g, "-"));
+  return m ? [`distress-language: "${m[0].toLowerCase()}" in ${field}`] : [];
+});
 function residentialPropertyGate(ctx) {
   const zip = ctx.property.address?.zip?.slice(0, 5);
   if (!zip) return { status: "blocked", reason: "service-area:unknown-address" };
   if (!inServiceArea(zip, GULF_COAST_AL_FL)) return { status: "blocked", reason: "service-area:outside" };
   const distress = attr(ctx, "distressSignals");
-  if (distress !== void 0) {
-    if (!Array.isArray(distress) || !distress.every((s) => typeof s === "string")) {
-      return { status: "blocked", reason: "manual-review:unreadable-signals" };
-    }
-    const review = manualReviewVerdict(distress);
-    if (review.status !== "clean") return review;
+  if (distress !== void 0 && (!Array.isArray(distress) || !distress.every((s) => typeof s === "string"))) {
+    return { status: "blocked", reason: "manual-review:unreadable-signals" };
   }
+  const review = manualReviewVerdict([...distress ?? [], ...ownershipSignals(ctx)]);
+  if (review.status !== "clean") return review;
   const listing = attr(ctx, "listingStatus");
   if (listing !== void 0) {
     if (!listing || typeof listing !== "object" || typeof listing.status !== "string") {
@@ -76090,7 +76130,7 @@ var residentialRePack = {
   prompts: { score: ["residential-score.v1.md"], draft: "residential-draft.v1.md" },
   serviceArea: GULF_COAST_AL_FL,
   propertyGate: residentialPropertyGate,
-  draftRules: [fairHousingDraftRule],
+  draftRules: [fairHousingDraftRule, distressLanguageDraftRule],
   channels: { email: LICENSED, mail: LICENSED, sms: LICENSED, call_script: LICENSED, linkedin: LICENSED }
 };
 
