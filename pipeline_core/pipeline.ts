@@ -344,6 +344,8 @@ function failureStatus(err: unknown): number | string {
   if (err instanceof HttpError) return err.status;
   const name = (err as { name?: unknown } | null)?.name;
   if (err instanceof ConnectorTimeoutError || name === "TimeoutError" || name === "AbortError") return "timeout";
+  // A vendor MCP server changed its tool definitions: the operator must review and re-pin.
+  if (name === "McpPinMismatchError") return "pin-mismatch";
   return "error";
 }
 
