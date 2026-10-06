@@ -18,12 +18,15 @@ import {
   DncList,
   QUIET_END,
   QUIET_START,
-  SERVICE_AREA_ZIPS,
+  defineServiceArea,
   dncScrub,
   inServiceArea,
   normalizePhone,
   withinQuietHours,
 } from "../pipeline_core/compliance/index.js";
+import { GULF_COAST_AL_FL, getServiceArea } from "../pipeline_core/packs/service-areas.js";
+
+const SERVICE_AREA_ZIPS = GULF_COAST_AL_FL.zips;
 
 // --- normalizePhone ------------------------------------------------------
 
@@ -133,8 +136,10 @@ describe("withinQuietHours", () => {
 
   it.each([
     // "Naive" Central wall times, encoded with the CDT offset (-05:00).
-    ["2026-05-02T07:00:00-05:00", true], // 7:00am — boundary, allowed
-    ["2026-05-02T07:00:01-05:00", true],
+    ["2026-05-02T08:00:00-05:00", true], // 8:00am — boundary, allowed
+    ["2026-05-02T08:00:01-05:00", true],
+    ["2026-05-02T07:59:59-05:00", false], // 7:59:59am — TCPA window not open yet
+    ["2026-05-02T07:00:00-05:00", false], // 7:00am — the ported gate's old (wrong) start
     ["2026-05-02T12:00:00-05:00", true], // mid-day
     ["2026-05-02T20:59:59-05:00", true], // 8:59:59pm
     ["2026-05-02T21:00:00-05:00", false], // 9:00pm — boundary, not allowed
@@ -162,9 +167,9 @@ describe("withinQuietHours", () => {
     expect(withinQuietHours(new Date("2026-03-08T08:30:00Z"))).toBe(false);
   });
 
-  it("DST fall-back day, pre-7am -> false", () => {
+  it("DST fall-back day, pre-8am -> false", () => {
     // 2026-11-01 falls back 02:00 CDT -> 01:00 CST. 06:30 UTC is still CDT (-05:00)
-    // = 01:30 CDT — before 7am, no outbound.
+    // = 01:30 CDT — before 8am, no outbound.
     expect(withinQuietHours(new Date("2026-11-01T06:30:00Z"))).toBe(false);
   });
 
@@ -191,11 +196,11 @@ describe("inServiceArea", () => {
   });
 
   it.each([...SERVICE_AREA_ZIPS].sort())("accepts listed zip %s", (zip) => {
-    expect(inServiceArea(zip)).toBe(true);
+    expect(inServiceArea(zip, GULF_COAST_AL_FL)).toBe(true);
   });
 
   it("strips whitespace", () => {
-    expect(inServiceArea("  36542 ")).toBe(true);
+    expect(inServiceArea("  36542 ", GULF_COAST_AL_FL)).toBe(true);
   });
 
   it.each([
@@ -206,7 +211,7 @@ describe("inServiceArea", () => {
     "10001", // NYC
     "90210", // Beverly Hills
   ])("rejects out-of-area zip %s", (zip) => {
-    expect(inServiceArea(zip)).toBe(false);
+    expect(inServiceArea(zip, GULF_COAST_AL_FL)).toBe(false);
   });
 
   it.each([
@@ -218,12 +223,46 @@ describe("inServiceArea", () => {
     "365 4",
     "3654a",
   ])("rejects malformed %j", (bad) => {
-    expect(inServiceArea(bad)).toBe(false);
+    expect(inServiceArea(bad, GULF_COAST_AL_FL)).toBe(false);
   });
 
   it("rejects non-string", () => {
-    expect(inServiceArea(36542 as unknown as string)).toBe(false);
-    expect(inServiceArea(null as unknown as string)).toBe(false);
+    expect(inServiceArea(36542 as unknown as string, GULF_COAST_AL_FL)).toBe(false);
+    expect(inServiceArea(null as unknown as string, GULF_COAST_AL_FL)).toBe(false);
+  });
+});
+
+describe("service area as pack data", () => {
+  it("a different area changes the verdict without touching the gate", () => {
+    const mobile = defineServiceArea("mobile-al", ["36602", "36695"]);
+    expect(inServiceArea("36602", mobile)).toBe(true);
+    expect(inServiceArea("36542", mobile)).toBe(false); // Gulf Shores is not in this area
+    expect(inServiceArea("36602", GULF_COAST_AL_FL)).toBe(false);
+  });
+
+  it("a missing area fails closed", () => {
+    expect(inServiceArea("36542", undefined as unknown as typeof GULF_COAST_AL_FL)).toBe(false);
+    expect(inServiceArea("36542", { id: "x", zips: ["36542"] } as unknown as typeof GULF_COAST_AL_FL)).toBe(false);
+  });
+
+  it.each([
+    ["", ["36542"]],
+    ["empty", []],
+    ["bad-zip", ["36542", "3654"]],
+    ["zip-plus-4", ["36542-1234"]],
+  ])("defineServiceArea rejects %j", (id, zips) => {
+    expect(() => defineServiceArea(id, zips)).toThrow();
+  });
+
+  it("defineServiceArea trims, dedupes and freezes", () => {
+    const area = defineServiceArea("t", [" 36542", "36542"]);
+    expect([...area.zips]).toEqual(["36542"]);
+    expect(Object.isFrozen(area)).toBe(true);
+  });
+
+  it("getServiceArea resolves built-ins and fails loud on an unknown id", () => {
+    expect(getServiceArea("gulf-coast-al-fl")).toBe(GULF_COAST_AL_FL);
+    expect(() => getServiceArea("nowhere")).toThrow(/unknown service area/);
   });
 });
 
@@ -231,7 +270,7 @@ describe("inServiceArea", () => {
 
 describe("module surface", () => {
   it("exports expected quiet-hours constants", () => {
-    expect(QUIET_START.hour).toBe(7);
+    expect(QUIET_START.hour).toBe(8);
     expect(QUIET_END.hour).toBe(21);
     expect(DEFAULT_TZ).toBe("America/Chicago");
   });
