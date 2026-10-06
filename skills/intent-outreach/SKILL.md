@@ -12,6 +12,12 @@ allowed-tools:
   - mcp__intent-outreach__list_connectors
   - mcp__plugin_intent-outreach_intent-outreach__save_run
   - mcp__intent-outreach__save_run
+  - mcp__plugin_intent-outreach_intent-outreach__list_pending
+  - mcp__intent-outreach__list_pending
+  - mcp__plugin_intent-outreach_intent-outreach__approve
+  - mcp__intent-outreach__approve
+  - mcp__plugin_intent-outreach_intent-outreach__reject
+  - mcp__intent-outreach__reject
 version: 0.3.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 license: SEE LICENSE IN LICENSE
@@ -79,6 +85,11 @@ runs before writing them to the local JSONL store.
    `overwrite: true`. Call `save_run` only after the approval checkpoint.
 7. **Report the receipt.** Return the run id, status, local path, record counts, connector failures, and
    confirmation that nothing was sent.
+8. **Record send decisions only on the user's word.** Saved drafts wait in an approval queue; nothing may
+   be sent until a person approves the exact text. When the user wants to review, call `list_pending` and
+   show each draft in full with its digest. Call `approve` (with that digest) only for a draft the user
+   explicitly approved, and `reject` for one they rejected. Never approve on your own judgment, and never
+   approve a draft flagged `needsSenderIdentity`. Approving still sends nothing.
 
 ## Safety and data handling
 

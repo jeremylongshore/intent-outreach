@@ -61565,9 +61565,9 @@ var RateLimitExceededError = class extends Error {
 var MINUTE = 6e4;
 var DAY = 24 * 60 * MINUTE;
 var RateLimiter = class {
-  constructor(clock2 = Date.now, sleep4 = defaultSleep) {
+  constructor(clock2 = Date.now, sleep5 = defaultSleep) {
     this.clock = clock2;
-    this.sleep = sleep4;
+    this.sleep = sleep5;
   }
   clock;
   sleep;
@@ -77811,6 +77811,7 @@ function checkSendable(input2) {
   const reasons = [];
   let window;
   if (!(now2 instanceof Date) || Number.isNaN(now2.getTime())) reasons.push("clock:invalid");
+  if (input2.approval !== "approved") reasons.push(input2.approval === "rejected" ? "approval:rejected" : "approval:missing");
   if (input2.message.channel !== channel) reasons.push("channel:mismatch");
   const kind = CONTACT_KIND[channel];
   if (kind !== null) {
@@ -77860,8 +77861,153 @@ function checkSendable(input2) {
   return { sendable: reasons.length === 0, reasons, policy: policy2, ...window ? { window } : {} };
 }
 
+// pipeline_core/approvals.ts
+import { createHash as createHash3 } from "node:crypto";
+import { constants as constants3, mkdir as mkdir4, open as open4, readFile as readFile4, unlink as unlink3, stat as stat3 } from "node:fs/promises";
+import { dirname as dirname5, join as join7 } from "node:path";
+var ApprovalRecordSchema = external_exports.object({
+  runId: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1),
+  channel: ChannelSchema,
+  messageSha256: external_exports.string().regex(/^[0-9a-f]{64}$/),
+  decision: external_exports.enum(["approved", "rejected"]),
+  /** Who decided: an OS user for the CLI, "mcp:<client>" for the MCP tools. */
+  by: external_exports.string().min(1),
+  at: external_exports.string().datetime(),
+  note: external_exports.string().min(1).optional()
+});
+function messageDigest(m) {
+  return createHash3("sha256").update(JSON.stringify([m.channel, m.subject ?? null, m.body, m.cta ?? null])).digest("hex");
+}
+function approvalVerdict(records, runId, contactKey2, message) {
+  const digest = messageDigest(message);
+  let state = "missing";
+  for (const r of records) {
+    if (r.runId === runId && r.contactKey === contactKey2 && r.messageSha256 === digest) state = r.decision;
+  }
+  return state;
+}
+function defaultApprovalsPath() {
+  return join7(intentOutreachHome(), "approvals.jsonl");
+}
+async function readApprovals(path = defaultApprovalsPath()) {
+  let text2;
+  try {
+    text2 = await readFile4(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+  const out = [];
+  text2.split("\n").forEach((line, i) => {
+    if (!line.trim()) return;
+    let parsed;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      throw new Error(`approvals: line ${i + 1} of ${path} is not valid JSON; fix or remove it`);
+    }
+    const r = ApprovalRecordSchema.safeParse(parsed);
+    if (!r.success) throw new Error(`approvals: line ${i + 1} of ${path} is invalid; fix or remove it`);
+    out.push(r.data);
+  });
+  return out;
+}
+var sleep4 = (ms) => new Promise((r) => setTimeout(r, ms));
+async function withLock2(path, fn) {
+  await mkdir4(dirname5(path), { recursive: true, mode: 448 });
+  const lockPath = `${path}.lock`;
+  const deadline = Date.now() + 1e4;
+  let lock;
+  while (!lock) {
+    try {
+      lock = await open4(lockPath, "wx", 384);
+    } catch (err) {
+      if (err.code !== "EEXIST") throw err;
+      try {
+        if (Date.now() - (await stat3(lockPath)).mtimeMs > 3e4) await unlink3(lockPath).catch(() => void 0);
+      } catch {
+      }
+      if (Date.now() >= deadline) throw new Error(`approvals: timed out waiting for lock ${lockPath}`);
+      await sleep4(20);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await lock.close().catch(() => void 0);
+    await unlink3(lockPath).catch(() => void 0);
+  }
+}
+async function append(path, record2) {
+  await withLock2(path, async () => {
+    const fh = await open4(path, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_APPEND, 384);
+    try {
+      await fh.chmod(384);
+      await fh.write(`${JSON.stringify(record2)}
+`);
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  });
+}
+async function listPending(store, path = defaultApprovalsPath()) {
+  const records = await readApprovals(path);
+  const out = [];
+  for (const id of await store.listRunIds()) {
+    const run = await store.getRun(id);
+    if (!run) continue;
+    for (const m of run.messages) {
+      if (approvalVerdict(records, run.id, m.contactKey, m) !== "missing") continue;
+      out.push({
+        runId: run.id,
+        contactKey: m.contactKey,
+        channel: m.channel,
+        ...m.subject ? { subject: m.subject } : {},
+        body: m.body,
+        cta: m.cta,
+        ...m.fitScore !== void 0 ? { fitScore: m.fitScore } : {},
+        createdAt: m.createdAt,
+        digest: messageDigest(m).slice(0, 12),
+        needsSenderIdentity: m.needsSenderIdentity
+      });
+    }
+  }
+  return out;
+}
+async function decide(input2) {
+  const run = await input2.store.getRun(input2.runId);
+  if (!run) throw new Error(`approvals: no run ${JSON.stringify(input2.runId)}`);
+  const matches = run.messages.filter((m2) => m2.contactKey === input2.contactKey);
+  if (matches.length === 0) throw new Error(`approvals: run ${input2.runId} has no message for ${input2.contactKey}`);
+  if (matches.length > 1) throw new Error(`approvals: run ${input2.runId} has ${matches.length} messages for ${input2.contactKey}`);
+  const m = matches[0];
+  const digest = messageDigest(m);
+  if (input2.decision === "approved") {
+    const prefix = (input2.digest ?? "").trim().toLowerCase();
+    if (prefix.length < 8 || !digest.startsWith(prefix)) {
+      throw new Error("approvals: approving needs the message digest shown by `approvals pending` (at least 8 characters)");
+    }
+    if (m.needsSenderIdentity) throw new Error("approvals: this draft has no sender-identity footer and cannot be approved");
+  }
+  const record2 = ApprovalRecordSchema.parse({
+    runId: run.id,
+    contactKey: m.contactKey,
+    channel: m.channel,
+    messageSha256: digest,
+    decision: input2.decision,
+    by: input2.by,
+    at: input2.now(),
+    ...input2.note?.trim() ? { note: input2.note.trim() } : {}
+  });
+  await append(input2.path ?? defaultApprovalsPath(), record2);
+  return record2;
+}
+
 // cli.ts
-import { join as join7 } from "node:path";
+import { userInfo } from "node:os";
+import { join as join8 } from "node:path";
 var UsageError = class extends Error {
   constructor(message) {
     super(message);
@@ -77933,6 +78079,9 @@ function printHelp() {
       '  intent-outreach suppress add <email|domain|phone|"address"> [--kind <k>] [--reason <text>]',
       "  intent-outreach suppress remove <value> [--kind <k>]",
       "  intent-outreach suppress list       opt-outs honored by every run",
+      "  intent-outreach approvals pending   drafts waiting for a person to approve or reject",
+      "  intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]",
+      "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
@@ -78047,7 +78196,7 @@ async function cmdRun(args) {
     ...buyerTitles ? { buyerTitles } : {},
     ...budgetCredits !== void 0 ? { budgetCredits } : {},
     // Only connectors that declare cacheTtlMs are cached; files are 0600 under the local home.
-    cache: new FileResponseCache(join7(intentOutreachHome(), "cache"))
+    cache: new FileResponseCache(join8(intentOutreachHome(), "cache"))
   });
   const store = new JsonlRunStore(values.out);
   await store.saveRun(run);
@@ -78124,9 +78273,71 @@ async function cmdSuppress(args) {
   }
   throw new UsageError(SUPPRESS_USAGE);
 }
-var CHECK_SEND_USAGE = 'usage: intent-outreach check-send [--profile <name|path>] < input.json\n  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,"now"?,"consents"?,"recipientState"?,"pack"?}';
+var APPROVALS_USAGE = "usage: intent-outreach approvals pending [--json]\n       intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]\n       intent-outreach approvals reject <runId> <contactKey> [--note <text>]\n  approve needs the digest `pending` prints for that exact message; editing a draft voids its approval";
+async function cmdApprovals(args) {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args,
+      options: { digest: { type: "string" }, note: { type: "string" }, json: { type: "boolean" }, out: { type: "string" } },
+      allowPositionals: true
+    });
+  } catch {
+    throw new UsageError(APPROVALS_USAGE);
+  }
+  const { values, positionals } = parsed;
+  const [action, runId, contactKey2, ...extra] = positionals;
+  const store = new JsonlRunStore(values.out);
+  if (action === "pending" && runId === void 0) {
+    const pending = await listPending(store);
+    if (values.json) {
+      process.stdout.write(`${JSON.stringify(pending, null, 2)}
+`);
+      return;
+    }
+    if (pending.length === 0) process.stdout.write("nothing waiting for approval\n");
+    for (const p of pending) {
+      process.stdout.write(
+        `
+${p.runId}  ${p.contactKey}  ${p.channel}  digest ${p.digest}${p.fitScore !== void 0 ? `  fit ${p.fitScore}` : ""}${p.needsSenderIdentity ? "  NEEDS SENDER IDENTITY" : ""}
+${p.subject ? `Subject: ${p.subject}
+` : ""}${p.body}
+CTA: ${p.cta}
+`
+      );
+    }
+    return;
+  }
+  if ((action === "approve" || action === "reject") && runId && contactKey2 && extra.length === 0) {
+    if (action === "approve" && !values.digest) throw new UsageError(APPROVALS_USAGE);
+    const record2 = await decide({
+      store,
+      runId,
+      contactKey: contactKey2,
+      decision: action === "approve" ? "approved" : "rejected",
+      by: userInfo().username || "cli",
+      note: values.note,
+      digest: values.digest,
+      now: () => (/* @__PURE__ */ new Date()).toISOString()
+    });
+    process.stdout.write(`${record2.decision}: ${record2.runId} ${record2.contactKey} (${record2.messageSha256.slice(0, 12)})
+`);
+    return;
+  }
+  throw new UsageError(APPROVALS_USAGE);
+}
+var CHECK_SEND_USAGE = 'usage: intent-outreach check-send [--profile <name|path>] < input.json\n  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,"now"?,"consents"?,"recipientState"?,"pack"?,"runId","contactKey"}\n  the message must match an approved draft exactly (intent-outreach approvals pending / approve)';
 var CheckSendInputSchema = external_exports.object({
-  message: external_exports.object({ channel: ChannelSchema, body: external_exports.string().min(1), needsSenderIdentity: external_exports.boolean().optional() }),
+  message: external_exports.object({
+    channel: ChannelSchema,
+    subject: external_exports.string().nullable().optional(),
+    body: external_exports.string().min(1),
+    cta: external_exports.string().nullable().optional(),
+    needsSenderIdentity: external_exports.boolean().optional()
+  }),
+  /** The stored run and contact the message came from, to look up its approval. */
+  runId: external_exports.string().min(1).optional(),
+  contactKey: external_exports.string().min(1).optional(),
   channel: ChannelSchema,
   contactPoint: ContactPointSchema.optional(),
   contactEmail: external_exports.string().email().optional(),
@@ -78177,7 +78388,8 @@ ${CHECK_SEND_USAGE}`);
     suppressions: await loadSuppressionList(),
     recipientState: parsed.recipientState,
     sender,
-    policy: pack.channels?.[parsed.channel]
+    policy: pack.channels?.[parsed.channel],
+    approval: parsed.runId && parsed.contactKey ? approvalVerdict(await readApprovals(), parsed.runId, parsed.contactKey, parsed.message) : "missing"
   });
   process.stdout.write(`${JSON.stringify(verdict, null, 2)}
 `);
@@ -78196,6 +78408,8 @@ async function main(argv = process.argv.slice(2)) {
       return cmdSuppress(rest);
     case "check-send":
       return cmdCheckSend(rest);
+    case "approvals":
+      return cmdApprovals(rest);
     case "help":
     case "--help":
     case "-h":

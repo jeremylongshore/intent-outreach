@@ -8,6 +8,14 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Human approval queue** (#83 phase 8). Every drafted message waits for a person: `approvals pending`
+  shows each draft in full with a digest, and `approvals approve <runId> <contactKey> --digest <hex>` /
+  `approvals reject` record the decision in an append-only `approvals.jsonl` (0600) bound to the exact text,
+  so an edit voids the approval and a later decision supersedes an earlier one. The send-time check now
+  requires an approval on every channel (`approval:missing` / `approval:rejected`), and `check-send` looks
+  it up by `runId` + `contactKey`. MCP tools `list_pending`, `approve` (digest required) and `reject`; the
+  skill calls them only on the user's explicit word. A draft without its sender footer cannot be approved.
+
 - **Property campaigns and the `residential-re` pack** (#83 phase 6a). `runPropertyCampaign({ queries })`
   researches parcels by typed query (with the pack's routing, the credit budget and the cache), gates each
   owner of record (the engine's suppression check on the mailing address and contact points, then the

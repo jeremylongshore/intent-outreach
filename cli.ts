@@ -32,7 +32,8 @@ import {
 } from "./pipeline_core/suppressions.js";
 import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
 import { checkSendable } from "./pipeline_core/compliance/send.js";
-import { approvalVerdict, readApprovals } from "./pipeline_core/approvals.js";
+import { approvalVerdict, decide, listPending, readApprovals } from "./pipeline_core/approvals.js";
+import { userInfo } from "node:os";
 import { join } from "node:path";
 import { FileResponseCache } from "./pipeline_core/routing.js";
 import { intentOutreachHome } from "./pipeline_core/secrets.js";
@@ -148,6 +149,9 @@ export function printHelp(): void {
       "  intent-outreach suppress add <email|domain|phone|\"address\"> [--kind <k>] [--reason <text>]",
       "  intent-outreach suppress remove <value> [--kind <k>]",
       "  intent-outreach suppress list       opt-outs honored by every run",
+      "  intent-outreach approvals pending   drafts waiting for a person to approve or reject",
+      "  intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]",
+      "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
@@ -371,6 +375,61 @@ async function cmdSuppress(args: string[]): Promise<void> {
   throw new UsageError(SUPPRESS_USAGE);
 }
 
+const APPROVALS_USAGE =
+  "usage: intent-outreach approvals pending [--json]\n" +
+  "       intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]\n" +
+  "       intent-outreach approvals reject <runId> <contactKey> [--note <text>]\n" +
+  "  approve needs the digest `pending` prints for that exact message; editing a draft voids its approval";
+
+/** `approvals pending|approve|reject` — the human approval queue (approvals.jsonl, 0600). */
+async function cmdApprovals(args: string[]): Promise<void> {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args,
+      options: { digest: { type: "string" }, note: { type: "string" }, json: { type: "boolean" }, out: { type: "string" } },
+      allowPositionals: true,
+    });
+  } catch {
+    throw new UsageError(APPROVALS_USAGE);
+  }
+  const { values, positionals } = parsed;
+  const [action, runId, contactKey, ...extra] = positionals;
+  const store = new JsonlRunStore(values.out);
+  if (action === "pending" && runId === undefined) {
+    const pending = await listPending(store);
+    if (values.json) {
+      process.stdout.write(`${JSON.stringify(pending, null, 2)}\n`);
+      return;
+    }
+    if (pending.length === 0) process.stdout.write("nothing waiting for approval\n");
+    for (const p of pending) {
+      process.stdout.write(
+        `\n${p.runId}  ${p.contactKey}  ${p.channel}  digest ${p.digest}` +
+          `${p.fitScore !== undefined ? `  fit ${p.fitScore}` : ""}${p.needsSenderIdentity ? "  NEEDS SENDER IDENTITY" : ""}\n` +
+          `${p.subject ? `Subject: ${p.subject}\n` : ""}${p.body}\nCTA: ${p.cta}\n`,
+      );
+    }
+    return;
+  }
+  if ((action === "approve" || action === "reject") && runId && contactKey && extra.length === 0) {
+    if (action === "approve" && !values.digest) throw new UsageError(APPROVALS_USAGE);
+    const record = await decide({
+      store,
+      runId,
+      contactKey,
+      decision: action === "approve" ? "approved" : "rejected",
+      by: userInfo().username || "cli",
+      note: values.note,
+      digest: values.digest,
+      now: () => new Date().toISOString(),
+    });
+    process.stdout.write(`${record.decision}: ${record.runId} ${record.contactKey} (${record.messageSha256.slice(0, 12)})\n`);
+    return;
+  }
+  throw new UsageError(APPROVALS_USAGE);
+}
+
 const CHECK_SEND_USAGE =
   "usage: intent-outreach check-send [--profile <name|path>] < input.json\n" +
   '  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,' +
@@ -468,6 +527,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       return cmdSuppress(rest);
     case "check-send":
       return cmdCheckSend(rest);
+    case "approvals":
+      return cmdApprovals(rest);
     case "help":
     case "--help":
     case "-h":

@@ -20782,11 +20782,11 @@ var require_codegen = __commonJS({
         const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
         return `${varKind} ${this.name}${rhs};` + _n;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         if (!names[this.name.str])
           return;
         if (this.rhs)
-          this.rhs = optimizeExpr(this.rhs, names, constants3);
+          this.rhs = optimizeExpr(this.rhs, names, constants4);
         return this;
       }
       get names() {
@@ -20803,10 +20803,10 @@ var require_codegen = __commonJS({
       render({ _n }) {
         return `${this.lhs} = ${this.rhs};` + _n;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         if (this.lhs instanceof code_1.Name && !names[this.lhs.str] && !this.sideEffects)
           return;
-        this.rhs = optimizeExpr(this.rhs, names, constants3);
+        this.rhs = optimizeExpr(this.rhs, names, constants4);
         return this;
       }
       get names() {
@@ -20867,8 +20867,8 @@ var require_codegen = __commonJS({
       optimizeNodes() {
         return `${this.code}` ? this : void 0;
       }
-      optimizeNames(names, constants3) {
-        this.code = optimizeExpr(this.code, names, constants3);
+      optimizeNames(names, constants4) {
+        this.code = optimizeExpr(this.code, names, constants4);
         return this;
       }
       get names() {
@@ -20897,12 +20897,12 @@ var require_codegen = __commonJS({
         }
         return nodes.length > 0 ? this : void 0;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         const { nodes } = this;
         let i = nodes.length;
         while (i--) {
           const n = nodes[i];
-          if (n.optimizeNames(names, constants3))
+          if (n.optimizeNames(names, constants4))
             continue;
           subtractNames(names, n.names);
           nodes.splice(i, 1);
@@ -20955,12 +20955,12 @@ var require_codegen = __commonJS({
           return void 0;
         return this;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         var _a3;
-        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants3);
-        if (!(super.optimizeNames(names, constants3) || this.else))
+        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants4);
+        if (!(super.optimizeNames(names, constants4) || this.else))
           return;
-        this.condition = optimizeExpr(this.condition, names, constants3);
+        this.condition = optimizeExpr(this.condition, names, constants4);
         return this;
       }
       get names() {
@@ -20983,10 +20983,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.iteration})` + super.render(opts);
       }
-      optimizeNames(names, constants3) {
-        if (!super.optimizeNames(names, constants3))
+      optimizeNames(names, constants4) {
+        if (!super.optimizeNames(names, constants4))
           return;
-        this.iteration = optimizeExpr(this.iteration, names, constants3);
+        this.iteration = optimizeExpr(this.iteration, names, constants4);
         return this;
       }
       get names() {
@@ -21022,10 +21022,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
       }
-      optimizeNames(names, constants3) {
-        if (!super.optimizeNames(names, constants3))
+      optimizeNames(names, constants4) {
+        if (!super.optimizeNames(names, constants4))
           return;
-        this.iterable = optimizeExpr(this.iterable, names, constants3);
+        this.iterable = optimizeExpr(this.iterable, names, constants4);
         return this;
       }
       get names() {
@@ -21067,11 +21067,11 @@ var require_codegen = __commonJS({
         (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
         return this;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         var _a3, _b;
-        super.optimizeNames(names, constants3);
-        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants3);
-        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants3);
+        super.optimizeNames(names, constants4);
+        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants4);
+        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants4);
         return this;
       }
       get names() {
@@ -21372,7 +21372,7 @@ var require_codegen = __commonJS({
     function addExprNames(names, from) {
       return from instanceof code_1._CodeOrName ? addNames(names, from.names) : names;
     }
-    function optimizeExpr(expr, names, constants3) {
+    function optimizeExpr(expr, names, constants4) {
       if (expr instanceof code_1.Name)
         return replaceName(expr);
       if (!canOptimize(expr))
@@ -21387,14 +21387,14 @@ var require_codegen = __commonJS({
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants3[n.str];
+        const c = constants4[n.str];
         if (c === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
         return c;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants3[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants4[c.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -23041,18 +23041,18 @@ var require_validate = __commonJS({
         const { schemaCode } = this;
         this.fail((0, codegen_1._)`${schemaCode} !== undefined && (${(0, codegen_1.or)(this.invalid$data(), condition)})`);
       }
-      error(append, errorParams, errorPaths) {
+      error(append2, errorParams, errorPaths) {
         if (errorParams) {
           this.setParams(errorParams);
-          this._error(append, errorPaths);
+          this._error(append2, errorPaths);
           this.setParams({});
           return;
         }
-        this._error(append, errorPaths);
+        this._error(append2, errorPaths);
       }
-      _error(append, errorPaths) {
+      _error(append2, errorPaths) {
         ;
-        (append ? errors_1.reportExtraError : errors_1.reportError)(this, this.def.error, errorPaths);
+        (append2 ? errors_1.reportExtraError : errors_1.reportError)(this, this.def.error, errorPaths);
       }
       $dataError() {
         (0, errors_1.reportError)(this, this.def.$dataError || errors_1.keyword$DataError);
@@ -37237,9 +37237,9 @@ var RateLimitExceededError = class extends Error {
 var MINUTE = 6e4;
 var DAY = 24 * 60 * MINUTE;
 var RateLimiter = class {
-  constructor(clock2 = Date.now, sleep3 = defaultSleep) {
+  constructor(clock2 = Date.now, sleep4 = defaultSleep) {
     this.clock = clock2;
-    this.sleep = sleep3;
+    this.sleep = sleep4;
   }
   clock;
   sleep;
@@ -38761,44 +38761,10 @@ function registerBuiltinConnectors() {
   registered = true;
 }
 
-// pipeline_core/routing.ts
-import { createHash, randomUUID } from "node:crypto";
-function capabilityForQuery(query) {
-  switch (query.kind) {
-    case "domain":
-      return "company.research";
-    case "area":
-      return "property.search";
-    case "parcel":
-      return "parcel";
-  }
-}
-function orderByRouting(eligible, routing) {
-  if (!routing?.connectors) return [...eligible];
-  const byName = new Map(eligible.map((c) => [c.name, c]));
-  return routing.connectors.flatMap((n) => byName.has(n) ? [byName.get(n)] : []);
-}
-var BudgetExceededError = class extends Error {
-  constructor(connector, needed, remaining) {
-    super(`credit budget exhausted: ${connector} needs ${needed}, ${remaining} left`);
-    this.connector = connector;
-    this.needed = needed;
-    this.remaining = remaining;
-    this.name = "BudgetExceededError";
-  }
-  connector;
-  needed;
-  remaining;
-};
-function stableStringify(value) {
-  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
-  const o = value;
-  return `{${Object.keys(o).filter((k) => o[k] !== void 0).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(",")}}`;
-}
-function cacheKey(connector, capability, subject) {
-  return createHash("sha256").update(`${connector}|${capability}|${stableStringify(subject)}`).digest("hex");
-}
+// pipeline_core/approvals.ts
+import { createHash } from "node:crypto";
+import { constants, mkdir, open as open2, readFile, unlink, stat } from "node:fs/promises";
+import { dirname, join as join2 } from "node:path";
 
 // pipeline_core/models.ts
 var SCHEMA_VERSION = 6;
@@ -39138,6 +39104,186 @@ var CampaignRunSchema = external_exports.object({
   createdAt: external_exports.string().datetime(),
   finishedAt: external_exports.string().datetime().optional()
 });
+
+// pipeline_core/approvals.ts
+var ApprovalRecordSchema = external_exports.object({
+  runId: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1),
+  channel: ChannelSchema,
+  messageSha256: external_exports.string().regex(/^[0-9a-f]{64}$/),
+  decision: external_exports.enum(["approved", "rejected"]),
+  /** Who decided: an OS user for the CLI, "mcp:<client>" for the MCP tools. */
+  by: external_exports.string().min(1),
+  at: external_exports.string().datetime(),
+  note: external_exports.string().min(1).optional()
+});
+function messageDigest(m) {
+  return createHash("sha256").update(JSON.stringify([m.channel, m.subject ?? null, m.body, m.cta ?? null])).digest("hex");
+}
+function approvalVerdict(records, runId, contactKey, message) {
+  const digest = messageDigest(message);
+  let state = "missing";
+  for (const r of records) {
+    if (r.runId === runId && r.contactKey === contactKey && r.messageSha256 === digest) state = r.decision;
+  }
+  return state;
+}
+function defaultApprovalsPath() {
+  return join2(intentOutreachHome(), "approvals.jsonl");
+}
+async function readApprovals(path = defaultApprovalsPath()) {
+  let text;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+  const out = [];
+  text.split("\n").forEach((line, i) => {
+    if (!line.trim()) return;
+    let parsed;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      throw new Error(`approvals: line ${i + 1} of ${path} is not valid JSON; fix or remove it`);
+    }
+    const r = ApprovalRecordSchema.safeParse(parsed);
+    if (!r.success) throw new Error(`approvals: line ${i + 1} of ${path} is invalid; fix or remove it`);
+    out.push(r.data);
+  });
+  return out;
+}
+var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+async function withLock(path, fn) {
+  await mkdir(dirname(path), { recursive: true, mode: 448 });
+  const lockPath = `${path}.lock`;
+  const deadline = Date.now() + 1e4;
+  let lock;
+  while (!lock) {
+    try {
+      lock = await open2(lockPath, "wx", 384);
+    } catch (err) {
+      if (err.code !== "EEXIST") throw err;
+      try {
+        if (Date.now() - (await stat(lockPath)).mtimeMs > 3e4) await unlink(lockPath).catch(() => void 0);
+      } catch {
+      }
+      if (Date.now() >= deadline) throw new Error(`approvals: timed out waiting for lock ${lockPath}`);
+      await sleep2(20);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await lock.close().catch(() => void 0);
+    await unlink(lockPath).catch(() => void 0);
+  }
+}
+async function append(path, record2) {
+  await withLock(path, async () => {
+    const fh = await open2(path, constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND, 384);
+    try {
+      await fh.chmod(384);
+      await fh.write(`${JSON.stringify(record2)}
+`);
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  });
+}
+async function listPending(store, path = defaultApprovalsPath()) {
+  const records = await readApprovals(path);
+  const out = [];
+  for (const id of await store.listRunIds()) {
+    const run = await store.getRun(id);
+    if (!run) continue;
+    for (const m of run.messages) {
+      if (approvalVerdict(records, run.id, m.contactKey, m) !== "missing") continue;
+      out.push({
+        runId: run.id,
+        contactKey: m.contactKey,
+        channel: m.channel,
+        ...m.subject ? { subject: m.subject } : {},
+        body: m.body,
+        cta: m.cta,
+        ...m.fitScore !== void 0 ? { fitScore: m.fitScore } : {},
+        createdAt: m.createdAt,
+        digest: messageDigest(m).slice(0, 12),
+        needsSenderIdentity: m.needsSenderIdentity
+      });
+    }
+  }
+  return out;
+}
+async function decide(input2) {
+  const run = await input2.store.getRun(input2.runId);
+  if (!run) throw new Error(`approvals: no run ${JSON.stringify(input2.runId)}`);
+  const matches = run.messages.filter((m2) => m2.contactKey === input2.contactKey);
+  if (matches.length === 0) throw new Error(`approvals: run ${input2.runId} has no message for ${input2.contactKey}`);
+  if (matches.length > 1) throw new Error(`approvals: run ${input2.runId} has ${matches.length} messages for ${input2.contactKey}`);
+  const m = matches[0];
+  const digest = messageDigest(m);
+  if (input2.decision === "approved") {
+    const prefix = (input2.digest ?? "").trim().toLowerCase();
+    if (prefix.length < 8 || !digest.startsWith(prefix)) {
+      throw new Error("approvals: approving needs the message digest shown by `approvals pending` (at least 8 characters)");
+    }
+    if (m.needsSenderIdentity) throw new Error("approvals: this draft has no sender-identity footer and cannot be approved");
+  }
+  const record2 = ApprovalRecordSchema.parse({
+    runId: run.id,
+    contactKey: m.contactKey,
+    channel: m.channel,
+    messageSha256: digest,
+    decision: input2.decision,
+    by: input2.by,
+    at: input2.now(),
+    ...input2.note?.trim() ? { note: input2.note.trim() } : {}
+  });
+  await append(input2.path ?? defaultApprovalsPath(), record2);
+  return record2;
+}
+
+// pipeline_core/routing.ts
+import { createHash as createHash2, randomUUID } from "node:crypto";
+function capabilityForQuery(query) {
+  switch (query.kind) {
+    case "domain":
+      return "company.research";
+    case "area":
+      return "property.search";
+    case "parcel":
+      return "parcel";
+  }
+}
+function orderByRouting(eligible, routing) {
+  if (!routing?.connectors) return [...eligible];
+  const byName = new Map(eligible.map((c) => [c.name, c]));
+  return routing.connectors.flatMap((n) => byName.has(n) ? [byName.get(n)] : []);
+}
+var BudgetExceededError = class extends Error {
+  constructor(connector, needed, remaining) {
+    super(`credit budget exhausted: ${connector} needs ${needed}, ${remaining} left`);
+    this.connector = connector;
+    this.needed = needed;
+    this.remaining = remaining;
+    this.name = "BudgetExceededError";
+  }
+  connector;
+  needed;
+  remaining;
+};
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const o = value;
+  return `{${Object.keys(o).filter((k) => o[k] !== void 0).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(",")}}`;
+}
+function cacheKey(connector, capability, subject) {
+  return createHash2("sha256").update(`${connector}|${capability}|${stableStringify(subject)}`).digest("hex");
+}
 
 // pipeline_core/validator.ts
 function deepFreeze(value, seen = /* @__PURE__ */ new WeakSet()) {
@@ -40311,10 +40457,10 @@ function composeGates(...gates) {
 }
 
 // pipeline_core/suppressions.ts
-import { constants, mkdir, open as open2, readFile, rename, stat, unlink } from "node:fs/promises";
-import { dirname, join as join2 } from "node:path";
+import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, rename, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { dirname as dirname2, join as join3 } from "node:path";
 function defaultSuppressionsPath() {
-  return join2(intentOutreachHome(), "suppressions.jsonl");
+  return join3(intentOutreachHome(), "suppressions.jsonl");
 }
 function parseEntry(raw, line, path) {
   const fail = (why) => {
@@ -40344,7 +40490,7 @@ function parseEntry(raw, line, path) {
 async function readSuppressions(path = defaultSuppressionsPath()) {
   let text;
   try {
-    text = await readFile(path, "utf8");
+    text = await readFile2(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return [];
     throw err;
@@ -40597,7 +40743,7 @@ function applyProfileToCampaignInput(profile, _base) {
 
 // pipeline_core/pipeline.ts
 import { existsSync } from "node:fs";
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join3, resolve as resolve2 } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute2, join as join4, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
 var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
@@ -41093,10 +41239,10 @@ function resolveProfilePath(ref, cwd = process.cwd()) {
     return isAbsolute2(trimmed) ? trimmed : resolve2(cwd, trimmed);
   }
   if (!PROFILE_NAME_RE.test(trimmed)) throw new Error(`profile: invalid name ${JSON.stringify(trimmed)}`);
-  const here = dirname2(fileURLToPath(import.meta.url));
-  const roots = [join3(cwd, "profiles"), join3(intentOutreachHome(), "profiles"), join3(here, "..", "profiles")];
+  const here = dirname3(fileURLToPath(import.meta.url));
+  const roots = [join4(cwd, "profiles"), join4(intentOutreachHome(), "profiles"), join4(here, "..", "profiles")];
   for (const root of roots) {
-    const candidate = join3(root, `${trimmed}.json`);
+    const candidate = join4(root, `${trimmed}.json`);
     if (existsSync(candidate)) return candidate;
   }
   throw new Error(`profile not found: ${trimmed} (looked in: ${roots.join(", ")})`);
@@ -41106,8 +41252,8 @@ function loadProfileRef(ref, cwd) {
 }
 
 // pipeline_core/store.ts
-import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, stat as stat2, unlink as unlink2 } from "node:fs/promises";
-import { dirname as dirname3, join as join4 } from "node:path";
+import { constants as constants3, mkdir as mkdir3, open as open4, readFile as readFile3, stat as stat3, unlink as unlink3 } from "node:fs/promises";
+import { dirname as dirname4, join as join5 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
     super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
@@ -41125,10 +41271,10 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
-  return join4(intentOutreachHome(), "runs.jsonl");
+  return join5(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
-var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
 var JsonlRunStore = class {
   constructor(path = defaultStorePath(), opts = {}) {
     this.path = path;
@@ -41143,7 +41289,7 @@ var JsonlRunStore = class {
   async saveRun(run, opts = {}) {
     const checked = assertCampaignRun(run);
     const line = JSON.stringify(checked) + "\n";
-    await mkdir2(dirname3(this.path), { recursive: true, mode: 448 });
+    await mkdir3(dirname4(this.path), { recursive: true, mode: 448 });
     await this.withLock(async () => {
       if (!opts.overwrite) {
         const { runs } = await this.scan();
@@ -41170,9 +41316,9 @@ var JsonlRunStore = class {
   // ── write path ──────────────────────────────────────────────────────────────
   /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
   async append(line) {
-    const fh = await open3(
+    const fh = await open4(
       this.path,
-      constants2.O_RDWR | constants2.O_APPEND | constants2.O_CREAT,
+      constants3.O_RDWR | constants3.O_APPEND | constants3.O_CREAT,
       384
     );
     try {
@@ -41204,20 +41350,20 @@ var JsonlRunStore = class {
     let lock;
     while (!lock) {
       try {
-        lock = await open3(lockPath, "wx", 384);
+        lock = await open4(lockPath, "wx", 384);
       } catch (err) {
         if (err.code !== "EEXIST") throw err;
         try {
-          const st = await stat2(lockPath);
+          const st = await stat3(lockPath);
           if (Date.now() - st.mtimeMs > this.staleLockMs) {
-            await unlink2(lockPath).catch(() => void 0);
+            await unlink3(lockPath).catch(() => void 0);
             continue;
           }
         } catch {
           continue;
         }
         if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
-        await sleep2(delay + Math.floor(Math.random() * delay));
+        await sleep3(delay + Math.floor(Math.random() * delay));
         delay = Math.min(delay * 2, 200);
       }
     }
@@ -41227,14 +41373,14 @@ var JsonlRunStore = class {
       return await fn();
     } finally {
       await lock.close().catch(() => void 0);
-      await unlink2(lockPath).catch(() => void 0);
+      await unlink3(lockPath).catch(() => void 0);
     }
   }
   // ── read path ───────────────────────────────────────────────────────────────
   async scan() {
     let text;
     try {
-      text = await readFile2(this.path, "utf8");
+      text = await readFile3(this.path, "utf8");
     } catch (err) {
       if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
@@ -41512,6 +41658,44 @@ async function handleSaveRun(rawArgs, deps = {}) {
     throw err;
   }
 }
+var ListPendingInput = {
+  limit: external_exports.number().int().min(1).max(200).optional().describe("Max drafts to return (default 50).")
+};
+async function handleListPending(args, deps = {}) {
+  try {
+    const store = deps.store ?? new JsonlRunStore();
+    const pending = await listPending(store, deps.approvalsPath);
+    return asText({ total: pending.length, pending: pending.slice(0, args.limit ?? 50) });
+  } catch (err) {
+    return toolError(`could not list pending drafts: ${errMsg(err)}`);
+  }
+}
+var DecideInput = {
+  runId: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1),
+  digest: external_exports.string().min(8).optional().describe("Required to approve: the digest list_pending showed for this exact message."),
+  note: external_exports.string().max(500).optional()
+};
+async function decideVia(decision, args, deps) {
+  try {
+    const record2 = await decide({
+      store: deps.store ?? new JsonlRunStore(),
+      runId: args.runId,
+      contactKey: args.contactKey,
+      decision,
+      by: "mcp",
+      note: args.note,
+      digest: args.digest,
+      now: deps.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()),
+      ...deps.approvalsPath ? { path: deps.approvalsPath } : {}
+    });
+    return asText(record2);
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+}
+var handleApprove = (args, deps = {}) => decideVia("approved", args, deps);
+var handleReject = (args, deps = {}) => decideVia("rejected", args, deps);
 
 // mcp/server.ts
 registerBuiltinConnectors();
@@ -41552,6 +41736,33 @@ server.registerTool(
     inputSchema: SaveRunInput
   },
   async (args) => handleSaveRun(args)
+);
+server.registerTool(
+  "list_pending",
+  {
+    title: "List drafts waiting for approval",
+    description: "List drafted messages in the LOCAL run store that no person has approved or rejected yet, with the full text and a digest. Nothing may be sent until a person approves the exact text. Show the drafts to the user; never approve on your own judgment.",
+    inputSchema: ListPendingInput
+  },
+  async (args) => handleListPending(args)
+);
+server.registerTool(
+  "approve",
+  {
+    title: "Record a person's approval of one draft",
+    description: "Record that the USER approved one exact draft (runId + contactKey + the digest list_pending showed). Call this only after the user has read that draft and explicitly said to approve it. Editing a draft afterwards voids the approval. Approving does not send anything.",
+    inputSchema: DecideInput
+  },
+  async (args) => handleApprove(args)
+);
+server.registerTool(
+  "reject",
+  {
+    title: "Record a rejection of one draft",
+    description: "Record that the user rejected one draft (runId + contactKey). A rejected draft can never pass the send-time check.",
+    inputSchema: DecideInput
+  },
+  async (args) => handleReject(args)
 );
 async function main() {
   const transport = new StdioServerTransport();
