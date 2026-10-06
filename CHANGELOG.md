@@ -8,6 +8,16 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Free public-records connectors and `property-run`** (#83 phase 6b). `fl-dor-parcels` (Florida statewide
+  DOR roll: owner, mailing address, situs, just value, use code, year built, last sale, centroid; masked
+  confidential owners dropped; one party per owner across parcels) and `fema-nfhl` (flood zone + SFHA by
+  parcel point, most hazardous zone wins) are keyless and on by default for property queries only
+  (`INTENT_OUTREACH_PUBLIC_RECORDS=0` turns them off). Connectors gain `enrichProperties`, run by
+  `runPropertyCampaign` after research (adds facts, never overwrites). Properties gain `location`; parties
+  gain `licenseTerms`, and `residential-re` drafts only to owners whose source explicitly allows outreach
+  (undeclared or restricted blocks) and never to government owners. CLI
+  `intent-outreach property-run --icp ... (--zips ... | --parcels fips:apn,...)`.
+
 - **Human approval queue** (#83 phase 8). Every drafted message waits for a person: `approvals pending`
   shows each draft in full with a digest, and `approvals approve <runId> <contactKey> --digest <hex>` /
   `approvals reject` record the decision in an append-only `approvals.jsonl` (0600) bound to the exact text,

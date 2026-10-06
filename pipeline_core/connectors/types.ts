@@ -103,6 +103,17 @@ export interface EnrichOutput {
   failures?: ConnectorItemFailure[];
 }
 
+export interface PropertyEnrichInput {
+  properties: Property[];
+  signal?: AbortSignal;
+}
+
+export interface PropertyEnrichOutput {
+  /** Properties with attributes ADDED (merged by key; existing attributes are never overwritten). */
+  properties: Property[];
+  failures?: ConnectorItemFailure[];
+}
+
 export interface Connector {
   /** Unique, stable source name (also stamped on records as `source`). */
   readonly name: string;
@@ -145,4 +156,7 @@ export interface Connector {
 
   /** Enrich a lead + its contacts → enrichments. Only if phases includes 'enrich'. */
   enrich?(input: EnrichInput): Promise<EnrichOutput>;
+
+  /** Add facts to properties (flood zone, ...) in a property campaign. Only if phases includes 'enrich'. */
+  enrichProperties?(input: PropertyEnrichInput): Promise<PropertyEnrichOutput>;
 }

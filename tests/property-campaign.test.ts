@@ -44,7 +44,14 @@ function parcel(apn: string, zip: string, attributes: Property["attributes"] = {
   };
 }
 function owner(key: string, mailing: Party["mailingAddress"], kind: Party["kind"] = "person"): Party {
-  return { key, kind, name: key === "p-llc" ? "Beach Holdings LLC" : `Owner ${key}`, mailingAddress: mailing, source: "stub-gis" };
+  return {
+    key,
+    kind,
+    name: key === "p-llc" ? "Beach Holdings LLC" : `Owner ${key}`,
+    mailingAddress: mailing,
+    source: "stub-gis",
+    licenseTerms: { id: "fixture-public-record", outreachRestricted: false },
+  };
 }
 const OUT_OF_STATE = { line1: "9 Elm St", city: "Nashville", state: "TN", zip: "37201" };
 const own = (p: Property, party: string, asOf = "2006-05-01"): Ownership => ({
@@ -451,6 +458,20 @@ describe("review regressions", () => {
     for (const k of ["currentCreditScore", "currentIncome", "clientDebt", "ageOfOwner", "occupancy", "retired"]) expect(p).not.toContain(k);
     expect(p).toContain("annualRentalIncome");
     expect(p).toContain("taxDelinquent");
+  });
+
+  it("an owner record whose terms are undeclared or restrict outreach is never drafted", async () => {
+    const a = parcel("851", "36542");
+    const b = parcel("852", "36542");
+    const undeclared = { ...owner("U", OUT_OF_STATE), licenseTerms: undefined };
+    const restricted = { ...owner("R", OUT_OF_STATE), licenseTerms: { id: "mobile-mcrc-tax-only", outreachRestricted: true } };
+    registerConnector(gisWith([a, b], [undeclared, restricted], [own(a, "U"), own(b, "R")]));
+    const { run } = await runPropertyCampaign({ ...base, id: "reg-license", provider: model(), suppressions: EMPTY_SUPPRESSION_LIST });
+    expect(run.messages).toEqual([]);
+    expect(Object.fromEntries(run.blockedContacts.map((x) => [x.contactKey, x.reason]))).toEqual({
+      U: "license:undeclared",
+      R: "license:outreach-restricted",
+    });
   });
 
   it("tenure uses the latest recorded transfer and never goes negative", () => {

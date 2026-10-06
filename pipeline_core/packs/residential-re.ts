@@ -5,7 +5,8 @@
  * selling. It composes the engine's real estate gates; it adds no enforcement
  * of its own:
  *
- *   propertyGate   service area (the property's ZIP in the pack's area;
+ *   propertyGate   the owner record's license terms (outreach must be
+ *                  explicitly allowed; undeclared blocks), service area (the property's ZIP in the pack's area;
  *                  unknown address blocks), manual review for probate,
  *                  divorce and pre-foreclosure signals (from the parcel's
  *                  `distressSignals` AND from the ownership itself: an estate
@@ -60,6 +61,15 @@ export const distressLanguageDraftRule: DraftRule = (draft: Readonly<DraftLike>)
   });
 
 export function residentialPropertyGate(ctx: PropertyGateContext): ComplianceResult {
+  // The owner record (and the mailing address on it) must come from a source whose terms are
+  // known to allow outreach. Undeclared is treated as restricted (000-docs/035 §5).
+  const terms = ctx.owner.licenseTerms;
+  if (terms?.outreachRestricted === true) return { status: "blocked", reason: "license:outreach-restricted" };
+  if (terms?.outreachRestricted !== false) return { status: "blocked", reason: "license:undeclared" };
+
+  // Public bodies (county, city, school board, ...) are not prospects.
+  if (ctx.owner.entityType === "government") return { status: "blocked", reason: "owner:government" };
+
   const zip = ctx.property.address?.zip?.slice(0, 5);
   if (!zip) return { status: "blocked", reason: "service-area:unknown-address" };
   if (!inServiceArea(zip, GULF_COAST_AL_FL)) return { status: "blocked", reason: "service-area:outside" };
