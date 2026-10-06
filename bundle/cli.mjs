@@ -62802,7 +62802,9 @@ function factSchema(value) {
     source: SourceSchema,
     fetchedAt: external_exports.string().datetime(),
     responseHash: Sha256HexSchema.optional(),
-    licenseTerms: LicenseTermsSchema.optional()
+    licenseTerms: LicenseTermsSchema.optional(),
+    /** When the value came through a vendor MCP server: which server, version and tool. */
+    via: external_exports.object({ server: external_exports.string().min(1), version: external_exports.string().min(1), tool: external_exports.string().min(1) }).optional()
   });
 }
 var FactSchema = factSchema(external_exports.unknown());
@@ -77388,6 +77390,7 @@ function failureStatus(err) {
   if (err instanceof HttpError) return err.status;
   const name31 = err?.name;
   if (err instanceof ConnectorTimeoutError || name31 === "TimeoutError" || name31 === "AbortError") return "timeout";
+  if (name31 === "McpPinMismatchError") return "pin-mismatch";
   return "error";
 }
 function recordConnectorFailure(connector, phase, err, raw, failed) {

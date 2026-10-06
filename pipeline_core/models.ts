@@ -190,6 +190,8 @@ export function factSchema<T extends z.ZodType>(value: T) {
     fetchedAt: z.string().datetime(),
     responseHash: Sha256HexSchema.optional(),
     licenseTerms: LicenseTermsSchema.optional(),
+    /** When the value came through a vendor MCP server: which server, version and tool. */
+    via: z.object({ server: z.string().min(1), version: z.string().min(1), tool: z.string().min(1) }).optional(),
   });
 }
 export const FactSchema = factSchema(z.unknown());
@@ -199,6 +201,7 @@ export type Fact<T = unknown> = {
   fetchedAt: string;
   responseHash?: string;
   licenseTerms?: LicenseTerms;
+  via?: { server: string; version: string; tool: string };
 };
 
 const UsStateSchema = z.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code");
