@@ -40414,11 +40414,24 @@ function quantityFactSet(facts) {
   return set2;
 }
 var QUANTITY_QUALIFIER_WINDOW = 4;
+var STREET_SUFFIXES = new Set(
+  "st street ave avenue rd road dr drive blvd boulevard ln lane way ct court cir circle hwy highway pkwy parkway pl place trl trail loop ter terrace sq square pt point".split(" ")
+);
+function isHouseNumber(text, toks, q) {
+  if (q.first !== q.last || !/^\d{1,6}$/.test(toks[q.first].lower)) return false;
+  for (let k = q.last + 1; k <= q.last + 3 && k < toks.length; k++) {
+    const t = toks[k];
+    if (t.kind !== "word" || !/^[A-Z]/.test(text.slice(t.start, t.end))) return false;
+    if (k > q.last + 1 && STREET_SUFFIXES.has(t.lower.replace(/\.$/, ""))) return true;
+  }
+  return false;
+}
 function quantityIssuesIn(text, factSet) {
   const issues = [];
   const { toks, quantities, qualifiers } = scanQuantities(text, false);
   const quantityStarts = new Set(quantities.map((q) => q.first));
   for (const q of quantities) {
+    if (isHouseNumber(text, toks, q)) continue;
     const ql = qualifiers.find((x) => x.first > q.last);
     if (!ql || ql.first - q.last - 1 > QUANTITY_QUALIFIER_WINDOW) continue;
     let attached = true;
