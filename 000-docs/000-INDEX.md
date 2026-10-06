@@ -1,7 +1,7 @@
 # 000-INDEX — Intent Outreach Documentation Index
 
-**Last Updated:** 2026-10-04
-**Purpose:** Map of the docs in this directory. Current docs are `017`–`022`. Everything in `001`–`016`
+**Last Updated:** 2026-10-06
+**Purpose:** Map of the docs in this directory. Current docs are `017`–`022` and `033`–`034` (`031`–`032` reserved). Everything in `001`–`016`
 and `023`–`030` predates the rebuild and describes the retired Gemini-on-Vertex "PipelinePilot" system;
 it is kept for history only, and each of those files carries a "Historical (pre-rebuild)" banner.
 
@@ -26,6 +26,13 @@ The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR 
   the owner decisions, the stream plan and waves, and what shipped in each PR.
 - **`022-AA-AACR-hardening-after-action-review.md`** — after-action review of the hardening: what went
   well, what didn't, and the open follow-ups.
+- **`031`, `032`** — reserved for the real-estate engine decision record and research synthesis
+  (epic `io-2yt`).
+- **`033-AT-DECR-social-intent-pack-decision.md`** — go/no-go for a `social-reply` pack that turns public
+  comment friction into human-approved replies: conditional GO behind a 30-day manual pilot, the
+  never-post boundary, and per-platform verdicts with sourced terms. Proposed.
+- **`034-AT-PLAN-social-intent-pack-plan.md`** — the phased build on Pack v2: zod model sketch, scoring
+  rubric, gate and draft rules, the fail-closed test list, the 30-day cadence and kill criteria. Proposed.
 
 For how the system works and how to run it, read the repo root:
 
