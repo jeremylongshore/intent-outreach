@@ -157,3 +157,102 @@ describe("FCRA", () => {
     expect(attrs.creditScoreBand).toBe("700-749"); // the input is untouched
   });
 });
+
+describe("review regressions", () => {
+  it.each([
+    ["low-crime area", "low crime"],
+    ["crime free community", "crime-free"],
+    ["an able bodied buyer", "able-bodied"],
+    ["adults-only building", "adults only"],
+    ["one of the safe neighborhoods", "safe neighborhood"],
+    ["a safe neighbourhood", "safe neighborhood"],
+    ["no kid policy", "no kids"],
+    ["Perfect for your family.", "perfect for your family"],
+    ["Recently widowed owners", "widowed"],
+    ["the widower next door", "widower"],
+    ["two divorces on the street", "divorce"],
+    ["low–crime streets", "low crime"],
+  ])("normalization catches %j", (text, term) => {
+    expect(lintFairHousing(text).hard).toContain(term);
+  });
+
+  it.each([
+    ["Probate Court filing"],
+    ["divorced"],
+    ["Divorce Filed"],
+    ["foreclosures"],
+    ["pre–foreclosure."],
+    ["NOD"],
+    ["notice of default"],
+    ["Tax Deed"],
+  ])("manual review catches the tag %j", (tag) => {
+    expect(manualReviewVerdict([tag]).status).toBe("blocked");
+  });
+
+  it("prototype keys and look-alikes are not signals", () => {
+    expect(manualReviewVerdict(["constructor", "toString", "real-estate", "estate planning"])).toEqual({ status: "clean" });
+    expect(manualReviewVerdict(["estate"])).toEqual({ status: "blocked", reason: "manual-review:probate" });
+  });
+
+  it("a date-only agreement end runs through that whole day everywhere", () => {
+    const lastDayNoonCentral = new Date("2026-10-06T17:00:00Z");
+    expect(listingContactVerdict({ status: "expired", agreementEndsAt: "2026-10-06" }, lastDayNoonCentral)).toEqual({
+      status: "blocked",
+      reason: "listing:agreement-still-in-effect",
+    });
+    expect(listingContactVerdict({ status: "expired", agreementEndsAt: "2026-10-06" }, new Date("2026-10-08T00:00:00Z"))).toEqual({
+      status: "clean",
+    });
+  });
+
+  it("non-ISO or impossible dates are invalid; status is case-insensitive", () => {
+    for (const bad of ["5", "Oct 6 2026", "2026-02-30", "2026-10-06T10:00"]) {
+      expect(listingContactVerdict({ status: "expired", agreementEndsAt: bad }, NOW)).toEqual({
+        status: "blocked",
+        reason: "listing:agreement-date-invalid",
+      });
+    }
+    expect(listingContactVerdict({ status: "Active" }, NOW)).toEqual({ status: "blocked", reason: "listing:active" });
+    expect(listingContactVerdict({ status: "Coming Soon" }, NOW)).toEqual({ status: "blocked", reason: "listing:coming-soon" });
+  });
+
+  it("FCRA keeps parcel facts, strips person facts, recursively", () => {
+    const kept = stripFcraSensitive({
+      rentalIncome: 1,
+      annualRentalIncome: 1,
+      grossIncome: 1,
+      incomeProducing: true,
+      taxDelinquent: true,
+      taxDelinquentYears: 2,
+      mortgageBalance: 1,
+      ltv: 0.5,
+      estimatedEquity: 1,
+      creditUnion: "ABC CU",
+      owner: { name: "Pat", wealthScore: 9, ownerAge: 71, maritalStatus: "married", judgments: 1 },
+      wealth: 1,
+      financialScore: 1,
+      paymentHistory: [],
+      evictions: 1,
+      repossession: 1,
+      liquidAssets: 1,
+      ssn: "x",
+      dob: "x",
+    });
+    expect(Object.keys(kept).sort()).toEqual(
+      [
+        "annualRentalIncome",
+        "creditUnion",
+        "estimatedEquity",
+        "grossIncome",
+        "incomeProducing",
+        "ltv",
+        "mortgageBalance",
+        "owner",
+        "rentalIncome",
+        "taxDelinquent",
+        "taxDelinquentYears",
+      ].sort(),
+    );
+    expect(kept.owner).toEqual({ name: "Pat" });
+  });
+});

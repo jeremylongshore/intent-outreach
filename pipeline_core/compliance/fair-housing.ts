@@ -13,12 +13,18 @@
  *   WARN — returned for human review; does not reject.
  *
  * Outreach additions: a draft to a property owner must never reference the
- * owner's AGE or FAMILY (retirement, kids, empty nest, downsizing for age...):
- * those are inferences about protected status (familial status) or age, and a
- * message built on them is steering whatever the intent. Describe the PROPERTY
- * and the NUMBERS, never who belongs there.
+ * owner's AGE, FAMILY or MARITAL STATUS (retirement, kids, empty nest,
+ * divorce, widowhood...): those are inferences about protected status
+ * (familial status) or age, and a message built on them is steering whatever
+ * the intent. Describe the PROPERTY and the NUMBERS, never who belongs there.
  *
- * Matching is case-insensitive on word boundaries.
+ * Matching normalizes first, so ordinary spelling variation cannot dodge a
+ * term: case-insensitive, hyphens and dashes read as spaces ("low-crime" =
+ * "low crime", "crime free" = "crime-free"), British "neighbourhood" reads as
+ * "neighborhood", and the last word of a term also matches its plural
+ * ("safe neighborhoods", "no kid"). Terms match on word boundaries. The list
+ * is deliberately broad: a false positive rejects a draft with the exact term
+ * recorded; a false negative is a fair-housing violation.
  */
 
 import type { DraftLike, DraftRule } from "../draft-guard.js";
@@ -46,7 +52,8 @@ export const OUTREACH_AGE_FAMILIAL_HARD: readonly string[] = [
   "seniors", "senior citizen", "senior citizens", "elderly", "your age", "at your stage of life",
   "golden years", "empty nest", "empty nester", "empty nesters", "kids", "children", "grandkids",
   "grandchildren", "growing family", "starting a family", "new baby", "pregnant",
-  "widow", "widowed", "divorce", "divorced",
+  "widow", "widowed", "widower", "divorce", "divorced", "divorcing", "perfect for your family",
+  "ideal for your family", "your family", "your spouse", "your husband", "your wife",
 ];
 
 /** comehomealabama WARN list, verbatim. */
@@ -58,9 +65,26 @@ export const FAIR_HOUSING_WARN: readonly string[] = [
   "master bedroom", "master suite", "exclusive", "private community",
 ];
 
+/** Lowercase; hyphens and dashes become spaces; British spelling folded; whitespace collapsed. */
+function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[\u2010-\u2015\u2212-]/g, " ")
+    .replace(/neighbour/g, "neighbor")
+    .replace(/\s+/g, " ");
+}
+
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const compile = (terms: readonly string[]) =>
-  terms.map((t) => ({ term: t, re: new RegExp(`(?<![a-z0-9])${escape(t).replace(/ /g, "\\s+")}(?![a-z0-9])`, "i") }));
+function compile(terms: readonly string[]) {
+  return terms.map((term) => {
+    const words = normalize(term).trim().split(" ").map(escape);
+    const last = words.pop()!;
+    // The last word also matches its plural: "neighborhood(s)", "kid(s)".
+    const stem = last.endsWith("s") && last.length > 3 ? last.slice(0, -1) : last;
+    const body = [...words, `${stem}(?:s|es)?`].join(" ");
+    return { term, re: new RegExp(`(?<![a-z0-9])${body}(?![a-z0-9])`) };
+  });
+}
 
 const HARD_RES = compile([...FAIR_HOUSING_HARD, ...OUTREACH_AGE_FAMILIAL_HARD]);
 const WARN_RES = compile(FAIR_HOUSING_WARN);
@@ -72,9 +96,10 @@ export interface FairHousingLint {
 
 /** Lint any text. Pure. */
 export function lintFairHousing(text: string): FairHousingLint {
+  const t = normalize(text);
   return {
-    hard: HARD_RES.filter((h) => h.re.test(text)).map((h) => h.term),
-    warn: WARN_RES.filter((w) => w.re.test(text)).map((w) => w.term),
+    hard: HARD_RES.filter((h) => h.re.test(t)).map((h) => h.term),
+    warn: WARN_RES.filter((w) => w.re.test(t)).map((w) => w.term),
   };
 }
 
