@@ -37624,7 +37624,7 @@ function useSecret(name) {
 var KEEP_RAW_ENV = "INTENT_OUTREACH_KEEP_RAW";
 var PUBLIC_RECORDS_ENV = "INTENT_OUTREACH_PUBLIC_RECORDS";
 function publicRecordsEnabled() {
-  return !(hasSecret(PUBLIC_RECORDS_ENV) && getSecret(PUBLIC_RECORDS_ENV).trim() === "0");
+  return !(hasSecret(PUBLIC_RECORDS_ENV) && /^(0|false|off|no)$/i.test(getSecret(PUBLIC_RECORDS_ENV).trim()));
 }
 function keepRawOptIn() {
   return hasSecret(KEEP_RAW_ENV) && getSecret(KEEP_RAW_ENV).trim() === "1";
@@ -38335,7 +38335,7 @@ var ResponseSchema = external_exports.object({ features: external_exports.array(
 function hazard(z2) {
   const zone = (z2.FLD_ZONE ?? "").toUpperCase();
   const sfha = z2.SFHA_TF === "T" ? 100 : 0;
-  return sfha + (zone.startsWith("V") ? 3 : zone.startsWith("A") ? 2 : zone ? 1 : 0);
+  return sfha + (/^V[0-9E]*$/.test(zone) ? 3 : /^A[0-9EHOR]*$|^A99$/.test(zone) ? 2 : zone ? 1 : 0);
 }
 function mostHazardous(zones) {
   return [...zones].sort((a, b) => hazard(b) - hazard(a))[0];
@@ -38832,19 +38832,23 @@ var zip5 = (v) => {
   return String(Math.trunc(n)).padStart(5, "0").slice(0, 5);
 };
 var masked = (...vals) => vals.some((v) => typeof v === "string" && /\*{3,}/.test(v));
-var ENTITY_RE = /\b(LLC|L\.?L\.?C|INC|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|PARTNERSHIP|TRUST|TR|TRUSTEE|BANK|ASSOCIATION|ASSN|HOLDINGS|PROPERTIES|INVESTMENTS|ESTATE OF|CHURCH|MINISTRIES)\b/i;
-var GOV_RE = /\b(COUNTY|CITY OF|STATE OF|BOARD OF|SCHOOL|UNITED STATES|USA|TOWN OF|AUTHORITY|DISTRICT|DEPT|DEPARTMENT)\b/i;
+var ESTATE_RE = /\b(EST|ESTATE|ESTATE OF|DECD|DECEASED|HEIRS?)\b/i;
+var TRUST_RE = /\b(TRUSTS?|TRUSTEES?|TRS|TR)\b/i;
+var GOV_RE = /\b(COUNTY|CITY OF|STATE OF|BOARD OF|SCHOOL|UNITED STATES|USA|TOWN OF|AUTH\w*|DISTRICT|DEPT|DEPART\w*|UTILIT\w*|GOVERNM\w*|HOUSING AUTH\w*)\b/i;
+var ENTITY_RE = /\b(LLC|L\.?L\.?C|INC|CORP\w*|COMPANY|LTD|LP|LLP|PARTNERSHIP|BANK|ASSOCIA\w*|ASSN|HOLDINGS?|PROPERTIES|INVESTMENTS?|CHURCH|MINISTRIES)\b/i;
 function entityType(name) {
+  if (ESTATE_RE.test(name)) return "estate";
   if (GOV_RE.test(name)) return "government";
-  if (/\bESTATE OF\b/i.test(name)) return "estate";
-  if (/\b(TRUST|TR|TRUSTEE)\b/i.test(name)) return "trust";
+  if (TRUST_RE.test(name)) return "trust";
   if (/\bL\.?L\.?C\b/i.test(name)) return "llc";
-  if (/\b(INC|CORP|CORPORATION)\b/i.test(name)) return "corporation";
+  if (/\b(INC|CORP\w*)\b/i.test(name)) return "corporation";
   if (/\b(LP|LLP|PARTNERSHIP|LTD)\b/i.test(name)) return "partnership";
   return "other";
 }
-function partyKey(name, mailing) {
-  const basis = `${name.toUpperCase()}|${mailing ? `${mailing.line1}|${mailing.zip}` : ""}`;
+var isEntityName = (name) => ESTATE_RE.test(name) || GOV_RE.test(name) || TRUST_RE.test(name) || ENTITY_RE.test(name);
+function partyKey(name, mailing, parcelKey) {
+  const where = mailing ? `${mailing.line1}|${mailing.line2 ?? ""}|${mailing.city}|${mailing.zip}` : `no-mailing|${parcelKey}`;
+  const basis = `${name.toUpperCase()}|${where.toUpperCase()}`;
   return `fl-dor:${createHash2("sha256").update(basis).digest("hex").slice(0, 16)}`;
 }
 function mapFlDorRow(row, fetchedAt, responseHash) {
@@ -38871,8 +38875,11 @@ function mapFlDorRow(row, fetchedAt, responseHash) {
   const saleYear = num(a.SALE_YR1);
   const saleMonth = clean(a.SALE_MO1);
   if (salePrice !== void 0 && salePrice > 0) attributes.lastSalePriceCents = fact(Math.round(salePrice * 100));
-  const saleDate = saleYear !== void 0 && saleYear > 1800 ? `${saleYear}-${(saleMonth && /^\d{1,2}$/.test(saleMonth) ? saleMonth : "01").padStart(2, "0")}-01` : void 0;
+  const month = saleMonth && /^\d{1,2}$/.test(saleMonth) ? Number(saleMonth) : void 0;
+  const year = saleYear !== void 0 && saleYear > 1800 && saleYear < 2200 ? Math.trunc(saleYear) : void 0;
+  const saleDate = year !== void 0 && month !== void 0 && month >= 1 && month <= 12 ? `${year}-${String(month).padStart(2, "0")}-01` : void 0;
   if (saleDate) attributes.lastSaleDate = fact(saleDate);
+  else if (year !== void 0) attributes.lastSaleYear = fact(year);
   const situsZip = zip5(a.PHY_ZIPCD);
   const situs = clean(a.PHY_ADDR1);
   const city = clean(a.PHY_CITY);
@@ -38894,9 +38901,9 @@ function mapFlDorRow(row, fetchedAt, responseHash) {
   const mCity = clean(a.OWN_CITY);
   const foreign = clean(a.OWN_STATE_);
   const mailing = mLine && mCity && mState && /^[A-Z]{2}$/.test(mState) && mZip && !foreign ? { line1: mLine, ...clean(a.OWN_ADDR2) ? { line2: clean(a.OWN_ADDR2) } : {}, city: mCity, state: mState, zip: mZip } : void 0;
-  const isEntity = ENTITY_RE.test(name) || GOV_RE.test(name);
+  const isEntity = isEntityName(name);
   const party = {
-    key: partyKey(name, mailing),
+    key: partyKey(name, mailing, propertyKey(fips, apn)),
     kind: isEntity ? "entity" : "person",
     name,
     ...isEntity ? { entityType: entityType(name) } : {},
@@ -38915,23 +38922,26 @@ function mapFlDorRow(row, fetchedAt, responseHash) {
   return { property, party, ownership };
 }
 var sqlString = (v) => `'${v.replace(/'/g, "''")}'`;
+var likePrefix = (v) => sqlString(`${v.replace(/[%_]/g, "").toUpperCase()}%`);
+var ALL_COUNTIES = Object.values(FL_DOR_COUNTY);
 function flDorWhere(query) {
   if (query.kind === "parcel") {
     const co = query.countyFips ? FL_DOR_COUNTY[query.countyFips] : void 0;
     if (co && query.apn) return `CO_NO=${co} AND PARCEL_ID=${sqlString(query.apn.replace(/[-\s.]/g, "").toUpperCase())}`;
     if (query.address && query.address.state === "FL") {
       const zip = query.address.zip.slice(0, 5);
-      return `PHY_ZIPCD=${Number(zip)} AND PHY_ADDR1 LIKE ${sqlString(`${query.address.line1.toUpperCase()}%`)}`;
+      return `CO_NO IN (${ALL_COUNTIES.join(",")}) AND PHY_ZIPCD=${Number(zip)} AND PHY_ADDR1 LIKE ${likePrefix(query.address.line1)}`;
     }
     return void 0;
   }
   if (query.kind === "area") {
     const zips = (query.geography.zips ?? []).filter(isFloridaZip);
-    const counties = (query.geography.countyFips ?? []).map((f) => FL_DOR_COUNTY[f]).filter((c) => c !== void 0);
+    const asked = query.geography.countyFips;
+    const counties = (asked ?? []).map((f) => FL_DOR_COUNTY[f]).filter((c) => c !== void 0);
+    if (asked && asked.length > 0 && counties.length === 0) return void 0;
     if (zips.length === 0 && counties.length === 0) return void 0;
-    const parts = [];
+    const parts = [`CO_NO IN (${(counties.length > 0 ? counties : ALL_COUNTIES).join(",")})`];
     if (zips.length > 0) parts.push(`PHY_ZIPCD IN (${zips.map(Number).join(",")})`);
-    if (counties.length > 0) parts.push(`CO_NO IN (${counties.join(",")})`);
     return parts.join(" AND ");
   }
   return void 0;
@@ -38956,7 +38966,8 @@ var flDorParcelsConnector = {
     if (!query) return empty;
     const where = flDorWhere(query);
     if (!where) return empty;
-    const max = query.kind === "area" ? Math.min(Math.max(Number(query.filters.maxRecords ?? 500), 1), 5e3) : 50;
+    const asked = Number(query.kind === "area" ? query.filters.maxRecords : void 0);
+    const max = query.kind === "area" ? Number.isFinite(asked) && asked >= 1 ? Math.min(Math.trunc(asked), 5e3) : 500 : 50;
     const properties = [];
     const parties = [];
     const ownerships = [];

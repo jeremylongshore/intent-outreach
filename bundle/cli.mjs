@@ -61952,7 +61952,7 @@ function useSecret(name31) {
 var KEEP_RAW_ENV = "INTENT_OUTREACH_KEEP_RAW";
 var PUBLIC_RECORDS_ENV = "INTENT_OUTREACH_PUBLIC_RECORDS";
 function publicRecordsEnabled() {
-  return !(hasSecret(PUBLIC_RECORDS_ENV) && getSecret(PUBLIC_RECORDS_ENV).trim() === "0");
+  return !(hasSecret(PUBLIC_RECORDS_ENV) && /^(0|false|off|no)$/i.test(getSecret(PUBLIC_RECORDS_ENV).trim()));
 }
 function keepRawOptIn() {
   return hasSecret(KEEP_RAW_ENV) && getSecret(KEEP_RAW_ENV).trim() === "1";
@@ -62663,7 +62663,7 @@ var ResponseSchema = external_exports.object({ features: external_exports.array(
 function hazard(z4) {
   const zone = (z4.FLD_ZONE ?? "").toUpperCase();
   const sfha = z4.SFHA_TF === "T" ? 100 : 0;
-  return sfha + (zone.startsWith("V") ? 3 : zone.startsWith("A") ? 2 : zone ? 1 : 0);
+  return sfha + (/^V[0-9E]*$/.test(zone) ? 3 : /^A[0-9EHOR]*$|^A99$/.test(zone) ? 2 : zone ? 1 : 0);
 }
 function mostHazardous(zones) {
   return [...zones].sort((a, b) => hazard(b) - hazard(a))[0];
@@ -63160,19 +63160,23 @@ var zip5 = (v) => {
   return String(Math.trunc(n)).padStart(5, "0").slice(0, 5);
 };
 var masked = (...vals) => vals.some((v) => typeof v === "string" && /\*{3,}/.test(v));
-var ENTITY_RE = /\b(LLC|L\.?L\.?C|INC|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|PARTNERSHIP|TRUST|TR|TRUSTEE|BANK|ASSOCIATION|ASSN|HOLDINGS|PROPERTIES|INVESTMENTS|ESTATE OF|CHURCH|MINISTRIES)\b/i;
-var GOV_RE = /\b(COUNTY|CITY OF|STATE OF|BOARD OF|SCHOOL|UNITED STATES|USA|TOWN OF|AUTHORITY|DISTRICT|DEPT|DEPARTMENT)\b/i;
+var ESTATE_RE = /\b(EST|ESTATE|ESTATE OF|DECD|DECEASED|HEIRS?)\b/i;
+var TRUST_RE = /\b(TRUSTS?|TRUSTEES?|TRS|TR)\b/i;
+var GOV_RE = /\b(COUNTY|CITY OF|STATE OF|BOARD OF|SCHOOL|UNITED STATES|USA|TOWN OF|AUTH\w*|DISTRICT|DEPT|DEPART\w*|UTILIT\w*|GOVERNM\w*|HOUSING AUTH\w*)\b/i;
+var ENTITY_RE = /\b(LLC|L\.?L\.?C|INC|CORP\w*|COMPANY|LTD|LP|LLP|PARTNERSHIP|BANK|ASSOCIA\w*|ASSN|HOLDINGS?|PROPERTIES|INVESTMENTS?|CHURCH|MINISTRIES)\b/i;
 function entityType(name31) {
+  if (ESTATE_RE.test(name31)) return "estate";
   if (GOV_RE.test(name31)) return "government";
-  if (/\bESTATE OF\b/i.test(name31)) return "estate";
-  if (/\b(TRUST|TR|TRUSTEE)\b/i.test(name31)) return "trust";
+  if (TRUST_RE.test(name31)) return "trust";
   if (/\bL\.?L\.?C\b/i.test(name31)) return "llc";
-  if (/\b(INC|CORP|CORPORATION)\b/i.test(name31)) return "corporation";
+  if (/\b(INC|CORP\w*)\b/i.test(name31)) return "corporation";
   if (/\b(LP|LLP|PARTNERSHIP|LTD)\b/i.test(name31)) return "partnership";
   return "other";
 }
-function partyKey(name31, mailing) {
-  const basis = `${name31.toUpperCase()}|${mailing ? `${mailing.line1}|${mailing.zip}` : ""}`;
+var isEntityName = (name31) => ESTATE_RE.test(name31) || GOV_RE.test(name31) || TRUST_RE.test(name31) || ENTITY_RE.test(name31);
+function partyKey(name31, mailing, parcelKey) {
+  const where = mailing ? `${mailing.line1}|${mailing.line2 ?? ""}|${mailing.city}|${mailing.zip}` : `no-mailing|${parcelKey}`;
+  const basis = `${name31.toUpperCase()}|${where.toUpperCase()}`;
   return `fl-dor:${createHash2("sha256").update(basis).digest("hex").slice(0, 16)}`;
 }
 function mapFlDorRow(row, fetchedAt, responseHash) {
@@ -63199,8 +63203,11 @@ function mapFlDorRow(row, fetchedAt, responseHash) {
   const saleYear = num(a.SALE_YR1);
   const saleMonth = clean(a.SALE_MO1);
   if (salePrice !== void 0 && salePrice > 0) attributes.lastSalePriceCents = fact(Math.round(salePrice * 100));
-  const saleDate = saleYear !== void 0 && saleYear > 1800 ? `${saleYear}-${(saleMonth && /^\d{1,2}$/.test(saleMonth) ? saleMonth : "01").padStart(2, "0")}-01` : void 0;
+  const month = saleMonth && /^\d{1,2}$/.test(saleMonth) ? Number(saleMonth) : void 0;
+  const year = saleYear !== void 0 && saleYear > 1800 && saleYear < 2200 ? Math.trunc(saleYear) : void 0;
+  const saleDate = year !== void 0 && month !== void 0 && month >= 1 && month <= 12 ? `${year}-${String(month).padStart(2, "0")}-01` : void 0;
   if (saleDate) attributes.lastSaleDate = fact(saleDate);
+  else if (year !== void 0) attributes.lastSaleYear = fact(year);
   const situsZip = zip5(a.PHY_ZIPCD);
   const situs = clean(a.PHY_ADDR1);
   const city = clean(a.PHY_CITY);
@@ -63222,9 +63229,9 @@ function mapFlDorRow(row, fetchedAt, responseHash) {
   const mCity = clean(a.OWN_CITY);
   const foreign = clean(a.OWN_STATE_);
   const mailing = mLine && mCity && mState && /^[A-Z]{2}$/.test(mState) && mZip && !foreign ? { line1: mLine, ...clean(a.OWN_ADDR2) ? { line2: clean(a.OWN_ADDR2) } : {}, city: mCity, state: mState, zip: mZip } : void 0;
-  const isEntity = ENTITY_RE.test(name31) || GOV_RE.test(name31);
+  const isEntity = isEntityName(name31);
   const party = {
-    key: partyKey(name31, mailing),
+    key: partyKey(name31, mailing, propertyKey(fips, apn)),
     kind: isEntity ? "entity" : "person",
     name: name31,
     ...isEntity ? { entityType: entityType(name31) } : {},
@@ -63243,23 +63250,26 @@ function mapFlDorRow(row, fetchedAt, responseHash) {
   return { property, party, ownership };
 }
 var sqlString = (v) => `'${v.replace(/'/g, "''")}'`;
+var likePrefix = (v) => sqlString(`${v.replace(/[%_]/g, "").toUpperCase()}%`);
+var ALL_COUNTIES = Object.values(FL_DOR_COUNTY);
 function flDorWhere(query) {
   if (query.kind === "parcel") {
     const co = query.countyFips ? FL_DOR_COUNTY[query.countyFips] : void 0;
     if (co && query.apn) return `CO_NO=${co} AND PARCEL_ID=${sqlString(query.apn.replace(/[-\s.]/g, "").toUpperCase())}`;
     if (query.address && query.address.state === "FL") {
       const zip = query.address.zip.slice(0, 5);
-      return `PHY_ZIPCD=${Number(zip)} AND PHY_ADDR1 LIKE ${sqlString(`${query.address.line1.toUpperCase()}%`)}`;
+      return `CO_NO IN (${ALL_COUNTIES.join(",")}) AND PHY_ZIPCD=${Number(zip)} AND PHY_ADDR1 LIKE ${likePrefix(query.address.line1)}`;
     }
     return void 0;
   }
   if (query.kind === "area") {
     const zips = (query.geography.zips ?? []).filter(isFloridaZip);
-    const counties = (query.geography.countyFips ?? []).map((f) => FL_DOR_COUNTY[f]).filter((c) => c !== void 0);
+    const asked = query.geography.countyFips;
+    const counties = (asked ?? []).map((f) => FL_DOR_COUNTY[f]).filter((c) => c !== void 0);
+    if (asked && asked.length > 0 && counties.length === 0) return void 0;
     if (zips.length === 0 && counties.length === 0) return void 0;
-    const parts = [];
+    const parts = [`CO_NO IN (${(counties.length > 0 ? counties : ALL_COUNTIES).join(",")})`];
     if (zips.length > 0) parts.push(`PHY_ZIPCD IN (${zips.map(Number).join(",")})`);
-    if (counties.length > 0) parts.push(`CO_NO IN (${counties.join(",")})`);
     return parts.join(" AND ");
   }
   return void 0;
@@ -63284,7 +63294,8 @@ var flDorParcelsConnector = {
     if (!query) return empty;
     const where = flDorWhere(query);
     if (!where) return empty;
-    const max = query.kind === "area" ? Math.min(Math.max(Number(query.filters.maxRecords ?? 500), 1), 5e3) : 50;
+    const asked = Number(query.kind === "area" ? query.filters.maxRecords : void 0);
+    const max = query.kind === "area" ? Number.isFinite(asked) && asked >= 1 ? Math.min(Math.trunc(asked), 5e3) : 500 : 50;
     const properties = [];
     const parties = [];
     const ownerships = [];
@@ -77550,6 +77561,7 @@ async function runEnrich(lead, contacts, opts = {}) {
   }
   return { enrichments, contacts: working, ran, skipped, failedConnectors, raw, budgetExhausted };
 }
+var PROPERTY_ENRICH_CHUNK = 25;
 async function runPropertyEnrich(properties, opts = {}) {
   registerBuiltinConnectors();
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
@@ -77568,22 +77580,26 @@ async function runPropertyEnrich(properties, opts = {}) {
       budgetExhausted = true;
       continue;
     }
-    try {
-      const input2 = current;
-      const out = await callWithDeadline((signal) => connector.enrichProperties({ properties: input2, signal }), timeoutMs);
-      const byKey = new Map(out.properties.map((p) => [p.key, p]));
-      current = current.map((p) => {
-        const add = byKey.get(p.key);
-        if (!add) return p;
-        const attributes = { ...p.attributes };
-        for (const [k, fact] of Object.entries(add.attributes)) if (!(k in attributes)) attributes[k] = fact;
-        return { ...p, attributes, ...p.location === void 0 && add.location ? { location: add.location } : {} };
-      });
-      ran.push(connector.name);
-      recordItemFailures(connector, "enrich", out.failures, failedConnectors);
-    } catch (err) {
-      recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
+    let anyChunkRan = false;
+    for (let i = 0; i < current.length; i += PROPERTY_ENRICH_CHUNK) {
+      const chunk = current.slice(i, i + PROPERTY_ENRICH_CHUNK);
+      try {
+        const out = await callWithDeadline((signal) => connector.enrichProperties({ properties: chunk, signal }), timeoutMs);
+        const byKey = new Map(out.properties.map((p) => [p.key, p]));
+        current = current.map((p) => {
+          const add = byKey.get(p.key);
+          if (!add) return p;
+          const attributes = { ...p.attributes };
+          for (const [k, fact] of Object.entries(add.attributes)) if (!(k in attributes)) attributes[k] = fact;
+          return { ...p, attributes, ...p.location === void 0 && add.location ? { location: add.location } : {} };
+        });
+        anyChunkRan = true;
+        recordItemFailures(connector, "enrich", out.failures, failedConnectors);
+      } catch (err) {
+        recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
+      }
     }
+    if (anyChunkRan) ran.push(connector.name);
   }
   return { properties: current, ran, skipped, failedConnectors, budgetExhausted };
 }
@@ -78089,16 +78105,6 @@ async function runPropertyCampaign(input2) {
     model.contactPoints.push(...r.contactPoints);
   }
   const merged = mergePropertyModel(model);
-  const enriched = await runPropertyEnrich(merged.properties, {
-    ...input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {},
-    ...pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {},
-    ...budget ? { budget } : {}
-  });
-  merged.properties = enriched.properties;
-  enriched.skipped.forEach((s) => skipped.add(s));
-  for (const f of enriched.failedConnectors) {
-    if (!failedConnectors.some((g) => g.name === f.name && g.phase === f.phase && g.status === f.status)) failedConnectors.push(f);
-  }
   const messages = [];
   const blockedContacts = [];
   const rejectedDrafts = [];
@@ -78116,6 +78122,7 @@ async function runPropertyCampaign(input2) {
     const message = (err instanceof Error ? err.message : String(err)).slice(0, 500);
     errors.push({ propertyKey: property.key, stage, message, ...contactKey2 ? { contactKey: contactKey2 } : {} });
   };
+  const selected = [];
   for (const property of merged.properties) {
     const owner = ownerOf(property, merged);
     if (!owner) {
@@ -78148,6 +78155,27 @@ async function runPropertyCampaign(input2) {
       continue;
     }
     scoredCount += 1;
+    contacted.set(owner.key, property.key);
+    selected.push({ property, owner, ctx, nowDate });
+  }
+  const enriched = await runPropertyEnrich(
+    selected.map((x) => x.property),
+    {
+      ...input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {},
+      ...pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {},
+      ...budget ? { budget } : {}
+    }
+  );
+  enriched.skipped.forEach((s) => skipped.add(s));
+  for (const f of enriched.failedConnectors) {
+    if (!failedConnectors.some((g) => g.name === f.name && g.phase === f.phase && g.status === f.status)) failedConnectors.push(f);
+  }
+  const enrichedByKey = new Map(enriched.properties.map((p) => [p.key, p]));
+  merged.properties = merged.properties.map((p) => enrichedByKey.get(p.key) ?? p);
+  for (const sel of selected) {
+    const property = enrichedByKey.get(sel.property.key) ?? sel.property;
+    const { owner, nowDate } = sel;
+    const ctx = { ...sel.ctx, property };
     const signals = propertySignals(property, owner, ctx.ownerships, nowDate);
     let scored;
     try {
@@ -78212,7 +78240,6 @@ async function runPropertyCampaign(input2) {
     }
     if (finalized.message.needsSenderIdentity) draftsMissingSender += 1;
     messages.push(finalized.message);
-    contacted.set(owner.key, property.key);
   }
   if (overCap > 0) warnings.push(`${overCap} eligible propert(ies) not scored: maxProperties=${maxProperties} reached`);
   const status = deriveRunStatus({ messages: messages.length, leads: 0, researchRan, errors: errors.length });
@@ -79219,6 +79246,7 @@ ${PROPERTY_RUN_USAGE}`);
     [
       `property run ${run.id} \u2014 ${run.status} (${run.vertical})`,
       `properties: ${run.properties.length}  owners: ${run.parties.length}  drafts: ${run.messages.length}`,
+      run.properties.length === 0 ? "NOTE: no property source answered these ZIPs/parcels. Built-in public records cover Florida (Escambia 12033, Okaloosa 12091) today." : "",
       run.blockedContacts.length ? `blocked: ${run.blockedContacts.length}` : "",
       run.rejectedDrafts.length ? `rejected drafts: ${run.rejectedDrafts.length}` : "",
       run.credits ? `credits: ${run.credits.spent}/${run.credits.limit}${run.credits.exhausted ? " (budget reached)" : ""}` : "",

@@ -42,7 +42,8 @@ type Zone = z.infer<typeof ZoneSchema>["attributes"];
 function hazard(z: Zone): number {
   const zone = (z.FLD_ZONE ?? "").toUpperCase();
   const sfha = z.SFHA_TF === "T" ? 100 : 0;
-  return sfha + (zone.startsWith("V") ? 3 : zone.startsWith("A") ? 2 : zone ? 1 : 0);
+  // Real zone codes only: "AREA NOT INCLUDED" is not an A zone.
+  return sfha + (/^V[0-9E]*$/.test(zone) ? 3 : /^A[0-9EHOR]*$|^A99$/.test(zone) ? 2 : zone ? 1 : 0);
 }
 
 export function mostHazardous(zones: readonly Zone[]): Zone | undefined {

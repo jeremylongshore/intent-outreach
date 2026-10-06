@@ -75,10 +75,18 @@ describe("fl-dor-parcels: query building", () => {
     expect(flDorWhere({ kind: "parcel", countyFips: "12033", apn: "08-2S-30-5005-000-002" })).toBe(
       "CO_NO=27 AND PARCEL_ID='082S305005000002'",
     );
-    expect(flDorWhere({ kind: "area", geography: { zips: ["32507", "36542"] }, filters: {} })).toBe("PHY_ZIPCD IN (32507)");
-    expect(flDorWhere({ kind: "area", geography: { countyFips: ["12091"], zips: ["32548"] }, filters: {} })).toBe(
-      "PHY_ZIPCD IN (32548) AND CO_NO IN (56)",
+    // The live layer refuses a ZIP filter without a county filter, so every ZIP query carries CO_NO.
+    expect(flDorWhere({ kind: "area", geography: { zips: ["32507", "36542"] }, filters: {} })).toBe(
+      "CO_NO IN (27,56) AND PHY_ZIPCD IN (32507)",
     );
+    expect(flDorWhere({ kind: "area", geography: { countyFips: ["12091"], zips: ["32548"] }, filters: {} })).toBe(
+      "CO_NO IN (56) AND PHY_ZIPCD IN (32548)",
+    );
+    // Asking only for counties not covered here answers nothing (never widens).
+    expect(flDorWhere({ kind: "area", geography: { countyFips: ["12113"], zips: ["32578"] }, filters: {} })).toBeUndefined();
+    expect(
+      flDorWhere({ kind: "parcel", address: { line1: "221 N Palafox%_", city: "Pensacola", state: "FL", zip: "32502" } }),
+    ).toBe("CO_NO IN (27,56) AND PHY_ZIPCD=32502 AND PHY_ADDR1 LIKE '221 N PALAFOX%'");
     expect(flDorWhere({ kind: "parcel", countyFips: "01003", apn: "123" })).toBeUndefined();
     expect(flDorWhere({ kind: "area", geography: { zips: ["36542"] }, filters: {} })).toBeUndefined();
     expect(flDorWhere({ kind: "domain", domain: "acme.com" })).toBeUndefined();
@@ -270,5 +278,148 @@ describe("CLI: property-run validates before spending anything", () => {
     const noKey = cli("--icp", "x", "--zips", "32507");
     expect(noKey.status).toBe(1); // valid flags, but no model key: fails before any data call
     expect(noKey.stderr).toMatch(/environment variable|API key|provider/i);
+  });
+});
+
+describe("review regressions", () => {
+  const map = (patch: Record<string, unknown>) => mapFlDorRow({ ...personRow, attributes: { ...personRow.attributes, ...patch } }, T, "a".repeat(64))!;
+
+  it.each([
+    ["SMITH JOHN EST", "estate"],
+    ["SMITH JOHN ESTATE", "estate"],
+    ["SMITH JOHN DECD", "estate"],
+    ["SMITH JOHN & MARY TRUSTEES", "trust"],
+    ["PENSACOLA HOUSING AUTHORIT", "government"],
+    ["EMERALD COAST UTILITIES AUTH", "government"],
+    ["BEACH HOLDINGS LLC", "llc"],
+  ])("%s is an entity of type %s", (name, type) => {
+    const m = map({ OWN_NAME: name });
+    expect(m.party).toMatchObject({ kind: "entity", entityType: type });
+  });
+
+  it("a person named Co is a person", () => {
+    expect(map({ OWN_NAME: "CO DAVID" }).party?.kind).toBe("person");
+  });
+
+  it("estate owners route to manual review, government owners are blocked (end to end through the gate)", async () => {
+    const { residentialPropertyGate } = await import("../pipeline_core/packs/residential-re.js");
+    const gate = (name: string) => {
+      const m = map({ OWN_NAME: name });
+      return residentialPropertyGate({
+        property: m.property,
+        owner: m.party!,
+        parties: [m.party!],
+        ownerships: [m.ownership!],
+        contactPoints: [],
+        now: new Date(T),
+      });
+    };
+    expect(gate("SMITH JOHN DECD")).toEqual({ status: "blocked", reason: "manual-review:probate" });
+    expect(gate("PENSACOLA HOUSING AUTHORIT")).toEqual({ status: "blocked", reason: "owner:government" });
+    expect(gate("DOE JANE")).toEqual({ status: "clean" });
+  });
+
+  it("a bad or blank sale month never becomes a date; the year is kept", () => {
+    for (const mo of ["13", "00", " ", "X"]) {
+      const m = map({ SALE_MO1: mo, SALE_YR1: 2020 });
+      expect(m.property.attributes.lastSaleDate).toBeUndefined();
+      expect(m.property.attributes.lastSaleYear?.value).toBe(2020);
+      expect(m.ownership?.asOf).toBeUndefined();
+    }
+  });
+
+  it("owners without a mailing address are never merged across parcels", () => {
+    const abroad = { OWN_STATE: "UNITED KINGDOM", OWN_STATE_: "FC", OWN_NAME: "SMITH JOHN" };
+    const a = map({ ...abroad, PARCEL_ID: "111S111111111111" });
+    const b = map({ ...abroad, PARCEL_ID: "222S222222222222" });
+    expect(a.party?.mailingAddress).toBeUndefined();
+    expect(a.party?.key).not.toBe(b.party?.key);
+  });
+
+  it("a non-numeric maxRecords falls back to the default instead of an empty result", async () => {
+    const fetch = vi.fn(async () => json({ ...DOR, features: [personRow], exceededTransferLimit: false }));
+    vi.stubGlobal("fetch", fetch);
+    const out = await flDorParcelsConnector.research!({
+      domain: "",
+      icp: "x",
+      query: { kind: "area", geography: { zips: ["32507"] }, filters: { maxRecords: "abc" } },
+    });
+    expect(out.properties).toHaveLength(1);
+  });
+
+  it("AREA NOT INCLUDED is not an A zone", () => {
+    expect(mostHazardous([{ FLD_ZONE: "AREA NOT INCLUDED", SFHA_TF: "F" }, { FLD_ZONE: "AE", SFHA_TF: "F" }])?.FLD_ZONE).toBe("AE");
+  });
+
+  it.each(["false", "off", "NO", "0"])("INTENT_OUTREACH_PUBLIC_RECORDS=%s turns the connectors off", (v) => {
+    process.env.INTENT_OUTREACH_PUBLIC_RECORDS = v;
+    _resetSecretCache();
+    expect(flDorParcelsConnector.isConfigured()).toBe(false);
+  });
+
+  it("enrichment runs in chunks: a chunk that times out loses only itself", async () => {
+    const { runPropertyEnrich, PROPERTY_ENRICH_CHUNK } = await import("../pipeline_core/pipeline.js");
+    const { registerConnector } = await import("../pipeline_core/connectors/index.js");
+    process.env.INTENT_OUTREACH_PUBLIC_RECORDS = "0"; // isolate from the built-ins
+    _resetSecretCache();
+    let call = 0;
+    registerConnector({
+      name: "slow-flood",
+      displayName: "slow",
+      tier: "free",
+      keyEnvVar: null,
+      phases: ["enrich"],
+      isConfigured: () => true,
+      async enrichProperties({ properties, signal }) {
+        call += 1;
+        if (call === 2) await new Promise((_r, rej) => signal?.addEventListener("abort", () => rej(new Error("aborted"))));
+        return { properties: properties.map((p) => ({ ...p, attributes: { floodZone: { value: "X", source: "s", fetchedAt: T } } })) };
+      },
+    });
+    const props = Array.from({ length: PROPERTY_ENRICH_CHUNK + 5 }, (_, i): Property => ({
+      key: `12033:${i}`,
+      apn: String(i),
+      countyFips: "12033",
+      attributes: {},
+      source: "t",
+    }));
+    const r = await runPropertyEnrich(props, { connectorTimeoutMs: 200 });
+    expect(r.properties.filter((p) => p.attributes.floodZone).length).toBe(PROPERTY_ENRICH_CHUNK);
+    expect(r.ran).toEqual(["slow-flood"]);
+    expect(r.failedConnectors[0]).toMatchObject({ name: "slow-flood", phase: "enrich" });
+  });
+
+  it("a campaign enriches only the parcels that passed the gates", async () => {
+    const flood = vi.fn(async () => json(fixture("fema-nfhl-point-zone-x.json")));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: unknown) => {
+        const u = String(url);
+        if (u.startsWith(FL_DOR_URL)) {
+          const gov = { ...ROW, attributes: { ...ROW.attributes, PHY_ZIPCD: 32507 }, centroid: { x: -87.4, y: 30.3 } };
+          return json({ ...DOR, features: [personRow, gov] });
+        }
+        return flood(url);
+      }),
+    );
+    const provider = {
+      name: "anthropic",
+      model: "stub",
+      async generateObject({ schema }: { schema: unknown }) {
+        const usage = { inputTokens: 1, outputTokens: 1, costUsd: 0 };
+        return schema === PropertyScoreOutputSchema
+          ? { object: { score: 10, band: "cold", reasons: [] }, usage }
+          : { object: { decline: true, declineReason: "n/a", subject: null, body: "", cta: "" }, usage };
+      },
+    } as unknown as LLMProvider;
+    await runPropertyCampaign({
+      id: "enrich-selected",
+      icp: "x",
+      queries: [{ kind: "area", geography: { zips: ["32507"] }, filters: {} }],
+      provider,
+      suppressions: EMPTY_SUPPRESSION_LIST,
+      now: () => T,
+    });
+    expect(flood).toHaveBeenCalledTimes(1); // the government parcel is blocked before any flood call
   });
 });

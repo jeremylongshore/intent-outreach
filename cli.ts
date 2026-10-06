@@ -469,6 +469,9 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
     [
       `property run ${run.id} — ${run.status} (${run.vertical})`,
       `properties: ${run.properties.length}  owners: ${run.parties.length}  drafts: ${run.messages.length}`,
+      run.properties.length === 0
+        ? "NOTE: no property source answered these ZIPs/parcels. Built-in public records cover Florida (Escambia 12033, Okaloosa 12091) today."
+        : "",
       run.blockedContacts.length ? `blocked: ${run.blockedContacts.length}` : "",
       run.rejectedDrafts.length ? `rejected drafts: ${run.rejectedDrafts.length}` : "",
       run.credits ? `credits: ${run.credits.spent}/${run.credits.limit}${run.credits.exhausted ? " (budget reached)" : ""}` : "",

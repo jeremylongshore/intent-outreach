@@ -24,10 +24,10 @@ const PUBLIC_RECORDS_ENV = "INTENT_OUTREACH_PUBLIC_RECORDS";
 /**
  * Keyless public-records connectors (county and state parcel rolls, FEMA flood
  * zones) are ON by default and turned off with INTENT_OUTREACH_PUBLIC_RECORDS=0.
- * They only ever answer property queries.
+ * They only ever answer property queries. Off values: 0, false, off, no.
  */
 export function publicRecordsEnabled(): boolean {
-  return !(hasSecret(PUBLIC_RECORDS_ENV) && getSecret(PUBLIC_RECORDS_ENV).trim() === "0");
+  return !(hasSecret(PUBLIC_RECORDS_ENV) && /^(0|false|off|no)$/i.test(getSecret(PUBLIC_RECORDS_ENV).trim()));
 }
 
 /** True only when the user explicitly opted in to retaining full vendor payloads. */

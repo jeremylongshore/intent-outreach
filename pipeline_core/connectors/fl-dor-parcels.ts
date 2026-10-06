@@ -105,22 +105,35 @@ const zip5 = (v: unknown): string | undefined => {
 /** A run of asterisks is a Ch. 119 F.S. confidential mask. */
 const masked = (...vals: unknown[]) => vals.some((v) => typeof v === "string" && /\*{3,}/.test(v));
 
-const ENTITY_RE = /\b(LLC|L\.?L\.?C|INC|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|PARTNERSHIP|TRUST|TR|TRUSTEE|BANK|ASSOCIATION|ASSN|HOLDINGS|PROPERTIES|INVESTMENTS|ESTATE OF|CHURCH|MINISTRIES)\b/i;
-const GOV_RE = /\b(COUNTY|CITY OF|STATE OF|BOARD OF|SCHOOL|UNITED STATES|USA|TOWN OF|AUTHORITY|DISTRICT|DEPT|DEPARTMENT)\b/i;
+// OWN_NAME is cut at 30 characters, so the suffix words also match as truncated STEMS
+// ("HOUSING AUTHORIT", "UTILITIES AUTH", "DEPARTM", "CORPORA").
+const ESTATE_RE = /\b(EST|ESTATE|ESTATE OF|DECD|DECEASED|HEIRS?)\b/i;
+const TRUST_RE = /\b(TRUSTS?|TRUSTEES?|TRS|TR)\b/i;
+const GOV_RE =
+  /\b(COUNTY|CITY OF|STATE OF|BOARD OF|SCHOOL|UNITED STATES|USA|TOWN OF|AUTH\w*|DISTRICT|DEPT|DEPART\w*|UTILIT\w*|GOVERNM\w*|HOUSING AUTH\w*)\b/i;
+const ENTITY_RE =
+  /\b(LLC|L\.?L\.?C|INC|CORP\w*|COMPANY|LTD|LP|LLP|PARTNERSHIP|BANK|ASSOCIA\w*|ASSN|HOLDINGS?|PROPERTIES|INVESTMENTS?|CHURCH|MINISTRIES)\b/i;
 
 function entityType(name: string): Party["entityType"] {
+  if (ESTATE_RE.test(name)) return "estate"; // probate first: never let a dead owner read as a person
   if (GOV_RE.test(name)) return "government";
-  if (/\bESTATE OF\b/i.test(name)) return "estate";
-  if (/\b(TRUST|TR|TRUSTEE)\b/i.test(name)) return "trust";
+  if (TRUST_RE.test(name)) return "trust";
   if (/\bL\.?L\.?C\b/i.test(name)) return "llc";
-  if (/\b(INC|CORP|CORPORATION)\b/i.test(name)) return "corporation";
+  if (/\b(INC|CORP\w*)\b/i.test(name)) return "corporation";
   if (/\b(LP|LLP|PARTNERSHIP|LTD)\b/i.test(name)) return "partnership";
   return "other";
 }
 
-/** A stable party key from name + mailing address, so one owner of several parcels is one party. */
-function partyKey(name: string, mailing: Address | undefined): string {
-  const basis = `${name.toUpperCase()}|${mailing ? `${mailing.line1}|${mailing.zip}` : ""}`;
+const isEntityName = (name: string) => ESTATE_RE.test(name) || GOV_RE.test(name) || TRUST_RE.test(name) || ENTITY_RE.test(name);
+
+/**
+ * A stable party key from name + full mailing address, so one owner of several
+ * parcels is one party. With no usable mailing address the parcel is part of the
+ * key: two same-named owners abroad are never merged.
+ */
+function partyKey(name: string, mailing: Address | undefined, parcelKey: string): string {
+  const where = mailing ? `${mailing.line1}|${mailing.line2 ?? ""}|${mailing.city}|${mailing.zip}` : `no-mailing|${parcelKey}`;
+  const basis = `${name.toUpperCase()}|${where.toUpperCase()}`;
   return `fl-dor:${createHash("sha256").update(basis).digest("hex").slice(0, 16)}`;
 }
 
@@ -154,11 +167,12 @@ export function mapFlDorRow(
   const saleYear = num(a.SALE_YR1);
   const saleMonth = clean(a.SALE_MO1);
   if (salePrice !== undefined && salePrice > 0) attributes.lastSalePriceCents = fact(Math.round(salePrice * 100));
-  const saleDate =
-    saleYear !== undefined && saleYear > 1800
-      ? `${saleYear}-${(saleMonth && /^\d{1,2}$/.test(saleMonth) ? saleMonth : "01").padStart(2, "0")}-01`
-      : undefined;
+  // A sale date needs a real year AND a month 1-12; a blank or bad month never becomes a fabricated date.
+  const month = saleMonth && /^\d{1,2}$/.test(saleMonth) ? Number(saleMonth) : undefined;
+  const year = saleYear !== undefined && saleYear > 1800 && saleYear < 2200 ? Math.trunc(saleYear) : undefined;
+  const saleDate = year !== undefined && month !== undefined && month >= 1 && month <= 12 ? `${year}-${String(month).padStart(2, "0")}-01` : undefined;
   if (saleDate) attributes.lastSaleDate = fact(saleDate);
+  else if (year !== undefined) attributes.lastSaleYear = fact(year);
 
   const situsZip = zip5(a.PHY_ZIPCD);
   const situs = clean(a.PHY_ADDR1);
@@ -187,9 +201,9 @@ export function mapFlDorRow(
     mLine && mCity && mState && /^[A-Z]{2}$/.test(mState) && mZip && !foreign
       ? { line1: mLine, ...(clean(a.OWN_ADDR2) ? { line2: clean(a.OWN_ADDR2)! } : {}), city: mCity, state: mState, zip: mZip }
       : undefined;
-  const isEntity = ENTITY_RE.test(name) || GOV_RE.test(name);
+  const isEntity = isEntityName(name);
   const party: Party = {
-    key: partyKey(name, mailing),
+    key: partyKey(name, mailing, propertyKey(fips, apn)),
     kind: isEntity ? "entity" : "person",
     name,
     ...(isEntity ? { entityType: entityType(name) } : {}),
@@ -209,6 +223,9 @@ export function mapFlDorRow(
 }
 
 const sqlString = (v: string) => `'${v.replace(/'/g, "''")}'`;
+/** LIKE patterns: drop the wildcards a caller's text could carry. */
+const likePrefix = (v: string) => sqlString(`${v.replace(/[%_]/g, "").toUpperCase()}%`);
+const ALL_COUNTIES = Object.values(FL_DOR_COUNTY);
 
 /** The WHERE clause for a query, or undefined when the query is not for Florida. */
 export function flDorWhere(query: ResearchQuery): string | undefined {
@@ -217,17 +234,20 @@ export function flDorWhere(query: ResearchQuery): string | undefined {
     if (co && query.apn) return `CO_NO=${co} AND PARCEL_ID=${sqlString(query.apn.replace(/[-\s.]/g, "").toUpperCase())}`;
     if (query.address && query.address.state === "FL") {
       const zip = query.address.zip.slice(0, 5);
-      return `PHY_ZIPCD=${Number(zip)} AND PHY_ADDR1 LIKE ${sqlString(`${query.address.line1.toUpperCase()}%`)}`;
+      // The live layer refuses a ZIP filter without a county filter (HTTP 400; 000-docs/035 §1.5).
+      return `CO_NO IN (${ALL_COUNTIES.join(",")}) AND PHY_ZIPCD=${Number(zip)} AND PHY_ADDR1 LIKE ${likePrefix(query.address.line1)}`;
     }
     return undefined;
   }
   if (query.kind === "area") {
     const zips = (query.geography.zips ?? []).filter(isFloridaZip);
-    const counties = (query.geography.countyFips ?? []).map((f) => FL_DOR_COUNTY[f]).filter((c): c is number => c !== undefined);
+    const asked = query.geography.countyFips;
+    const counties = (asked ?? []).map((f) => FL_DOR_COUNTY[f]).filter((c): c is number => c !== undefined);
+    // Counties asked for but none covered here: answer nothing rather than widen the query.
+    if (asked && asked.length > 0 && counties.length === 0) return undefined;
     if (zips.length === 0 && counties.length === 0) return undefined;
-    const parts: string[] = [];
+    const parts = [`CO_NO IN (${(counties.length > 0 ? counties : ALL_COUNTIES).join(",")})`];
     if (zips.length > 0) parts.push(`PHY_ZIPCD IN (${zips.map(Number).join(",")})`);
-    if (counties.length > 0) parts.push(`CO_NO IN (${counties.join(",")})`);
     return parts.join(" AND ");
   }
   return undefined;
@@ -254,7 +274,8 @@ export const flDorParcelsConnector: Connector = {
     if (!query) return empty;
     const where = flDorWhere(query);
     if (!where) return empty;
-    const max = query.kind === "area" ? Math.min(Math.max(Number(query.filters.maxRecords ?? 500), 1), 5000) : 50;
+    const asked = Number(query.kind === "area" ? query.filters.maxRecords : undefined);
+    const max = query.kind === "area" ? (Number.isFinite(asked) && asked >= 1 ? Math.min(Math.trunc(asked), 5000) : 500) : 50;
 
     const properties: Property[] = [];
     const parties: Party[] = [];
