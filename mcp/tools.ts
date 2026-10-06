@@ -292,6 +292,7 @@ export async function handleSaveRun(rawArgs: SaveRunArgs, deps: SaveRunDeps = {}
     now,
     userText: [styleOverride],
     voice,
+    draftRules: pack.draftRules,
   });
 
   const errors = [...args.errors, ...gated.errors];

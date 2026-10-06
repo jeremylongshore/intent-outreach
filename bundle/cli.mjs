@@ -74973,6 +74973,13 @@ function guardDraft(draft, inputs) {
   if (/^\s*(?:re|fwd?)\s*:/i.test(draft.body)) issues.push('body: fake reply prefix ("Re:")');
   if (inputs.facts) issues.push(...checkQuantities([draft.subject ?? "", draft.body, draft.cta], inputs.facts));
   issues.push(...checkVoice(draft, inputs.voice));
+  for (const rule of inputs.rules ?? []) {
+    try {
+      issues.push(...rule(draft));
+    } catch (err) {
+      issues.push(`draft-rule-error: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
 var DASH_RULES = [
@@ -75566,7 +75573,8 @@ async function draftMessage(provider, ctx) {
     // Angles DO count as facts for quantity qualifiers: on the campaign path they
     // already passed groundAngles, which applies the same quantity rule.
     facts: [...factsOf(parts), ...ctx.angles],
-    ...ctx.voice ? { voice: ctx.voice } : {}
+    ...ctx.voice ? { voice: ctx.voice } : {},
+    ...ctx.draftRules ? { rules: ctx.draftRules } : {}
   });
   if (!verdict.ok) throw new DraftRejectedError(verdict.issues, res.usage);
   return { object: object3, usage: res.usage, promptRef: ref };
@@ -76770,6 +76778,7 @@ async function runCampaign(input2) {
             angles: scored.object.angles,
             channel,
             draftPrompt: pack.prompts.draft,
+            ...pack.draftRules ? { draftRules: pack.draftRules } : {},
             // Never shown to the model; widens the guard allowlist to verified emails/phones.
             enrichments: enrichmentsFor(lead, contact, enrich.enrichments),
             ...input2.styleOverride ? { styleOverride: input2.styleOverride } : {},

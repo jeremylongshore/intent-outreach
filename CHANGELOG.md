@@ -8,6 +8,15 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Fair-housing and real estate risk gates** (#83 phase 3b). Pack v2 `draftRules` run inside the draft
+  guard on every drafting path (pipeline seam and MCP `save_run`); a failing rule sends the draft to
+  `rejectedDrafts`, and a rule that throws rejects it. `fairHousingDraftRule` ports comehomealabama's
+  HARD/WARN lint and adds age and familial-status terms, so a draft never references the owner's
+  retirement, children or marital status. `compliance/risk.ts` adds the manual-review verdict (probate,
+  divorce, pre-foreclosure → `manual-review:<category>`), the active-listing check (an exclusive
+  agreement still in effect, or an unknown status, blocks) and `stripFcraSensitive` (credit and
+  personal-financial attributes never reach a prompt).
+
 - **Send-time compliance** (#83 phase 3a). `checkSendable` / `assertSendable` evaluate one message to one
   contact point on one channel at the moment of sending and return every blocking reason: suppression,
   DNC (phone channels need `clean`), consent from a ledger (SMS needs written consent; a revocation voids
