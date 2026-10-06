@@ -317,9 +317,11 @@ https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query
 
 ### 3.2 Florida Division of Corporations (Sunbiz) bulk data — usable, free
 
-- **Access (verified live):** SFTP `sftp.floridados.gov`, user `Public`, password `PubAccess1845!`. The credentials
-  are published on `dos.fl.gov/sunbiz/other-services/data-downloads/`. Example:
-  `curl -u 'Public:PubAccess1845!' sftp://sftp.floridados.gov/Public/doc/cor/`
+- **Access (verified live):** SFTP `sftp.floridados.gov`, user `Public`. The state publishes the shared public
+  password on `dos.fl.gov/sunbiz/other-services/data-downloads/`. It is deliberately not copied here: the state can
+  rotate it, and the repo's secret scan rightly flags inline credentials. A connector should read it from
+  configuration like any other value. Example:
+  `curl -u "Public:${SUNBIZ_SFTP_PASSWORD}" sftp://sftp.floridados.gov/Public/doc/cor/`
 - **Files:**
   - Daily corporate filings `Public/doc/cor/YYYYMMDDc.txt`, e.g. `20261005c.txt` (4.9 MB). Events:
     `Public/doc/cor/Events/`.
