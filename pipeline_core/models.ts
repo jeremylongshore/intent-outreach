@@ -563,6 +563,16 @@ export const CampaignRunSchema = z.object({
   origin: z.enum(["pipeline", "agent"]).optional(),
   /** The typed research queries this run executed (v6, optional). */
   queries: z.array(ResearchQuerySchema).optional(),
+  /**
+   * Which provider + model ran each LLM seam when they differ (v6, optional):
+   * a cheap model scores, a stronger one drafts. Absent ⇒ `provider`/`model` ran both.
+   */
+  seamModels: z
+    .object({
+      score: z.object({ provider: z.string().min(1), model: z.string().min(1) }),
+      draft: z.object({ provider: z.string().min(1), model: z.string().min(1) }),
+    })
+    .optional(),
   /** Vendor-credit accounting when the run had a budget (v6, optional). */
   credits: z
     .object({

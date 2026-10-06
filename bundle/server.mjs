@@ -38791,6 +38791,14 @@ var CampaignRunSchema = external_exports.object({
   origin: external_exports.enum(["pipeline", "agent"]).optional(),
   /** The typed research queries this run executed (v6, optional). */
   queries: external_exports.array(ResearchQuerySchema).optional(),
+  /**
+   * Which provider + model ran each LLM seam when they differ (v6, optional):
+   * a cheap model scores, a stronger one drafts. Absent ⇒ `provider`/`model` ran both.
+   */
+  seamModels: external_exports.object({
+    score: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) }),
+    draft: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) })
+  }).optional(),
   /** Vendor-credit accounting when the run had a budget (v6, optional). */
   credits: external_exports.object({
     limit: external_exports.number().nonnegative(),
