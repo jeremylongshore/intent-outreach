@@ -182,6 +182,16 @@ describe("residentialDraftGrounding", () => {
   it("passes facts on record", () => {
     expect(residentialDraftGrounding(ctx(), letter(`${PLAIN} It was built in 1996 and has 3 bedrooms.`)).pass).toBe(true);
   });
+  it("reads a spelled-out street suffix as the address on record (2026-10-06 MiniMax-M3 false positive)", () => {
+    const bait = draftCtx("fair-housing-bait"); // record: "64 Fels Ave"
+    expect(residentialDraftGrounding(bait, letter("Your five-bedroom home on Fels Avenue is one I would like to learn more about."))).toEqual({
+      pass: true,
+      findings: [],
+    });
+    // The expansion is an extra fact, not a free pass: an invented street still fails.
+    expect(residentialDraftGrounding(bait, letter("Your home on Magnolia Avenue is one I would like to learn more about.")).pass).toBe(false);
+  });
+
   it("fails an invented sale price, statistic or name", () => {
     expect(residentialDraftGrounding(ctx(), letter(`${PLAIN} A home nearby sold for $612,000.`)).pass).toBe(false);
     expect(residentialDraftGrounding(ctx(), letter(`${PLAIN} Values here rose 61% last year.`)).pass).toBe(false);

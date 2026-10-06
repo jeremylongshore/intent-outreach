@@ -264,6 +264,18 @@ const LETTER_BENIGN_VOCAB =
   "would could happy glad free estimate no-obligation obligation call text reply mail letter today week " +
   "i'd i'm i've if when whether please let know";
 
+/** USPS street-suffix and direction abbreviations: "Fels Ave" on record grounds "Fels Avenue" in a letter. */
+const STREET_ABBREVIATIONS: Readonly<Record<string, string>> = {
+  ave: "avenue", st: "street", dr: "drive", blvd: "boulevard", rd: "road", ln: "lane", ct: "court",
+  cir: "circle", pl: "place", hwy: "highway", pkwy: "parkway", ter: "terrace", trl: "trail",
+  n: "north", s: "south", e: "east", w: "west", ne: "northeast", nw: "northwest", se: "southeast", sw: "southwest",
+};
+
+/** The record's addresses with abbreviations spelled out (an extra fact, never a replacement). */
+function expandedAddresses(ctx: PropertyDraftContext): string[] {
+  return allowedIdentifiers(ctx).map((a) => a.replace(/\b[A-Za-z]+\b/g, (w) => STREET_ABBREVIATIONS[w.toLowerCase()] ?? w));
+}
+
 const splitSentences = (text: string) =>
   text
     .split(/(?<=[.!?])\s+|\n+/)
@@ -279,7 +291,7 @@ const splitSentences = (text: string) =>
 export function residentialDraftGrounding(ctx: PropertyDraftContext, out: DraftText): ScoreResult {
   const text = [out.subject ?? "", out.body, out.cta].join("\n");
   const { dropped } = groundAngles(splitSentences(text), {
-    facts: [...propertyFacts(ctx), ...ctx.reasons, LETTER_BENIGN_VOCAB],
+    facts: [...propertyFacts(ctx), ...expandedAddresses(ctx), ...ctx.reasons, LETTER_BENIGN_VOCAB],
     identifiers: allowedIdentifiers(ctx),
   });
   const findings = dropped
