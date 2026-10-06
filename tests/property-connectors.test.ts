@@ -220,7 +220,7 @@ describe("end to end: an Escambia campaign on public records", () => {
       vi.fn(async (url: unknown) => {
         const u = String(url);
         if (u.startsWith(FL_DOR_URL)) return json({ ...DOR, features: [personRow, { ...ROW, attributes: { ...ROW.attributes, PHY_ZIPCD: 32507 } }] });
-        if (u.includes("hazards.fema.gov")) return json(SFHA);
+        if (new URL(u).host === "hazards.fema.gov") return json(SFHA);
         throw new Error(`unexpected ${u}`);
       }),
     );
