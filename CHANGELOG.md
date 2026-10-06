@@ -8,6 +8,17 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Property campaigns and the `residential-re` pack** (#83 phase 6a). `runPropertyCampaign({ queries })`
+  researches parcels by typed query (with the pack's routing, the credit budget and the cache), gates each
+  owner of record (the engine's suppression check on the mailing address and contact points, then the
+  pack's `propertyGate`), scores with signals computed in code (absentee and out-of-state owner, entity
+  owner, years since the recorded transfer, flood zone) over FCRA-stripped attributes, runs the pack's
+  deal-math `underwriting` in code, drafts through the guard and the pack's draft rules, appends the
+  channel footer in code, and records one validated v6 run. `residential-re` gates on the Gulf Coast
+  AL/FL service area, sends probate/divorce/pre-foreclosure signals to manual review, blocks known active
+  listings and running exclusive agreements, rejects fair-housing language, and requires the license
+  disclosure on every channel. New prompts `residential-score.v1.md` and `residential-draft.v1.md`.
+
 - **Provider routing, credit budgets, a response cache and rate limits** (#83 phase 4a). Connectors declare
   `capabilities`, `creditsPerCall`, `cacheTtlMs` and `rateLimit`. A pack's `dataSources` fixes the
   routing per capability: `first-hit` (a waterfall: stop at the first non-empty answer, so later paid
