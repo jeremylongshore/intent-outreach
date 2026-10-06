@@ -59,6 +59,8 @@ export interface RunPropertyCampaignInput {
   /** Ceiling on properties scored per run (cost control). Default 25. */
   maxProperties?: number;
   provider?: LLMProvider;
+  /** A separate (usually cheaper) model for the SCORE seam; `provider` drafts. */
+  scoreProvider?: LLMProvider;
   now?: () => string;
   sender?: SenderIdentity;
   suppressions?: SuppressionList;
@@ -178,7 +180,8 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   let overCap = 0;
   const promptRefs: { score?: string[]; draft?: string } = {};
   let draftsMissingSender = 0;
-  const record = (u: Usage) => meter.record(provider.model, u.inputTokens, u.outputTokens);
+  const scoreProvider = input.scoreProvider ?? provider;
+  const record = (u: Usage, model = provider.model) => meter.record(model, u.inputTokens, u.outputTokens);
   const fail = (err: unknown, property: Property, stage: RunError["stage"], contactKey?: string) => {
     if (err instanceof DraftRejectedError) record(err.usage);
     const message = (err instanceof Error ? err.message : String(err)).slice(0, 500);
@@ -249,8 +252,8 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     const signals = propertySignals(property, owner, ctx.ownerships, nowDate);
     let scored: Awaited<ReturnType<typeof scoreProperty>>;
     try {
-      scored = await scoreProperty(provider, { icp: input.icp, property, owner, signals, scorePrompts: pack.prompts.score });
-      record(scored.usage);
+      scored = await scoreProperty(scoreProvider, { icp: input.icp, property, owner, signals, scorePrompts: pack.prompts.score });
+      record(scored.usage, scoreProvider.model);
       promptRefs.score = scored.promptRefs;
       for (const d of scored.droppedReasons) droppedAngles.push({ propertyKey: property.key, angle: d.angle, reason: d.reason });
     } catch (err) {
@@ -327,6 +330,14 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     queries: input.queries,
     provider: provider.name,
     model: provider.model,
+    ...(scoreProvider !== provider
+      ? {
+          seamModels: {
+            score: { provider: scoreProvider.name, model: scoreProvider.model },
+            draft: { provider: provider.name, model: provider.model },
+          },
+        }
+      : {}),
     status,
     messages,
     costUsd: meter.summary().spentUsd,

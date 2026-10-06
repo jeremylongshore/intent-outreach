@@ -8,6 +8,11 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **A separate model per seam** (#83 phase 8). `runCampaign` and `runPropertyCampaign` take an optional
+  `scoreProvider` (a cheap model that scores; `provider` drafts), and the CLI `run` and `property-run` take
+  `--score-provider` / `--score-model`. Both models resolve through the eval gate like any provider; costs are
+  metered per model; the run records `seamModels` (score and draft provider + model) when they differ.
+
 - **MCP tools `list_runs`, `suppress` and `underwrite`** (#83 phase 8). `list_runs` summarizes the newest
   runs in the local store (status, pack, drafts, blocks, credits, cost; corrupt lines are counted). `suppress`
   adds or lists opt-outs of any kind from inside Claude Code; removing an opt-out is deliberately CLI-only

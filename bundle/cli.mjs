@@ -63056,6 +63056,14 @@ var CampaignRunSchema = external_exports.object({
   origin: external_exports.enum(["pipeline", "agent"]).optional(),
   /** The typed research queries this run executed (v6, optional). */
   queries: external_exports.array(ResearchQuerySchema).optional(),
+  /**
+   * Which provider + model ran each LLM seam when they differ (v6, optional):
+   * a cheap model scores, a stronger one drafts. Absent ⇒ `provider`/`model` ran both.
+   */
+  seamModels: external_exports.object({
+    score: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) }),
+    draft: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) })
+  }).optional(),
   /** Vendor-credit accounting when the run had a budget (v6, optional). */
   credits: external_exports.object({
     limit: external_exports.number().nonnegative(),
@@ -77745,10 +77753,12 @@ async function runCampaign(input2) {
   const droppedAngles = [];
   const promptRefs = {};
   let draftsMissingSender = 0;
-  const recordUsage = (u) => meter.record(provider.model, u.inputTokens, u.outputTokens, cacheOf(u));
+  const scoreProvider = input2.scoreProvider ?? provider;
+  const recordUsage = (u, model = provider.model) => meter.record(model, u.inputTokens, u.outputTokens, cacheOf(u));
   const recordError = (err, where) => {
     const usage = usageFromError(err);
-    if (usage) meter.record(provider.model, usage.inputTokens, usage.outputTokens, usage.cache);
+    const model = where.stage === "score" ? scoreProvider.model : provider.model;
+    if (usage) meter.record(model, usage.inputTokens, usage.outputTokens, usage.cache);
     const finishReason = finishReasonFromError(err);
     errors.push({ ...where, message: sanitizeErrorMessage(err), ...finishReason ? { finishReason } : {} });
   };
@@ -77773,7 +77783,7 @@ async function runCampaign(input2) {
       allEnrichments.push(...enrich.enrichments);
       let scored;
       try {
-        scored = await scoreLead(provider, {
+        scored = await scoreLead(scoreProvider, {
           icp,
           lead,
           contacts,
@@ -77784,7 +77794,7 @@ async function runCampaign(input2) {
         recordError(err, { domain: lead.domain, stage: "score" });
         continue;
       }
-      recordUsage(scored.usage);
+      recordUsage(scored.usage, scoreProvider.model);
       promptRefs.score ??= scored.promptRefs;
       for (const d of scored.droppedAngles ?? []) droppedAngles.push({ domain: lead.domain, ...d });
       if (scored.object.fitScore < minScore) continue;
@@ -77873,6 +77883,12 @@ async function runCampaign(input2) {
     domains,
     provider: provider.name,
     model: provider.model,
+    ...scoreProvider !== provider ? {
+      seamModels: {
+        score: { provider: scoreProvider.name, model: scoreProvider.model },
+        draft: { provider: provider.name, model: provider.model }
+      }
+    } : {},
     status,
     leads: dedupeLeads(allLeads),
     contacts: dedupeContacts(allContacts),
@@ -78116,7 +78132,8 @@ async function runPropertyCampaign(input2) {
   let overCap = 0;
   const promptRefs = {};
   let draftsMissingSender = 0;
-  const record2 = (u) => meter.record(provider.model, u.inputTokens, u.outputTokens);
+  const scoreProvider = input2.scoreProvider ?? provider;
+  const record2 = (u, model2 = provider.model) => meter.record(model2, u.inputTokens, u.outputTokens);
   const fail = (err, property, stage, contactKey2) => {
     if (err instanceof DraftRejectedError) record2(err.usage);
     const message = (err instanceof Error ? err.message : String(err)).slice(0, 500);
@@ -78179,8 +78196,8 @@ async function runPropertyCampaign(input2) {
     const signals = propertySignals(property, owner, ctx.ownerships, nowDate);
     let scored;
     try {
-      scored = await scoreProperty(provider, { icp: input2.icp, property, owner, signals, scorePrompts: pack.prompts.score });
-      record2(scored.usage);
+      scored = await scoreProperty(scoreProvider, { icp: input2.icp, property, owner, signals, scorePrompts: pack.prompts.score });
+      record2(scored.usage, scoreProvider.model);
       promptRefs.score = scored.promptRefs;
       for (const d of scored.droppedReasons) droppedAngles.push({ propertyKey: property.key, angle: d.angle, reason: d.reason });
     } catch (err) {
@@ -78252,6 +78269,12 @@ async function runPropertyCampaign(input2) {
     queries: input2.queries,
     provider: provider.name,
     model: provider.model,
+    ...scoreProvider !== provider ? {
+      seamModels: {
+        score: { provider: scoreProvider.name, model: scoreProvider.model },
+        draft: { provider: provider.name, model: provider.model }
+      }
+    } : {},
     status,
     messages,
     costUsd: meter.summary().spentUsd,
@@ -78987,6 +79010,7 @@ function printHelp() {
       "                          $INTENT_OUTREACH_HOME/profiles, then the bundled profiles",
       "  --provider <name>       anthropic | openai | minimax | xai (default: auto-detect)",
       "  --model <id>            override the model id",
+      "  --score-provider <name> / --score-model <id>   a separate (cheaper) model for scoring; --provider drafts",
       "  --channel <email|linkedin>   default: email (or the profile's)",
       "  --min-score <0-100>     skip drafting below this fit score (default: 0)",
       `  --max-contacts <1-${MAX_CONTACTS_LIMIT}>   contacts to draft per lead (default: 1)`,
@@ -79026,6 +79050,15 @@ function cmdProviders() {
 auto-detected provider: ${detected}
 `);
 }
+async function scoreProviderFrom(values) {
+  const p = values["score-provider"];
+  const m = values["score-model"];
+  if (typeof p !== "string" && typeof m !== "string") return void 0;
+  return getProvider({
+    ...typeof p === "string" ? { provider: p } : {},
+    ...typeof m === "string" ? { model: m } : {}
+  });
+}
 async function cmdRun(args) {
   let values;
   try {
@@ -79037,6 +79070,8 @@ async function cmdRun(args) {
         profile: { type: "string" },
         provider: { type: "string" },
         model: { type: "string" },
+        "score-provider": { type: "string" },
+        "score-model": { type: "string" },
         channel: { type: "string" },
         "min-score": { type: "string" },
         "max-contacts": { type: "string" },
@@ -79073,6 +79108,7 @@ async function cmdRun(args) {
     );
   }
   const buyerTitles = resolveBuyerTitles(flagBuyerTitles, profile);
+  const scoreProvider = await scoreProviderFrom(values);
   const provider = values.provider || values.model ? await getProvider({
     ...values.provider ? { provider: values.provider } : {},
     ...values.model ? { model: values.model } : {}
@@ -79088,6 +79124,7 @@ async function cmdRun(args) {
     ...maxContacts !== void 0 ? { maxContactsPerLead: maxContacts } : {},
     ...buyerTitles ? { buyerTitles } : {},
     ...budgetCredits !== void 0 ? { budgetCredits } : {},
+    ...scoreProvider ? { scoreProvider } : {},
     // Only connectors that declare cacheTtlMs are cached; files are 0600 under the local home.
     cache: new FileResponseCache(join8(intentOutreachHome(), "cache"))
   });
@@ -79179,6 +79216,8 @@ async function cmdPropertyRun(args) {
         profile: { type: "string" },
         provider: { type: "string" },
         model: { type: "string" },
+        "score-provider": { type: "string" },
+        "score-model": { type: "string" },
         pack: { type: "string" },
         "min-score": { type: "string" },
         "max-properties": { type: "string" },
@@ -79223,12 +79262,14 @@ ${PROPERTY_RUN_USAGE}`);
     ...typeof values.provider === "string" ? { provider: values.provider } : {},
     ...typeof values.model === "string" ? { model: values.model } : {}
   }) : void 0;
+  const propScoreProvider = await scoreProviderFrom(values);
   const { run, cost } = await runPropertyCampaign({
     id: makeRunId(),
     icp,
     queries,
     ...typeof values.pack === "string" ? { pack: values.pack } : {},
     ...provider ? { provider } : {},
+    ...propScoreProvider ? { scoreProvider: propScoreProvider } : {},
     ...sender ? { sender } : {},
     ...minScore !== void 0 ? { minScore } : {},
     ...maxProperties !== void 0 ? { maxProperties } : {},

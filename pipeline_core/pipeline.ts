@@ -1137,6 +1137,11 @@ export interface RunCampaignInput {
   budgetCredits?: number;
   /** Response cache for connectors that declare `cacheTtlMs`. */
   cache?: ResponseCache;
+  /**
+   * A separate (usually cheaper) model for the SCORE seam. `provider` drafts.
+   * Both are resolved through the eval gate like any provider.
+   */
+  scoreProvider?: LLMProvider;
 }
 
 export interface RunCampaignResult {
@@ -1202,11 +1207,13 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   let draftsMissingSender = 0;
 
   // Cache-aware: the run total uses the same costFor split as the per-call Usage.
-  const recordUsage = (u: Usage) => meter.record(provider.model, u.inputTokens, u.outputTokens, cacheOf(u));
+  const scoreProvider = input.scoreProvider ?? provider;
+  const recordUsage = (u: Usage, model = provider.model) => meter.record(model, u.inputTokens, u.outputTokens, cacheOf(u));
 
   const recordError = (err: unknown, where: Omit<RunError, "message" | "finishReason">) => {
     const usage = usageFromError(err);
-    if (usage) meter.record(provider.model, usage.inputTokens, usage.outputTokens, usage.cache);
+    const model = where.stage === "score" ? scoreProvider.model : provider.model;
+    if (usage) meter.record(model, usage.inputTokens, usage.outputTokens, usage.cache);
     const finishReason = finishReasonFromError(err);
     errors.push({ ...where, message: sanitizeErrorMessage(err), ...(finishReason ? { finishReason } : {}) });
   };
@@ -1239,7 +1246,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
       // Isolated: a provider error here costs THIS lead, not the run.
       let scored: Awaited<ReturnType<typeof scoreLead>>;
       try {
-        scored = await scoreLead(provider, {
+        scored = await scoreLead(scoreProvider, {
           icp,
           lead,
           contacts,
@@ -1250,7 +1257,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
         recordError(err, { domain: lead.domain, stage: "score" });
         continue;
       }
-      recordUsage(scored.usage);
+      recordUsage(scored.usage, scoreProvider.model);
       promptRefs.score ??= scored.promptRefs;
       for (const d of scored.droppedAngles ?? []) droppedAngles.push({ domain: lead.domain, ...d });
       if (scored.object.fitScore < minScore) continue;
@@ -1355,6 +1362,14 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     domains,
     provider: provider.name,
     model: provider.model,
+    ...(scoreProvider !== provider
+      ? {
+          seamModels: {
+            score: { provider: scoreProvider.name, model: scoreProvider.model },
+            draft: { provider: provider.name, model: provider.model },
+          },
+        }
+      : {}),
     status,
     leads: dedupeLeads(allLeads),
     contacts: dedupeContacts(allContacts),
