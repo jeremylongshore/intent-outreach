@@ -46,6 +46,7 @@ standalone CLI ────┘   handlers mcp/tools.ts) └─ save_run ──�
 | `draft-guard.ts` | Pure `guardDraft()` (rejects urls/emails/phones absent from the inputs, over-long body or subject, CR/LF or fake `Re:` subjects, stock openers) and `groundAngles()`. A failing draft lands in `run.rejectedDrafts`. |
 | `footer.ts` | Pure `applyComplianceFooter()`: the CAN-SPAM footer, appended **in code** from the profile `sender`. |
 | `profiles.ts`, `render/` | Report Profiles (including `sender`) and the escaped renderers (CSV formula, `.eml` header, HTML, Slack). |
+| `routing.ts`, `rate-limit.ts` | The provider layer's runtime controls, all fixed configuration (never the LLM): capability routing (`first-hit` waterfall / `ordered-fallback` / `all`, from a pack's `dataSources`), a per-run `CreditBudget` charged before each paid call (exhausted ⇒ no further paid calls; recorded in `run.credits`), a response cache (`MemoryResponseCache`, `FileResponseCache` 0600) for connectors that declare `cacheTtlMs`, and per-connector token-bucket limits enforced in `httpJson` (`rateLimit`). |
 | `cost.ts`, `prompts.ts` | `CostMeter` (real AI SDK v7 usage, cache-aware). `loadPrompt` returns `{text, sha256}`; `promptRef()` = `"<file>@<sha8>"`. |
 
 Standalone libraries live under `packages/` (npm workspaces; the engine itself stays at the repo root,
@@ -85,7 +86,9 @@ Outside the spine: `mcp/tools.ts` holds every MCP handler (`server.ts` is a thin
 Write `pipeline_core/connectors/<name>.ts` implementing the `Connector` interface (copy `apollo.ts` as the
 reference). Use `httpJson` (from `../http.js`), read keys with `useSecret` (from `./_shared.js`, which also
 registers the key for redaction), loop contacts with `forEachContact`, check vendor responses with
-`parseVendor`, and keep only allowlisted B2B fields with `pickAllowed`. Never read `process.env` directly,
+`parseVendor`, and keep only allowlisted B2B fields with `pickAllowed`. Declare the provider-layer facts on the
+connector: `capabilities`, `queryKinds`, `creditsPerCall` (charged against the run budget), `cacheTtlMs`
+(opt into the response cache) and `rateLimit` (pass it to every `httpJson` call as `{ key: name, ...rateLimit }`). Never read `process.env` directly,
 never import a cloud SDK, and forward the context `signal` to `httpJson`. Register it in
 `connectors/index.ts` (order = call order: free → paid → legacy → enterprise). Add fixtures. Users can also
 `registerConnector()` their own at runtime. Connector landscape: `000-docs/018-DR-LAND`.

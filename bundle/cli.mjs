@@ -61551,6 +61551,74 @@ function getSkippedConnectors(phase) {
 init_external();
 init_external();
 
+// pipeline_core/rate-limit.ts
+var RateLimitExceededError = class extends Error {
+  constructor(key, perDay) {
+    super(`${key}: daily request limit of ${perDay} reached`);
+    this.key = key;
+    this.perDay = perDay;
+    this.name = "RateLimitExceededError";
+  }
+  key;
+  perDay;
+};
+var MINUTE = 6e4;
+var DAY = 24 * 60 * MINUTE;
+var RateLimiter = class {
+  constructor(clock2 = Date.now, sleep4 = defaultSleep) {
+    this.clock = clock2;
+    this.sleep = sleep4;
+  }
+  clock;
+  sleep;
+  states = /* @__PURE__ */ new Map();
+  /** Take one request slot for `key`, waiting for a per-minute token if needed. */
+  async acquire(key, limit, signal) {
+    const perMinute = positive(limit.perMinute);
+    const perDay = positive(limit.perDay);
+    if (perMinute === void 0 && perDay === void 0) return;
+    let s = this.states.get(key);
+    if (!s) {
+      s = { tokens: perMinute !== void 0 ? Math.max(perMinute, 1) : 0, updatedAt: this.clock(), day: [] };
+      this.states.set(key, s);
+    }
+    for (; ; ) {
+      const now2 = this.clock();
+      if (perDay !== void 0) {
+        while (s.day.length > 0 && s.day[0] <= now2 - DAY) s.day.shift();
+        if (s.day.length >= perDay) throw new RateLimitExceededError(key, perDay);
+      }
+      if (perMinute === void 0) break;
+      s.tokens = Math.min(Math.max(perMinute, 1), s.tokens + (now2 - s.updatedAt) * perMinute / MINUTE);
+      s.updatedAt = now2;
+      if (s.tokens >= 1) {
+        s.tokens -= 1;
+        break;
+      }
+      await this.sleep(Math.ceil((1 - s.tokens) * MINUTE / perMinute), signal);
+    }
+    if (perDay !== void 0) s.day.push(this.clock());
+  }
+};
+function positive(n) {
+  return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : void 0;
+}
+function defaultSleep(ms, signal) {
+  return new Promise((resolve5, reject) => {
+    if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
+    const t = setTimeout(resolve5, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(t);
+        reject(signal.reason ?? new Error("aborted"));
+      },
+      { once: true }
+    );
+  });
+}
+var rateLimiter = new RateLimiter();
+
 // pipeline_core/http.ts
 var MAX_BODY_BYTES = 5 * 1024 * 1024;
 var MAX_RETRY_WAIT_MS = 1e4;
@@ -61701,6 +61769,7 @@ async function httpJson(url2, opts = {}) {
   }
   assertAllowedUrl(u);
   for (let attempt = 0; ; attempt++) {
+    if (opts.rateLimit) await rateLimiter.acquire(opts.rateLimit.key, opts.rateLimit, signal);
     try {
       return await attemptOnce(u, opts);
     } catch (err) {
@@ -63020,6 +63089,108 @@ function registerBuiltinConnectors() {
   registered = true;
 }
 
+// pipeline_core/routing.ts
+import { createHash, randomUUID } from "node:crypto";
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { join as join2 } from "node:path";
+function capabilityForQuery(query) {
+  switch (query.kind) {
+    case "domain":
+      return "company.research";
+    case "area":
+      return "property.search";
+    case "parcel":
+      return "parcel";
+  }
+}
+function orderByRouting(eligible, routing) {
+  if (!routing?.connectors) return [...eligible];
+  const byName = new Map(eligible.map((c) => [c.name, c]));
+  return routing.connectors.flatMap((n) => byName.has(n) ? [byName.get(n)] : []);
+}
+var BudgetExceededError = class extends Error {
+  constructor(connector, needed, remaining) {
+    super(`credit budget exhausted: ${connector} needs ${needed}, ${remaining} left`);
+    this.connector = connector;
+    this.needed = needed;
+    this.remaining = remaining;
+    this.name = "BudgetExceededError";
+  }
+  connector;
+  needed;
+  remaining;
+};
+var CreditBudget = class {
+  constructor(limit) {
+    this.limit = limit;
+    if (!Number.isFinite(limit) || limit < 0) throw new Error(`credit budget must be a finite number >= 0 (got ${limit})`);
+  }
+  limit;
+  spentCredits = 0;
+  exhaustedFlag = false;
+  ledger = /* @__PURE__ */ new Map();
+  get spent() {
+    return this.spentCredits;
+  }
+  get exhausted() {
+    return this.exhaustedFlag;
+  }
+  /**
+   * Charge before a call. Throws (and marks the budget exhausted) if it would
+   * cross the limit. Once exhausted, every later paid call is refused too, so a
+   * run never spends its remainder on whichever call happens to be cheapest.
+   */
+  charge(connector, credits) {
+    if (!(credits >= 0)) throw new Error(`credits must be >= 0 (got ${credits})`);
+    if (credits === 0) return;
+    if (this.exhaustedFlag || this.spentCredits + credits > this.limit) {
+      this.exhaustedFlag = true;
+      throw new BudgetExceededError(connector, credits, this.limit - this.spentCredits);
+    }
+    this.spentCredits += credits;
+    this.ledger.set(connector, (this.ledger.get(connector) ?? 0) + credits);
+  }
+  summary() {
+    return {
+      limit: this.limit,
+      spent: this.spentCredits,
+      exhausted: this.exhaustedFlag,
+      byConnector: Object.fromEntries(this.ledger)
+    };
+  }
+};
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const o = value;
+  return `{${Object.keys(o).filter((k) => o[k] !== void 0).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(",")}}`;
+}
+function cacheKey(connector, capability, subject) {
+  return createHash("sha256").update(`${connector}|${capability}|${stableStringify(subject)}`).digest("hex");
+}
+var FileResponseCache = class {
+  constructor(dir) {
+    this.dir = dir;
+  }
+  dir;
+  async get(key, now2) {
+    try {
+      const e = JSON.parse(await readFile(join2(this.dir, `${key}.json`), "utf8"));
+      return typeof e.expiresAt === "number" && e.expiresAt > now2 ? e.value : void 0;
+    } catch {
+      return void 0;
+    }
+  }
+  async set(key, value, ttlMs, now2) {
+    await mkdir(this.dir, { recursive: true, mode: 448 });
+    const path = join2(this.dir, `${key}.json`);
+    const tmp = `${path}.${process.pid}.${randomUUID()}.tmp`;
+    await writeFile(tmp, JSON.stringify({ value, expiresAt: now2 + ttlMs }), { mode: 384 });
+    await chmod(tmp, 384);
+    await rename(tmp, path);
+  }
+};
+
 // pipeline_core/models.ts
 var SCHEMA_VERSION = 6;
 var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
@@ -63316,6 +63487,13 @@ var CampaignRunSchema = external_exports.object({
   origin: external_exports.enum(["pipeline", "agent"]).optional(),
   /** The typed research queries this run executed (v6, optional). */
   queries: external_exports.array(ResearchQuerySchema).optional(),
+  /** Vendor-credit accounting when the run had a budget (v6, optional). */
+  credits: external_exports.object({
+    limit: external_exports.number().nonnegative(),
+    spent: external_exports.number().nonnegative(),
+    exhausted: external_exports.boolean(),
+    byConnector: external_exports.record(external_exports.string(), external_exports.number().nonnegative())
+  }).optional(),
   /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
   properties: external_exports.array(PropertySchema).default([]),
   parties: external_exports.array(PartySchema).default([]),
@@ -74486,10 +74664,10 @@ function priceFor(model) {
 }
 function costFor(model, inputTokens, outputTokens, cache2 = {}) {
   const p = priceFor(model);
-  const cacheRead = Math.max(0, cache2.cacheReadTokens ?? 0);
-  const cacheWrite = Math.max(0, cache2.cacheWriteTokens ?? 0);
-  const uncached = Math.max(0, inputTokens - cacheRead - cacheWrite);
-  const inputUsd = uncached * p.in + cacheRead * p.in * CACHE_READ_MULTIPLIER + cacheWrite * p.in * CACHE_WRITE_MULTIPLIER;
+  const cacheRead2 = Math.max(0, cache2.cacheReadTokens ?? 0);
+  const cacheWrite2 = Math.max(0, cache2.cacheWriteTokens ?? 0);
+  const uncached = Math.max(0, inputTokens - cacheRead2 - cacheWrite2);
+  const inputUsd = uncached * p.in + cacheRead2 * p.in * CACHE_READ_MULTIPLIER + cacheWrite2 * p.in * CACHE_WRITE_MULTIPLIER;
   return (inputUsd + outputTokens * p.out) / 1e6;
 }
 var CostMeter = class {
@@ -74811,9 +74989,9 @@ function listProviderStatus() {
 }
 
 // pipeline_core/prompts.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 import { readFileSync as readFileSync2 } from "node:fs";
-import { basename, dirname, join as join2 } from "node:path";
+import { basename, dirname, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 var cache = /* @__PURE__ */ new Map();
 function assertBareName(name31) {
@@ -74825,9 +75003,9 @@ function candidatePaths(name31) {
   const here = dirname(fileURLToPath(import.meta.url));
   const out = [];
   if (process.env.INTENT_OUTREACH_PROMPTS_DIR) {
-    out.push(join2(process.env.INTENT_OUTREACH_PROMPTS_DIR, name31));
+    out.push(join3(process.env.INTENT_OUTREACH_PROMPTS_DIR, name31));
   }
-  out.push(join2(here, "..", "prompts", name31));
+  out.push(join3(here, "..", "prompts", name31));
   return out;
 }
 function loadPrompt(name31) {
@@ -74841,7 +75019,7 @@ function loadPrompt(name31) {
     } catch {
       continue;
     }
-    const loaded = { text: text2, sha256: createHash("sha256").update(text2, "utf8").digest("hex") };
+    const loaded = { text: text2, sha256: createHash2("sha256").update(text2, "utf8").digest("hex") };
     cache.set(name31, loaded);
     return loaded;
   }
@@ -75929,10 +76107,10 @@ function composeGates(...gates) {
 }
 
 // pipeline_core/suppressions.ts
-import { constants, mkdir, open as open2, readFile, rename, stat, unlink } from "node:fs/promises";
-import { dirname as dirname2, join as join3 } from "node:path";
+import { constants, mkdir as mkdir2, open as open2, readFile as readFile2, rename as rename2, stat, unlink } from "node:fs/promises";
+import { dirname as dirname2, join as join4 } from "node:path";
 function defaultSuppressionsPath() {
-  return join3(intentOutreachHome(), "suppressions.jsonl");
+  return join4(intentOutreachHome(), "suppressions.jsonl");
 }
 function parseEntry(raw, line, path) {
   const fail = (why) => {
@@ -75962,7 +76140,7 @@ function parseEntry(raw, line, path) {
 async function readSuppressions(path = defaultSuppressionsPath()) {
   let text2;
   try {
-    text2 = await readFile(path, "utf8");
+    text2 = await readFile2(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return [];
     throw err;
@@ -76017,7 +76195,7 @@ async function withLock(path, fn, timeoutMs = 1e4, staleMs = 3e4) {
   }
 }
 async function writeAll(path, entries) {
-  await mkdir(dirname2(path), { recursive: true, mode: 448 });
+  await mkdir2(dirname2(path), { recursive: true, mode: 448 });
   const tmp = `${path}.${process.pid}.tmp`;
   const fh = await open2(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC, 384);
   try {
@@ -76027,7 +76205,7 @@ async function writeAll(path, entries) {
   } finally {
     await fh.close();
   }
-  await rename(tmp, path);
+  await rename2(tmp, path);
 }
 async function addSuppression(input2, opts = {}) {
   const path = opts.path ?? defaultSuppressionsPath();
@@ -76058,7 +76236,7 @@ async function removeSuppression(input2, opts = {}) {
   });
 }
 async function withLockAt(path, fn) {
-  await mkdir(dirname2(path), { recursive: true, mode: 448 });
+  await mkdir2(dirname2(path), { recursive: true, mode: 448 });
   return withLock(path, fn);
 }
 
@@ -76291,10 +76469,52 @@ function applyProfileToCampaignInput(profile, _base) {
 
 // pipeline_core/pipeline.ts
 import { existsSync } from "node:fs";
-import { dirname as dirname3, isAbsolute as isAbsolute2, join as join4, resolve as resolve4 } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute2, join as join5, resolve as resolve4 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
+function chargeOrStop(connector, phase, budget, failed) {
+  const cost = connector.creditsPerCall ?? 0;
+  if (!budget || cost <= 0) return true;
+  try {
+    budget.charge(connector.name, cost);
+    return true;
+  } catch (err) {
+    if (!(err instanceof BudgetExceededError)) throw err;
+    if (!failed.some((f) => f.name === connector.name && f.phase === phase && f.status === "budget-exhausted")) {
+      failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    }
+    return false;
+  }
+}
+var isArr = (v) => Array.isArray(v);
+async function cacheRead(cache2, key, now2) {
+  try {
+    const v = await cache2.get(key, now2);
+    if (!v || typeof v !== "object" || !isArr(v.leads) || !isArr(v.contacts)) return void 0;
+    for (const k of ["properties", "parties", "ownerships", "entityLinks", "contactPoints"]) {
+      if (v[k] !== void 0 && !isArr(v[k])) return void 0;
+    }
+    return v;
+  } catch {
+    return void 0;
+  }
+}
+async function cacheWrite(cache2, key, value, ttlMs, now2) {
+  try {
+    await cache2.set(key, value, ttlMs, now2);
+  } catch {
+  }
+}
+function pushFailures(into, from) {
+  for (const f of from) {
+    const dup = f.status === "budget-exhausted" && into.some((g) => g.name === f.name && g.phase === f.phase && g.status === "budget-exhausted");
+    if (!dup) into.push(f);
+  }
+}
+function researchHit(out) {
+  return out.leads.length + out.contacts.length > 0 || [out.properties, out.parties, out.ownerships, out.entityLinks, out.contactPoints].some((a) => (a?.length ?? 0) > 0);
+}
 function buyerTitlesArg(opts) {
   const titles = cleanBuyerTitles(opts.buyerTitles);
   return titles.length > 0 ? { buyerTitles: titles } : {};
@@ -76468,7 +76688,14 @@ async function runResearchQuery(query, icp, opts = {}) {
   const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind));
+  const connectors = orderByRouting(
+    getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind)),
+    opts.routing
+  );
+  const policy2 = opts.routing?.policy ?? "all";
+  const clock2 = opts.clock ?? Date.now;
+  const cached2 = [];
+  let budgetExhausted = false;
   const leads = [];
   const contacts = [];
   const properties = [];
@@ -76483,10 +76710,25 @@ async function runResearchQuery(query, icp, opts = {}) {
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
-      const out = await callWithDeadline(
-        (signal) => connector.research({ domain: target, query: typed, icp, ...targeting, signal }),
-        timeoutMs
-      );
+      const ttl = connector.cacheTtlMs ?? 0;
+      const key = opts.cache && ttl > 0 ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting }) : void 0;
+      let out = key ? await cacheRead(opts.cache, key, clock2()) : void 0;
+      if (out) {
+        cached2.push(connector.name);
+      } else {
+        if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
+          budgetExhausted = true;
+          continue;
+        }
+        out = await callWithDeadline(
+          (signal) => connector.research({ domain: target, query: typed, icp, ...targeting, signal }),
+          timeoutMs
+        );
+        if (key && (out.failures?.length ?? 0) === 0) {
+          const { raw: _raw, ...cacheable } = out;
+          await cacheWrite(opts.cache, key, cacheable, ttl, clock2());
+        }
+      }
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       properties.push(...out.properties ?? []);
@@ -76497,11 +76739,14 @@ async function runResearchQuery(query, icp, opts = {}) {
       raw[connector.name] = out.raw;
       ran.push(connector.name);
       recordItemFailures(connector, "research", out.failures, failedConnectors);
+      if (policy2 === "ordered-fallback" || policy2 === "first-hit" && researchHit(out)) break;
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
   }
   return {
+    cached: cached2,
+    budgetExhausted: budgetExhausted || (opts.budget?.exhausted ?? false),
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
     ...mergePropertyModel({ properties, parties, ownerships, entityLinks, contactPoints }),
@@ -76548,7 +76793,9 @@ async function runEnrich(lead, contacts, opts = {}) {
   registerBuiltinConnectors();
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("enrich");
+  const connectors = orderByRouting(getConfiguredConnectors("enrich"), opts.routing);
+  const policy2 = opts.routing?.policy ?? "all";
+  let budgetExhausted = false;
   const enrichments = [];
   const raw = {};
   const ran = [];
@@ -76557,6 +76804,10 @@ async function runEnrich(lead, contacts, opts = {}) {
   let working = contacts.map((c) => ({ ...c }));
   for (const connector of connectors) {
     if (!connector.enrich) continue;
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
+      budgetExhausted = true;
+      continue;
+    }
     try {
       const current = working;
       const out = await callWithDeadline(
@@ -76568,11 +76819,12 @@ async function runEnrich(lead, contacts, opts = {}) {
       ran.push(connector.name);
       recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
+      if (policy2 === "ordered-fallback" || policy2 === "first-hit" && out.enrichments.length > 0) break;
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }
   }
-  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw, budgetExhausted };
 }
 var MAX_ERROR_MESSAGE = 500;
 function sanitizeErrorMessage(err) {
@@ -76657,9 +76909,9 @@ function resolveProfilePath(ref, cwd = process.cwd()) {
   }
   if (!PROFILE_NAME_RE.test(trimmed)) throw new Error(`profile: invalid name ${JSON.stringify(trimmed)}`);
   const here = dirname3(fileURLToPath2(import.meta.url));
-  const roots = [join4(cwd, "profiles"), join4(intentOutreachHome(), "profiles"), join4(here, "..", "profiles")];
+  const roots = [join5(cwd, "profiles"), join5(intentOutreachHome(), "profiles"), join5(here, "..", "profiles")];
   for (const root of roots) {
-    const candidate = join4(root, `${trimmed}.json`);
+    const candidate = join5(root, `${trimmed}.json`);
     if (existsSync(candidate)) return candidate;
   }
   throw new Error(`profile not found: ${trimmed} (looked in: ${roots.join(", ")})`);
@@ -76681,14 +76933,23 @@ async function runCampaign(input2) {
   const minScore = input2.minScore ?? 0;
   const maxContacts = input2.maxContactsPerLead ?? 1;
   const buyerTitles = cleanBuyerTitles(input2.buyerTitles);
-  const connectorOpts = {
-    ...input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {},
-    ...buyerTitles.length > 0 ? { buyerTitles } : {}
-  };
+  const budget = input2.budgetCredits !== void 0 ? new CreditBudget(input2.budgetCredits) : void 0;
   const suppressions = input2.suppressions ?? await loadSuppressionList();
   const provider = input2.provider ?? await getProvider();
   registerBuiltinPacks();
   const pack = resolvePack(input2.pack);
+  const researchRouting = pack.dataSources?.research?.["company.research"];
+  const connectorOpts = {
+    ...input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {},
+    ...buyerTitles.length > 0 ? { buyerTitles } : {},
+    ...budget ? { budget } : {},
+    ...input2.cache ? { cache: input2.cache } : {}
+  };
+  const researchOpts = { ...connectorOpts, ...researchRouting ? { routing: researchRouting } : {} };
+  const enrichOpts = {
+    ...connectorOpts,
+    ...pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {}
+  };
   const gate2 = campaignGate(pack, suppressions);
   const meter = new CostMeter();
   const createdAt = now2();
@@ -76714,9 +76975,9 @@ async function runCampaign(input2) {
     errors.push({ ...where, message: sanitizeErrorMessage(err), ...finishReason ? { finishReason } : {} });
   };
   for (const domain2 of domains) {
-    const research = await runResearch(domain2, icp, connectorOpts);
+    const research = await runResearch(domain2, icp, researchOpts);
     research.skipped.forEach((s) => skipped.add(s));
-    failedConnectors.push(...research.failedConnectors);
+    pushFailures(failedConnectors, research.failedConnectors);
     allProperty.properties.push(...research.properties);
     allProperty.parties.push(...research.parties);
     allProperty.ownerships.push(...research.ownerships);
@@ -76725,9 +76986,9 @@ async function runCampaign(input2) {
     if (research.ran.some((name31) => !isPushOnly(name31))) anyResearchRan = true;
     for (const lead of research.leads) {
       const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
-      const enrich = await runEnrich(lead, leadContacts, connectorOpts);
+      const enrich = await runEnrich(lead, leadContacts, enrichOpts);
       enrich.skipped.forEach((s) => skipped.add(s));
-      failedConnectors.push(...enrich.failedConnectors);
+      pushFailures(failedConnectors, enrich.failedConnectors);
       const contacts = enrich.contacts;
       allLeads.push(lead);
       allContacts.push(...contacts);
@@ -76839,6 +77100,7 @@ async function runCampaign(input2) {
     contacts: dedupeContacts(allContacts),
     enrichments: allEnrichments,
     ...mergePropertyModel(allProperty),
+    ...budget ? { credits: budget.summary() } : {},
     messages,
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],
@@ -76857,8 +77119,8 @@ async function runCampaign(input2) {
 }
 
 // pipeline_core/store.ts
-import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, stat as stat2, unlink as unlink2 } from "node:fs/promises";
-import { dirname as dirname4, join as join5 } from "node:path";
+import { constants as constants2, mkdir as mkdir3, open as open3, readFile as readFile3, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { dirname as dirname4, join as join6 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
     super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
@@ -76876,7 +77138,7 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
-  return join5(intentOutreachHome(), "runs.jsonl");
+  return join6(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
 var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -76894,7 +77156,7 @@ var JsonlRunStore = class {
   async saveRun(run, opts = {}) {
     const checked = assertCampaignRun(run);
     const line = JSON.stringify(checked) + "\n";
-    await mkdir2(dirname4(this.path), { recursive: true, mode: 448 });
+    await mkdir3(dirname4(this.path), { recursive: true, mode: 448 });
     await this.withLock(async () => {
       if (!opts.overwrite) {
         const { runs } = await this.scan();
@@ -76985,7 +77247,7 @@ var JsonlRunStore = class {
   async scan() {
     let text2;
     try {
-      text2 = await readFile2(this.path, "utf8");
+      text2 = await readFile3(this.path, "utf8");
     } catch (err) {
       if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
@@ -77286,6 +77548,7 @@ function checkSendable(input2) {
 }
 
 // cli.ts
+import { join as join7 } from "node:path";
 var UsageError = class extends Error {
   constructor(message) {
     super(message);
@@ -77375,6 +77638,7 @@ function printHelp() {
       '  --buyer-titles <list>   comma-separated buyer titles (e.g. "CTO,COO,VP Operations"):',
       "                          contacts are ranked buyers-first before drafting and Apollo",
       "                          reveals are aimed at them; overrides profile filtering.contactTitles",
+      "  --budget-credits <n>    vendor-credit ceiling for the run: paid calls stop before crossing it",
       "  --out <path>            JSONL store path (default: " + defaultStorePath() + ")",
       "  --json                  print the full run as JSON",
       "",
@@ -77422,6 +77686,7 @@ async function cmdRun(args) {
         "min-score": { type: "string" },
         "max-contacts": { type: "string" },
         "buyer-titles": { type: "string" },
+        "budget-credits": { type: "string" },
         out: { type: "string" },
         json: { type: "boolean" }
       },
@@ -77434,6 +77699,7 @@ async function cmdRun(args) {
   const domains = parseDomainsFlag(values.domains);
   const minScore = values["min-score"] !== void 0 ? parseNumberFlag("--min-score", values["min-score"], { min: 0, max: 100 }) : void 0;
   const maxContacts = values["max-contacts"] !== void 0 ? parseNumberFlag("--max-contacts", values["max-contacts"], { min: 1, max: MAX_CONTACTS_LIMIT, integer: true }) : void 0;
+  const budgetCredits = values["budget-credits"] !== void 0 ? parseNumberFlag("--budget-credits", values["budget-credits"], { min: 0, max: 1e6 }) : void 0;
   const channel = values.channel !== void 0 ? parseChannelFlag(values.channel) : void 0;
   const flagBuyerTitles = values["buyer-titles"] !== void 0 ? parseBuyerTitlesFlag(values["buyer-titles"]) : void 0;
   const id = makeRunId();
@@ -77465,7 +77731,10 @@ async function cmdRun(args) {
     ...provider ? { provider } : {},
     ...minScore !== void 0 ? { minScore } : {},
     ...maxContacts !== void 0 ? { maxContactsPerLead: maxContacts } : {},
-    ...buyerTitles ? { buyerTitles } : {}
+    ...buyerTitles ? { buyerTitles } : {},
+    ...budgetCredits !== void 0 ? { budgetCredits } : {},
+    // Only connectors that declare cacheTtlMs are cached; files are 0600 under the local home.
+    cache: new FileResponseCache(join7(intentOutreachHome(), "cache"))
   });
   const store = new JsonlRunStore(values.out);
   await store.saveRun(run);

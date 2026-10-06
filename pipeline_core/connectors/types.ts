@@ -23,6 +23,8 @@ import type {
   ResearchQuery,
   ResearchQueryKind,
 } from "../models.js";
+import type { RateLimit } from "../rate-limit.js";
+import type { Capability } from "../routing.js";
 
 /** Pricing/access reality of a connector, surfaced to the user. */
 export type ConnectorTier = "free" | "paid" | "enterprise" | "legacy";
@@ -123,6 +125,17 @@ export interface Connector {
    * area or parcel query. The pipeline routes by this list, never the LLM.
    */
   readonly queryKinds?: readonly ResearchQueryKind[];
+  /** What this connector can answer (routing vocabulary for Pack v2 `dataSources`). */
+  readonly capabilities?: readonly Capability[];
+  /**
+   * Vendor credits one research or enrich CALL costs, charged against the run's
+   * credit budget BEFORE the call. Absent or 0 = free.
+   */
+  readonly creditsPerCall?: number;
+  /** Cache this connector's research output for this long (ms). Absent = never cached. */
+  readonly cacheTtlMs?: number;
+  /** The vendor's published request limits; pass to httpJson as `rateLimit`. */
+  readonly rateLimit?: RateLimit;
 
   /** True when the connector has what it needs to run (its key, or none needed). */
   isConfigured(): boolean;
