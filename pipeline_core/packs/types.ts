@@ -68,6 +68,8 @@ export interface ComplianceGate {
 export interface PackPrompts {
   score: string[];
   draft: string;
+  /** The first-reply prompt for inbound inquiries (runInbound). Default: inbound-reply.v1.md. */
+  inbound?: string;
 }
 
 export interface Pack {

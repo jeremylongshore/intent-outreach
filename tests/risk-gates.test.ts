@@ -58,6 +58,7 @@ describe("fair-housing lint", () => {
   it("checks the subject and CTA too", () => {
     expect(fairHousingDraftRule(draft("About your lot.", "Perfect for families"))).toEqual([
       'fair-housing: "perfect for families" in subject',
+      'fair-housing: "for families" in subject',
     ]);
     expect(fairHousingDraftRule(draft("About your lot.", null, "Ask about adults only units"))).toEqual([
       'fair-housing: "adults only" in cta',
@@ -254,5 +255,17 @@ describe("review regressions", () => {
       ].sort(),
     );
     expect(kept.owner).toEqual({ name: "Pat" });
+  });
+});
+
+describe("fair housing: familial-status steering phrases are HARD in outreach", () => {
+  it.each(["a great area for young families", "great for young couples", "a quiet family neighborhood", "popular with newlyweds", "lots of young professionals"])(
+    "%s",
+    (t) => {
+      expect(lintFairHousing(t).hard.length).toBeGreaterThan(0);
+    },
+  );
+  it("does not flag plain property talk", () => {
+    expect(lintFairHousing("A three-bedroom home on a quarter acre near the bay.").hard).toEqual([]);
   });
 });

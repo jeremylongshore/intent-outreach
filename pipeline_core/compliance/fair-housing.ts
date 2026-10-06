@@ -54,6 +54,9 @@ export const OUTREACH_AGE_FAMILIAL_HARD: readonly string[] = [
   "grandchildren", "growing family", "starting a family", "new baby", "pregnant",
   "widow", "widowed", "widower", "divorce", "divorced", "divorcing", "perfect for your family",
   "ideal for your family", "your family", "your spouse", "your husband", "your wife",
+  // Describing who an area or home is "for" by family or age (familial status steering).
+  "young families", "young family", "for families", "family neighborhood", "young couples", "young couple",
+  "newlyweds", "young professionals",
 ];
 
 /** comehomealabama WARN list, verbatim. */
