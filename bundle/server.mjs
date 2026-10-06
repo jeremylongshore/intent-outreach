@@ -41065,17 +41065,6 @@ async function addSuppression(input2, opts = {}) {
     return { entry, added: true };
   });
 }
-async function removeSuppression(input2, opts = {}) {
-  const path = opts.path ?? defaultSuppressionsPath();
-  const { kind, value } = parseSuppressionValue(input2, opts.kind);
-  return withLockAt(path, async () => {
-    const entries = await readSuppressions(path);
-    const kept = entries.filter((e) => !(e.kind === kind && e.value === value));
-    if (kept.length === entries.length) return false;
-    await writeAll(path, kept);
-    return true;
-  });
-}
 async function withLockAt(path, fn) {
   await mkdir2(dirname2(path), { recursive: true, mode: 448 });
   return withLock2(path, fn);
@@ -42515,8 +42504,10 @@ var ListRunsInput = {
 };
 async function handleListRuns(args, deps = {}) {
   try {
-    const runs = await (deps.store ?? new JsonlRunStore()).listRuns();
-    const summaries = [...runs].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, args.limit ?? 20).map((r) => ({
+    const store = deps.store ?? new JsonlRunStore();
+    const runs = await store.listRuns();
+    const corrupt = (await store.corruptLines()).length;
+    const summaries = [...runs].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id)).slice(0, args.limit ?? 20).map((r) => ({
       id: r.id,
       vertical: r.vertical,
       status: r.status,
@@ -42529,13 +42520,14 @@ async function handleListRuns(args, deps = {}) {
       ...r.credits ? { credits: r.credits } : {},
       ...r.costUsd !== void 0 ? { costUsd: r.costUsd } : {}
     }));
-    return asText({ total: runs.length, runs: summaries });
+    return asText({ total: runs.length, ...corrupt > 0 ? { corruptLinesSkipped: corrupt } : {}, runs: summaries });
   } catch (err) {
     return toolError(`could not list runs: ${errMsg(err)}`);
   }
 }
 var SuppressInput = {
-  action: external_exports.enum(["add", "remove", "list"]),
+  /** No "remove": undoing an opt-out re-allows contact, so it is a person's call at the CLI only. */
+  action: external_exports.enum(["add", "list"]),
   value: external_exports.string().min(1).max(300).optional().describe("Email, domain, phone or mailing address (required for add/remove)."),
   kind: external_exports.enum(SUPPRESSION_KINDS).optional(),
   reason: external_exports.string().max(300).optional()
@@ -42553,11 +42545,9 @@ async function handleSuppress(args, deps = {}) {
       });
       return asText({ added: r.added, entry: r.entry });
     }
-    const removed = await removeSuppression(args.value, { ...path ? { path } : {}, ...args.kind ? { kind: args.kind } : {} });
-    return asText({
-      removed,
-      warning: removed ? "this contact may be contacted again; make sure the person asked for that" : void 0
-    });
+    return toolError(
+      "removing an opt-out is not available to the agent; a person runs `intent-outreach suppress remove <value>`"
+    );
   } catch (err) {
     return toolError(errMsg(err));
   }
@@ -42665,7 +42655,7 @@ server.registerTool(
   "suppress",
   {
     title: "Manage the opt-out list",
-    description: "Add, remove or list entries on the local suppression list (email, domain, phone or mailing address). Add whenever someone asks not to be contacted; every run and the send-time check honor it. Remove only when the person explicitly asked to be contacted again.",
+    description: "Add to or list the local suppression list (email, domain, phone or mailing address). Add whenever someone asks not to be contacted; every run and the send-time check honor it. Removing an opt-out is not available here: a person does it with `intent-outreach suppress remove`.",
     inputSchema: SuppressInput
   },
   async (args) => handleSuppress(args)

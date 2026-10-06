@@ -156,9 +156,9 @@ server.registerTool(
   {
     title: "Manage the opt-out list",
     description:
-      "Add, remove or list entries on the local suppression list (email, domain, phone or mailing address). " +
-      "Add whenever someone asks not to be contacted; every run and the send-time check honor it. Remove only " +
-      "when the person explicitly asked to be contacted again.",
+      "Add to or list the local suppression list (email, domain, phone or mailing address). Add whenever someone " +
+      "asks not to be contacted; every run and the send-time check honor it. Removing an opt-out is not " +
+      "available here: a person does it with `intent-outreach suppress remove`.",
     inputSchema: SuppressInput,
   },
   async (args) => handleSuppress(args),

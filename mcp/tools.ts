@@ -13,7 +13,7 @@
 
 import { decide, listPending } from "../pipeline_core/approvals.js";
 import * as dealMath from "@intent-outreach/deal-math";
-import { addSuppression, readSuppressions, removeSuppression } from "../pipeline_core/suppressions.js";
+import { addSuppression, readSuppressions } from "../pipeline_core/suppressions.js";
 import { SUPPRESSION_KINDS, type SuppressionKind } from "../pipeline_core/compliance/suppression.js";
 import { z } from "zod";
 import {
@@ -434,9 +434,12 @@ export const ListRunsInput = {
 /** Summaries of the most recent runs in the LOCAL store (newest first). */
 export async function handleListRuns(args: { limit?: number | undefined }, deps: { store?: RunStore } = {}): Promise<ToolResult> {
   try {
-    const runs = await (deps.store ?? new JsonlRunStore()).listRuns();
+    const store = deps.store ?? new JsonlRunStore();
+    const runs = await store.listRuns();
+    const corrupt = (await store.corruptLines()).length;
+    // Compare instants, not strings: "…:00Z" vs "…:00.500Z" sort wrong as text.
     const summaries = [...runs]
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id))
       .slice(0, args.limit ?? 20)
       .map((r) => ({
         id: r.id,
@@ -451,7 +454,7 @@ export async function handleListRuns(args: { limit?: number | undefined }, deps:
         ...(r.credits ? { credits: r.credits } : {}),
         ...(r.costUsd !== undefined ? { costUsd: r.costUsd } : {}),
       }));
-    return asText({ total: runs.length, runs: summaries });
+    return asText({ total: runs.length, ...(corrupt > 0 ? { corruptLinesSkipped: corrupt } : {}), runs: summaries });
   } catch (err) {
     return toolError(`could not list runs: ${errMsg(err)}`);
   }
@@ -460,7 +463,8 @@ export async function handleListRuns(args: { limit?: number | undefined }, deps:
 // ─────────────────────────────── suppress ────────────────────────────────────
 
 export const SuppressInput = {
-  action: z.enum(["add", "remove", "list"]),
+  /** No "remove": undoing an opt-out re-allows contact, so it is a person's call at the CLI only. */
+  action: z.enum(["add", "list"]),
   value: z
     .string()
     .min(1)
@@ -472,11 +476,13 @@ export const SuppressInput = {
 };
 
 /**
- * Manage the local opt-out list. Adding is always safe (it only ever stops
- * outreach); removing re-allows contact, so it is reported loudly.
+ * Add to or list the local opt-out list. Adding is always safe: it only ever
+ * stops outreach. REMOVING an opt-out re-allows contact, so this tool cannot do
+ * it: an agent steered by text in third-party data must never undo someone's
+ * opt-out. Removal is `intent-outreach suppress remove`, run by a person.
  */
 export async function handleSuppress(
-  args: { action: "add" | "remove" | "list"; value?: string | undefined; kind?: SuppressionKind | undefined; reason?: string | undefined },
+  args: { action: "add" | "list" | "remove"; value?: string | undefined; kind?: SuppressionKind | undefined; reason?: string | undefined },
   deps: { path?: string } = {},
 ): Promise<ToolResult> {
   try {
@@ -491,11 +497,9 @@ export async function handleSuppress(
       });
       return asText({ added: r.added, entry: r.entry });
     }
-    const removed = await removeSuppression(args.value, { ...(path ? { path } : {}), ...(args.kind ? { kind: args.kind } : {}) });
-    return asText({
-      removed,
-      warning: removed ? "this contact may be contacted again; make sure the person asked for that" : undefined,
-    });
+    return toolError(
+      "removing an opt-out is not available to the agent; a person runs `intent-outreach suppress remove <value>`",
+    );
   } catch (err) {
     return toolError(errMsg(err));
   }

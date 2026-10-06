@@ -26,6 +26,13 @@ const run = (id: string, createdAt: string) =>
   });
 
 describe("list_runs", () => {
+  it("orders by instant, not by string (fractional seconds)", async () => {
+    const store = new MemoryRunStore();
+    await store.saveRun(run("early", "2026-10-06T00:00:00Z"));
+    await store.saveRun(run("late", "2026-10-06T00:00:00.500Z"));
+    expect(text(await handleListRuns({ limit: 1 }, { store })).runs[0].id).toBe("late");
+  });
+
   it("newest first, limited, with counts and credits", async () => {
     const store = new MemoryRunStore();
     await store.saveRun(run("old", "2026-10-01T00:00:00.000Z"));
@@ -41,16 +48,16 @@ describe("list_runs", () => {
 describe("suppress", () => {
   const path = () => join(mkdtempSync(join(tmpdir(), "io-mcp-supp-")), "suppressions.jsonl");
 
-  it("add (any kind) → list → remove, with a loud warning on remove", async () => {
+  it("add (any kind) → list; the agent can never remove an opt-out", async () => {
     const p = path();
     expect(text(await handleSuppress({ action: "add", value: "(251) 555-0100", reason: "STOP" }, { path: p }))).toMatchObject({
       added: true,
       entry: { kind: "phone", value: "+12515550100" },
     });
-    expect(text(await handleSuppress({ action: "list" }, { path: p }))).toHaveLength(1);
-    const removed = text(await handleSuppress({ action: "remove", value: "251-555-0100" }, { path: p }));
-    expect(removed.removed).toBe(true);
-    expect(removed.warning).toMatch(/may be contacted again/);
+    const removal = await handleSuppress({ action: "remove", value: "251-555-0100" }, { path: p });
+    expect(removal.isError).toBe(true);
+    expect(removal.content[0]?.text).toMatch(/suppress remove/);
+    expect(text(await handleSuppress({ action: "list" }, { path: p }))).toHaveLength(1); // still suppressed
   });
 
   it("missing or malformed values are tool errors, nothing written", async () => {

@@ -9,8 +9,9 @@ All notable changes to Intent Outreach are documented here. Format follows
 ### Added
 
 - **MCP tools `list_runs`, `suppress` and `underwrite`** (#83 phase 8). `list_runs` summarizes the newest
-  runs in the local store (status, pack, drafts, blocks, credits, cost). `suppress` adds, removes or lists
-  opt-outs of any kind from inside Claude Code (removal is reported with a warning). `underwrite` runs one
+  runs in the local store (status, pack, drafts, blocks, credits, cost; corrupt lines are counted). `suppress`
+  adds or lists opt-outs of any kind from inside Claude Code; removing an opt-out is deliberately CLI-only
+  (`intent-outreach suppress remove`), so an agent steered by third-party text can never undo one. `underwrite` runs one
   `@intent-outreach/deal-math` calculation in code and returns `{value, inputs, assumptionsUsed, version}`,
   so an agent quotes computed figures instead of doing arithmetic. The engine now declares the deal-math
   workspace package as a dependency.
