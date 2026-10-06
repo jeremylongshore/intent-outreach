@@ -37622,6 +37622,10 @@ function useSecret(name) {
   return v;
 }
 var KEEP_RAW_ENV = "INTENT_OUTREACH_KEEP_RAW";
+var PUBLIC_RECORDS_ENV = "INTENT_OUTREACH_PUBLIC_RECORDS";
+function publicRecordsEnabled() {
+  return !(hasSecret(PUBLIC_RECORDS_ENV) && getSecret(PUBLIC_RECORDS_ENV).trim() === "0");
+}
 function keepRawOptIn() {
   return hasSecret(KEEP_RAW_ENV) && getSecret(KEEP_RAW_ENV).trim() === "1";
 }
@@ -38315,6 +38319,681 @@ var exaConnector = {
   }
 };
 
+// pipeline_core/connectors/fema-nfhl.ts
+import { createHash } from "node:crypto";
+var FEMA_NFHL_URL = "https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query";
+var SOURCE = "fema-nfhl";
+var TERMS = { id: "fema-nfhl", outreachRestricted: false, attribution: "FEMA National Flood Hazard Layer" };
+var ZoneSchema = external_exports.object({
+  attributes: external_exports.object({
+    FLD_ZONE: external_exports.string().nullable().optional(),
+    ZONE_SUBTY: external_exports.string().nullable().optional(),
+    SFHA_TF: external_exports.string().nullable().optional()
+  }).passthrough()
+});
+var ResponseSchema = external_exports.object({ features: external_exports.array(ZoneSchema).default([]) });
+function hazard(z2) {
+  const zone = (z2.FLD_ZONE ?? "").toUpperCase();
+  const sfha = z2.SFHA_TF === "T" ? 100 : 0;
+  return sfha + (zone.startsWith("V") ? 3 : zone.startsWith("A") ? 2 : zone ? 1 : 0);
+}
+function mostHazardous(zones) {
+  return [...zones].sort((a, b) => hazard(b) - hazard(a))[0];
+}
+var femaNfhlConnector = {
+  name: SOURCE,
+  displayName: "FEMA flood zones (NFHL)",
+  tier: "free",
+  keyEnvVar: null,
+  phases: ["enrich"],
+  capabilities: ["flood"],
+  rateLimit: { perMinute: 60 },
+  note: "Free, keyless (INTENT_OUTREACH_PUBLIC_RECORDS=0 turns it off). Flood zone by parcel point; informational, never an insurance or lending determination.",
+  isConfigured() {
+    return publicRecordsEnabled();
+  },
+  async enrichProperties({ properties, signal }) {
+    const out = [];
+    const failures = [];
+    for (let i = 0; i < properties.length; i++) {
+      const p = properties[i];
+      if (!p.location || p.attributes.floodZone) continue;
+      try {
+        const body = await httpJson(FEMA_NFHL_URL, {
+          signal,
+          retries: 3,
+          rateLimit: { key: SOURCE, perMinute: 60 },
+          query: {
+            geometry: `${p.location.lon},${p.location.lat}`,
+            geometryType: "esriGeometryPoint",
+            inSR: "4326",
+            spatialRel: "esriSpatialRelIntersects",
+            outFields: "FLD_ZONE,ZONE_SUBTY,SFHA_TF",
+            returnGeometry: "false",
+            f: "json"
+          }
+        });
+        const zone = mostHazardous(parseVendor(ResponseSchema, body).features.map((f) => f.attributes));
+        if (!zone?.FLD_ZONE) continue;
+        const fetchedAt = (/* @__PURE__ */ new Date()).toISOString();
+        const responseHash = createHash("sha256").update(JSON.stringify(body)).digest("hex");
+        const fact = (value) => ({ value, source: SOURCE, fetchedAt, responseHash, licenseTerms: TERMS });
+        out.push({
+          ...p,
+          attributes: {
+            floodZone: fact(zone.FLD_ZONE),
+            sfha: fact(zone.SFHA_TF === "T"),
+            ...zone.ZONE_SUBTY ? { floodZoneSubtype: fact(zone.ZONE_SUBTY) } : {}
+          }
+        });
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        failures.push({ item: i, reason: err instanceof HttpError ? "http" : "error", ...err instanceof HttpError ? { status: err.status } : {} });
+      }
+    }
+    return { properties: out, failures };
+  }
+};
+
+// pipeline_core/connectors/fl-dor-parcels.ts
+import { createHash as createHash2 } from "node:crypto";
+
+// pipeline_core/models.ts
+var SCHEMA_VERSION = 6;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
+var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
+var SchemaVersionSchema = external_exports.union([
+  external_exports.literal(V_FIRST),
+  external_exports.literal(V_SECOND),
+  ...V_REST.map((v) => external_exports.literal(v))
+]);
+var SourceSchema = external_exports.string().min(1);
+var LeadSchema = external_exports.object({
+  domain: external_exports.string().min(1),
+  companyName: external_exports.string().min(1),
+  industry: external_exports.string().optional(),
+  /** Free-text headcount band, e.g. "11-50". Connectors disagree on format. */
+  size: external_exports.string().optional(),
+  description: external_exports.string().optional(),
+  source: SourceSchema
+});
+var ContactSchema = external_exports.object({
+  name: external_exports.string().min(1),
+  leadDomain: external_exports.string().min(1),
+  email: external_exports.string().email().optional(),
+  title: external_exports.string().optional(),
+  // A LinkedIn handle OR full URL — providers return both shapes, so don't reject
+  // an otherwise-valid contact (and thus the whole run) over a non-URL handle.
+  linkedin: external_exports.string().optional(),
+  source: SourceSchema,
+  /**
+   * True when the provider withheld the surname (the last token is a lone
+   * initial, e.g. "Kristina L"). The contact is kept, but the drafter addresses
+   * them by first name only. Optional + additive: older lines simply omit it.
+   */
+  nameIncomplete: external_exports.boolean().optional()
+});
+var EnrichmentSchema = external_exports.object({
+  /** What this enrichment is attached to. */
+  subjectType: external_exports.enum(["lead", "contact"]),
+  /** Natural key of the subject: a domain (lead) or an email (contact). */
+  subjectKey: external_exports.string().min(1),
+  provider: SourceSchema,
+  /** Normalized highlights the scorer/draft seam reads. */
+  funding: external_exports.object({
+    lastRound: external_exports.string().optional(),
+    totalRaisedUsd: external_exports.number().nonnegative().optional(),
+    lastRoundDate: external_exports.string().optional(),
+    investors: external_exports.array(external_exports.string()).optional()
+  }).optional(),
+  verifiedEmail: external_exports.string().email().optional(),
+  /**
+   * Optional back-reference to the Contact's `name` when the enrichment found an
+   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
+   * pipeline fold the found email into the working contact list. Optional/additive.
+   */
+  contactName: external_exports.string().min(1).optional(),
+  phone: external_exports.string().optional(),
+  /** Raw provider payload, retained for audit; never trusted as schema. */
+  data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
+  fetchedAt: external_exports.string().datetime()
+});
+var Sha256HexSchema = external_exports.string().regex(/^[0-9a-f]{64}$/, "expected a sha256 hex digest");
+var LicenseTermsSchema = external_exports.object({
+  /** Short identifier of the terms, e.g. "dealmachine-tos-2026" or "public-record". */
+  id: external_exports.string().min(1).optional(),
+  outreachRestricted: external_exports.boolean().optional(),
+  /** Days the vendor allows this fact to be retained. */
+  retentionDays: external_exports.number().int().positive().optional(),
+  /** Required attribution text, if the terms demand one. */
+  attribution: external_exports.string().min(1).optional()
+});
+function factSchema(value) {
+  return external_exports.object({
+    value,
+    source: SourceSchema,
+    fetchedAt: external_exports.string().datetime(),
+    responseHash: Sha256HexSchema.optional(),
+    licenseTerms: LicenseTermsSchema.optional()
+  });
+}
+var FactSchema = factSchema(external_exports.unknown());
+var UsStateSchema = external_exports.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code");
+var CountyFipsSchema = external_exports.string().regex(/^\d{5}$/, "expected a 5-digit county FIPS code");
+var AddressSchema = external_exports.object({
+  line1: external_exports.string().min(1),
+  line2: external_exports.string().min(1).optional(),
+  city: external_exports.string().min(1),
+  state: UsStateSchema,
+  zip: external_exports.string().regex(/^\d{5}(?:-\d{4})?$/, "expected ZIP5 or ZIP+4"),
+  county: external_exports.string().min(1).optional(),
+  countyFips: CountyFipsSchema.optional()
+});
+function propertyKey(countyFips, apn) {
+  return `${countyFips}:${apn.trim().toUpperCase()}`;
+}
+var PropertySchema = external_exports.object({
+  key: external_exports.string().min(1),
+  apn: external_exports.string().min(1),
+  countyFips: CountyFipsSchema,
+  address: AddressSchema.optional(),
+  /** A point on the parcel (centroid or label point), WGS84. Used for flood and other spatial lookups. */
+  location: external_exports.object({ lat: external_exports.number().min(-90).max(90), lon: external_exports.number().min(-180).max(180) }).optional(),
+  attributes: external_exports.record(external_exports.string().min(1), FactSchema).default({}),
+  source: SourceSchema
+}).refine((p) => p.key === propertyKey(p.countyFips, p.apn), {
+  message: "key must equal propertyKey(countyFips, apn)",
+  path: ["key"]
+}).refine((p) => p.apn === p.apn.trim(), { message: "apn must not carry surrounding whitespace", path: ["apn"] });
+var PartySchema = external_exports.object({
+  /** Stable id within the run, e.g. "person:<connector-id>" or "entity:AL:000123456". */
+  key: external_exports.string().min(1),
+  kind: external_exports.enum(["person", "entity"]),
+  name: external_exports.string().min(1),
+  /** For entities only. */
+  entityType: external_exports.enum(["llc", "corporation", "trust", "estate", "partnership", "government", "other"]).optional(),
+  mailingAddress: AddressSchema.optional(),
+  source: SourceSchema,
+  /**
+   * Terms of the record this party (and its mailing address) came from. A
+   * property pack may write to a party only when `outreachRestricted` is
+   * explicitly false; absent or undeclared is treated as restricted.
+   */
+  licenseTerms: LicenseTermsSchema.optional()
+});
+var OwnershipSchema = external_exports.object({
+  propertyKey: external_exports.string().min(1),
+  partyKey: external_exports.string().min(1),
+  /** Fraction held, 0 < share <= 1, when the record states it. */
+  share: external_exports.number().gt(0).lte(1).optional(),
+  role: external_exports.enum(["owner", "co-owner", "trustee", "life-tenant"]).default("owner"),
+  /** Recording or deed date (ISO date), when known. */
+  asOf: external_exports.string().date().optional(),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime()
+});
+var EntityLinkSchema = external_exports.object({
+  entityKey: external_exports.string().min(1),
+  personKey: external_exports.string().min(1),
+  role: external_exports.enum(["member", "manager", "officer", "registered-agent", "organizer", "other"]),
+  confidence: external_exports.number().min(0).max(1),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime()
+});
+var DncStatusSchema = external_exports.enum(["clean", "listed", "unknown"]);
+var ContactPointSchema = external_exports.object({
+  partyKey: external_exports.string().min(1),
+  kind: external_exports.enum(["phone", "email", "mail"]),
+  /** E.164 phone, email address, or a one-line mailing address. */
+  value: external_exports.string().min(1),
+  /** Phones only. "unknown" means the line type was not established. */
+  lineType: external_exports.enum(["mobile", "landline", "voip", "unknown"]).optional(),
+  /** Phones only; defaults to "unknown" (fail closed). */
+  dnc: DncStatusSchema.default("unknown"),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime(),
+  verifiedAt: external_exports.string().datetime().optional(),
+  licenseTerms: LicenseTermsSchema.optional()
+}).refine((c) => c.kind !== "phone" || /^\+[1-9]\d{9,14}$/.test(c.value), {
+  message: "a phone contact point must be E.164",
+  path: ["value"]
+}).refine((c) => c.kind !== "email" || external_exports.string().email().safeParse(c.value).success, {
+  message: "an email contact point must be a valid email",
+  path: ["value"]
+});
+var ResearchQuerySchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("domain"), domain: external_exports.string().min(1) }),
+  external_exports.object({
+    kind: external_exports.literal("area"),
+    geography: external_exports.object({
+      state: UsStateSchema.optional(),
+      countyFips: external_exports.array(CountyFipsSchema).optional(),
+      zips: external_exports.array(external_exports.string().regex(/^\d{5}$/)).optional()
+    }).refine((g) => Boolean(g.state || g.countyFips?.length || g.zips?.length), {
+      message: "an area query needs a state, county FIPS codes or ZIPs"
+    }),
+    /** Pack buy-box filters, already compiled to plain values. */
+    filters: external_exports.record(external_exports.string().min(1), external_exports.unknown()).default({})
+  }),
+  external_exports.object({
+    kind: external_exports.literal("parcel"),
+    countyFips: CountyFipsSchema.optional(),
+    apn: external_exports.string().min(1).optional(),
+    address: AddressSchema.optional()
+  }).refine((q) => Boolean(q.countyFips && q.apn || q.address), {
+    message: "a parcel query needs countyFips + apn, or an address"
+  })
+]);
+var CHANNELS = ["email", "linkedin", "sms", "mail", "call_script"];
+var ChannelSchema = external_exports.enum(CHANNELS);
+var MessageSchema = external_exports.object({
+  /** FK to the Contact this message is for (email if known, else name@domain). */
+  contactKey: external_exports.string().min(1),
+  channel: ChannelSchema,
+  subject: external_exports.string().optional(),
+  body: external_exports.string().min(1),
+  cta: external_exports.string().min(1),
+  /** 0-100 fit score the model assigned at the score() seam. */
+  fitScore: external_exports.number().min(0).max(100).optional(),
+  /** Provenance: which model + prompt version produced this. */
+  model: external_exports.string().min(1),
+  promptVersion: external_exports.string().min(1),
+  createdAt: external_exports.string().datetime(),
+  /**
+   * True when the channel's required sender identity was not configured, so its
+   * footer could NOT be appended: name + company + postal address for email and
+   * mail, name + company for sms and call_script. Such a draft must not be sent
+   * as-is. Additive (v4); defaults false.
+   */
+  needsSenderIdentity: external_exports.boolean().default(false),
+  /** Property campaigns (v6, optional): the parcel this letter is about. */
+  propertyKey: external_exports.string().min(1).optional()
+});
+var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
+var LEGACY_RUN_STATUSES = ["pending", "drafted"];
+var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
+var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
+var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
+var RunErrorSchema = external_exports.object({
+  /** The lead's domain (company campaigns). */
+  domain: external_exports.string().min(1).optional(),
+  /** The parcel's `<countyFips>:<apn>` (property campaigns, v6). */
+  propertyKey: external_exports.string().min(1).optional(),
+  contactKey: external_exports.string().min(1).optional(),
+  stage: RunErrorStageSchema,
+  /** Sanitized, truncated error message (secrets redacted). */
+  message: external_exports.string(),
+  /** AI SDK finish reason when the error carried one (e.g. "length"). */
+  finishReason: external_exports.string().optional()
+}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0, {
+  message: "a run error needs a domain or a propertyKey"
+});
+var FailedConnectorSchema = external_exports.object({
+  name: external_exports.string().min(1),
+  phase: external_exports.enum(["research", "enrich"]),
+  /** HTTP status, "timeout", or "error". */
+  status: external_exports.union([external_exports.number().int(), external_exports.string().min(1)])
+});
+var CampaignRunSchema = external_exports.object({
+  /** Caller-supplied or generated run id (no Date.now/random inside core). */
+  id: external_exports.string().min(1),
+  // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
+  // existing v1 line on read (store.ts re-validates each line). New writes emit
+  // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
+  schemaVersion: SchemaVersionSchema,
+  icp: external_exports.string().min(1),
+  domains: external_exports.array(external_exports.string().min(1)),
+  /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
+  vertical: external_exports.string().min(1).default("b2b-sdr"),
+  /** Model + provider that ran the LLM seams. */
+  provider: external_exports.string().min(1),
+  model: external_exports.string().min(1),
+  status: StoredRunStatusSchema,
+  leads: external_exports.array(LeadSchema).default([]),
+  contacts: external_exports.array(ContactSchema).default([]),
+  enrichments: external_exports.array(EnrichmentSchema).default([]),
+  messages: external_exports.array(MessageSchema).default([]),
+  /** Cumulative spend across LLM seams, if metered. */
+  costUsd: external_exports.number().nonnegative().optional(),
+  /** Names of connectors that were skipped (no key / unsupported) this run. */
+  skippedConnectors: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Contacts the pack's compliance gate blocked before drafting — the audit trail
+   * for "did not contact, and why". Always empty for b2b-sdr (no-op gate); the
+   * append-only RunStore IS the compliance record for verticals that do block.
+   */
+  blockedContacts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      reason: external_exports.string().min(1),
+      /** Property campaigns (v6): the parcel the block was about. */
+      propertyKey: external_exports.string().min(1).optional()
+    })
+  ).default([]),
+  /**
+   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
+   * A provider error on domain 2 no longer loses domain 1's drafts.
+   */
+  errors: external_exports.array(RunErrorSchema).default([]),
+  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
+  rejectedDrafts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      issues: external_exports.array(external_exports.string()),
+      /** Property campaigns (v6): the parcel the draft was about. */
+      propertyKey: external_exports.string().min(1).optional()
+    })
+  ).default([]),
+  /**
+   * Configured connectors that threw (sanitized status only — never the error
+   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
+   * "not configured" only (v3).
+   */
+  failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
+  /**
+   * Run-level compliance warnings that did not block a contact but must be seen
+   * before anything is sent — e.g. email drafts produced without a configured
+   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
+   */
+  complianceWarnings: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Prompt provenance for the run's LLM seams (v5, additive): each entry is
+   * "<prompt-file>@<sha8>". `score` lists the joined score-seam files; `draft` is
+   * the draft-seam file. Empty for agent-saved runs (the agent drafted, not a seam).
+   */
+  promptRefs: external_exports.object({
+    score: external_exports.array(external_exports.string().min(1)).optional(),
+    draft: external_exports.string().min(1).optional()
+  }).default({}),
+  /**
+   * Score-seam angles removed because they cited a fact absent from the inputs
+   * (groundAngles) — kept so an operator can see what the model tried (v5).
+   */
+  droppedAngles: external_exports.array(
+    external_exports.object({
+      domain: external_exports.string().min(1).optional(),
+      /** Property campaigns (v6). */
+      propertyKey: external_exports.string().min(1).optional(),
+      angle: external_exports.string(),
+      reason: external_exports.string()
+    }).refine((d) => d.domain !== void 0 || d.propertyKey !== void 0, {
+      message: "a dropped angle needs a domain or a propertyKey"
+    })
+  ).default([]),
+  /**
+   * Who assembled the record (v5, optional so older lines stay unlabeled rather
+   * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
+   * where the drafts and the `model` field are caller-claimed.
+   */
+  origin: external_exports.enum(["pipeline", "agent"]).optional(),
+  /** The typed research queries this run executed (v6, optional). */
+  queries: external_exports.array(ResearchQuerySchema).optional(),
+  /** Vendor-credit accounting when the run had a budget (v6, optional). */
+  credits: external_exports.object({
+    limit: external_exports.number().nonnegative(),
+    spent: external_exports.number().nonnegative(),
+    exhausted: external_exports.boolean(),
+    byConnector: external_exports.record(external_exports.string(), external_exports.number().nonnegative())
+  }).optional(),
+  /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
+  properties: external_exports.array(PropertySchema).default([]),
+  parties: external_exports.array(PartySchema).default([]),
+  ownerships: external_exports.array(OwnershipSchema).default([]),
+  entityLinks: external_exports.array(EntityLinkSchema).default([]),
+  contactPoints: external_exports.array(ContactPointSchema).default([]),
+  createdAt: external_exports.string().datetime(),
+  finishedAt: external_exports.string().datetime().optional()
+});
+
+// pipeline_core/connectors/fl-dor-parcels.ts
+var FL_DOR_URL = "https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer/0/query";
+var FL_DOR_COUNTY = { "12033": 27, "12091": 56 };
+var FIPS_BY_CO_NO = Object.fromEntries(
+  Object.entries(FL_DOR_COUNTY).map(([fips, co]) => [co, fips])
+);
+var SOURCE2 = "fl-dor-parcels";
+var TERMS2 = {
+  id: "fl-dor-roll",
+  outreachRestricted: false,
+  attribution: "Florida Department of Revenue tax roll (via FDEP/FGIO); data owned by each county property appraiser"
+};
+var isFloridaZip = (z2) => /^3[2-4]\d{3}$/.test(z2);
+var PAGE = 500;
+var OUT_FIELDS = [
+  "PARCEL_ID",
+  "CO_NO",
+  "OWN_NAME",
+  "OWN_ADDR1",
+  "OWN_ADDR2",
+  "OWN_CITY",
+  "OWN_STATE",
+  "OWN_ZIPCD",
+  "OWN_STATE_",
+  "PHY_ADDR1",
+  "PHY_ADDR2",
+  "PHY_CITY",
+  "PHY_ZIPCD",
+  "JV",
+  "JV_HMSTD",
+  "DOR_UC",
+  "ACT_YR_BLT",
+  "TOT_LVG_AR",
+  "SALE_PRC1",
+  "SALE_YR1",
+  "SALE_MO1",
+  "LND_SQFOOT"
+].join(",");
+var Num = external_exports.union([external_exports.number(), external_exports.string()]).nullable().optional();
+var Str = external_exports.string().nullable().optional();
+var FeatureSchema = external_exports.object({
+  attributes: external_exports.object({
+    PARCEL_ID: external_exports.string(),
+    CO_NO: external_exports.number(),
+    OWN_NAME: Str,
+    OWN_ADDR1: Str,
+    OWN_ADDR2: Str,
+    OWN_CITY: Str,
+    OWN_STATE: Str,
+    OWN_ZIPCD: Num,
+    OWN_STATE_: Str,
+    PHY_ADDR1: Str,
+    PHY_ADDR2: Str,
+    PHY_CITY: Str,
+    PHY_ZIPCD: Num,
+    JV: Num,
+    JV_HMSTD: Num,
+    DOR_UC: Str,
+    ACT_YR_BLT: Num,
+    TOT_LVG_AR: Num,
+    SALE_PRC1: Num,
+    SALE_YR1: Num,
+    SALE_MO1: Str,
+    LND_SQFOOT: Num
+  }).passthrough(),
+  centroid: external_exports.object({ x: external_exports.number(), y: external_exports.number() }).optional()
+});
+var ResponseSchema2 = external_exports.object({
+  features: external_exports.array(FeatureSchema).default([]),
+  exceededTransferLimit: external_exports.boolean().optional(),
+  error: external_exports.object({ message: external_exports.string().optional() }).passthrough().optional()
+});
+var clean = (v) => {
+  if (typeof v !== "string") return void 0;
+  const t = v.replace(/\s+/g, " ").trim();
+  return t ? t : void 0;
+};
+var num = (v) => {
+  const n = typeof v === "string" ? Number(v.trim()) : v;
+  return typeof n === "number" && Number.isFinite(n) ? n : void 0;
+};
+var zip5 = (v) => {
+  const n = num(v);
+  if (n === void 0 || n <= 0) return void 0;
+  return String(Math.trunc(n)).padStart(5, "0").slice(0, 5);
+};
+var masked = (...vals) => vals.some((v) => typeof v === "string" && /\*{3,}/.test(v));
+var ENTITY_RE = /\b(LLC|L\.?L\.?C|INC|CORP|CORPORATION|CO|COMPANY|LTD|LP|LLP|PARTNERSHIP|TRUST|TR|TRUSTEE|BANK|ASSOCIATION|ASSN|HOLDINGS|PROPERTIES|INVESTMENTS|ESTATE OF|CHURCH|MINISTRIES)\b/i;
+var GOV_RE = /\b(COUNTY|CITY OF|STATE OF|BOARD OF|SCHOOL|UNITED STATES|USA|TOWN OF|AUTHORITY|DISTRICT|DEPT|DEPARTMENT)\b/i;
+function entityType(name) {
+  if (GOV_RE.test(name)) return "government";
+  if (/\bESTATE OF\b/i.test(name)) return "estate";
+  if (/\b(TRUST|TR|TRUSTEE)\b/i.test(name)) return "trust";
+  if (/\bL\.?L\.?C\b/i.test(name)) return "llc";
+  if (/\b(INC|CORP|CORPORATION)\b/i.test(name)) return "corporation";
+  if (/\b(LP|LLP|PARTNERSHIP|LTD)\b/i.test(name)) return "partnership";
+  return "other";
+}
+function partyKey(name, mailing) {
+  const basis = `${name.toUpperCase()}|${mailing ? `${mailing.line1}|${mailing.zip}` : ""}`;
+  return `fl-dor:${createHash2("sha256").update(basis).digest("hex").slice(0, 16)}`;
+}
+function mapFlDorRow(row, fetchedAt, responseHash) {
+  const a = row.attributes;
+  const fips = FIPS_BY_CO_NO[a.CO_NO];
+  const apn = clean(a.PARCEL_ID);
+  if (!fips || !apn) return void 0;
+  if (masked(a.OWN_NAME, a.OWN_ADDR1, a.PHY_ADDR1)) return void 0;
+  const fact = (value) => ({ value, source: SOURCE2, fetchedAt, responseHash, licenseTerms: TERMS2 });
+  const attributes = {};
+  const jv = num(a.JV);
+  if (jv !== void 0 && jv > 0) attributes.justValueCents = fact(Math.round(jv * 100));
+  const uc = clean(a.DOR_UC);
+  if (uc) attributes.landUseCode = fact(uc);
+  const yb = num(a.ACT_YR_BLT);
+  if (yb !== void 0 && yb > 1700) attributes.yearBuilt = fact(yb);
+  const lv = num(a.TOT_LVG_AR);
+  if (lv !== void 0 && lv > 0) attributes.livingAreaSqft = fact(lv);
+  const ls = num(a.LND_SQFOOT);
+  if (ls !== void 0 && ls > 0) attributes.landSqft = fact(ls);
+  const hs = num(a.JV_HMSTD);
+  if (hs !== void 0) attributes.homesteadExemption = fact(hs > 0);
+  const salePrice = num(a.SALE_PRC1);
+  const saleYear = num(a.SALE_YR1);
+  const saleMonth = clean(a.SALE_MO1);
+  if (salePrice !== void 0 && salePrice > 0) attributes.lastSalePriceCents = fact(Math.round(salePrice * 100));
+  const saleDate = saleYear !== void 0 && saleYear > 1800 ? `${saleYear}-${(saleMonth && /^\d{1,2}$/.test(saleMonth) ? saleMonth : "01").padStart(2, "0")}-01` : void 0;
+  if (saleDate) attributes.lastSaleDate = fact(saleDate);
+  const situsZip = zip5(a.PHY_ZIPCD);
+  const situs = clean(a.PHY_ADDR1);
+  const city = clean(a.PHY_CITY);
+  const address = situs && city && situsZip ? { line1: situs, ...clean(a.PHY_ADDR2) ? { line2: clean(a.PHY_ADDR2) } : {}, city, state: "FL", zip: situsZip, countyFips: fips } : void 0;
+  const property = {
+    key: propertyKey(fips, apn),
+    apn: apn.toUpperCase(),
+    countyFips: fips,
+    ...address ? { address } : {},
+    ...row.centroid ? { location: { lat: row.centroid.y, lon: row.centroid.x } } : {},
+    attributes,
+    source: SOURCE2
+  };
+  const name = clean(a.OWN_NAME);
+  if (!name) return { property };
+  const mState = clean(a.OWN_STATE)?.toUpperCase();
+  const mZip = zip5(a.OWN_ZIPCD);
+  const mLine = clean(a.OWN_ADDR1);
+  const mCity = clean(a.OWN_CITY);
+  const foreign = clean(a.OWN_STATE_);
+  const mailing = mLine && mCity && mState && /^[A-Z]{2}$/.test(mState) && mZip && !foreign ? { line1: mLine, ...clean(a.OWN_ADDR2) ? { line2: clean(a.OWN_ADDR2) } : {}, city: mCity, state: mState, zip: mZip } : void 0;
+  const isEntity = ENTITY_RE.test(name) || GOV_RE.test(name);
+  const party = {
+    key: partyKey(name, mailing),
+    kind: isEntity ? "entity" : "person",
+    name,
+    ...isEntity ? { entityType: entityType(name) } : {},
+    ...mailing ? { mailingAddress: mailing } : {},
+    source: SOURCE2,
+    licenseTerms: TERMS2
+  };
+  const ownership = {
+    propertyKey: property.key,
+    partyKey: party.key,
+    role: "owner",
+    ...saleDate ? { asOf: saleDate } : {},
+    source: SOURCE2,
+    fetchedAt
+  };
+  return { property, party, ownership };
+}
+var sqlString = (v) => `'${v.replace(/'/g, "''")}'`;
+function flDorWhere(query) {
+  if (query.kind === "parcel") {
+    const co = query.countyFips ? FL_DOR_COUNTY[query.countyFips] : void 0;
+    if (co && query.apn) return `CO_NO=${co} AND PARCEL_ID=${sqlString(query.apn.replace(/[-\s.]/g, "").toUpperCase())}`;
+    if (query.address && query.address.state === "FL") {
+      const zip = query.address.zip.slice(0, 5);
+      return `PHY_ZIPCD=${Number(zip)} AND PHY_ADDR1 LIKE ${sqlString(`${query.address.line1.toUpperCase()}%`)}`;
+    }
+    return void 0;
+  }
+  if (query.kind === "area") {
+    const zips = (query.geography.zips ?? []).filter(isFloridaZip);
+    const counties = (query.geography.countyFips ?? []).map((f) => FL_DOR_COUNTY[f]).filter((c) => c !== void 0);
+    if (zips.length === 0 && counties.length === 0) return void 0;
+    const parts = [];
+    if (zips.length > 0) parts.push(`PHY_ZIPCD IN (${zips.map(Number).join(",")})`);
+    if (counties.length > 0) parts.push(`CO_NO IN (${counties.join(",")})`);
+    return parts.join(" AND ");
+  }
+  return void 0;
+}
+var flDorParcelsConnector = {
+  name: SOURCE2,
+  displayName: "Florida statewide parcels (DOR roll)",
+  tier: "free",
+  keyEnvVar: null,
+  phases: ["research"],
+  queryKinds: ["parcel", "area"],
+  capabilities: ["parcel", "property.search"],
+  cacheTtlMs: 7 * 24 * 36e5,
+  // an annual roll: a week-old answer is as good as a fresh one
+  rateLimit: { perMinute: 60 },
+  note: "Free, keyless (INTENT_OUTREACH_PUBLIC_RECORDS=0 turns it off). Annual DOR roll snapshot; owner names cut at 30 characters. Confidential owners are dropped.",
+  isConfigured() {
+    return publicRecordsEnabled();
+  },
+  async research({ query, signal }) {
+    const empty = { leads: [], contacts: [] };
+    if (!query) return empty;
+    const where = flDorWhere(query);
+    if (!where) return empty;
+    const max = query.kind === "area" ? Math.min(Math.max(Number(query.filters.maxRecords ?? 500), 1), 5e3) : 50;
+    const properties = [];
+    const parties = [];
+    const ownerships = [];
+    for (let offset = 0; offset < max; offset += PAGE) {
+      const body = await httpJson(FL_DOR_URL, {
+        signal,
+        retries: 2,
+        rateLimit: { key: SOURCE2, perMinute: 60 },
+        query: {
+          where,
+          outFields: OUT_FIELDS,
+          returnGeometry: "false",
+          returnCentroid: "true",
+          outSR: "4326",
+          orderByFields: "OBJECTID",
+          resultOffset: offset,
+          resultRecordCount: Math.min(PAGE, max - offset),
+          f: "json"
+        }
+      });
+      const page = parseVendor(ResponseSchema2, body);
+      if (page.error) throw new Error(`fl-dor-parcels: query failed (${page.error.message ?? "unknown"})`);
+      const fetchedAt = (/* @__PURE__ */ new Date()).toISOString();
+      const hash2 = createHash2("sha256").update(JSON.stringify(body)).digest("hex");
+      for (const row of page.features) {
+        const mapped = mapFlDorRow(row, fetchedAt, hash2);
+        if (!mapped) continue;
+        properties.push(mapped.property);
+        if (mapped.party) parties.push(mapped.party);
+        if (mapped.ownership) ownerships.push(mapped.ownership);
+      }
+      if (!page.exceededTransferLimit || page.features.length === 0) break;
+    }
+    return { leads: [], contacts: [], properties, parties, ownerships };
+  }
+};
+
 // pipeline_core/connectors/crunchbase.ts
 var BASE5 = "https://api.crunchbase.com/v4/data";
 var KEY_ENV5 = "CRUNCHBASE_API_KEY";
@@ -38744,6 +39423,9 @@ var BUILTIN_CONNECTORS = [
   hunterConnector,
   peopledatalabsConnector,
   exaConnector,
+  // free public records (keyless, property queries only)
+  flDorParcelsConnector,
+  femaNfhlConnector,
   // paid
   crunchbaseConnector,
   leadmagicConnector,
@@ -38762,7 +39444,7 @@ function registerBuiltinConnectors() {
 }
 
 // pipeline_core/routing.ts
-import { createHash, randomUUID } from "node:crypto";
+import { createHash as createHash3, randomUUID } from "node:crypto";
 function capabilityForQuery(query) {
   switch (query.kind) {
     case "domain":
@@ -38797,347 +39479,8 @@ function stableStringify(value) {
   return `{${Object.keys(o).filter((k) => o[k] !== void 0).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(",")}}`;
 }
 function cacheKey(connector, capability, subject) {
-  return createHash("sha256").update(`${connector}|${capability}|${stableStringify(subject)}`).digest("hex");
+  return createHash3("sha256").update(`${connector}|${capability}|${stableStringify(subject)}`).digest("hex");
 }
-
-// pipeline_core/models.ts
-var SCHEMA_VERSION = 6;
-var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
-var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
-var SchemaVersionSchema = external_exports.union([
-  external_exports.literal(V_FIRST),
-  external_exports.literal(V_SECOND),
-  ...V_REST.map((v) => external_exports.literal(v))
-]);
-var SourceSchema = external_exports.string().min(1);
-var LeadSchema = external_exports.object({
-  domain: external_exports.string().min(1),
-  companyName: external_exports.string().min(1),
-  industry: external_exports.string().optional(),
-  /** Free-text headcount band, e.g. "11-50". Connectors disagree on format. */
-  size: external_exports.string().optional(),
-  description: external_exports.string().optional(),
-  source: SourceSchema
-});
-var ContactSchema = external_exports.object({
-  name: external_exports.string().min(1),
-  leadDomain: external_exports.string().min(1),
-  email: external_exports.string().email().optional(),
-  title: external_exports.string().optional(),
-  // A LinkedIn handle OR full URL — providers return both shapes, so don't reject
-  // an otherwise-valid contact (and thus the whole run) over a non-URL handle.
-  linkedin: external_exports.string().optional(),
-  source: SourceSchema,
-  /**
-   * True when the provider withheld the surname (the last token is a lone
-   * initial, e.g. "Kristina L"). The contact is kept, but the drafter addresses
-   * them by first name only. Optional + additive: older lines simply omit it.
-   */
-  nameIncomplete: external_exports.boolean().optional()
-});
-var EnrichmentSchema = external_exports.object({
-  /** What this enrichment is attached to. */
-  subjectType: external_exports.enum(["lead", "contact"]),
-  /** Natural key of the subject: a domain (lead) or an email (contact). */
-  subjectKey: external_exports.string().min(1),
-  provider: SourceSchema,
-  /** Normalized highlights the scorer/draft seam reads. */
-  funding: external_exports.object({
-    lastRound: external_exports.string().optional(),
-    totalRaisedUsd: external_exports.number().nonnegative().optional(),
-    lastRoundDate: external_exports.string().optional(),
-    investors: external_exports.array(external_exports.string()).optional()
-  }).optional(),
-  verifiedEmail: external_exports.string().email().optional(),
-  /**
-   * Optional back-reference to the Contact's `name` when the enrichment found an
-   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
-   * pipeline fold the found email into the working contact list. Optional/additive.
-   */
-  contactName: external_exports.string().min(1).optional(),
-  phone: external_exports.string().optional(),
-  /** Raw provider payload, retained for audit; never trusted as schema. */
-  data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
-  fetchedAt: external_exports.string().datetime()
-});
-var Sha256HexSchema = external_exports.string().regex(/^[0-9a-f]{64}$/, "expected a sha256 hex digest");
-var LicenseTermsSchema = external_exports.object({
-  /** Short identifier of the terms, e.g. "dealmachine-tos-2026" or "public-record". */
-  id: external_exports.string().min(1).optional(),
-  outreachRestricted: external_exports.boolean().optional(),
-  /** Days the vendor allows this fact to be retained. */
-  retentionDays: external_exports.number().int().positive().optional(),
-  /** Required attribution text, if the terms demand one. */
-  attribution: external_exports.string().min(1).optional()
-});
-function factSchema(value) {
-  return external_exports.object({
-    value,
-    source: SourceSchema,
-    fetchedAt: external_exports.string().datetime(),
-    responseHash: Sha256HexSchema.optional(),
-    licenseTerms: LicenseTermsSchema.optional()
-  });
-}
-var FactSchema = factSchema(external_exports.unknown());
-var UsStateSchema = external_exports.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code");
-var CountyFipsSchema = external_exports.string().regex(/^\d{5}$/, "expected a 5-digit county FIPS code");
-var AddressSchema = external_exports.object({
-  line1: external_exports.string().min(1),
-  line2: external_exports.string().min(1).optional(),
-  city: external_exports.string().min(1),
-  state: UsStateSchema,
-  zip: external_exports.string().regex(/^\d{5}(?:-\d{4})?$/, "expected ZIP5 or ZIP+4"),
-  county: external_exports.string().min(1).optional(),
-  countyFips: CountyFipsSchema.optional()
-});
-function propertyKey(countyFips, apn) {
-  return `${countyFips}:${apn.trim().toUpperCase()}`;
-}
-var PropertySchema = external_exports.object({
-  key: external_exports.string().min(1),
-  apn: external_exports.string().min(1),
-  countyFips: CountyFipsSchema,
-  address: AddressSchema.optional(),
-  attributes: external_exports.record(external_exports.string().min(1), FactSchema).default({}),
-  source: SourceSchema
-}).refine((p) => p.key === propertyKey(p.countyFips, p.apn), {
-  message: "key must equal propertyKey(countyFips, apn)",
-  path: ["key"]
-}).refine((p) => p.apn === p.apn.trim(), { message: "apn must not carry surrounding whitespace", path: ["apn"] });
-var PartySchema = external_exports.object({
-  /** Stable id within the run, e.g. "person:<connector-id>" or "entity:AL:000123456". */
-  key: external_exports.string().min(1),
-  kind: external_exports.enum(["person", "entity"]),
-  name: external_exports.string().min(1),
-  /** For entities only. */
-  entityType: external_exports.enum(["llc", "corporation", "trust", "estate", "partnership", "government", "other"]).optional(),
-  mailingAddress: AddressSchema.optional(),
-  source: SourceSchema
-});
-var OwnershipSchema = external_exports.object({
-  propertyKey: external_exports.string().min(1),
-  partyKey: external_exports.string().min(1),
-  /** Fraction held, 0 < share <= 1, when the record states it. */
-  share: external_exports.number().gt(0).lte(1).optional(),
-  role: external_exports.enum(["owner", "co-owner", "trustee", "life-tenant"]).default("owner"),
-  /** Recording or deed date (ISO date), when known. */
-  asOf: external_exports.string().date().optional(),
-  source: SourceSchema,
-  fetchedAt: external_exports.string().datetime()
-});
-var EntityLinkSchema = external_exports.object({
-  entityKey: external_exports.string().min(1),
-  personKey: external_exports.string().min(1),
-  role: external_exports.enum(["member", "manager", "officer", "registered-agent", "organizer", "other"]),
-  confidence: external_exports.number().min(0).max(1),
-  source: SourceSchema,
-  fetchedAt: external_exports.string().datetime()
-});
-var DncStatusSchema = external_exports.enum(["clean", "listed", "unknown"]);
-var ContactPointSchema = external_exports.object({
-  partyKey: external_exports.string().min(1),
-  kind: external_exports.enum(["phone", "email", "mail"]),
-  /** E.164 phone, email address, or a one-line mailing address. */
-  value: external_exports.string().min(1),
-  /** Phones only. "unknown" means the line type was not established. */
-  lineType: external_exports.enum(["mobile", "landline", "voip", "unknown"]).optional(),
-  /** Phones only; defaults to "unknown" (fail closed). */
-  dnc: DncStatusSchema.default("unknown"),
-  source: SourceSchema,
-  fetchedAt: external_exports.string().datetime(),
-  verifiedAt: external_exports.string().datetime().optional(),
-  licenseTerms: LicenseTermsSchema.optional()
-}).refine((c) => c.kind !== "phone" || /^\+[1-9]\d{9,14}$/.test(c.value), {
-  message: "a phone contact point must be E.164",
-  path: ["value"]
-}).refine((c) => c.kind !== "email" || external_exports.string().email().safeParse(c.value).success, {
-  message: "an email contact point must be a valid email",
-  path: ["value"]
-});
-var ResearchQuerySchema = external_exports.discriminatedUnion("kind", [
-  external_exports.object({ kind: external_exports.literal("domain"), domain: external_exports.string().min(1) }),
-  external_exports.object({
-    kind: external_exports.literal("area"),
-    geography: external_exports.object({
-      state: UsStateSchema.optional(),
-      countyFips: external_exports.array(CountyFipsSchema).optional(),
-      zips: external_exports.array(external_exports.string().regex(/^\d{5}$/)).optional()
-    }).refine((g) => Boolean(g.state || g.countyFips?.length || g.zips?.length), {
-      message: "an area query needs a state, county FIPS codes or ZIPs"
-    }),
-    /** Pack buy-box filters, already compiled to plain values. */
-    filters: external_exports.record(external_exports.string().min(1), external_exports.unknown()).default({})
-  }),
-  external_exports.object({
-    kind: external_exports.literal("parcel"),
-    countyFips: CountyFipsSchema.optional(),
-    apn: external_exports.string().min(1).optional(),
-    address: AddressSchema.optional()
-  }).refine((q) => Boolean(q.countyFips && q.apn || q.address), {
-    message: "a parcel query needs countyFips + apn, or an address"
-  })
-]);
-var CHANNELS = ["email", "linkedin", "sms", "mail", "call_script"];
-var ChannelSchema = external_exports.enum(CHANNELS);
-var MessageSchema = external_exports.object({
-  /** FK to the Contact this message is for (email if known, else name@domain). */
-  contactKey: external_exports.string().min(1),
-  channel: ChannelSchema,
-  subject: external_exports.string().optional(),
-  body: external_exports.string().min(1),
-  cta: external_exports.string().min(1),
-  /** 0-100 fit score the model assigned at the score() seam. */
-  fitScore: external_exports.number().min(0).max(100).optional(),
-  /** Provenance: which model + prompt version produced this. */
-  model: external_exports.string().min(1),
-  promptVersion: external_exports.string().min(1),
-  createdAt: external_exports.string().datetime(),
-  /**
-   * True when the channel's required sender identity was not configured, so its
-   * footer could NOT be appended: name + company + postal address for email and
-   * mail, name + company for sms and call_script. Such a draft must not be sent
-   * as-is. Additive (v4); defaults false.
-   */
-  needsSenderIdentity: external_exports.boolean().default(false),
-  /** Property campaigns (v6, optional): the parcel this letter is about. */
-  propertyKey: external_exports.string().min(1).optional()
-});
-var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
-var LEGACY_RUN_STATUSES = ["pending", "drafted"];
-var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
-var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
-var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
-var RunErrorSchema = external_exports.object({
-  /** The lead's domain (company campaigns). */
-  domain: external_exports.string().min(1).optional(),
-  /** The parcel's `<countyFips>:<apn>` (property campaigns, v6). */
-  propertyKey: external_exports.string().min(1).optional(),
-  contactKey: external_exports.string().min(1).optional(),
-  stage: RunErrorStageSchema,
-  /** Sanitized, truncated error message (secrets redacted). */
-  message: external_exports.string(),
-  /** AI SDK finish reason when the error carried one (e.g. "length"). */
-  finishReason: external_exports.string().optional()
-}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0, {
-  message: "a run error needs a domain or a propertyKey"
-});
-var FailedConnectorSchema = external_exports.object({
-  name: external_exports.string().min(1),
-  phase: external_exports.enum(["research", "enrich"]),
-  /** HTTP status, "timeout", or "error". */
-  status: external_exports.union([external_exports.number().int(), external_exports.string().min(1)])
-});
-var CampaignRunSchema = external_exports.object({
-  /** Caller-supplied or generated run id (no Date.now/random inside core). */
-  id: external_exports.string().min(1),
-  // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
-  // existing v1 line on read (store.ts re-validates each line). New writes emit
-  // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
-  schemaVersion: SchemaVersionSchema,
-  icp: external_exports.string().min(1),
-  domains: external_exports.array(external_exports.string().min(1)),
-  /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
-  vertical: external_exports.string().min(1).default("b2b-sdr"),
-  /** Model + provider that ran the LLM seams. */
-  provider: external_exports.string().min(1),
-  model: external_exports.string().min(1),
-  status: StoredRunStatusSchema,
-  leads: external_exports.array(LeadSchema).default([]),
-  contacts: external_exports.array(ContactSchema).default([]),
-  enrichments: external_exports.array(EnrichmentSchema).default([]),
-  messages: external_exports.array(MessageSchema).default([]),
-  /** Cumulative spend across LLM seams, if metered. */
-  costUsd: external_exports.number().nonnegative().optional(),
-  /** Names of connectors that were skipped (no key / unsupported) this run. */
-  skippedConnectors: external_exports.array(external_exports.string()).default([]),
-  /**
-   * Contacts the pack's compliance gate blocked before drafting — the audit trail
-   * for "did not contact, and why". Always empty for b2b-sdr (no-op gate); the
-   * append-only RunStore IS the compliance record for verticals that do block.
-   */
-  blockedContacts: external_exports.array(
-    external_exports.object({
-      contactKey: external_exports.string().min(1),
-      reason: external_exports.string().min(1),
-      /** Property campaigns (v6): the parcel the block was about. */
-      propertyKey: external_exports.string().min(1).optional()
-    })
-  ).default([]),
-  /**
-   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
-   * A provider error on domain 2 no longer loses domain 1's drafts.
-   */
-  errors: external_exports.array(RunErrorSchema).default([]),
-  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
-  rejectedDrafts: external_exports.array(
-    external_exports.object({
-      contactKey: external_exports.string().min(1),
-      issues: external_exports.array(external_exports.string()),
-      /** Property campaigns (v6): the parcel the draft was about. */
-      propertyKey: external_exports.string().min(1).optional()
-    })
-  ).default([]),
-  /**
-   * Configured connectors that threw (sanitized status only — never the error
-   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
-   * "not configured" only (v3).
-   */
-  failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
-  /**
-   * Run-level compliance warnings that did not block a contact but must be seen
-   * before anything is sent — e.g. email drafts produced without a configured
-   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
-   */
-  complianceWarnings: external_exports.array(external_exports.string()).default([]),
-  /**
-   * Prompt provenance for the run's LLM seams (v5, additive): each entry is
-   * "<prompt-file>@<sha8>". `score` lists the joined score-seam files; `draft` is
-   * the draft-seam file. Empty for agent-saved runs (the agent drafted, not a seam).
-   */
-  promptRefs: external_exports.object({
-    score: external_exports.array(external_exports.string().min(1)).optional(),
-    draft: external_exports.string().min(1).optional()
-  }).default({}),
-  /**
-   * Score-seam angles removed because they cited a fact absent from the inputs
-   * (groundAngles) — kept so an operator can see what the model tried (v5).
-   */
-  droppedAngles: external_exports.array(
-    external_exports.object({
-      domain: external_exports.string().min(1).optional(),
-      /** Property campaigns (v6). */
-      propertyKey: external_exports.string().min(1).optional(),
-      angle: external_exports.string(),
-      reason: external_exports.string()
-    }).refine((d) => d.domain !== void 0 || d.propertyKey !== void 0, {
-      message: "a dropped angle needs a domain or a propertyKey"
-    })
-  ).default([]),
-  /**
-   * Who assembled the record (v5, optional so older lines stay unlabeled rather
-   * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
-   * where the drafts and the `model` field are caller-claimed.
-   */
-  origin: external_exports.enum(["pipeline", "agent"]).optional(),
-  /** The typed research queries this run executed (v6, optional). */
-  queries: external_exports.array(ResearchQuerySchema).optional(),
-  /** Vendor-credit accounting when the run had a budget (v6, optional). */
-  credits: external_exports.object({
-    limit: external_exports.number().nonnegative(),
-    spent: external_exports.number().nonnegative(),
-    exhausted: external_exports.boolean(),
-    byConnector: external_exports.record(external_exports.string(), external_exports.number().nonnegative())
-  }).optional(),
-  /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
-  properties: external_exports.array(PropertySchema).default([]),
-  parties: external_exports.array(PartySchema).default([]),
-  ownerships: external_exports.array(OwnershipSchema).default([]),
-  entityLinks: external_exports.array(EntityLinkSchema).default([]),
-  contactPoints: external_exports.array(ContactPointSchema).default([]),
-  createdAt: external_exports.string().datetime(),
-  finishedAt: external_exports.string().datetime().optional()
-});
 
 // pipeline_core/validator.ts
 function deepFreeze(value, seen = /* @__PURE__ */ new WeakSet()) {
@@ -40003,6 +40346,9 @@ var distressLanguageDraftRule = (draft) => [["subject", draft.subject ?? ""], ["
   return m ? [`distress-language: "${m[0].toLowerCase()}" in ${field}`] : [];
 });
 function residentialPropertyGate(ctx) {
+  const terms = ctx.owner.licenseTerms;
+  if (terms?.outreachRestricted === true) return { status: "blocked", reason: "license:outreach-restricted" };
+  if (terms?.outreachRestricted !== false) return { status: "blocked", reason: "license:undeclared" };
   const zip = ctx.property.address?.zip?.slice(0, 5);
   if (!zip) return { status: "blocked", reason: "service-area:unknown-address" };
   if (!inServiceArea(zip, GULF_COAST_AL_FL)) return { status: "blocked", reason: "service-area:outside" };

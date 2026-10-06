@@ -14,6 +14,8 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { loadProfileRef, normalizeDomain, runCampaign } from "./pipeline_core/pipeline.js";
+import { runPropertyCampaign } from "./pipeline_core/property-campaign.js";
+import type { ResearchQuery } from "./pipeline_core/models.js";
 import { applyProfileToCampaignInput, type ReportProfile } from "./pipeline_core/profiles.js";
 import { cleanBuyerTitles } from "./pipeline_core/targeting.js";
 import { JsonlRunStore, defaultStorePath } from "./pipeline_core/store.js";
@@ -147,6 +149,8 @@ export function printHelp(): void {
       "  intent-outreach suppress add <email|domain|phone|\"address\"> [--kind <k>] [--reason <text>]",
       "  intent-outreach suppress remove <value> [--kind <k>]",
       "  intent-outreach suppress list       opt-outs honored by every run",
+      "  intent-outreach property-run --icp <text> (--zips <list> | --parcels <fips:apn,...>) [options]",
+      "                                      draft letters to owners of record (residential-re pack)",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
@@ -370,6 +374,109 @@ async function cmdSuppress(args: string[]): Promise<void> {
   throw new UsageError(SUPPRESS_USAGE);
 }
 
+const PROPERTY_RUN_USAGE =
+  "usage: intent-outreach property-run --icp <text> (--zips <a,b> | --parcels <fips:apn,...>) [options]\n" +
+  "  --profile <p>  --provider <name>  --model <id>  --min-score <0-100>  --max-properties <n>\n" +
+  "  --budget-credits <n>  --pack <id> (default residential-re)  --out <path>  --json";
+
+/** `property-run` — a property campaign (owners of record) over ZIPs or specific parcels. */
+async function cmdPropertyRun(args: string[]): Promise<void> {
+  let values: Record<string, string | boolean | undefined>;
+  try {
+    ({ values } = parseArgs({
+      args,
+      options: {
+        icp: { type: "string" },
+        zips: { type: "string" },
+        parcels: { type: "string" },
+        profile: { type: "string" },
+        provider: { type: "string" },
+        model: { type: "string" },
+        pack: { type: "string" },
+        "min-score": { type: "string" },
+        "max-properties": { type: "string" },
+        "budget-credits": { type: "string" },
+        out: { type: "string" },
+        json: { type: "boolean" },
+      },
+      allowPositionals: false,
+    }));
+  } catch (err) {
+    throw new UsageError(`${err instanceof Error ? err.message : String(err)}\n${PROPERTY_RUN_USAGE}`);
+  }
+  const icp = typeof values.icp === "string" ? values.icp.trim() : "";
+  if (!icp || (!values.zips && !values.parcels)) throw new UsageError(PROPERTY_RUN_USAGE);
+
+  // Validate every flag BEFORE spending anything.
+  const queries: ResearchQuery[] = [];
+  if (typeof values.zips === "string") {
+    const zips = values.zips.split(",").map((z) => z.trim()).filter(Boolean);
+    if (zips.length === 0 || !zips.every((z) => /^\d{5}$/.test(z))) throw new UsageError("--zips must be 5-digit ZIPs, comma-separated");
+    queries.push({ kind: "area", geography: { zips }, filters: {} });
+  }
+  if (typeof values.parcels === "string") {
+    for (const ref of values.parcels.split(",").map((p) => p.trim()).filter(Boolean)) {
+      const m = /^(\d{5}):(.+)$/.exec(ref);
+      if (!m) throw new UsageError(`--parcels: ${JSON.stringify(ref)} is not <countyFips>:<apn>`);
+      queries.push({ kind: "parcel", countyFips: m[1]!, apn: m[2]! });
+    }
+  }
+  const num = (flag: string, opts: { min: number; max: number; integer?: boolean }) =>
+    typeof values[flag] === "string" ? parseNumberFlag(`--${flag}`, values[flag] as string, opts) : undefined;
+  const minScore = num("min-score", { min: 0, max: 100 });
+  const maxProperties = num("max-properties", { min: 1, max: 500, integer: true });
+  const budgetCredits = num("budget-credits", { min: 0, max: 1_000_000 });
+  let sender;
+  if (typeof values.profile === "string") {
+    try {
+      sender = loadProfileRef(values.profile).sender;
+    } catch (err) {
+      throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  const provider =
+    values.provider || values.model
+      ? await getProvider({
+          ...(typeof values.provider === "string" ? { provider: values.provider as ProviderName } : {}),
+          ...(typeof values.model === "string" ? { model: values.model } : {}),
+        })
+      : undefined;
+
+  const { run, cost } = await runPropertyCampaign({
+    id: makeRunId(),
+    icp,
+    queries,
+    ...(typeof values.pack === "string" ? { pack: values.pack } : {}),
+    ...(provider ? { provider } : {}),
+    ...(sender ? { sender } : {}),
+    ...(minScore !== undefined ? { minScore } : {}),
+    ...(maxProperties !== undefined ? { maxProperties } : {}),
+    ...(budgetCredits !== undefined ? { budgetCredits } : {}),
+    cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
+  });
+  const out = typeof values.out === "string" ? values.out : undefined;
+  await new JsonlRunStore(out).saveRun(run);
+  if (values.json) {
+    process.stdout.write(`${JSON.stringify(run, null, 2)}\n`);
+    return;
+  }
+  process.stdout.write(
+    [
+      `property run ${run.id} — ${run.status} (${run.vertical})`,
+      `properties: ${run.properties.length}  owners: ${run.parties.length}  drafts: ${run.messages.length}`,
+      run.blockedContacts.length ? `blocked: ${run.blockedContacts.length}` : "",
+      run.rejectedDrafts.length ? `rejected drafts: ${run.rejectedDrafts.length}` : "",
+      run.credits ? `credits: ${run.credits.spent}/${run.credits.limit}${run.credits.exhausted ? " (budget reached)" : ""}` : "",
+      ...run.complianceWarnings.map((w) => `WARNING: ${w}`),
+      `cost: $${cost.spentUsd.toFixed(4)} over ${cost.calls} model calls`,
+      `saved → ${out ?? defaultStorePath()}`,
+      run.messages.length ? "next: review and approve the drafts before anything is sent" : "",
+    ]
+      .filter(Boolean)
+      .join("\n") + "\n",
+  );
+}
+
 const CHECK_SEND_USAGE =
   "usage: intent-outreach check-send [--profile <name|path>] < input.json\n" +
   '  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,' +
@@ -453,6 +560,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       return cmdSuppress(rest);
     case "check-send":
       return cmdCheckSend(rest);
+    case "property-run":
+      return cmdPropertyRun(rest);
     case "help":
     case "--help":
     case "-h":

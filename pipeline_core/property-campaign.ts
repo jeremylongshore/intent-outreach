@@ -33,6 +33,7 @@ import {
   deriveRunStatus,
   finalizeDraft,
   mergePropertyModel,
+  runPropertyEnrich,
   runResearchQuery,
   senderComplianceWarnings,
   type ConnectorRunOptions,
@@ -164,6 +165,18 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     model.contactPoints.push(...r.contactPoints);
   }
   const merged = mergePropertyModel(model);
+
+  // Property enrichment (flood zones, ...): adds facts, never overwrites them.
+  const enriched = await runPropertyEnrich(merged.properties, {
+    ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
+    ...(pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {}),
+    ...(budget ? { budget } : {}),
+  });
+  merged.properties = enriched.properties;
+  enriched.skipped.forEach((s) => skipped.add(s));
+  for (const f of enriched.failedConnectors) {
+    if (!failedConnectors.some((g) => g.name === f.name && g.phase === f.phase && g.status === f.status)) failedConnectors.push(f);
+  }
 
   const messages: Message[] = [];
   const blockedContacts: { contactKey: string; reason: string; propertyKey: string }[] = [];

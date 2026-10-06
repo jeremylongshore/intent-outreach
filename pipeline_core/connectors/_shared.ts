@@ -19,6 +19,16 @@ export function useSecret(name: string): string {
 }
 
 const KEEP_RAW_ENV = "INTENT_OUTREACH_KEEP_RAW";
+const PUBLIC_RECORDS_ENV = "INTENT_OUTREACH_PUBLIC_RECORDS";
+
+/**
+ * Keyless public-records connectors (county and state parcel rolls, FEMA flood
+ * zones) are ON by default and turned off with INTENT_OUTREACH_PUBLIC_RECORDS=0.
+ * They only ever answer property queries.
+ */
+export function publicRecordsEnabled(): boolean {
+  return !(hasSecret(PUBLIC_RECORDS_ENV) && getSecret(PUBLIC_RECORDS_ENV).trim() === "0");
+}
 
 /** True only when the user explicitly opted in to retaining full vendor payloads. */
 export function keepRawOptIn(): boolean {

@@ -233,6 +233,8 @@ export const PropertySchema = z
     apn: z.string().min(1),
     countyFips: CountyFipsSchema,
     address: AddressSchema.optional(),
+    /** A point on the parcel (centroid or label point), WGS84. Used for flood and other spatial lookups. */
+    location: z.object({ lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) }).optional(),
     attributes: z.record(z.string().min(1), FactSchema).default({}),
     source: SourceSchema,
   })
@@ -253,6 +255,12 @@ export const PartySchema = z.object({
   entityType: z.enum(["llc", "corporation", "trust", "estate", "partnership", "government", "other"]).optional(),
   mailingAddress: AddressSchema.optional(),
   source: SourceSchema,
+  /**
+   * Terms of the record this party (and its mailing address) came from. A
+   * property pack may write to a party only when `outreachRestricted` is
+   * explicitly false; absent or undeclared is treated as restricted.
+   */
+  licenseTerms: LicenseTermsSchema.optional(),
 });
 export type Party = z.infer<typeof PartySchema>;
 
