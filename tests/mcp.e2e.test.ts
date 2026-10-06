@@ -45,11 +45,11 @@ describe("shipped MCP server", () => {
     expect(tools.map((t) => t.name).sort()).toEqual(["approve", "enrich_lead", "list_connectors", "list_pending", "reject", "research_domain", "save_run"]);
   });
 
-  it("list_connectors reports every connector unconfigured in a keyless environment", async () => {
+  it("list_connectors: every keyed connector is unconfigured; only the keyless public-records ones are on", async () => {
     const r = await client.callTool({ name: "list_connectors", arguments: {} });
     const rows = JSON.parse(text(r)) as { name: string; configured: boolean }[];
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every((c) => c.configured === false)).toBe(true);
+    expect(rows.filter((c) => c.configured).map((c) => c.name)).toEqual(["fl-dor-parcels", "fema-nfhl"]);
   });
 
   it("save_run rejects invalid input and persists nothing", async () => {

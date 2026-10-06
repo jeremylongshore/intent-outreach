@@ -17,6 +17,8 @@ import { apolloConnector } from "./apollo.js";
 import { hunterConnector } from "./hunter.js";
 import { peopledatalabsConnector } from "./peopledatalabs.js";
 import { exaConnector } from "./exa.js";
+import { femaNfhlConnector } from "./fema-nfhl.js";
+import { flDorParcelsConnector } from "./fl-dor-parcels.js";
 import { crunchbaseConnector } from "./crunchbase.js";
 import { leadmagicConnector } from "./leadmagic.js";
 import { clayConnector } from "./clay.js";
@@ -32,6 +34,9 @@ const BUILTIN_CONNECTORS: readonly Connector[] = [
   hunterConnector,
   peopledatalabsConnector,
   exaConnector,
+  // free public records (keyless, property queries only)
+  flDorParcelsConnector,
+  femaNfhlConnector,
   // paid
   crunchbaseConnector,
   leadmagicConnector,
@@ -66,6 +71,8 @@ export function _resetBuiltins(): void {
 export * from "./types.js";
 export * from "./registry.js";
 export {
+  femaNfhlConnector,
+  flDorParcelsConnector,
   apolloConnector,
   hunterConnector,
   peopledatalabsConnector,

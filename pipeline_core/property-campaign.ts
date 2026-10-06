@@ -33,6 +33,7 @@ import {
   deriveRunStatus,
   finalizeDraft,
   mergePropertyModel,
+  runPropertyEnrich,
   runResearchQuery,
   senderComplianceWarnings,
   type ConnectorRunOptions,
@@ -184,6 +185,8 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     errors.push({ propertyKey: property.key, stage, message, ...(contactKey ? { contactKey } : {}) });
   };
 
+  // Pass 1: gate every property, one parcel per owner, up to the cap. Nothing is spent here.
+  const selected: { property: Property; owner: Party; ctx: PropertyGateContext; nowDate: Date }[] = [];
   for (const property of merged.properties) {
     const owner = ownerOf(property, merged);
     if (!owner) {
@@ -217,6 +220,31 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
       continue;
     }
     scoredCount += 1;
+    contacted.set(owner.key, property.key);
+    selected.push({ property, owner, ctx, nowDate });
+  }
+
+  // Property enrichment (flood zones, ...) on the selected parcels only: adds facts, never overwrites.
+  const enriched = await runPropertyEnrich(
+    selected.map((x) => x.property),
+    {
+      ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
+      ...(pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {}),
+      ...(budget ? { budget } : {}),
+    },
+  );
+  enriched.skipped.forEach((s) => skipped.add(s));
+  for (const f of enriched.failedConnectors) {
+    if (!failedConnectors.some((g) => g.name === f.name && g.phase === f.phase && g.status === f.status)) failedConnectors.push(f);
+  }
+  const enrichedByKey = new Map(enriched.properties.map((p) => [p.key, p]));
+  merged.properties = merged.properties.map((p) => enrichedByKey.get(p.key) ?? p);
+
+  // Pass 2: score, underwrite, draft, finalize.
+  for (const sel of selected) {
+    const property = enrichedByKey.get(sel.property.key) ?? sel.property;
+    const { owner, nowDate } = sel;
+    const ctx: PropertyGateContext = { ...sel.ctx, property };
 
     const signals = propertySignals(property, owner, ctx.ownerships, nowDate);
     let scored: Awaited<ReturnType<typeof scoreProperty>>;
@@ -285,7 +313,6 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     }
     if (finalized.message.needsSenderIdentity) draftsMissingSender += 1;
     messages.push(finalized.message);
-    contacted.set(owner.key, property.key);
   }
   if (overCap > 0) warnings.push(`${overCap} eligible propert(ies) not scored: maxProperties=${maxProperties} reached`);
 

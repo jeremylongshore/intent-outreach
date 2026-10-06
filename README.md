@@ -180,6 +180,29 @@ intent-outreach suppress list
 contact is recorded in the run's `blockedContacts` and never drafted. If `suppressions.jsonl` has a corrupt
 line, the run refuses to start rather than risk emailing someone who opted out.
 
+## Property campaigns (residential real estate)
+
+`property-run` drafts short letters to the owners of record of homes in the agent's market, with the
+`residential-re` pack:
+
+```bash
+intent-outreach property-run --icp "Listing agent for Perdido Key homes" --zips 32507 --profile ./agent.json
+intent-outreach property-run --icp "..." --parcels 12033:082S305005000002 --budget-credits 50
+```
+
+Public records come from free, keyless sources (`000-docs/035`): the Florida statewide parcel roll and
+FEMA flood zones. Every owner passes the suppression list and the pack's gate first: the service area,
+manual review for probate, divorce and pre-foreclosure, known active listings, government owners, and the
+license terms of the record (outreach must be explicitly allowed by the source). Drafts never mention the
+owner as a person (age, family, marital status...) or any distress (foreclosure, liens...). Your profile's
+`sender` needs `licenses` for the brokerage and license line on every letter. Nothing is mailed: every
+draft waits in the approval queue. Turn the public-records connectors off with
+`INTENT_OUTREACH_PUBLIC_RECORDS=0`.
+
+Coverage today: Florida (Escambia, Okaloosa) through the state roll. Baldwin County, AL is pending the
+owner's confirmation of the data terms with the Revenue Commission; Mobile County publishes no mailing
+address.
+
 ## Approval queue
 
 Every saved draft waits for a person. Nothing passes the send-time check until someone approves that

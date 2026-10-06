@@ -658,6 +658,70 @@ export async function runEnrich(
   return { enrichments, contacts: working, ran, skipped, failedConnectors, raw, budgetExhausted };
 }
 
+export interface PropertyEnrichResult {
+  properties: Property[];
+  ran: string[];
+  skipped: string[];
+  failedConnectors: FailedConnector[];
+  budgetExhausted: boolean;
+}
+
+/**
+ * Run every configured property enricher (phase "enrich" with
+ * `enrichProperties`, e.g. flood zones) over a property list, in routing order.
+ * Each one may ADD attributes; an attribute already on a property is never
+ * overwritten (first source wins, deterministically). A failing enricher is
+ * recorded and the properties pass through unchanged.
+ */
+/** Properties per enrichProperties call; each call gets the full per-connector deadline. */
+export const PROPERTY_ENRICH_CHUNK = 25;
+
+export async function runPropertyEnrich(properties: Property[], opts: ConnectorRunOptions = {}): Promise<PropertyEnrichResult> {
+  registerBuiltinConnectors();
+  const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
+  const connectors = orderByRouting(
+    getConfiguredConnectors("enrich").filter((c) => c.enrichProperties),
+    opts.routing,
+  );
+  const skipped = getSkippedConnectors("enrich")
+    .filter((c) => c.enrichProperties)
+    .map((c) => c.name);
+  const ran: string[] = [];
+  const failedConnectors: FailedConnector[] = [];
+  const raw: Record<string, unknown> = {};
+  let budgetExhausted = false;
+  let current = properties.map((p) => ({ ...p, attributes: { ...p.attributes } }));
+
+  for (const connector of connectors) {
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
+      budgetExhausted = true;
+      continue;
+    }
+    // In chunks, each under its own deadline: a slow, rate-limited source loses at most one chunk.
+    let anyChunkRan = false;
+    for (let i = 0; i < current.length; i += PROPERTY_ENRICH_CHUNK) {
+      const chunk = current.slice(i, i + PROPERTY_ENRICH_CHUNK);
+      try {
+        const out = await callWithDeadline((signal) => connector.enrichProperties!({ properties: chunk, signal }), timeoutMs);
+        const byKey = new Map(out.properties.map((p) => [p.key, p]));
+        current = current.map((p) => {
+          const add = byKey.get(p.key);
+          if (!add) return p;
+          const attributes = { ...p.attributes };
+          for (const [k, fact] of Object.entries(add.attributes)) if (!(k in attributes)) attributes[k] = fact;
+          return { ...p, attributes, ...(p.location === undefined && add.location ? { location: add.location } : {}) };
+        });
+        anyChunkRan = true;
+        recordItemFailures(connector, "enrich", out.failures, failedConnectors);
+      } catch (err) {
+        recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
+      }
+    }
+    if (anyChunkRan) ran.push(connector.name);
+  }
+  return { properties: current, ran, skipped, failedConnectors, budgetExhausted };
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Failure isolation helpers
 // ──────────────────────────────────────────────────────────────────────────
