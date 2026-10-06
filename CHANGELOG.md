@@ -8,6 +8,17 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Send-time compliance** (#83 phase 3a). `checkSendable` / `assertSendable` evaluate one message to one
+  contact point on one channel at the moment of sending and return every blocking reason: suppression,
+  DNC (phone channels need `clean`), consent from a ledger (SMS needs written consent; a revocation voids
+  every channel), a conservative recipient-local phone window (8am–8pm, Monday–Saturday, Texas from 9am;
+  every US zone when the location is unknown), the exact channel footer at the end of the body, and
+  outreach-restricted data. `intent-outreach check-send` exposes it to dispatchers in other languages
+  (exit 0 sendable; any non-zero means do not send). New `sms`, `mail` and `call_script`
+  message channels (folded into the unreleased schema v6) each get a code-applied footer; a sender's
+  `licenses` add the brokerage + license line to every channel. Pack v2 gains `channels`, tighten-only
+  per-channel policy overrides.
+
 - **`@intent-outreach/deal-math`** (`packages/deal-math`, #83 phase 5): NOI, cap rate, DSCR, cash-on-cash,
   level payments, seller financing with balloon, 1031 deadlines (informational) and the condo trade-up
   model, in integer cents and basis points with half-even rounding and explicit assumptions. Every result

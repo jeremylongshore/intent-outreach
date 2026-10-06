@@ -63198,10 +63198,12 @@ var ResearchQuerySchema = external_exports.discriminatedUnion("kind", [
     message: "a parcel query needs countyFips + apn, or an address"
   })
 ]);
+var CHANNELS = ["email", "linkedin", "sms", "mail", "call_script"];
+var ChannelSchema = external_exports.enum(CHANNELS);
 var MessageSchema = external_exports.object({
   /** FK to the Contact this message is for (email if known, else name@domain). */
   contactKey: external_exports.string().min(1),
-  channel: external_exports.enum(["email", "linkedin"]),
+  channel: ChannelSchema,
   subject: external_exports.string().optional(),
   body: external_exports.string().min(1),
   cta: external_exports.string().min(1),
@@ -63212,9 +63214,10 @@ var MessageSchema = external_exports.object({
   promptVersion: external_exports.string().min(1),
   createdAt: external_exports.string().datetime(),
   /**
-   * True when this is an EMAIL draft and no sender identity (name, company,
-   * postal address) was configured, so the CAN-SPAM footer could NOT be appended.
-   * Such a draft must not be sent as-is. Additive (v4); defaults false.
+   * True when the channel's required sender identity was not configured, so its
+   * footer could NOT be appended: name + company + postal address for email and
+   * mail, name + company for sms and call_script. Such a draft must not be sent
+   * as-is. Additive (v4); defaults false.
    */
   needsSenderIdentity: external_exports.boolean().default(false)
 });
@@ -76052,6 +76055,7 @@ async function withLockAt(path, fn) {
 }
 
 // pipeline_core/footer.ts
+var SMS_OPT_OUT_TEXT = "Reply STOP to opt out.";
 var DEFAULT_OPT_OUT_TEXT = `Not the right person or not interested? Reply "unsubscribe" and I won't contact you again.`;
 var FOOTER_DELIMITER = "-- ";
 var nonBlank = external_exports.string().trim().min(1);
@@ -76067,15 +76071,29 @@ var SenderIdentitySchema = external_exports.object({
   /** Opt-out sentence. Defaults to DEFAULT_OPT_OUT_TEXT. */
   optOutText: nonBlank.optional(),
   /** Append the opt-out sentence to LinkedIn drafts too (no postal footer). Default false. */
-  optOutOnLinkedin: external_exports.boolean().optional()
+  optOutOnLinkedin: external_exports.boolean().optional(),
+  /**
+   * Real estate licenses to disclose on every outbound message, e.g.
+   * `{ state: "AL", number: "000123", brokerage: "Example Realty" }`.
+   */
+  licenses: external_exports.array(
+    external_exports.object({
+      state: external_exports.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code"),
+      number: nonBlank,
+      brokerage: nonBlank
+    })
+  ).optional()
 });
 var isBlank = (v) => typeof v !== "string" || v.trim() === "";
-function missingSenderFields(sender) {
+function missingSenderFields(sender, channel = "email") {
   const missing = [];
   if (isBlank(sender?.name)) missing.push("name");
   if (isBlank(sender?.company)) missing.push("company");
-  if (isBlank(sender?.postalAddress)) missing.push("postalAddress");
+  if ((channel === "email" || channel === "mail") && isBlank(sender?.postalAddress)) missing.push("postalAddress");
   return missing;
+}
+function licenseLines(sender) {
+  return (sender?.licenses ?? []).map((l) => `${oneLine(l.brokerage)}, ${l.state} license #${oneLine(l.number)}`);
 }
 var oneLine = (s) => s.replace(/\s*[\r\n]+\s*/g, " ").trim();
 function optOutOf(sender) {
@@ -76088,8 +76106,35 @@ function emailFooter(sender) {
     `${oneLine(sender.name)}, ${oneLine(sender.company)}`,
     address,
     ...sender.replyToEmail ? [`Reply-To: ${sender.replyToEmail.trim()}`] : [],
+    ...licenseLines(sender),
     optOutOf(sender)
   ].join("\n");
+}
+function smsFooter(sender) {
+  const licenses = licenseLines(sender);
+  return [`- ${oneLine(sender.name)}, ${oneLine(sender.company)}`, ...licenses, SMS_OPT_OUT_TEXT].join("\n");
+}
+function callScriptFooter(sender) {
+  const licenses = licenseLines(sender);
+  return [
+    "[Required disclosures]",
+    `Open with: "This is ${oneLine(sender.name)} with ${oneLine(sender.company)}."`,
+    ...licenses.map((l) => `State the license: ${l}.`),
+    "If they ask not to be called again: end the call politely and add the number to the suppression list."
+  ].join("\n");
+}
+function footerFor(sender, channel) {
+  switch (channel) {
+    case "email":
+    case "mail":
+      return emailFooter(sender);
+    case "sms":
+      return smsFooter(sender);
+    case "call_script":
+      return callScriptFooter(sender);
+    default:
+      return void 0;
+  }
 }
 function appendBlock(body, block) {
   const trimmed = body.replace(/\s+$/, "");
@@ -76103,10 +76148,11 @@ function applyComplianceFooter(message, sender) {
     const body = sender?.optOutOnLinkedin === true ? appendBlock(message.body, optOutOf(sender)) : message.body;
     return { ...message, body, needsSenderIdentity: false };
   }
-  if (!sender || missingSenderFields(sender).length > 0) {
+  if (!sender || missingSenderFields(sender, message.channel).length > 0) {
     return { ...message, needsSenderIdentity: true };
   }
-  return { ...message, body: appendBlock(message.body, emailFooter(sender)), needsSenderIdentity: false };
+  const footer = footerFor(sender, message.channel) ?? "";
+  return { ...message, body: appendBlock(message.body, footer), needsSenderIdentity: false };
 }
 
 // pipeline_core/profiles.ts
@@ -76697,7 +76743,7 @@ async function runCampaign(input2) {
       if (scored.object.fitScore < minScore) continue;
       const eligible = [];
       for (const contact of contacts) {
-        const contactKey = contactKeyOf(contact);
+        const contactKey2 = contactKeyOf(contact);
         const outcome = await evaluateGate(gate2, {
           lead,
           contact,
@@ -76707,14 +76753,14 @@ async function runCampaign(input2) {
         if (outcome.clean) {
           eligible.push(contact);
         } else {
-          blockedContacts.push({ contactKey, reason: outcome.reason });
+          blockedContacts.push({ contactKey: contactKey2, reason: outcome.reason });
           if (outcome.error !== void 0) {
-            errors.push({ domain: lead.domain, contactKey, stage: "gate", message: outcome.error });
+            errors.push({ domain: lead.domain, contactKey: contactKey2, stage: "gate", message: outcome.error });
           }
         }
       }
       for (const contact of rankContactsByTitle(eligible, buyerTitles).slice(0, maxContacts)) {
-        const contactKey = contactKeyOf(contact);
+        const contactKey2 = contactKeyOf(contact);
         let drafted;
         try {
           drafted = await draftMessage(provider, {
@@ -76732,9 +76778,9 @@ async function runCampaign(input2) {
         } catch (err) {
           if (err instanceof DraftRejectedError) {
             recordUsage(err.usage);
-            rejectedDrafts.push({ contactKey, issues: err.issues });
+            rejectedDrafts.push({ contactKey: contactKey2, issues: err.issues });
           } else {
-            recordError(err, { domain: lead.domain, contactKey, stage: "draft" });
+            recordError(err, { domain: lead.domain, contactKey: contactKey2, stage: "draft" });
           }
           continue;
         }
@@ -76742,7 +76788,7 @@ async function runCampaign(input2) {
         promptRefs.draft ??= drafted.promptRef;
         const finalized = finalizeDraft(
           {
-            contactKey,
+            contactKey: contactKey2,
             channel,
             subject: drafted.object.subject ?? void 0,
             body: drafted.object.body,
@@ -76759,7 +76805,7 @@ async function runCampaign(input2) {
           if (finalized.message.needsSenderIdentity) draftsMissingSender += 1;
           messages.push(finalized.message);
         } else {
-          rejectedDrafts.push({ contactKey, issues: finalized.issues });
+          rejectedDrafts.push({ contactKey: contactKey2, issues: finalized.issues });
         }
       }
     }
@@ -76977,6 +77023,259 @@ var JsonlRunStore = class {
   }
 };
 
+// pipeline_core/compliance/consent.ts
+var CONSENT_METHODS = ["web_form", "signed_form", "verbal_documented", "in_person", "sphere_import"];
+var WRITTEN_CONSENT_METHODS = /* @__PURE__ */ new Set(["web_form", "signed_form"]);
+var ConsentRecordSchema = external_exports.object({
+  id: external_exports.string().min(1),
+  contact: external_exports.object({ kind: external_exports.enum(["phone", "email", "mail"]), value: external_exports.string().min(1) }),
+  /** Channels this consent covers. */
+  scope: external_exports.array(ChannelSchema).min(1),
+  method: external_exports.enum(CONSENT_METHODS),
+  /** ISO 8601 instant the consent was given. */
+  recordedAt: external_exports.string().datetime({ offset: true }),
+  /** The exact consent language shown, verbatim. */
+  textShown: external_exports.string().min(1),
+  /** Versioned consent copy; bump when the language changes. */
+  textVersion: external_exports.string().min(1),
+  /** Where it was captured (form URL, document id). */
+  sourceUrl: external_exports.string().min(1).optional(),
+  remoteAddress: external_exports.string().optional(),
+  userAgent: external_exports.string().optional(),
+  revokedAt: external_exports.string().datetime({ offset: true }).optional(),
+  revocationMethod: external_exports.string().min(1).optional()
+});
+function contactKey(kind, value) {
+  if (typeof value !== "string") return null;
+  try {
+    if (kind === "phone") return `phone:${normalizePhone(value)}`;
+    if (kind === "email") return `email:${normalizeSuppressionEmail(value)}`;
+    if (kind === "mail") return `mail:${normalizeMailingAddress(value)}`;
+    return null;
+  } catch {
+    return null;
+  }
+}
+function checkConsent(records, contact, channel, now2, requirement) {
+  const key = contactKey(contact.kind, contact.value);
+  if (key === null) return { ok: false, reason: "consent:unreadable-contact" };
+  const keyed = records.map((r) => ({ r, key: contactKey(r?.contact?.kind, r?.contact?.value) }));
+  if (keyed.some((k) => k.key === null)) return { ok: false, reason: "consent:ledger-unreadable" };
+  const mine = keyed.filter((k) => k.key === key).map((k) => k.r);
+  const revoked = (r) => {
+    if (r.revokedAt === void 0) return false;
+    const at = Date.parse(r.revokedAt);
+    return Number.isNaN(at) || at <= now2.getTime();
+  };
+  if (mine.some(revoked)) return { ok: false, reason: "consent:revoked" };
+  if (requirement === "none") return { ok: true };
+  const valid = mine.filter((r) => r.scope.includes(channel) && Date.parse(r.recordedAt) <= now2.getTime());
+  if (valid.length === 0) return { ok: false, reason: "consent:missing" };
+  if (requirement === "written") {
+    const written = valid.find((r) => WRITTEN_CONSENT_METHODS.has(r.method));
+    return written ? { ok: true, record: written } : { ok: false, reason: "consent:not-written" };
+  }
+  return { ok: true, record: valid[0] };
+}
+
+// pipeline_core/compliance/timezones.ts
+var ET = "America/New_York";
+var CT = "America/Chicago";
+var MT = "America/Denver";
+var AZ = "America/Phoenix";
+var PT = "America/Los_Angeles";
+var AK = "America/Anchorage";
+var HT = "Pacific/Honolulu";
+var PRT = "America/Puerto_Rico";
+var ALL_US_ZONES = [ET, CT, MT, AZ, PT, AK, "America/Adak", HT, PRT];
+var STATE_ZONES = {
+  AL: [CT],
+  AK: [AK, "America/Adak"],
+  AZ: [AZ, MT],
+  // AZ: the Navajo Nation observes DST AR: [CT], CA: [PT], CO: [MT], CT: [ET], DE: [ET], DC: [ET],
+  FL: [ET, CT],
+  GA: [ET],
+  HI: [HT],
+  ID: [MT, PT],
+  IL: [CT],
+  IN: [ET, CT],
+  IA: [CT],
+  KS: [CT, MT],
+  KY: [ET, CT],
+  LA: [CT],
+  ME: [ET],
+  MD: [ET],
+  MA: [ET],
+  MI: [ET, CT],
+  MN: [CT],
+  MS: [CT],
+  MO: [CT],
+  MT: [MT],
+  NE: [CT, MT],
+  NV: [PT, MT],
+  // NV: West Wendover is Mountain NH: [ET], NJ: [ET], NM: [MT], NY: [ET], NC: [ET], ND: [CT, MT],
+  OH: [ET],
+  OK: [CT],
+  OR: [PT, MT],
+  PA: [ET],
+  RI: [ET],
+  SC: [ET],
+  SD: [CT, MT],
+  TN: [ET, CT],
+  TX: [CT, MT],
+  UT: [MT],
+  VT: [ET],
+  VA: [ET],
+  WA: [PT],
+  WV: [ET],
+  WI: [CT],
+  WY: [MT],
+  PR: [PRT]
+};
+var AREA_CODES = {};
+function codes(state, zones, list) {
+  for (const c of list.split(" ")) AREA_CODES[c] = { state, zones };
+}
+codes("AL", [CT], "205 251 256 334 659 938");
+codes("FL", [ET], "239 305 321 324 352 386 407 561 645 656 689 727 728 754 772 786 813 863 904 941 954");
+codes("FL", [ET, CT], "448 850");
+codes("MS", [CT], "228 601 662 769");
+codes("LA", [CT], "225 318 337 504 985");
+codes("GA", [ET], "229 404 470 478 678 706 762 770 912 943");
+codes("TN", [CT], "615 629 731 901");
+codes("TN", [ET, CT], "423 865 931");
+var TCPA_WINDOW = Object.freeze({ startHour: 8, endHour: 21, sundays: true });
+var PHONE_WINDOW = Object.freeze({ startHour: 8, endHour: 20, sundays: false });
+var STATE_STARTS = { TX: 9 };
+function localTime(now2, zone) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hour12: false,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).formatToParts(now2);
+  const get = (t) => parts.find((p) => p.type === t)?.value ?? "";
+  const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
+  return { day, minutes: Number(get("hour")) % 24 * 60 + Number(get("minute")) };
+}
+function withinContactWindow(now2, recipient) {
+  const zones = /* @__PURE__ */ new Set();
+  const states = /* @__PURE__ */ new Set();
+  let unknownLocation = false;
+  const state = recipient.state?.trim().toUpperCase();
+  if (state && STATE_ZONES[state]) {
+    states.add(state);
+    for (const z4 of STATE_ZONES[state]) zones.add(z4);
+  } else if (state) {
+    unknownLocation = true;
+  }
+  if (recipient.phone !== void 0) {
+    const code = /^\+1(\d{3})\d{7}$/.exec(recipient.phone)?.[1];
+    const area = code !== void 0 ? AREA_CODES[code] : void 0;
+    if (area) {
+      states.add(area.state);
+      for (const z4 of area.zones) zones.add(z4);
+    } else {
+      unknownLocation = true;
+    }
+  }
+  if (zones.size === 0) unknownLocation = true;
+  const candidates = unknownLocation ? [.../* @__PURE__ */ new Set([...zones, ...ALL_US_ZONES])] : [...zones];
+  const startHour = Math.max(PHONE_WINDOW.startHour, ...[...states].map((s) => STATE_STARTS[s] ?? 0));
+  const window = { ...PHONE_WINDOW, startHour };
+  const ok = candidates.every((z4) => {
+    const t = localTime(now2, z4);
+    if (t.day < 0) return false;
+    if (!window.sundays && t.day === 0) return false;
+    return t.minutes >= window.startHour * 60 && t.minutes < window.endHour * 60;
+  });
+  return { ok, zones: candidates, window, unknownLocation };
+}
+
+// pipeline_core/compliance/send.ts
+var policy = (p) => Object.freeze(p);
+var DEFAULT_CHANNEL_POLICIES = Object.freeze({
+  email: policy({ consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false }),
+  linkedin: policy({ consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false }),
+  sms: policy({ consent: "written", landlineExempt: false, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false }),
+  call_script: policy({ consent: "written", landlineExempt: true, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false }),
+  mail: policy({ consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false })
+});
+var CONSENT_RANK = { none: 0, any: 1, written: 2 };
+function channelPolicy(channel, override) {
+  const base = DEFAULT_CHANNEL_POLICIES[channel];
+  if (!override) return { ...base };
+  return {
+    consent: override.consent && CONSENT_RANK[override.consent] > CONSENT_RANK[base.consent] ? override.consent : base.consent,
+    landlineExempt: base.landlineExempt && override.landlineExempt !== false,
+    quietHours: base.quietHours || override.quietHours === true,
+    requireDncClean: base.requireDncClean || override.requireDncClean === true,
+    requireLicenseDisclosure: base.requireLicenseDisclosure || override.requireLicenseDisclosure === true
+  };
+}
+var CONTACT_KIND = {
+  email: "email",
+  linkedin: null,
+  sms: "phone",
+  call_script: "phone",
+  mail: "mail"
+};
+function checkSendable(input2) {
+  const { channel, contactPoint: cp, now: now2 } = input2;
+  const policy2 = channelPolicy(channel, input2.policy);
+  const reasons = [];
+  let window;
+  if (!(now2 instanceof Date) || Number.isNaN(now2.getTime())) reasons.push("clock:invalid");
+  if (input2.message.channel !== channel) reasons.push("channel:mismatch");
+  const kind = CONTACT_KIND[channel];
+  if (kind !== null) {
+    if (!cp) reasons.push("contact-point:missing");
+    else if (cp.kind !== kind) reasons.push(`contact-point:wrong-kind:${cp.kind}`);
+  }
+  if (input2.message.needsSenderIdentity === true) reasons.push("sender-identity:missing");
+  const missing = missingSenderFields(input2.sender, channel);
+  if (channel !== "linkedin" && missing.length > 0) reasons.push(`sender-identity:missing:${missing.join(",")}`);
+  const subject = { domains: [] };
+  if (cp?.kind === "email") subject.email = cp.value;
+  else if (input2.contactEmail) subject.email = input2.contactEmail;
+  if (cp?.kind === "phone") subject.phones = [cp.value];
+  if (cp?.kind === "mail") subject.addresses = [cp.value];
+  const suppression = checkSuppression(input2.suppressions, subject);
+  if (suppression.status !== "clean") reasons.push(suppression.reason ?? "suppressed");
+  if (cp?.licenseTerms?.outreachRestricted === true) reasons.push("license:outreach-restricted");
+  const isPhoneChannel = channel === "sms" || channel === "call_script";
+  if (isPhoneChannel && cp?.kind === "phone") {
+    if (policy2.requireDncClean && cp.dnc !== "clean") reasons.push(`dnc:${cp.dnc}`);
+    const landline = policy2.landlineExempt && cp.lineType === "landline" && cp.dnc === "clean";
+    const requirement = landline ? "none" : policy2.consent;
+    const consent = checkConsent(input2.consents ?? [], cp, channel, now2, requirement);
+    if (!consent.ok) reasons.push(consent.reason);
+  } else if (cp) {
+    const consent = checkConsent(input2.consents ?? [], cp, channel, now2, policy2.consent);
+    if (!consent.ok) reasons.push(consent.reason);
+  } else if (input2.contactEmail) {
+    const consent = checkConsent(input2.consents ?? [], { kind: "email", value: input2.contactEmail }, channel, now2, policy2.consent);
+    if (!consent.ok) reasons.push(consent.reason);
+  } else if (policy2.consent !== "none") {
+    reasons.push("consent:no-contact");
+  }
+  if (policy2.quietHours && !reasons.includes("clock:invalid")) {
+    window = withinContactWindow(now2, { state: input2.recipientState, phone: cp?.kind === "phone" ? cp.value : void 0 });
+    if (!window.ok) reasons.push(window.unknownLocation ? "quiet-hours:unknown-location" : "quiet-hours");
+  }
+  if (input2.sender && missing.length === 0) {
+    const footer = footerFor(input2.sender, channel);
+    if (footer !== void 0 && !input2.message.body.replace(/\s+$/, "").endsWith(footer)) {
+      reasons.push("disclosure:footer-missing");
+    }
+  }
+  if (policy2.requireLicenseDisclosure && (input2.sender?.licenses ?? []).length === 0) {
+    reasons.push("disclosure:license-not-configured");
+  }
+  return { sendable: reasons.length === 0, reasons, policy: policy2, ...window ? { window } : {} };
+}
+
 // cli.ts
 var UsageError = class extends Error {
   constructor(message) {
@@ -77049,6 +77348,8 @@ function printHelp() {
       '  intent-outreach suppress add <email|domain|phone|"address"> [--kind <k>] [--reason <text>]',
       "  intent-outreach suppress remove <value> [--kind <k>]",
       "  intent-outreach suppress list       opt-outs honored by every run",
+      "  intent-outreach check-send [--profile <p>] < message.json",
+      "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
       "",
       "run options:",
@@ -77232,6 +77533,65 @@ async function cmdSuppress(args) {
   }
   throw new UsageError(SUPPRESS_USAGE);
 }
+var CHECK_SEND_USAGE = 'usage: intent-outreach check-send [--profile <name|path>] < input.json\n  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,"now"?,"consents"?,"recipientState"?,"pack"?}';
+var CheckSendInputSchema = external_exports.object({
+  message: external_exports.object({ channel: ChannelSchema, body: external_exports.string().min(1), needsSenderIdentity: external_exports.boolean().optional() }),
+  channel: ChannelSchema,
+  contactPoint: ContactPointSchema.optional(),
+  contactEmail: external_exports.string().email().optional(),
+  /** Defaults to the current time: the CLI is the I/O boundary that reads the clock. */
+  now: external_exports.string().datetime({ offset: true }).optional(),
+  consents: external_exports.array(ConsentRecordSchema).default([]),
+  recipientState: external_exports.string().regex(/^[A-Z]{2}$/).optional(),
+  /** Pack whose channel policy applies (tighten-only). Defaults to b2b-sdr. */
+  pack: external_exports.string().min(1).optional()
+});
+async function readStdin() {
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  return Buffer.concat(chunks).toString("utf8");
+}
+async function cmdCheckSend(args, stdin = readStdin) {
+  let values;
+  try {
+    ({ values } = parseArgs({ args, options: { profile: { type: "string" } }, allowPositionals: false }));
+  } catch {
+    throw new UsageError(CHECK_SEND_USAGE);
+  }
+  let parsed;
+  try {
+    parsed = CheckSendInputSchema.parse(JSON.parse(await stdin()));
+  } catch (err) {
+    const why = err instanceof external_exports.ZodError ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : "not valid JSON";
+    throw new UsageError(`check-send: invalid input (${why})
+${CHECK_SEND_USAGE}`);
+  }
+  let sender;
+  if (values.profile) {
+    try {
+      sender = loadProfileRef(values.profile).sender;
+    } catch (err) {
+      throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  registerBuiltinPacks();
+  const pack = resolvePack(parsed.pack ?? "b2b-sdr");
+  const verdict = checkSendable({
+    message: parsed.message,
+    channel: parsed.channel,
+    contactPoint: parsed.contactPoint,
+    contactEmail: parsed.contactEmail,
+    now: parsed.now ? new Date(parsed.now) : /* @__PURE__ */ new Date(),
+    consents: parsed.consents,
+    suppressions: await loadSuppressionList(),
+    recipientState: parsed.recipientState,
+    sender,
+    policy: pack.channels?.[parsed.channel]
+  });
+  process.stdout.write(`${JSON.stringify(verdict, null, 2)}
+`);
+  if (!verdict.sendable) process.exitCode = 3;
+}
 async function main(argv = process.argv.slice(2)) {
   const [cmd, ...rest] = argv;
   switch (cmd) {
@@ -77243,6 +77603,8 @@ async function main(argv = process.argv.slice(2)) {
       return void cmdProviders();
     case "suppress":
       return cmdSuppress(rest);
+    case "check-send":
+      return cmdCheckSend(rest);
     case "help":
     case "--help":
     case "-h":

@@ -40,8 +40,9 @@ export const SCHEMA_VERSION = 6 as const;
  * runCampaign, "agent" for the MCP save_run path). Additive: v1–v4 still parse.
  *
  * v6 added the property/owner model (`properties`, `parties`, `ownerships`,
- * `entityLinks`, `contactPoints`, all defaulted []) and the optional `queries`
- * (the typed research queries a run executed). Additive: v1–v5 still parse.
+ * `entityLinks`, `contactPoints`, all defaulted []), the optional `queries`
+ * (the typed research queries a run executed) and the `sms`, `mail` and
+ * `call_script` message channels. Additive: v1–v5 still parse.
  */
 export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6] as const;
 export type SchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
@@ -356,6 +357,15 @@ export type ResearchQuery = z.infer<typeof ResearchQuerySchema>;
 export type ResearchQueryKind = ResearchQuery["kind"];
 
 /**
+ * Outreach channels. `email` and `linkedin` are the B2B channels; `sms`, `mail`
+ * and `call_script` (a script a human caller reads; the engine never dials) are
+ * the property-pack channels, each with its own footer and send-time rules.
+ */
+export const CHANNELS = ["email", "linkedin", "sms", "mail", "call_script"] as const;
+export const ChannelSchema = z.enum(CHANNELS);
+export type Channel = z.infer<typeof ChannelSchema>;
+
+/**
  * Message — drafted outreach. This is MODEL OUTPUT and is the most dangerous
  * thing in the system: it goes out under the customer's domain. It must pass
  * the validator (and, in production, the eval gate) before it is recorded.
@@ -363,7 +373,7 @@ export type ResearchQueryKind = ResearchQuery["kind"];
 export const MessageSchema = z.object({
   /** FK to the Contact this message is for (email if known, else name@domain). */
   contactKey: z.string().min(1),
-  channel: z.enum(["email", "linkedin"]),
+  channel: ChannelSchema,
   subject: z.string().optional(),
   body: z.string().min(1),
   cta: z.string().min(1),
@@ -374,9 +384,10 @@ export const MessageSchema = z.object({
   promptVersion: z.string().min(1),
   createdAt: z.string().datetime(),
   /**
-   * True when this is an EMAIL draft and no sender identity (name, company,
-   * postal address) was configured, so the CAN-SPAM footer could NOT be appended.
-   * Such a draft must not be sent as-is. Additive (v4); defaults false.
+   * True when the channel's required sender identity was not configured, so its
+   * footer could NOT be appended: name + company + postal address for email and
+   * mail, name + company for sms and call_script. Such a draft must not be sent
+   * as-is. Additive (v4); defaults false.
    */
   needsSenderIdentity: z.boolean().default(false),
 });
