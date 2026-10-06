@@ -38870,10 +38870,12 @@ var ResearchQuerySchema = external_exports.discriminatedUnion("kind", [
     message: "a parcel query needs countyFips + apn, or an address"
   })
 ]);
+var CHANNELS = ["email", "linkedin", "sms", "mail", "call_script"];
+var ChannelSchema = external_exports.enum(CHANNELS);
 var MessageSchema = external_exports.object({
   /** FK to the Contact this message is for (email if known, else name@domain). */
   contactKey: external_exports.string().min(1),
-  channel: external_exports.enum(["email", "linkedin"]),
+  channel: ChannelSchema,
   subject: external_exports.string().optional(),
   body: external_exports.string().min(1),
   cta: external_exports.string().min(1),
@@ -38884,9 +38886,10 @@ var MessageSchema = external_exports.object({
   promptVersion: external_exports.string().min(1),
   createdAt: external_exports.string().datetime(),
   /**
-   * True when this is an EMAIL draft and no sender identity (name, company,
-   * postal address) was configured, so the CAN-SPAM footer could NOT be appended.
-   * Such a draft must not be sent as-is. Additive (v4); defaults false.
+   * True when the channel's required sender identity was not configured, so its
+   * footer could NOT be appended: name + company + postal address for email and
+   * mail, name + company for sms and call_script. Such a draft must not be sent
+   * as-is. Additive (v4); defaults false.
    */
   needsSenderIdentity: external_exports.boolean().default(false)
 });
@@ -39932,6 +39935,7 @@ async function loadSuppressionList(path = defaultSuppressionsPath()) {
 }
 
 // pipeline_core/footer.ts
+var SMS_OPT_OUT_TEXT = "Reply STOP to opt out.";
 var DEFAULT_OPT_OUT_TEXT = `Not the right person or not interested? Reply "unsubscribe" and I won't contact you again.`;
 var FOOTER_DELIMITER = "-- ";
 var nonBlank = external_exports.string().trim().min(1);
@@ -39947,15 +39951,29 @@ var SenderIdentitySchema = external_exports.object({
   /** Opt-out sentence. Defaults to DEFAULT_OPT_OUT_TEXT. */
   optOutText: nonBlank.optional(),
   /** Append the opt-out sentence to LinkedIn drafts too (no postal footer). Default false. */
-  optOutOnLinkedin: external_exports.boolean().optional()
+  optOutOnLinkedin: external_exports.boolean().optional(),
+  /**
+   * Real estate licenses to disclose on every outbound message, e.g.
+   * `{ state: "AL", number: "000123", brokerage: "Example Realty" }`.
+   */
+  licenses: external_exports.array(
+    external_exports.object({
+      state: external_exports.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code"),
+      number: nonBlank,
+      brokerage: nonBlank
+    })
+  ).optional()
 });
 var isBlank = (v) => typeof v !== "string" || v.trim() === "";
-function missingSenderFields(sender) {
+function missingSenderFields(sender, channel = "email") {
   const missing = [];
   if (isBlank(sender?.name)) missing.push("name");
   if (isBlank(sender?.company)) missing.push("company");
-  if (isBlank(sender?.postalAddress)) missing.push("postalAddress");
+  if ((channel === "email" || channel === "mail") && isBlank(sender?.postalAddress)) missing.push("postalAddress");
   return missing;
+}
+function licenseLines(sender) {
+  return (sender?.licenses ?? []).map((l) => `${oneLine(l.brokerage)}, ${l.state} license #${oneLine(l.number)}`);
 }
 var oneLine = (s) => s.replace(/\s*[\r\n]+\s*/g, " ").trim();
 function optOutOf(sender) {
@@ -39968,7 +39986,21 @@ function emailFooter(sender) {
     `${oneLine(sender.name)}, ${oneLine(sender.company)}`,
     address,
     ...sender.replyToEmail ? [`Reply-To: ${sender.replyToEmail.trim()}`] : [],
+    ...licenseLines(sender),
     optOutOf(sender)
+  ].join("\n");
+}
+function smsFooter(sender) {
+  const licenses = licenseLines(sender);
+  return [`- ${oneLine(sender.name)}, ${oneLine(sender.company)}`, ...licenses, SMS_OPT_OUT_TEXT].join("\n");
+}
+function callScriptFooter(sender) {
+  const licenses = licenseLines(sender);
+  return [
+    "[Required disclosures]",
+    `Open with: "This is ${oneLine(sender.name)} with ${oneLine(sender.company)}."`,
+    ...licenses.map((l) => `State the license: ${l}.`),
+    "If they ask not to be called again: end the call politely and add the number to the suppression list."
   ].join("\n");
 }
 function appendBlock(body, block) {
@@ -39983,10 +40015,11 @@ function applyComplianceFooter(message, sender) {
     const body = sender?.optOutOnLinkedin === true ? appendBlock(message.body, optOutOf(sender)) : message.body;
     return { ...message, body, needsSenderIdentity: false };
   }
-  if (!sender || missingSenderFields(sender).length > 0) {
+  if (!sender || missingSenderFields(sender, message.channel).length > 0) {
     return { ...message, needsSenderIdentity: true };
   }
-  return { ...message, body: appendBlock(message.body, emailFooter(sender)), needsSenderIdentity: false };
+  const footer = message.channel === "sms" ? smsFooter(sender) : message.channel === "call_script" ? callScriptFooter(sender) : emailFooter(sender);
+  return { ...message, body: appendBlock(message.body, footer), needsSenderIdentity: false };
 }
 
 // pipeline_core/profiles.ts

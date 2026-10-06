@@ -170,6 +170,8 @@ own checks:
 ```bash
 intent-outreach suppress add jane@acme.com --reason "replied unsubscribe"
 intent-outreach suppress add globex.com          # a domain also covers its subdomains
+intent-outreach suppress add "(251) 555-0100" --reason "replied STOP"   # phone, stored as E.164
+intent-outreach suppress add "12 Main St, Foley, AL 36535"             # mailing address
 intent-outreach suppress remove globex.com
 intent-outreach suppress list
 ```
@@ -177,6 +179,23 @@ intent-outreach suppress list
 (From a checkout, use `node bundle/cli.mjs suppress …`.) Matching ignores case and whitespace. A suppressed
 contact is recorded in the run's `blockedContacts` and never drafted. If `suppressions.jsonl` has a corrupt
 line, the run refuses to start rather than risk emailing someone who opted out.
+
+## Send-time check (for whatever sends)
+
+Intent Outreach drafts and never sends. Whatever does send (a dispatcher, a person) must check each
+message at the moment of sending, because a STOP, a revoked consent, quiet hours or a DNC result can
+arrive after drafting. In TypeScript call `checkSendable` / `assertSendable` from
+`pipeline_core/compliance/send.ts`; from any other language pipe JSON to the CLI:
+
+```bash
+intent-outreach check-send --profile ./my-profile.json < message.json   # exit 0 sendable, 3 not, 2 bad input
+```
+
+It checks the local suppression list, DNC status (phone channels need exactly `clean`), consent from the
+ledger you pass in (SMS needs written consent; any revocation voids every channel), the recipient-local
+window (8am–9pm, 8pm in Florida, the strictest window when the location is unknown), the channel footer
+(STOP wording for SMS, sender identity, license disclosure when the pack requires it), and data whose
+license restricts outreach. It prints every blocking reason as JSON.
 
 ## Keys (bring your own)
 
