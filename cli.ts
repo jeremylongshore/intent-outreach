@@ -34,6 +34,8 @@ import {
 } from "./pipeline_core/suppressions.js";
 import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
 import { checkSendable } from "./pipeline_core/compliance/send.js";
+import { approvalVerdict, decide, listPending, readApprovals, recipientMatches } from "./pipeline_core/approvals.js";
+import { userInfo } from "node:os";
 import { join } from "node:path";
 import { FileResponseCache } from "./pipeline_core/routing.js";
 import { intentOutreachHome } from "./pipeline_core/secrets.js";
@@ -151,6 +153,9 @@ export function printHelp(): void {
       "  intent-outreach suppress list       opt-outs honored by every run",
       "  intent-outreach property-run --icp <text> (--zips <list> | --parcels <fips:apn,...>) [options]",
       "                                      draft letters to owners of record (residential-re pack)",
+      "  intent-outreach approvals pending   drafts waiting for a person to approve or reject",
+      "  intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]",
+      "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
@@ -477,13 +482,78 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
   );
 }
 
+const APPROVALS_USAGE =
+  "usage: intent-outreach approvals pending [--json]\n" +
+  "       intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]\n" +
+  "       intent-outreach approvals reject <runId> <contactKey> [--note <text>]\n" +
+  "  approve needs the digest `pending` prints for that exact message; editing a draft voids its approval";
+
+/** `approvals pending|approve|reject` — the human approval queue (approvals.jsonl, 0600). */
+async function cmdApprovals(args: string[]): Promise<void> {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args,
+      options: { digest: { type: "string" }, note: { type: "string" }, json: { type: "boolean" }, out: { type: "string" } },
+      allowPositionals: true,
+    });
+  } catch {
+    throw new UsageError(APPROVALS_USAGE);
+  }
+  const { values, positionals } = parsed;
+  const [action, runId, contactKey, ...extra] = positionals;
+  const store = new JsonlRunStore(values.out);
+  if (action === "pending" && runId === undefined) {
+    const pending = await listPending(store);
+    if (values.json) {
+      process.stdout.write(`${JSON.stringify(pending, null, 2)}\n`);
+      return;
+    }
+    if (pending.length === 0) process.stdout.write("nothing waiting for approval\n");
+    for (const p of pending) {
+      process.stdout.write(
+        `\n${p.runId}  ${p.contactKey}  ${p.channel}  digest ${p.digest}` +
+          `${p.fitScore !== undefined ? `  fit ${p.fitScore}` : ""}${p.needsSenderIdentity ? "  NEEDS SENDER IDENTITY" : ""}\n` +
+          `${p.subject ? `Subject: ${p.subject}\n` : ""}${p.body}\nCTA: ${p.cta}\n`,
+      );
+    }
+    return;
+  }
+  if ((action === "approve" || action === "reject") && runId && contactKey && extra.length === 0) {
+    if (action === "approve" && !values.digest) throw new UsageError(APPROVALS_USAGE);
+    const record = await decide({
+      store,
+      runId,
+      contactKey,
+      decision: action === "approve" ? "approved" : "rejected",
+      by: userInfo().username || "cli",
+      note: values.note,
+      digest: values.digest,
+      now: () => new Date().toISOString(),
+    });
+    process.stdout.write(`${record.decision}: ${record.runId} ${record.contactKey} (${record.messageSha256.slice(0, 12)})\n`);
+    return;
+  }
+  throw new UsageError(APPROVALS_USAGE);
+}
+
 const CHECK_SEND_USAGE =
   "usage: intent-outreach check-send [--profile <name|path>] < input.json\n" +
   '  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,' +
-  '"now"?,"consents"?,"recipientState"?,"pack"?}';
+  '"now"?,"consents"?,"recipientState"?,"pack"?,"runId","contactKey"}\n' +
+  "  the message must match an approved draft exactly (intent-outreach approvals pending / approve)";
 
 const CheckSendInputSchema = z.object({
-  message: z.object({ channel: ChannelSchema, body: z.string().min(1), needsSenderIdentity: z.boolean().optional() }),
+  message: z.object({
+    channel: ChannelSchema,
+    subject: z.string().nullable().optional(),
+    body: z.string().min(1),
+    cta: z.string().nullable().optional(),
+    needsSenderIdentity: z.boolean().optional(),
+  }),
+  /** The stored run and contact the message came from, to look up its approval. */
+  runId: z.string().min(1).optional(),
+  contactKey: z.string().min(1).optional(),
   channel: ChannelSchema,
   contactPoint: ContactPointSchema.optional(),
   contactEmail: z.string().email().optional(),
@@ -508,9 +578,9 @@ async function readStdin(): Promise<string> {
  * the verdict as JSON, and exits 0 when sendable, 3 when not, 2 on bad input.
  */
 async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readStdin): Promise<void> {
-  let values: { profile?: string | undefined };
+  let values: { profile?: string | undefined; out?: string | undefined };
   try {
-    ({ values } = parseArgs({ args, options: { profile: { type: "string" } }, allowPositionals: false }));
+    ({ values } = parseArgs({ args, options: { profile: { type: "string" }, out: { type: "string" } }, allowPositionals: false }));
   } catch {
     throw new UsageError(CHECK_SEND_USAGE);
   }
@@ -542,7 +612,21 @@ async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readS
     recipientState: parsed.recipientState,
     sender,
     policy: pack.channels?.[parsed.channel],
+    approval:
+      parsed.runId && parsed.contactKey
+        ? approvalVerdict(await readApprovals(), parsed.runId, parsed.contactKey, parsed.message)
+        : "missing",
   });
+  // An approval covers a text TO a contact: the recipient must be the one the stored run drafted for.
+  if (parsed.runId && parsed.contactKey) {
+    const run = await new JsonlRunStore(values.out).getRun(parsed.runId);
+    if (!run || !run.messages.some((m) => m.contactKey === parsed.contactKey)) {
+      verdict.reasons.push("run:message-not-found");
+    } else if (!recipientMatches(run, parsed.contactKey, { contactPoint: parsed.contactPoint, contactEmail: parsed.contactEmail })) {
+      verdict.reasons.push("recipient:mismatch");
+    }
+    verdict.sendable = verdict.reasons.length === 0;
+  }
   process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
   if (!verdict.sendable) process.exitCode = 3;
 }
@@ -562,6 +646,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       return cmdCheckSend(rest);
     case "property-run":
       return cmdPropertyRun(rest);
+    case "approvals":
+      return cmdApprovals(rest);
     case "help":
     case "--help":
     case "-h":

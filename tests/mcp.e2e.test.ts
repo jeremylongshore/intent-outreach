@@ -42,7 +42,7 @@ afterAll(async () => {
 describe("shipped MCP server", () => {
   it("lists exactly the four tools", async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(["enrich_lead", "list_connectors", "research_domain", "save_run"]);
+    expect(tools.map((t) => t.name).sort()).toEqual(["approve", "enrich_lead", "list_connectors", "list_pending", "reject", "research_domain", "save_run"]);
   });
 
   it("list_connectors: every keyed connector is unconfigured; only the keyless public-records ones are on", async () => {
