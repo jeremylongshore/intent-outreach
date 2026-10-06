@@ -26,6 +26,9 @@ The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR 
   the owner decisions, the stream plan and waves, and what shipped in each PR.
 - **`022-AA-AACR-hardening-after-action-review.md`** — after-action review of the hardening: what went
   well, what didn't, and the open follow-ups.
+- **`036-AA-AUDT-appaudit-devops-playbook.md`** — **the handoff (2026-10-06): read this first.** Operator-grade
+  analysis of the whole system and the real estate program: architecture, critical path, decision log, sharp edges,
+  the #85–#105 PR ledger, implementation status, open owner decisions and the exact resume procedure.
 - **`031-AT-DECR-real-estate-engine-one-engine-many-packs.md`** — the real estate decision record: one engine,
   many packs, thin client repos; the three structural pieces that land first (send-time per-channel compliance,
   the property/owner model, capability routing with budgets); the repo boundaries with coastal-realty-ops and
