@@ -79,7 +79,10 @@ describe("CLI: keys", () => {
     await useKey("VENDOR_API_KEY", 3, new Date());
     let out = "";
     const write = process.stdout.write;
-    process.stdout.write = ((c: string) => ((out += c), true)) as typeof process.stdout.write;
+    process.stdout.write = ((c: string) => {
+      out += c;
+      return true;
+    }) as typeof process.stdout.write;
     try {
       await main(["keys", "VENDOR_API_KEY"]);
     } finally {
