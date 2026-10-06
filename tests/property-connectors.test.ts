@@ -399,7 +399,7 @@ describe("review regressions", () => {
           const gov = { ...ROW, attributes: { ...ROW.attributes, PHY_ZIPCD: 32507 }, centroid: { x: -87.4, y: 30.3 } };
           return json({ ...DOR, features: [personRow, gov] });
         }
-        return flood(url);
+        return flood();
       }),
     );
     const provider = {
