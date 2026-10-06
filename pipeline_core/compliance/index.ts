@@ -7,9 +7,11 @@
  * together because the dispatcher calls all three before any outbound leaves:
  *
  *   • dncScrub        — refuses numbers on an in-process DNC list.
- *   • withinQuietHours — TCPA quiet hours; outbound allowed 7am–9pm local only.
+ *   • withinQuietHours — TCPA quiet hours; outbound allowed 8am–9pm local only
+ *                       (47 CFR 64.1200(c)(1)).
  *   • inServiceArea   — the agent works a fixed zip set; reject before enrichment
- *                       burns money.
+ *                       burns money. The zip set is PACK DATA (a `ServiceArea`
+ *                       handed in), never a constant baked into this gate.
  *
  * Design invariants (do not weaken):
  *   • FAIL-CLOSED. When a check is ambiguous, the answer is "do not send"
@@ -25,33 +27,43 @@
 /** Result of a DNC check. Fail-closed: malformed input resolves to "blocked". */
 export type DncStatus = "clean" | "blocked";
 
-// --- Service-area zip set ------------------------------------------------
+// --- Service area ------------------------------------------------------
 //
-// Source of truth: coastal CLAUDE.md § "Service Geography". South of I-10 only —
-// Baldwin County coastal zips + Perdido Key + west Pensacola. Anything else is
-// out-of-scope and must be rejected before enrichment.
-export const SERVICE_AREA_ZIPS: ReadonlySet<string> = new Set([
-  // Baldwin County, AL — coastal / south-of-I-10
-  "36542", // Gulf Shores
-  "36561", // Orange Beach
-  "36535", // Foley
-  "36567", // Robertsdale
-  "36551", // Loxley
-  "36527", // Spanish Fort
-  "36533", // Fairhope
-  "36530", // Elberta
-  "36580", // Summerdale
-  // Escambia County, FL — west Pensacola + Perdido Key
-  "32507", // West Pensacola / Perdido Key
-  "32506", // West Pensacola
-]);
+// A service area is data owned by a pack or profile (see packs/service-areas.ts
+// for the built-in ones). The gate only evaluates the area it is handed.
+const ZIP5_RE = /^\d{5}$/;
+
+/** A named set of 5-digit ZIPs an agent works. Build with `defineServiceArea`. */
+export interface ServiceArea {
+  readonly id: string;
+  readonly zips: ReadonlySet<string>;
+}
+
+/**
+ * Validate and freeze a service area. Every ZIP must be exactly 5 digits and
+ * the set must be non-empty: an empty or malformed area is a configuration
+ * error that must surface, not a gate that silently rejects (or accepts)
+ * everything.
+ */
+export function defineServiceArea(id: string, zips: Iterable<string>): ServiceArea {
+  if (typeof id !== "string" || !id.trim()) throw new Error("service area id is empty");
+  const set = new Set<string>();
+  for (const z of zips) {
+    const zip = typeof z === "string" ? z.trim() : "";
+    if (!ZIP5_RE.test(zip)) throw new Error(`service area ${id}: ${JSON.stringify(z)} is not a 5-digit ZIP`);
+    set.add(zip);
+  }
+  if (set.size === 0) throw new Error(`service area ${id} has no ZIPs`);
+  return Object.freeze({ id, zips: set });
+}
 
 // --- TCPA quiet hours ----------------------------------------------------
 //
-// 7am–9pm in the recipient's local time. The window is closed at 7am and open at
-// 9pm: 7:00:00 is allowed, 21:00:00 is not.
+// 8am–9pm in the recipient's local time (47 CFR 64.1200(c)(1)). The window is
+// closed at 8am and open at 9pm: 8:00:00 is allowed, 21:00:00 is not. The ported
+// coastal gate allowed 7am, an hour the rule does not.
 export const DEFAULT_TZ = "America/Chicago";
-export const QUIET_START = { hour: 7, minute: 0 } as const; // 7:00am — allowed
+export const QUIET_START = { hour: 8, minute: 0 } as const; // 8:00am — allowed
 export const QUIET_END = { hour: 21, minute: 0 } as const; // 9:00pm — NOT allowed
 
 // --- DNC list ------------------------------------------------------------
@@ -149,13 +161,13 @@ export function dncScrub(phone: string, dncList: DncList): DncStatus {
 }
 
 /**
- * Return true if `now` falls inside the 7am–9pm outbound window in `tz`.
+ * Return true if `now` falls inside the 8am–9pm outbound window in `tz`.
  *
  * `now` is an instant (a `Date`); it is converted to wall-clock time in `tz`
- * (DST-correct via `Intl.DateTimeFormat`). The window is closed at 7am and open
- * at 9pm: 7:00:00 is allowed, 21:00:00 is not. To express a "naive local"
- * fixture, encode the instant with the tz's UTC offset (e.g. a Central 7am is
- * `2026-05-02T07:00:00-05:00`).
+ * (DST-correct via `Intl.DateTimeFormat`). The window is closed at 8am and open
+ * at 9pm: 8:00:00 is allowed, 21:00:00 is not. To express a "naive local"
+ * fixture, encode the instant with the tz's UTC offset (e.g. a Central 8am is
+ * `2026-05-02T08:00:00-05:00`).
  */
 export function withinQuietHours(now: Date, tz: string = DEFAULT_TZ): boolean {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -176,19 +188,19 @@ export function withinQuietHours(now: Date, tz: string = DEFAULT_TZ): boolean {
 }
 
 /**
- * Return true if `zipCode` is in {@link SERVICE_AREA_ZIPS}.
+ * Return true if `zipCode` is in `area`.
  *
  * Whitespace-tolerant. Anything not exactly 5 digits after trimming is rejected —
  * compliance must not depend on schema-side validation a future migration could
- * relax.
+ * relax. A missing area is a caller bug and returns false (fail-closed).
  */
-export function inServiceArea(zipCode: string): boolean {
-  if (typeof zipCode !== "string") {
+export function inServiceArea(zipCode: string, area: ServiceArea): boolean {
+  if (typeof zipCode !== "string" || !area || !(area.zips instanceof Set)) {
     return false;
   }
   const cleaned = zipCode.trim();
-  if (cleaned.length !== 5 || !/^\d+$/.test(cleaned)) {
+  if (!ZIP5_RE.test(cleaned)) {
     return false;
   }
-  return SERVICE_AREA_ZIPS.has(cleaned);
+  return area.zips.has(cleaned);
 }
