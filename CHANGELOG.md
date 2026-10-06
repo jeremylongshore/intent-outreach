@@ -16,12 +16,6 @@ All notable changes to Intent Outreach are documented here. Format follows
   footer. The run records `inbound.speedToLeadMs` (submission to drafted reply). It never sends: the reply waits for
   approval like any draft. A run error may now carry just a `contactKey`, and packs may name an `inbound` prompt.
 
-### Fixed
-
-- **Fair-housing lint caught "perfect for families" but not "a great area for young families".** The outreach HARD list
-  now covers familial-status steering phrases: young families, young family, for families, family neighborhood, young
-  couples, newlyweds and young professionals.
-
 - **Several keys per connector, with monthly quotas** (#83 phase 4b). A key may come in labelled variants
   (`APOLLO_API_KEY`, `APOLLO_API_KEY__TEAM`, `APOLLO_API_KEY__PERSONAL`). `useKey(name, credits)` picks the first variant
   with room under its optional monthly quota (`~/.intent-outreach/quotas.json`), charges it before the call in a locked
@@ -151,6 +145,18 @@ All notable changes to Intent Outreach are documented here. Format follows
   `evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json`). Auto-detect order is
   now anthropic, openai, minimax, xai, and Anthropic stays the default. Costs are metered at
   MiniMax's published $0.30/$1.20 per MTok (#67).
+
+### Fixed
+
+- **Fair-housing lint caught "perfect for families" but not "a great area for young families".** The outreach HARD list
+  now covers familial-status steering phrases: young families, young family, for families, family neighborhood, young
+  couples, newlyweds and young professionals.
+- **The quantity guard read a street address's house number as a statistic** (#103). "412 Lagoon Ave since 2004" was
+  rejected as an invented time period; a bare integer followed by capitalized words ending in a street suffix is now a
+  label. "412 homes sold since 2019" is still caught.
+- **The residential eval scorer flagged "Alabama" when the record said "AL"** (#105). State codes on record now ground
+  the spelled-out state name; a state the record does not name still fails. Two keyed MiniMax-M3 residential runs are
+  kept as evidence (not promoted: 93% of fixtures, 98% of runs).
 
 ## [0.3.0] - 2026-10-04
 
