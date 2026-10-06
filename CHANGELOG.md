@@ -8,6 +8,16 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Provider routing, credit budgets, a response cache and rate limits** (#83 phase 4a). Connectors declare
+  `capabilities`, `creditsPerCall`, `cacheTtlMs` and `rateLimit`. A pack's `dataSources` fixes the
+  routing per capability: `first-hit` (a waterfall: stop at the first non-empty answer, so later paid
+  sources are never called), `ordered-fallback` or `all`. `run --budget-credits <n>` (or
+  `runCampaign({ budgetCredits })`) charges each paid call before it is made; once a call would cross the
+  ceiling no further paid call is made, and the run records `credits` (limit, spent, exhausted, per
+  connector). Research output of a connector with `cacheTtlMs` is cached (on disk, 0600, under the local
+  home), so a repeat lookup makes no request and costs nothing. `httpJson({ rateLimit })` enforces
+  per-minute (waits) and per-day (stops) vendor limits before every attempt.
+
 - **Fair-housing and real estate risk gates** (#83 phase 3b). Pack v2 `draftRules` run inside the draft
   guard on every drafting path (pipeline seam and MCP `save_run`); a failing rule sends the draft to
   `rejectedDrafts`, and a rule that throws rejects it. `fairHousingDraftRule` ports comehomealabama's

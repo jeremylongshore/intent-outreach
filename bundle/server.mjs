@@ -24920,8 +24920,8 @@ var require_core = __commonJS({
             return this;
           }
           case "object": {
-            const cacheKey = schemaKeyRef;
-            this._cache.delete(cacheKey);
+            const cacheKey2 = schemaKeyRef;
+            this._cache.delete(cacheKey2);
             let id = schemaKeyRef[this.opts.schemaId];
             if (id) {
               id = (0, resolve_1.normalizeId)(id);
@@ -37223,6 +37223,74 @@ function getSkippedConnectors(phase) {
   );
 }
 
+// pipeline_core/rate-limit.ts
+var RateLimitExceededError = class extends Error {
+  constructor(key, perDay) {
+    super(`${key}: daily request limit of ${perDay} reached`);
+    this.key = key;
+    this.perDay = perDay;
+    this.name = "RateLimitExceededError";
+  }
+  key;
+  perDay;
+};
+var MINUTE = 6e4;
+var DAY = 24 * 60 * MINUTE;
+var RateLimiter = class {
+  constructor(clock2 = Date.now, sleep3 = defaultSleep) {
+    this.clock = clock2;
+    this.sleep = sleep3;
+  }
+  clock;
+  sleep;
+  states = /* @__PURE__ */ new Map();
+  /** Take one request slot for `key`, waiting for a per-minute token if needed. */
+  async acquire(key, limit, signal) {
+    const perMinute = positive(limit.perMinute);
+    const perDay = positive(limit.perDay);
+    if (perMinute === void 0 && perDay === void 0) return;
+    let s = this.states.get(key);
+    if (!s) {
+      s = { tokens: perMinute !== void 0 ? Math.max(perMinute, 1) : 0, updatedAt: this.clock(), day: [] };
+      this.states.set(key, s);
+    }
+    for (; ; ) {
+      const now = this.clock();
+      if (perDay !== void 0) {
+        while (s.day.length > 0 && s.day[0] <= now - DAY) s.day.shift();
+        if (s.day.length >= perDay) throw new RateLimitExceededError(key, perDay);
+      }
+      if (perMinute === void 0) break;
+      s.tokens = Math.min(Math.max(perMinute, 1), s.tokens + (now - s.updatedAt) * perMinute / MINUTE);
+      s.updatedAt = now;
+      if (s.tokens >= 1) {
+        s.tokens -= 1;
+        break;
+      }
+      await this.sleep(Math.ceil((1 - s.tokens) * MINUTE / perMinute), signal);
+    }
+    if (perDay !== void 0) s.day.push(this.clock());
+  }
+};
+function positive(n) {
+  return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : void 0;
+}
+function defaultSleep(ms, signal) {
+  return new Promise((resolve3, reject) => {
+    if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
+    const t = setTimeout(resolve3, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(t);
+        reject(signal.reason ?? new Error("aborted"));
+      },
+      { once: true }
+    );
+  });
+}
+var rateLimiter = new RateLimiter();
+
 // pipeline_core/http.ts
 var MAX_BODY_BYTES = 5 * 1024 * 1024;
 var MAX_RETRY_WAIT_MS = 1e4;
@@ -37373,6 +37441,7 @@ async function httpJson(url2, opts = {}) {
   }
   assertAllowedUrl(u);
   for (let attempt = 0; ; attempt++) {
+    if (opts.rateLimit) await rateLimiter.acquire(opts.rateLimit.key, opts.rateLimit, signal);
     try {
       return await attemptOnce(u, opts);
     } catch (err) {
@@ -38692,6 +38761,45 @@ function registerBuiltinConnectors() {
   registered = true;
 }
 
+// pipeline_core/routing.ts
+import { createHash, randomUUID } from "node:crypto";
+function capabilityForQuery(query) {
+  switch (query.kind) {
+    case "domain":
+      return "company.research";
+    case "area":
+      return "property.search";
+    case "parcel":
+      return "parcel";
+  }
+}
+function orderByRouting(eligible, routing) {
+  if (!routing?.connectors) return [...eligible];
+  const byName = new Map(eligible.map((c) => [c.name, c]));
+  return routing.connectors.flatMap((n) => byName.has(n) ? [byName.get(n)] : []);
+}
+var BudgetExceededError = class extends Error {
+  constructor(connector, needed, remaining) {
+    super(`credit budget exhausted: ${connector} needs ${needed}, ${remaining} left`);
+    this.connector = connector;
+    this.needed = needed;
+    this.remaining = remaining;
+    this.name = "BudgetExceededError";
+  }
+  connector;
+  needed;
+  remaining;
+};
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const o = value;
+  return `{${Object.keys(o).filter((k) => o[k] !== void 0).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(",")}}`;
+}
+function cacheKey(connector, capability, subject) {
+  return createHash("sha256").update(`${connector}|${capability}|${stableStringify(subject)}`).digest("hex");
+}
+
 // pipeline_core/models.ts
 var SCHEMA_VERSION = 6;
 var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
@@ -38988,6 +39096,13 @@ var CampaignRunSchema = external_exports.object({
   origin: external_exports.enum(["pipeline", "agent"]).optional(),
   /** The typed research queries this run executed (v6, optional). */
   queries: external_exports.array(ResearchQuerySchema).optional(),
+  /** Vendor-credit accounting when the run had a budget (v6, optional). */
+  credits: external_exports.object({
+    limit: external_exports.number().nonnegative(),
+    spent: external_exports.number().nonnegative(),
+    exhausted: external_exports.boolean(),
+    byConnector: external_exports.record(external_exports.string(), external_exports.number().nonnegative())
+  }).optional(),
   /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
   properties: external_exports.array(PropertySchema).default([]),
   parties: external_exports.array(PartySchema).default([]),
@@ -40174,6 +40289,42 @@ import { dirname as dirname2, isAbsolute as isAbsolute2, join as join3, resolve 
 import { fileURLToPath } from "node:url";
 var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
+function chargeOrStop(connector, phase, budget, failed) {
+  const cost = connector.creditsPerCall ?? 0;
+  if (!budget || cost <= 0) return true;
+  try {
+    budget.charge(connector.name, cost);
+    return true;
+  } catch (err) {
+    if (!(err instanceof BudgetExceededError)) throw err;
+    if (!failed.some((f) => f.name === connector.name && f.phase === phase && f.status === "budget-exhausted")) {
+      failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    }
+    return false;
+  }
+}
+var isArr = (v) => Array.isArray(v);
+async function cacheRead(cache, key, now) {
+  try {
+    const v = await cache.get(key, now);
+    if (!v || typeof v !== "object" || !isArr(v.leads) || !isArr(v.contacts)) return void 0;
+    for (const k of ["properties", "parties", "ownerships", "entityLinks", "contactPoints"]) {
+      if (v[k] !== void 0 && !isArr(v[k])) return void 0;
+    }
+    return v;
+  } catch {
+    return void 0;
+  }
+}
+async function cacheWrite(cache, key, value, ttlMs, now) {
+  try {
+    await cache.set(key, value, ttlMs, now);
+  } catch {
+  }
+}
+function researchHit(out) {
+  return out.leads.length + out.contacts.length > 0 || [out.properties, out.parties, out.ownerships, out.entityLinks, out.contactPoints].some((a) => (a?.length ?? 0) > 0);
+}
 function buyerTitlesArg(opts) {
   const titles = cleanBuyerTitles(opts.buyerTitles);
   return titles.length > 0 ? { buyerTitles: titles } : {};
@@ -40344,7 +40495,14 @@ async function runResearchQuery(query, icp, opts = {}) {
   const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind));
+  const connectors = orderByRouting(
+    getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind)),
+    opts.routing
+  );
+  const policy = opts.routing?.policy ?? "all";
+  const clock2 = opts.clock ?? Date.now;
+  const cached2 = [];
+  let budgetExhausted = false;
   const leads = [];
   const contacts = [];
   const properties = [];
@@ -40359,10 +40517,25 @@ async function runResearchQuery(query, icp, opts = {}) {
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
-      const out = await callWithDeadline(
-        (signal) => connector.research({ domain: target, query: typed, icp, ...targeting, signal }),
-        timeoutMs
-      );
+      const ttl = connector.cacheTtlMs ?? 0;
+      const key = opts.cache && ttl > 0 ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting }) : void 0;
+      let out = key ? await cacheRead(opts.cache, key, clock2()) : void 0;
+      if (out) {
+        cached2.push(connector.name);
+      } else {
+        if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
+          budgetExhausted = true;
+          continue;
+        }
+        out = await callWithDeadline(
+          (signal) => connector.research({ domain: target, query: typed, icp, ...targeting, signal }),
+          timeoutMs
+        );
+        if (key && (out.failures?.length ?? 0) === 0) {
+          const { raw: _raw, ...cacheable } = out;
+          await cacheWrite(opts.cache, key, cacheable, ttl, clock2());
+        }
+      }
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       properties.push(...out.properties ?? []);
@@ -40373,11 +40546,14 @@ async function runResearchQuery(query, icp, opts = {}) {
       raw[connector.name] = out.raw;
       ran.push(connector.name);
       recordItemFailures(connector, "research", out.failures, failedConnectors);
+      if (policy === "ordered-fallback" || policy === "first-hit" && researchHit(out)) break;
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
   }
   return {
+    cached: cached2,
+    budgetExhausted: budgetExhausted || (opts.budget?.exhausted ?? false),
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
     ...mergePropertyModel({ properties, parties, ownerships, entityLinks, contactPoints }),
@@ -40424,7 +40600,9 @@ async function runEnrich(lead, contacts, opts = {}) {
   registerBuiltinConnectors();
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("enrich");
+  const connectors = orderByRouting(getConfiguredConnectors("enrich"), opts.routing);
+  const policy = opts.routing?.policy ?? "all";
+  let budgetExhausted = false;
   const enrichments = [];
   const raw = {};
   const ran = [];
@@ -40433,6 +40611,10 @@ async function runEnrich(lead, contacts, opts = {}) {
   let working = contacts.map((c) => ({ ...c }));
   for (const connector of connectors) {
     if (!connector.enrich) continue;
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
+      budgetExhausted = true;
+      continue;
+    }
     try {
       const current = working;
       const out = await callWithDeadline(
@@ -40444,11 +40626,12 @@ async function runEnrich(lead, contacts, opts = {}) {
       ran.push(connector.name);
       recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
+      if (policy === "ordered-fallback" || policy === "first-hit" && out.enrichments.length > 0) break;
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }
   }
-  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw, budgetExhausted };
 }
 var MAX_ERROR_MESSAGE = 500;
 function sanitizeErrorMessage(err) {

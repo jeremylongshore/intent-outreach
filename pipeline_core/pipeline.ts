@@ -22,7 +22,16 @@ import {
   getSkippedConnectors,
   registerBuiltinConnectors,
 } from "./connectors/index.js";
-import type { Connector, ConnectorItemFailure, ConnectorPhase } from "./connectors/types.js";
+import type { Connector, ConnectorItemFailure, ConnectorPhase, ResearchOutput } from "./connectors/types.js";
+import {
+  BudgetExceededError,
+  cacheKey,
+  capabilityForQuery,
+  CreditBudget,
+  orderByRouting,
+  type ResponseCache,
+  type Routing,
+} from "./routing.js";
 import { HttpError } from "./http.js";
 import { ContactSchema, SCHEMA_VERSION } from "./models.js";
 import type {
@@ -68,6 +77,78 @@ export interface ConnectorRunOptions {
   connectorTimeoutMs?: number;
   /** Buyer titles passed to every connector (people search/reveal targeting). */
   buyerTitles?: string[];
+  /** Fixed routing (order + policy); absent = every eligible connector, policy "all". */
+  routing?: Routing | undefined;
+  /** The run's credit ceiling, charged before each paid call. */
+  budget?: CreditBudget | undefined;
+  /** Response cache for connectors that declare `cacheTtlMs`. */
+  cache?: ResponseCache | undefined;
+  /** Clock for cache expiry (ms). Default Date.now. */
+  clock?: (() => number) | undefined;
+}
+
+/** Charge a paid call. Returns false (and records why) when the budget refuses it. */
+function chargeOrStop(
+  connector: Connector,
+  phase: ConnectorPhase,
+  budget: CreditBudget | undefined,
+  failed: FailedConnector[],
+): boolean {
+  const cost = connector.creditsPerCall ?? 0;
+  if (!budget || cost <= 0) return true;
+  try {
+    budget.charge(connector.name, cost);
+    return true;
+  } catch (err) {
+    if (!(err instanceof BudgetExceededError)) throw err;
+    if (!failed.some((f) => f.name === connector.name && f.phase === phase && f.status === "budget-exhausted")) {
+      failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    }
+    return false;
+  }
+}
+
+const isArr = (v: unknown) => Array.isArray(v);
+
+/** A cached research output, or undefined when absent, unreadable or the wrong shape (a miss, never an error). */
+async function cacheRead(cache: ResponseCache, key: string, now: number): Promise<ResearchOutput | undefined> {
+  try {
+    const v = (await cache.get(key, now)) as Partial<ResearchOutput> | undefined;
+    if (!v || typeof v !== "object" || !isArr(v.leads) || !isArr(v.contacts)) return undefined;
+    for (const k of ["properties", "parties", "ownerships", "entityLinks", "contactPoints"] as const) {
+      if (v[k] !== undefined && !isArr(v[k])) return undefined;
+    }
+    return v as ResearchOutput;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Best-effort cache write: a full disk or a permission error never fails the (already paid) call. */
+async function cacheWrite(cache: ResponseCache, key: string, value: unknown, ttlMs: number, now: number): Promise<void> {
+  try {
+    await cache.set(key, value, ttlMs, now);
+  } catch {
+    // The lookup still succeeded; it simply will not be served from cache next time.
+  }
+}
+
+/** Append connector failures, keeping one budget-exhausted entry per connector and phase per run. */
+function pushFailures(into: FailedConnector[], from: readonly FailedConnector[]): void {
+  for (const f of from) {
+    const dup =
+      f.status === "budget-exhausted" &&
+      into.some((g) => g.name === f.name && g.phase === f.phase && g.status === "budget-exhausted");
+    if (!dup) into.push(f);
+  }
+}
+
+/** True when a research output carries any record (the "hit" of a first-hit route). */
+function researchHit(out: ResearchOutput): boolean {
+  return (
+    out.leads.length + out.contacts.length > 0 ||
+    [out.properties, out.parties, out.ownerships, out.entityLinks, out.contactPoints].some((a) => (a?.length ?? 0) > 0)
+  );
 }
 
 /** `{ buyerTitles }` when any usable title is set, else `{}` (connector input stays unchanged). */
@@ -92,6 +173,10 @@ export interface ResearchResult {
   /** Configured connectors that threw or timed out (sanitized status only). */
   failedConnectors: FailedConnector[];
   raw: Record<string, unknown>;
+  /** Connectors whose output came from the response cache (no request, no credits). */
+  cached: string[];
+  /** True when the credit budget refused a call and paid research stopped. */
+  budgetExhausted: boolean;
 }
 
 export interface EnrichResult {
@@ -106,6 +191,8 @@ export interface EnrichResult {
   skipped: string[];
   failedConnectors: FailedConnector[];
   raw: Record<string, unknown>;
+  /** True when the credit budget refused a paid enrich call. */
+  budgetExhausted: boolean;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -390,7 +477,14 @@ export async function runResearchQuery(
   const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind));
+  const connectors = orderByRouting(
+    getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind)),
+    opts.routing,
+  );
+  const policy = opts.routing?.policy ?? "all";
+  const clock = opts.clock ?? Date.now;
+  const cached: string[] = [];
+  let budgetExhausted = false;
   const leads: Lead[] = [];
   const contacts: Contact[] = [];
   const properties: Property[] = [];
@@ -408,10 +502,32 @@ export async function runResearchQuery(
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
-      const out = await callWithDeadline(
-        (signal) => connector.research!({ domain: target, query: typed, icp, ...targeting, signal }),
-        timeoutMs,
-      );
+      const ttl = connector.cacheTtlMs ?? 0;
+      const key =
+        opts.cache && ttl > 0
+          ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting })
+          : undefined;
+      let out = key ? await cacheRead(opts.cache!, key, clock()) : undefined;
+      if (out) {
+        cached.push(connector.name);
+      } else {
+        if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
+          // Only THIS paid call is refused; free and cached sources later in the route still run.
+          budgetExhausted = true;
+          continue;
+        }
+        out = await callWithDeadline(
+          (signal) => connector.research!({ domain: target, query: typed, icp, ...targeting, signal }),
+          timeoutMs,
+        );
+        // Cache only a COMPLETE answer: a result with item failures would replay
+        // the failure for the whole TTL. A complete empty answer is cached (a paid
+        // lookup that found nothing is not bought again).
+        if (key && (out.failures?.length ?? 0) === 0) {
+          const { raw: _raw, ...cacheable } = out;
+          await cacheWrite(opts.cache!, key, cacheable, ttl, clock());
+        }
+      }
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       properties.push(...(out.properties ?? []));
@@ -422,12 +538,15 @@ export async function runResearchQuery(
       raw[connector.name] = out.raw;
       ran.push(connector.name);
       recordItemFailures(connector, "research", out.failures, failedConnectors);
+      if (policy === "ordered-fallback" || (policy === "first-hit" && researchHit(out))) break;
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
   }
 
   return {
+    cached,
+    budgetExhausted: budgetExhausted || (opts.budget?.exhausted ?? false),
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
     ...mergePropertyModel({ properties, parties, ownerships, entityLinks, contactPoints }),
@@ -502,7 +621,9 @@ export async function runEnrich(
   registerBuiltinConnectors();
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("enrich");
+  const connectors = orderByRouting(getConfiguredConnectors("enrich"), opts.routing);
+  const policy = opts.routing?.policy ?? "all";
+  let budgetExhausted = false;
   const enrichments: Enrichment[] = [];
   const raw: Record<string, unknown> = {};
   const ran: string[] = [];
@@ -512,6 +633,10 @@ export async function runEnrich(
 
   for (const connector of connectors) {
     if (!connector.enrich) continue;
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
+      budgetExhausted = true;
+      continue;
+    }
     try {
       const current = working;
       const out = await callWithDeadline(
@@ -523,12 +648,13 @@ export async function runEnrich(
       ran.push(connector.name);
       recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
+      if (policy === "ordered-fallback" || (policy === "first-hit" && out.enrichments.length > 0)) break;
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }
   }
 
-  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw, budgetExhausted };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -933,6 +1059,14 @@ export interface RunCampaignInput {
    * `${INTENT_OUTREACH_HOME}/suppressions.jsonl` (missing file ⇒ nothing suppressed).
    */
   suppressions?: SuppressionList;
+  /**
+   * Vendor-credit ceiling for the run. Each paid connector call is charged
+   * before it is made; once a call would cross the ceiling, no further paid
+   * call is made and the run records it in `credits`. Absent = no ceiling.
+   */
+  budgetCredits?: number;
+  /** Response cache for connectors that declare `cacheTtlMs`. */
+  cache?: ResponseCache;
 }
 
 export interface RunCampaignResult {
@@ -956,16 +1090,25 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const minScore = input.minScore ?? 0;
   const maxContacts = input.maxContactsPerLead ?? 1;
   const buyerTitles = cleanBuyerTitles(input.buyerTitles);
-  const connectorOpts: ConnectorRunOptions = {
-    ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
-    ...(buyerTitles.length > 0 ? { buyerTitles } : {}),
-  };
+  const budget = input.budgetCredits !== undefined ? new CreditBudget(input.budgetCredits) : undefined;
   // Opt-outs are loaded (I/O, pipeline layer) BEFORE anything is spent; a corrupt
   // suppression file throws here — fail closed rather than draft to an opt-out.
   const suppressions = input.suppressions ?? (await loadSuppressionList());
   const provider = input.provider ?? (await getProvider());
   registerBuiltinPacks();
   const pack = resolvePack(input.pack);
+  const researchRouting = pack.dataSources?.research?.["company.research"];
+  const connectorOpts: ConnectorRunOptions = {
+    ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
+    ...(buyerTitles.length > 0 ? { buyerTitles } : {}),
+    ...(budget ? { budget } : {}),
+    ...(input.cache ? { cache: input.cache } : {}),
+  };
+  const researchOpts: ConnectorRunOptions = { ...connectorOpts, ...(researchRouting ? { routing: researchRouting } : {}) };
+  const enrichOpts: ConnectorRunOptions = {
+    ...connectorOpts,
+    ...(pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {}),
+  };
   // The suppression gate runs FIRST for EVERY pack (an unsubscribe is not
   // vertical-specific — swapping packs must never drop it), then the pack's own
   // gate. Both run under evaluateGate's fail-closed handling.
@@ -999,9 +1142,9 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   };
 
   for (const domain of domains) {
-    const research = await runResearch(domain, icp, connectorOpts);
+    const research = await runResearch(domain, icp, researchOpts);
     research.skipped.forEach((s) => skipped.add(s));
-    failedConnectors.push(...research.failedConnectors);
+    pushFailures(failedConnectors, research.failedConnectors);
     // Carried into the run as-is: property data a connector fetched is never silently discarded.
     allProperty.properties.push(...research.properties);
     allProperty.parties.push(...research.parties);
@@ -1013,9 +1156,9 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
 
     for (const lead of research.leads) {
       const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
-      const enrich = await runEnrich(lead, leadContacts, connectorOpts);
+      const enrich = await runEnrich(lead, leadContacts, enrichOpts);
       enrich.skipped.forEach((s) => skipped.add(s));
-      failedConnectors.push(...enrich.failedConnectors);
+      pushFailures(failedConnectors, enrich.failedConnectors);
       const contacts = enrich.contacts; // emails found during enrichment folded in
 
       allLeads.push(lead);
@@ -1147,6 +1290,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     contacts: dedupeContacts(allContacts),
     enrichments: allEnrichments,
     ...mergePropertyModel(allProperty),
+    ...(budget ? { credits: budget.summary() } : {}),
     messages,
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],

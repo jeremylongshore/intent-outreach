@@ -41,8 +41,9 @@ export const SCHEMA_VERSION = 6 as const;
  *
  * v6 added the property/owner model (`properties`, `parties`, `ownerships`,
  * `entityLinks`, `contactPoints`, all defaulted []), the optional `queries`
- * (the typed research queries a run executed) and the `sms`, `mail` and
- * `call_script` message channels. Additive: v1–v5 still parse.
+ * (the typed research queries a run executed), the optional `credits`
+ * (vendor-credit accounting) and the `sms`, `mail` and `call_script` message
+ * channels. Additive: v1–v5 still parse.
  */
 export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6] as const;
 export type SchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
@@ -524,6 +525,15 @@ export const CampaignRunSchema = z.object({
   origin: z.enum(["pipeline", "agent"]).optional(),
   /** The typed research queries this run executed (v6, optional). */
   queries: z.array(ResearchQuerySchema).optional(),
+  /** Vendor-credit accounting when the run had a budget (v6, optional). */
+  credits: z
+    .object({
+      limit: z.number().nonnegative(),
+      spent: z.number().nonnegative(),
+      exhausted: z.boolean(),
+      byConnector: z.record(z.string(), z.number().nonnegative()),
+    })
+    .optional(),
   /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
   properties: z.array(PropertySchema).default([]),
   parties: z.array(PartySchema).default([]),
