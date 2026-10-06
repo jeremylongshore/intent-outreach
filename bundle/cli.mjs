@@ -63390,7 +63390,9 @@ var MessageSchema = external_exports.object({
    * mail, name + company for sms and call_script. Such a draft must not be sent
    * as-is. Additive (v4); defaults false.
    */
-  needsSenderIdentity: external_exports.boolean().default(false)
+  needsSenderIdentity: external_exports.boolean().default(false),
+  /** Property campaigns (v6, optional): the parcel this letter is about. */
+  propertyKey: external_exports.string().min(1).optional()
 });
 var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
 var LEGACY_RUN_STATUSES = ["pending", "drafted"];
@@ -63398,13 +63400,18 @@ var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
 var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
 var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
 var RunErrorSchema = external_exports.object({
-  domain: external_exports.string().min(1),
+  /** The lead's domain (company campaigns). */
+  domain: external_exports.string().min(1).optional(),
+  /** The parcel's `<countyFips>:<apn>` (property campaigns, v6). */
+  propertyKey: external_exports.string().min(1).optional(),
   contactKey: external_exports.string().min(1).optional(),
   stage: RunErrorStageSchema,
   /** Sanitized, truncated error message (secrets redacted). */
   message: external_exports.string(),
   /** AI SDK finish reason when the error carried one (e.g. "length"). */
   finishReason: external_exports.string().optional()
+}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0, {
+  message: "a run error needs a domain or a propertyKey"
 });
 var FailedConnectorSchema = external_exports.object({
   name: external_exports.string().min(1),
@@ -63443,7 +63450,9 @@ var CampaignRunSchema = external_exports.object({
   blockedContacts: external_exports.array(
     external_exports.object({
       contactKey: external_exports.string().min(1),
-      reason: external_exports.string().min(1)
+      reason: external_exports.string().min(1),
+      /** Property campaigns (v6): the parcel the block was about. */
+      propertyKey: external_exports.string().min(1).optional()
     })
   ).default([]),
   /**
@@ -63452,7 +63461,14 @@ var CampaignRunSchema = external_exports.object({
    */
   errors: external_exports.array(RunErrorSchema).default([]),
   /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
-  rejectedDrafts: external_exports.array(external_exports.object({ contactKey: external_exports.string().min(1), issues: external_exports.array(external_exports.string()) })).default([]),
+  rejectedDrafts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      issues: external_exports.array(external_exports.string()),
+      /** Property campaigns (v6): the parcel the draft was about. */
+      propertyKey: external_exports.string().min(1).optional()
+    })
+  ).default([]),
   /**
    * Configured connectors that threw (sanitized status only — never the error
    * text, which can carry a secret-bearing URL). `skippedConnectors` is now
@@ -63478,7 +63494,17 @@ var CampaignRunSchema = external_exports.object({
    * Score-seam angles removed because they cited a fact absent from the inputs
    * (groundAngles) — kept so an operator can see what the model tried (v5).
    */
-  droppedAngles: external_exports.array(external_exports.object({ domain: external_exports.string().min(1), angle: external_exports.string(), reason: external_exports.string() })).default([]),
+  droppedAngles: external_exports.array(
+    external_exports.object({
+      domain: external_exports.string().min(1).optional(),
+      /** Property campaigns (v6). */
+      propertyKey: external_exports.string().min(1).optional(),
+      angle: external_exports.string(),
+      reason: external_exports.string()
+    }).refine((d) => d.domain !== void 0 || d.propertyKey !== void 0, {
+      message: "a dropped angle needs a domain or a propertyKey"
+    })
+  ).default([]),
   /**
    * Who assembled the record (v5, optional so older lines stay unlabeled rather
    * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
@@ -75796,17 +75822,19 @@ var b2bSdrPack = {
   }
 };
 
-// pipeline_core/packs/index.ts
-var registered2 = false;
-function registerBuiltinPacks() {
-  if (registered2) return;
-  for (const pack of [b2bSdrPack]) {
-    if (getPack(pack.id) === void 0) registerPack(pack);
-  }
-  registered2 = true;
-}
-
 // pipeline_core/compliance/index.ts
+var ZIP5_RE = /^\d{5}$/;
+function defineServiceArea(id, zips) {
+  if (typeof id !== "string" || !id.trim()) throw new Error("service area id is empty");
+  const set2 = /* @__PURE__ */ new Set();
+  for (const z4 of zips) {
+    const zip = typeof z4 === "string" ? z4.trim() : "";
+    if (!ZIP5_RE.test(zip)) throw new Error(`service area ${id}: ${JSON.stringify(z4)} is not a 5-digit ZIP`);
+    set2.add(zip);
+  }
+  if (set2.size === 0) throw new Error(`service area ${id} has no ZIPs`);
+  return Object.freeze({ id, zips: set2 });
+}
 var E164_RE = /^\+[1-9]\d{9,14}$/;
 function normalizePhone(phone) {
   if (typeof phone !== "string") {
@@ -75830,6 +75858,290 @@ function normalizePhone(phone) {
     throw new Error(`phone ${JSON.stringify(phone)} is not valid E.164`);
   }
   return candidate;
+}
+function inServiceArea(zipCode, area) {
+  if (typeof zipCode !== "string" || !area || !(area.zips instanceof Set)) {
+    return false;
+  }
+  const cleaned = zipCode.trim();
+  if (!ZIP5_RE.test(cleaned)) {
+    return false;
+  }
+  return area.zips.has(cleaned);
+}
+
+// pipeline_core/compliance/fair-housing.ts
+var FAIR_HOUSING_HARD = [
+  // familial status
+  "no children",
+  "no kids",
+  "adults only",
+  "adult building",
+  "couples only",
+  "singles only",
+  "perfect for families",
+  "ideal for families",
+  "perfect for a family",
+  "ideal for young families",
+  "empty nesters only",
+  // steering / exclusion proxies
+  "exclusive neighborhood",
+  "exclusive community",
+  "integrated neighborhood",
+  "traditional neighborhood values",
+  "safe neighborhood",
+  "low crime",
+  "crime-free",
+  "desirable neighbors",
+  "right kind of people",
+  // religion / national origin / race
+  "christian community",
+  "ethnic neighborhood",
+  "hispanic neighborhood",
+  "white neighborhood",
+  "black neighborhood",
+  // disability
+  "no wheelchairs",
+  "able-bodied"
+];
+var OUTREACH_AGE_FAMILIAL_HARD = [
+  "retire",
+  "retired",
+  "retiree",
+  "retirees",
+  "retiring",
+  "retirement",
+  "seniors",
+  "senior citizen",
+  "senior citizens",
+  "elderly",
+  "your age",
+  "at your stage of life",
+  "golden years",
+  "empty nest",
+  "empty nester",
+  "empty nesters",
+  "kids",
+  "children",
+  "grandkids",
+  "grandchildren",
+  "growing family",
+  "starting a family",
+  "new baby",
+  "pregnant",
+  "widow",
+  "widowed",
+  "widower",
+  "divorce",
+  "divorced",
+  "divorcing",
+  "perfect for your family",
+  "ideal for your family",
+  "your family",
+  "your spouse",
+  "your husband",
+  "your wife"
+];
+var FAIR_HOUSING_WARN = [
+  "family-friendly",
+  "family oriented",
+  "family-oriented",
+  "great schools",
+  "good schools",
+  "top schools",
+  "school district",
+  "walking distance to church",
+  "near churches",
+  "close to church",
+  "quiet neighborhood",
+  "safest",
+  "bachelor",
+  "mother-in-law suite",
+  "master bedroom",
+  "master suite",
+  "exclusive",
+  "private community"
+];
+function normalize(text2) {
+  return text2.toLowerCase().replace(/[\u2010-\u2015\u2212-]/g, " ").replace(/neighbour/g, "neighbor").replace(/\s+/g, " ");
+}
+var escapeRegExp2 = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function compile2(terms) {
+  return terms.map((term) => {
+    const words = normalize(term).trim().split(" ").map(escapeRegExp2);
+    const last = words.pop();
+    const stem = last.endsWith("s") && last.length > 3 ? last.slice(0, -1) : last;
+    const body = [...words, `${stem}(?:s|es)?`].join(" ");
+    return { term, re: new RegExp(`(?<![a-z0-9])${body}(?![a-z0-9])`) };
+  });
+}
+var HARD_RES = compile2([...FAIR_HOUSING_HARD, ...OUTREACH_AGE_FAMILIAL_HARD]);
+var WARN_RES = compile2(FAIR_HOUSING_WARN);
+function lintFairHousing(text2) {
+  const t = normalize(text2);
+  return {
+    hard: HARD_RES.filter((h) => h.re.test(t)).map((h) => h.term),
+    warn: WARN_RES.filter((w) => w.re.test(t)).map((w) => w.term)
+  };
+}
+var fairHousingDraftRule = (draft) => {
+  const fields = [
+    ["subject", draft.subject ?? ""],
+    ["body", draft.body],
+    ["cta", draft.cta]
+  ];
+  return fields.flatMap(
+    ([field, text2]) => lintFairHousing(text2).hard.map((term) => `fair-housing: "${term}" in ${field}`)
+  );
+};
+
+// pipeline_core/compliance/risk.ts
+var MANUAL_REVIEW_PATTERNS = [
+  ["probate", /\bprobat/],
+  ["probate", /\bdeceased\b/],
+  ["probate", /^estate$/],
+  ["probate", /\bestate sale\b/],
+  ["probate", /\bestate of\b/],
+  ["probate", /\bheirs?\b/],
+  ["probate", /\blife estate\b/],
+  ["divorce", /\bdivorc/],
+  ["divorce", /\bdissolution of marriage\b/],
+  ["pre-foreclosure", /\bforeclos/],
+  ["pre-foreclosure", /\blis pendens\b/],
+  ["pre-foreclosure", /\bnotice of (?:default|trustee sale|sale)\b/],
+  ["pre-foreclosure", /^nod$/],
+  ["pre-foreclosure", /\btax (?:sale|lien sale|deed)\b/]
+];
+var normalizeTag = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function manualReviewVerdict(signals) {
+  const categories = /* @__PURE__ */ new Set();
+  for (const raw of signals) {
+    const tag = normalizeTag(raw);
+    for (const [category, pattern] of MANUAL_REVIEW_PATTERNS) if (pattern.test(tag)) categories.add(category);
+  }
+  if (categories.size === 0) return { status: "clean" };
+  return { status: "blocked", reason: `manual-review:${[...categories].sort().join(",")}` };
+}
+var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+var ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+function agreementEnd(value) {
+  if (ISO_DATE.test(value)) {
+    const day = Date.parse(`${value}T00:00:00Z`);
+    return Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== value ? Number.NaN : day + 36 * 36e5;
+  }
+  return ISO_DATETIME.test(value) ? Date.parse(value) : Number.NaN;
+}
+function listingContactVerdict(listing, now2) {
+  const ends = listing.agreementEndsAt !== void 0 ? agreementEnd(listing.agreementEndsAt) : void 0;
+  if (ends !== void 0 && Number.isNaN(ends)) return { status: "blocked", reason: "listing:agreement-date-invalid" };
+  const stillRuns = ends !== void 0 && ends > now2.getTime();
+  const status = normalizeTag(String(listing.status ?? "")).replace(/ /g, "-");
+  switch (status) {
+    case "active":
+    case "pending":
+    case "coming-soon":
+      return { status: "blocked", reason: `listing:${status}` };
+    case "withdrawn":
+      return ends !== void 0 && !stillRuns ? { status: "clean" } : { status: "blocked", reason: "listing:withdrawn-under-agreement" };
+    case "expired":
+    case "cancelled":
+    case "canceled":
+      return stillRuns ? { status: "blocked", reason: "listing:agreement-still-in-effect" } : { status: "clean" };
+    case "sold":
+    case "off-market":
+      return { status: "clean" };
+    default:
+      return { status: "blocked", reason: "listing:status-unknown" };
+  }
+}
+
+// pipeline_core/packs/service-areas.ts
+var GULF_COAST_AL_FL = defineServiceArea("gulf-coast-al-fl", [
+  // Baldwin County, AL — coastal / south-of-I-10
+  "36542",
+  // Gulf Shores
+  "36561",
+  // Orange Beach
+  "36535",
+  // Foley
+  "36567",
+  // Robertsdale
+  "36551",
+  // Loxley
+  "36527",
+  // Spanish Fort
+  "36533",
+  // Fairhope
+  "36530",
+  // Elberta
+  "36580",
+  // Summerdale
+  // Escambia County, FL — west Pensacola + Perdido Key
+  "32507",
+  // West Pensacola / Perdido Key
+  "32506"
+  // West Pensacola
+]);
+var BUILTIN = /* @__PURE__ */ new Map([[GULF_COAST_AL_FL.id, GULF_COAST_AL_FL]]);
+
+// pipeline_core/packs/residential-re.ts
+function attr(ctx, key) {
+  return ctx.property.attributes[key]?.value;
+}
+function ownershipSignals(ctx) {
+  const out = [];
+  const parties = ctx.parties.length > 0 ? ctx.parties : [ctx.owner];
+  if (ctx.owner.kind === "entity" && ctx.owner.entityType === "estate") out.push("estate");
+  for (const p of parties) out.push(p.name);
+  if (ctx.ownerships.some((o) => o.role === "life-tenant")) out.push("life estate");
+  return out;
+}
+var DISTRESS_TERMS = /\b(foreclos\w*|pre-?foreclosure|probate|liens?|lis pendens|back taxes|taxes owed|delinquen\w*|behind on|late on (?:your )?(?:mortgage|payments?|taxes)|bankrupt\w*|estate sale|tax sale|auction)\b/i;
+var distressLanguageDraftRule = (draft) => [["subject", draft.subject ?? ""], ["body", draft.body], ["cta", draft.cta]].flatMap(([field, text2]) => {
+  const m = DISTRESS_TERMS.exec(text2.replace(/[\u2010-\u2015]/g, "-"));
+  return m ? [`distress-language: "${m[0].toLowerCase()}" in ${field}`] : [];
+});
+function residentialPropertyGate(ctx) {
+  const zip = ctx.property.address?.zip?.slice(0, 5);
+  if (!zip) return { status: "blocked", reason: "service-area:unknown-address" };
+  if (!inServiceArea(zip, GULF_COAST_AL_FL)) return { status: "blocked", reason: "service-area:outside" };
+  const distress = attr(ctx, "distressSignals");
+  if (distress !== void 0 && (!Array.isArray(distress) || !distress.every((s) => typeof s === "string"))) {
+    return { status: "blocked", reason: "manual-review:unreadable-signals" };
+  }
+  const review = manualReviewVerdict([...distress ?? [], ...ownershipSignals(ctx)]);
+  if (review.status !== "clean") return review;
+  const listing = attr(ctx, "listingStatus");
+  if (listing !== void 0) {
+    if (!listing || typeof listing !== "object" || typeof listing.status !== "string") {
+      return { status: "blocked", reason: "listing:unreadable" };
+    }
+    const verdict = listingContactVerdict(listing, ctx.now);
+    if (verdict.status !== "clean") return verdict;
+  }
+  return { status: "clean" };
+}
+var LICENSED = { requireLicenseDisclosure: true };
+var residentialRePack = {
+  id: "residential-re",
+  displayName: "Residential real estate (listing agent)",
+  // The B2B loop's gate is unused by property campaigns; propertyGate is the gate.
+  compliance: noopCompliance,
+  prompts: { score: ["residential-score.v1.md"], draft: "residential-draft.v1.md" },
+  serviceArea: GULF_COAST_AL_FL,
+  propertyGate: residentialPropertyGate,
+  draftRules: [fairHousingDraftRule, distressLanguageDraftRule],
+  channels: { email: LICENSED, mail: LICENSED, sms: LICENSED, call_script: LICENSED, linkedin: LICENSED }
+};
+
+// pipeline_core/packs/index.ts
+var registered2 = false;
+function registerBuiltinPacks() {
+  if (registered2) return;
+  for (const pack of [b2bSdrPack, residentialRePack]) {
+    if (getPack(pack.id) === void 0) registerPack(pack);
+  }
+  registered2 = true;
 }
 
 // pipeline_core/compliance/suppression.ts
@@ -76893,11 +77205,12 @@ function finalizeDraft(candidate, sender) {
   if (!footed.ok) return { ok: false, issues: zodIssues(footed.error.issues) };
   return { ok: true, message: footed.value };
 }
-function senderComplianceWarnings(draftsMissingSender, sender) {
+function senderComplianceWarnings(draftsMissingSender, sender, channel = "email") {
   if (draftsMissingSender <= 0) return [];
-  const missing = missingSenderFields(sender).join(", ");
+  const missing = missingSenderFields(sender, channel).join(", ");
+  const what = channel === "email" ? "CAN-SPAM footer" : `${channel} footer`;
   return [
-    `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured (missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`
+    `${draftsMissingSender} ${channel} draft(s) have NO ${what}: sender identity is not configured (missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`
   ];
 }
 var PROFILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;

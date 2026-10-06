@@ -36,6 +36,7 @@ import { HttpError } from "./http.js";
 import { ContactSchema, SCHEMA_VERSION } from "./models.js";
 import type {
   CampaignRun,
+  Channel,
   Contact,
   ContactPoint,
   Enrichment,
@@ -803,11 +804,16 @@ export function finalizeDraft(
 }
 
 /** The run-level warning for email drafts that could not carry a CAN-SPAM footer. */
-export function senderComplianceWarnings(draftsMissingSender: number, sender: SenderIdentity | undefined): string[] {
+export function senderComplianceWarnings(
+  draftsMissingSender: number,
+  sender: SenderIdentity | undefined,
+  channel: Channel = "email",
+): string[] {
   if (draftsMissingSender <= 0) return [];
-  const missing = missingSenderFields(sender).join(", ");
+  const missing = missingSenderFields(sender, channel).join(", ");
+  const what = channel === "email" ? "CAN-SPAM footer" : `${channel} footer`;
   return [
-    `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured ` +
+    `${draftsMissingSender} ${channel} draft(s) have NO ${what}: sender identity is not configured ` +
       `(missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`,
   ];
 }
