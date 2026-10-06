@@ -12,6 +12,7 @@
  * vertical prompts WITHOUT touching this engine.
  */
 
+import type { ServiceArea } from "../compliance/index.js";
 import type { Contact, Enrichment, Lead } from "../models.js";
 
 /** A compliance verdict for a single contact. Fail-closed: ambiguity → blocked. */
@@ -70,6 +71,12 @@ export interface Pack {
   displayName: string;
   compliance: ComplianceGate;
   prompts: PackPrompts;
+  /**
+   * The ZIPs this pack's agent works, when the vertical is geographic. Pack
+   * DATA read by the pack's own gate via `inServiceArea(zip, serviceArea)`;
+   * the engine never consults it. `b2b-sdr` has none.
+   */
+  serviceArea?: ServiceArea;
 }
 
 /** The pack resolved when a caller names none. */
