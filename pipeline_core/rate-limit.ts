@@ -49,7 +49,7 @@ export class RateLimiter {
     if (perMinute === undefined && perDay === undefined) return;
     let s = this.states.get(key);
     if (!s) {
-      s = { tokens: perMinute ?? 0, updatedAt: this.clock(), day: [] };
+      s = { tokens: perMinute !== undefined ? Math.max(perMinute, 1) : 0, updatedAt: this.clock(), day: [] };
       this.states.set(key, s);
     }
     for (;;) {
@@ -59,7 +59,8 @@ export class RateLimiter {
         if (s.day.length >= perDay) throw new RateLimitExceededError(key, perDay);
       }
       if (perMinute === undefined) break;
-      s.tokens = Math.min(perMinute, s.tokens + ((now - s.updatedAt) * perMinute) / MINUTE);
+      // Capacity is at least one token, so a fractional rate (0.5/min = one per 2 min) still refills.
+      s.tokens = Math.min(Math.max(perMinute, 1), s.tokens + ((now - s.updatedAt) * perMinute) / MINUTE);
       s.updatedAt = now;
       if (s.tokens >= 1) {
         s.tokens -= 1;

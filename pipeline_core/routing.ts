@@ -12,15 +12,19 @@
  *       ordered-fallback call in order, stop at the first call that did not
  *                        throw, even if it found nothing
  *       all              call every connector (the default, today's behavior)
- *   • BUDGET: a per-run credit ceiling. Each paid call is charged BEFORE it
- *     runs (vendors bill attempts); a call that would cross the ceiling is not
- *     made and the run stops calling paid sources.
+ *   • BUDGET: a per-run credit ceiling. Each paid CONNECTOR CALL is charged
+ *     `creditsPerCall` BEFORE it runs (vendors bill attempts). A call that would
+ *     cross the ceiling is not made; once exhausted, no further paid call is
+ *     made, while free and cached sources still run. The charge is per
+ *     connector call, not per HTTP request: a connector that fans out (one
+ *     request per contact) or whose vendor bills retries should declare
+ *     `creditsPerCall` for its worst case.
  *   • CACHE: a connector that declares `cacheTtlMs` has its research output
  *     cached by connector + query + targeting. A cache hit costs nothing and
  *     makes no request: never pay twice for the same lookup.
  */
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ResearchQuery } from "./models.js";
@@ -193,7 +197,7 @@ export class FileResponseCache implements ResponseCache {
   async set(key: string, value: unknown, ttlMs: number, now: number): Promise<void> {
     await mkdir(this.dir, { recursive: true, mode: 0o700 });
     const path = join(this.dir, `${key}.json`);
-    const tmp = `${path}.${process.pid}.tmp`;
+    const tmp = `${path}.${process.pid}.${randomUUID()}.tmp`; // unique per write: concurrent sets never collide
     await writeFile(tmp, JSON.stringify({ value, expiresAt: now + ttlMs }), { mode: 0o600 });
     await chmod(tmp, 0o600);
     await rename(tmp, path);

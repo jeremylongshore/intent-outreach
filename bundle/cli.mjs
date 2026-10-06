@@ -61579,7 +61579,7 @@ var RateLimiter = class {
     if (perMinute === void 0 && perDay === void 0) return;
     let s = this.states.get(key);
     if (!s) {
-      s = { tokens: perMinute ?? 0, updatedAt: this.clock(), day: [] };
+      s = { tokens: perMinute !== void 0 ? Math.max(perMinute, 1) : 0, updatedAt: this.clock(), day: [] };
       this.states.set(key, s);
     }
     for (; ; ) {
@@ -61589,7 +61589,7 @@ var RateLimiter = class {
         if (s.day.length >= perDay) throw new RateLimitExceededError(key, perDay);
       }
       if (perMinute === void 0) break;
-      s.tokens = Math.min(perMinute, s.tokens + (now2 - s.updatedAt) * perMinute / MINUTE);
+      s.tokens = Math.min(Math.max(perMinute, 1), s.tokens + (now2 - s.updatedAt) * perMinute / MINUTE);
       s.updatedAt = now2;
       if (s.tokens >= 1) {
         s.tokens -= 1;
@@ -63090,7 +63090,7 @@ function registerBuiltinConnectors() {
 }
 
 // pipeline_core/routing.ts
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join as join2 } from "node:path";
 function capabilityForQuery(query) {
@@ -63184,7 +63184,7 @@ var FileResponseCache = class {
   async set(key, value, ttlMs, now2) {
     await mkdir(this.dir, { recursive: true, mode: 448 });
     const path = join2(this.dir, `${key}.json`);
-    const tmp = `${path}.${process.pid}.tmp`;
+    const tmp = `${path}.${process.pid}.${randomUUID()}.tmp`;
     await writeFile(tmp, JSON.stringify({ value, expiresAt: now2 + ttlMs }), { mode: 384 });
     await chmod(tmp, 384);
     await rename(tmp, path);
@@ -74664,10 +74664,10 @@ function priceFor(model) {
 }
 function costFor(model, inputTokens, outputTokens, cache2 = {}) {
   const p = priceFor(model);
-  const cacheRead = Math.max(0, cache2.cacheReadTokens ?? 0);
-  const cacheWrite = Math.max(0, cache2.cacheWriteTokens ?? 0);
-  const uncached = Math.max(0, inputTokens - cacheRead - cacheWrite);
-  const inputUsd = uncached * p.in + cacheRead * p.in * CACHE_READ_MULTIPLIER + cacheWrite * p.in * CACHE_WRITE_MULTIPLIER;
+  const cacheRead2 = Math.max(0, cache2.cacheReadTokens ?? 0);
+  const cacheWrite2 = Math.max(0, cache2.cacheWriteTokens ?? 0);
+  const uncached = Math.max(0, inputTokens - cacheRead2 - cacheWrite2);
+  const inputUsd = uncached * p.in + cacheRead2 * p.in * CACHE_READ_MULTIPLIER + cacheWrite2 * p.in * CACHE_WRITE_MULTIPLIER;
   return (inputUsd + outputTokens * p.out) / 1e6;
 }
 var CostMeter = class {
@@ -76481,8 +76481,35 @@ function chargeOrStop(connector, phase, budget, failed) {
     return true;
   } catch (err) {
     if (!(err instanceof BudgetExceededError)) throw err;
-    failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    if (!failed.some((f) => f.name === connector.name && f.phase === phase && f.status === "budget-exhausted")) {
+      failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    }
     return false;
+  }
+}
+var isArr = (v) => Array.isArray(v);
+async function cacheRead(cache2, key, now2) {
+  try {
+    const v = await cache2.get(key, now2);
+    if (!v || typeof v !== "object" || !isArr(v.leads) || !isArr(v.contacts)) return void 0;
+    for (const k of ["properties", "parties", "ownerships", "entityLinks", "contactPoints"]) {
+      if (v[k] !== void 0 && !isArr(v[k])) return void 0;
+    }
+    return v;
+  } catch {
+    return void 0;
+  }
+}
+async function cacheWrite(cache2, key, value, ttlMs, now2) {
+  try {
+    await cache2.set(key, value, ttlMs, now2);
+  } catch {
+  }
+}
+function pushFailures(into, from) {
+  for (const f of from) {
+    const dup = f.status === "budget-exhausted" && into.some((g) => g.name === f.name && g.phase === f.phase && g.status === "budget-exhausted");
+    if (!dup) into.push(f);
   }
 }
 function researchHit(out) {
@@ -76685,21 +76712,21 @@ async function runResearchQuery(query, icp, opts = {}) {
     try {
       const ttl = connector.cacheTtlMs ?? 0;
       const key = opts.cache && ttl > 0 ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting }) : void 0;
-      let out = key ? await opts.cache.get(key, clock2()) : void 0;
+      let out = key ? await cacheRead(opts.cache, key, clock2()) : void 0;
       if (out) {
         cached2.push(connector.name);
       } else {
         if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
           budgetExhausted = true;
-          break;
+          continue;
         }
         out = await callWithDeadline(
           (signal) => connector.research({ domain: target, query: typed, icp, ...targeting, signal }),
           timeoutMs
         );
-        if (key) {
+        if (key && (out.failures?.length ?? 0) === 0) {
           const { raw: _raw, ...cacheable } = out;
-          await opts.cache.set(key, cacheable, ttl, clock2());
+          await cacheWrite(opts.cache, key, cacheable, ttl, clock2());
         }
       }
       leads.push(...out.leads);
@@ -76768,6 +76795,7 @@ async function runEnrich(lead, contacts, opts = {}) {
   const targeting = buyerTitlesArg(opts);
   const connectors = orderByRouting(getConfiguredConnectors("enrich"), opts.routing);
   const policy2 = opts.routing?.policy ?? "all";
+  let budgetExhausted = false;
   const enrichments = [];
   const raw = {};
   const ran = [];
@@ -76776,7 +76804,10 @@ async function runEnrich(lead, contacts, opts = {}) {
   let working = contacts.map((c) => ({ ...c }));
   for (const connector of connectors) {
     if (!connector.enrich) continue;
-    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) break;
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
+      budgetExhausted = true;
+      continue;
+    }
     try {
       const current = working;
       const out = await callWithDeadline(
@@ -76793,7 +76824,7 @@ async function runEnrich(lead, contacts, opts = {}) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }
   }
-  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw, budgetExhausted };
 }
 var MAX_ERROR_MESSAGE = 500;
 function sanitizeErrorMessage(err) {
@@ -76946,7 +76977,7 @@ async function runCampaign(input2) {
   for (const domain2 of domains) {
     const research = await runResearch(domain2, icp, researchOpts);
     research.skipped.forEach((s) => skipped.add(s));
-    failedConnectors.push(...research.failedConnectors);
+    pushFailures(failedConnectors, research.failedConnectors);
     allProperty.properties.push(...research.properties);
     allProperty.parties.push(...research.parties);
     allProperty.ownerships.push(...research.ownerships);
@@ -76957,7 +76988,7 @@ async function runCampaign(input2) {
       const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
       const enrich = await runEnrich(lead, leadContacts, enrichOpts);
       enrich.skipped.forEach((s) => skipped.add(s));
-      failedConnectors.push(...enrich.failedConnectors);
+      pushFailures(failedConnectors, enrich.failedConnectors);
       const contacts = enrich.contacts;
       allLeads.push(lead);
       allContacts.push(...contacts);

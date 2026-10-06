@@ -283,3 +283,92 @@ describe("rate limits", () => {
     expect(acquire.mock.calls[0]?.[0]).toBe("vendor");
   });
 });
+
+describe("review regressions", () => {
+  it("a cache write failure never discards a paid, successful result", async () => {
+    const calls: string[] = [];
+    registerConnector(stub("p", calls, HIT("p"), { creditsPerCall: 5, cacheTtlMs: 60_000 }));
+    const broken = {
+      get: async () => undefined,
+      set: async () => {
+        throw new Error("ENOSPC");
+      },
+    };
+    const budget = new CreditBudget(100);
+    const r = await runResearch("acme.com", "icp", { cache: broken, budget });
+    expect(r.leads).toHaveLength(1);
+    expect(r.failedConnectors).toEqual([]);
+    expect(budget.spent).toBe(5);
+  });
+
+  it("concurrent file-cache writes of one key all succeed", async () => {
+    const cache = new FileResponseCache(join(mkdtempSync(join(tmpdir(), "io-cache-race-")), "c"));
+    const results = await Promise.allSettled([1, 2, 3, 4, 5].map((v) => cache.set("k", { v }, 1_000, 0)));
+    expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+    expect(await cache.get("k", 1)).toEqual(expect.objectContaining({ v: expect.any(Number) }));
+  });
+
+  it("a result with item failures is not cached; a complete empty one is", async () => {
+    const calls: string[] = [];
+    registerConnector(
+      stub("partial", calls, { ...HIT("partial"), failures: [{ item: 0, reason: "http", status: 503 }] }, { cacheTtlMs: 60_000 }),
+    );
+    registerConnector(stub("empty", calls, EMPTY, { cacheTtlMs: 60_000 }));
+    const cache = new MemoryResponseCache();
+    await runResearch("acme.com", "icp", { cache });
+    const again = await runResearch("acme.com", "icp", { cache });
+    expect(calls.filter((c) => c.startsWith("partial"))).toHaveLength(2);
+    expect(calls.filter((c) => c.startsWith("empty"))).toHaveLength(1);
+    expect(again.cached).toEqual(["empty"]);
+  });
+
+  it("a malformed cache entry is a miss: the live call is made", async () => {
+    const calls: string[] = [];
+    registerConnector(stub("p", calls, HIT("p"), { cacheTtlMs: 60_000 }));
+    const poisoned = { get: async () => ({}), set: async () => undefined };
+    const r = await runResearch("acme.com", "icp", { cache: poisoned });
+    expect(calls).toEqual(["p:acme.com"]);
+    expect(r.leads).toHaveLength(1);
+    expect(r.cached).toEqual([]);
+  });
+
+  it("a refused paid call does not stop a later free source", async () => {
+    const calls: string[] = [];
+    registerConnector(stub("pricey", calls, HIT("pricey"), { creditsPerCall: 50 }));
+    registerConnector(stub("free", calls, HIT("free")));
+    const r = await runResearch("acme.com", "icp", { budget: new CreditBudget(10) });
+    expect(calls).toEqual(["free:acme.com"]);
+    expect(r.leads[0]?.companyName).toBe("Acme via free");
+    expect(r.budgetExhausted).toBe(true);
+  });
+
+  it("runCampaign keeps one budget-exhausted entry per connector, not one per domain", async () => {
+    const calls: string[] = [];
+    registerConnector(stub("paid", calls, EMPTY, { creditsPerCall: 3 }));
+    const provider = { name: "anthropic", model: "stub", generateObject: async () => ({}) } as unknown as LLMProvider;
+    const { run } = await runCampaign({
+      id: "run-dedupe",
+      icp: "x",
+      domains: ["a.com", "b.com", "c.com", "d.com"],
+      provider,
+      budgetCredits: 3,
+      now: () => "2026-10-06T12:00:00.000Z",
+    });
+    expect(run.failedConnectors.filter((f) => f.status === "budget-exhausted")).toHaveLength(1);
+  });
+
+  it("a fractional per-minute rate refills instead of hanging", async () => {
+    let t = 0;
+    const waits: number[] = [];
+    const rl = new RateLimiter(
+      () => t,
+      async (ms) => {
+        waits.push(ms);
+        t += ms;
+      },
+    );
+    await rl.acquire("slow", { perMinute: 0.5 }); // the first request goes at once
+    await rl.acquire("slow", { perMinute: 0.5 }); // the next waits 2 minutes
+    expect(waits).toEqual([120_000]);
+  });
+});

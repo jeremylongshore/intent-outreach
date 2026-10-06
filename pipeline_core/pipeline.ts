@@ -101,8 +101,45 @@ function chargeOrStop(
     return true;
   } catch (err) {
     if (!(err instanceof BudgetExceededError)) throw err;
-    failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    if (!failed.some((f) => f.name === connector.name && f.phase === phase && f.status === "budget-exhausted")) {
+      failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    }
     return false;
+  }
+}
+
+const isArr = (v: unknown) => Array.isArray(v);
+
+/** A cached research output, or undefined when absent, unreadable or the wrong shape (a miss, never an error). */
+async function cacheRead(cache: ResponseCache, key: string, now: number): Promise<ResearchOutput | undefined> {
+  try {
+    const v = (await cache.get(key, now)) as Partial<ResearchOutput> | undefined;
+    if (!v || typeof v !== "object" || !isArr(v.leads) || !isArr(v.contacts)) return undefined;
+    for (const k of ["properties", "parties", "ownerships", "entityLinks", "contactPoints"] as const) {
+      if (v[k] !== undefined && !isArr(v[k])) return undefined;
+    }
+    return v as ResearchOutput;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Best-effort cache write: a full disk or a permission error never fails the (already paid) call. */
+async function cacheWrite(cache: ResponseCache, key: string, value: unknown, ttlMs: number, now: number): Promise<void> {
+  try {
+    await cache.set(key, value, ttlMs, now);
+  } catch {
+    // The lookup still succeeded; it simply will not be served from cache next time.
+  }
+}
+
+/** Append connector failures, keeping one budget-exhausted entry per connector and phase per run. */
+function pushFailures(into: FailedConnector[], from: readonly FailedConnector[]): void {
+  for (const f of from) {
+    const dup =
+      f.status === "budget-exhausted" &&
+      into.some((g) => g.name === f.name && g.phase === f.phase && g.status === "budget-exhausted");
+    if (!dup) into.push(f);
   }
 }
 
@@ -154,6 +191,8 @@ export interface EnrichResult {
   skipped: string[];
   failedConnectors: FailedConnector[];
   raw: Record<string, unknown>;
+  /** True when the credit budget refused a paid enrich call. */
+  budgetExhausted: boolean;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -468,21 +507,25 @@ export async function runResearchQuery(
         opts.cache && ttl > 0
           ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting })
           : undefined;
-      let out = key ? ((await opts.cache!.get(key, clock())) as ResearchOutput | undefined) : undefined;
+      let out = key ? await cacheRead(opts.cache!, key, clock()) : undefined;
       if (out) {
         cached.push(connector.name);
       } else {
         if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
+          // Only THIS paid call is refused; free and cached sources later in the route still run.
           budgetExhausted = true;
-          break;
+          continue;
         }
         out = await callWithDeadline(
           (signal) => connector.research!({ domain: target, query: typed, icp, ...targeting, signal }),
           timeoutMs,
         );
-        if (key) {
+        // Cache only a COMPLETE answer: a result with item failures would replay
+        // the failure for the whole TTL. A complete empty answer is cached (a paid
+        // lookup that found nothing is not bought again).
+        if (key && (out.failures?.length ?? 0) === 0) {
           const { raw: _raw, ...cacheable } = out;
-          await opts.cache!.set(key, cacheable, ttl, clock());
+          await cacheWrite(opts.cache!, key, cacheable, ttl, clock());
         }
       }
       leads.push(...out.leads);
@@ -580,6 +623,7 @@ export async function runEnrich(
   const targeting = buyerTitlesArg(opts);
   const connectors = orderByRouting(getConfiguredConnectors("enrich"), opts.routing);
   const policy = opts.routing?.policy ?? "all";
+  let budgetExhausted = false;
   const enrichments: Enrichment[] = [];
   const raw: Record<string, unknown> = {};
   const ran: string[] = [];
@@ -589,7 +633,10 @@ export async function runEnrich(
 
   for (const connector of connectors) {
     if (!connector.enrich) continue;
-    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) break;
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
+      budgetExhausted = true;
+      continue;
+    }
     try {
       const current = working;
       const out = await callWithDeadline(
@@ -607,7 +654,7 @@ export async function runEnrich(
     }
   }
 
-  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw, budgetExhausted };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1097,7 +1144,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   for (const domain of domains) {
     const research = await runResearch(domain, icp, researchOpts);
     research.skipped.forEach((s) => skipped.add(s));
-    failedConnectors.push(...research.failedConnectors);
+    pushFailures(failedConnectors, research.failedConnectors);
     // Carried into the run as-is: property data a connector fetched is never silently discarded.
     allProperty.properties.push(...research.properties);
     allProperty.parties.push(...research.parties);
@@ -1111,7 +1158,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
       const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
       const enrich = await runEnrich(lead, leadContacts, enrichOpts);
       enrich.skipped.forEach((s) => skipped.add(s));
-      failedConnectors.push(...enrich.failedConnectors);
+      pushFailures(failedConnectors, enrich.failedConnectors);
       const contacts = enrich.contacts; // emails found during enrichment folded in
 
       allLeads.push(lead);
