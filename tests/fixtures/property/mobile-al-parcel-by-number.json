@@ -1,0 +1,181 @@
+{
+  "objectIdFieldName": "OBJECTID",
+  "uniqueIdField": {
+    "name": "OBJECTID",
+    "isSystemMaintained": true
+  },
+  "globalIdFieldName": "",
+  "geometryProperties": {
+    "shapeAreaFieldName": "Shape__Area",
+    "shapeLengthFieldName": "Shape__Length",
+    "units": "esriFeet"
+  },
+  "geometryType": "esriGeometryPolygon",
+  "spatialReference": {
+    "wkid": 102630,
+    "latestWkid": 102630
+  },
+  "fields": [
+    {
+      "name": "OBJECTID",
+      "type": "esriFieldTypeOID",
+      "alias": "OBJECTID",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Parcel_Number",
+      "type": "esriFieldTypeString",
+      "alias": "Parcel Number",
+      "sqlType": "sqlTypeOther",
+      "length": 22,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Account_Number",
+      "type": "esriFieldTypeString",
+      "alias": "Account Number",
+      "sqlType": "sqlTypeOther",
+      "length": 8,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "ParcelNo",
+      "type": "esriFieldTypeString",
+      "alias": "ParcelNo",
+      "sqlType": "sqlTypeOther",
+      "length": 50,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Name1",
+      "type": "esriFieldTypeString",
+      "alias": "Name1",
+      "sqlType": "sqlTypeOther",
+      "length": 255,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Name2",
+      "type": "esriFieldTypeString",
+      "alias": "Name2",
+      "sqlType": "sqlTypeOther",
+      "length": 255,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PropAddr1",
+      "type": "esriFieldTypeString",
+      "alias": "PropAddr1",
+      "sqlType": "sqlTypeOther",
+      "length": 100,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PropAddr2",
+      "type": "esriFieldTypeString",
+      "alias": "PropAddr2",
+      "sqlType": "sqlTypeOther",
+      "length": 100,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PropCity",
+      "type": "esriFieldTypeString",
+      "alias": "PropCity",
+      "sqlType": "sqlTypeOther",
+      "length": 50,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PropState",
+      "type": "esriFieldTypeString",
+      "alias": "PropState",
+      "sqlType": "sqlTypeOther",
+      "length": 20,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PropZip",
+      "type": "esriFieldTypeString",
+      "alias": "PropZip",
+      "sqlType": "sqlTypeOther",
+      "length": 20,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Acreage",
+      "type": "esriFieldTypeDouble",
+      "alias": "Acreage",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Sqft",
+      "type": "esriFieldTypeDouble",
+      "alias": "Sqft",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "KeyNum",
+      "type": "esriFieldTypeString",
+      "alias": "KeyNum",
+      "sqlType": "sqlTypeOther",
+      "length": 50,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Shape__Area",
+      "type": "esriFieldTypeDouble",
+      "alias": "Shape__Area",
+      "sqlType": "sqlTypeDouble",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Shape__Length",
+      "type": "esriFieldTypeDouble",
+      "alias": "Shape__Length",
+      "sqlType": "sqlTypeDouble",
+      "domain": null,
+      "defaultValue": null
+    }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "OBJECTID": 159014,
+        "Parcel_Number": "2906390004035.000",
+        "Account_Number": "00731140",
+        "ParcelNo": "29 06 39 0 004 035.XXX            ",
+        "Name1": "MOBILE COUNTY                                                                                                                                                                                                                                                  ",
+        "Name2": "                                                                                                                                                                                                                                                               ",
+        "PropAddr1": "1150 GOVERNMENT ST                                                                                 ",
+        "PropAddr2": "ROOM 107 -INT REN                                                                                  ",
+        "PropCity": "MOBILE                                           ",
+        "PropState": "AL                 ",
+        "PropZip": "36604              ",
+        "Acreage": 0,
+        "Sqft": 0,
+        "KeyNum": "731140",
+        "Shape__Area": 75251.885498046875,
+        "Shape__Length": 1243.4758320218575
+      }
+    }
+  ]
+}

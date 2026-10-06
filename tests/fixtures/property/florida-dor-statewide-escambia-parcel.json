@@ -1,0 +1,1181 @@
+{
+  "objectIdFieldName": "OBJECTID",
+  "uniqueIdField": {
+    "name": "OBJECTID",
+    "isSystemMaintained": true
+  },
+  "globalIdFieldName": "",
+  "geometryProperties": {
+    "shapeAreaFieldName": "Shape__Area",
+    "shapeLengthFieldName": "Shape__Length",
+    "units": "esriMeters"
+  },
+  "geometryType": "esriGeometryPolygon",
+  "spatialReference": {
+    "wkid": 102967,
+    "latestWkid": 6439
+  },
+  "fields": [
+    {
+      "name": "OBJECTID",
+      "type": "esriFieldTypeOID",
+      "alias": "OBJECTID",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PARCELNO",
+      "type": "esriFieldTypeString",
+      "alias": "PARCELNO",
+      "sqlType": "sqlTypeOther",
+      "length": 254,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OID_",
+      "type": "esriFieldTypeInteger",
+      "alias": "OID_",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "CO_NO",
+      "type": "esriFieldTypeDouble",
+      "alias": "CO_NO",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PARCEL_ID",
+      "type": "esriFieldTypeString",
+      "alias": "PARCEL_ID",
+      "sqlType": "sqlTypeOther",
+      "length": 30,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "FILE_T",
+      "type": "esriFieldTypeString",
+      "alias": "FILE_T",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "ASMNT_YR",
+      "type": "esriFieldTypeDouble",
+      "alias": "ASMNT_YR",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "BAS_STRT",
+      "type": "esriFieldTypeString",
+      "alias": "BAS_STRT",
+      "sqlType": "sqlTypeOther",
+      "length": 2,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "ATV_STRT",
+      "type": "esriFieldTypeString",
+      "alias": "ATV_STRT",
+      "sqlType": "sqlTypeOther",
+      "length": 2,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "GRP_NO",
+      "type": "esriFieldTypeString",
+      "alias": "GRP_NO",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "DOR_UC",
+      "type": "esriFieldTypeString",
+      "alias": "DOR_UC",
+      "sqlType": "sqlTypeOther",
+      "length": 4,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PA_UC",
+      "type": "esriFieldTypeString",
+      "alias": "PA_UC",
+      "sqlType": "sqlTypeOther",
+      "length": 2,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SPASS_CD",
+      "type": "esriFieldTypeString",
+      "alias": "SPASS_CD",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_CHNG",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_CHNG",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_CHNG_CD",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_CHNG_CD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_SD",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_SD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_NSD",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_NSD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "TV_SD",
+      "type": "esriFieldTypeDouble",
+      "alias": "TV_SD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "TV_NSD",
+      "type": "esriFieldTypeDouble",
+      "alias": "TV_NSD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_HMSTD",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_HMSTD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_HMSTD",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_HMSTD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_NON_HMS",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_NON_HMS",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_NON_HMS",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_NON_HMS",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_RESD_NO",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_RESD_NO",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_RESD_NO",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_RESD_NO",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_CLASS_U",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_CLASS_U",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_CLASS_U",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_CLASS_U",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_H2O_REC",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_H2O_REC",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_H2O_REC",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_H2O_REC",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_CONSRV_",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_CONSRV_",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_CONSRV_",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_CONSRV_",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_HIST_CO",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_HIST_CO",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_HIST_CO",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_HIST_CO",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_HIST_SI",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_HIST_SI",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_HIST_SI",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_HIST_SI",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "JV_WRKNG_W",
+      "type": "esriFieldTypeDouble",
+      "alias": "JV_WRKNG_W",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "AV_WRKNG_W",
+      "type": "esriFieldTypeDouble",
+      "alias": "AV_WRKNG_W",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "NCONST_VAL",
+      "type": "esriFieldTypeDouble",
+      "alias": "NCONST_VAL",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "DEL_VAL",
+      "type": "esriFieldTypeDouble",
+      "alias": "DEL_VAL",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PAR_SPLT",
+      "type": "esriFieldTypeDouble",
+      "alias": "PAR_SPLT",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "DISTR_CD",
+      "type": "esriFieldTypeDouble",
+      "alias": "DISTR_CD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "DISTR_YR",
+      "type": "esriFieldTypeDouble",
+      "alias": "DISTR_YR",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "LND_VAL",
+      "type": "esriFieldTypeDouble",
+      "alias": "LND_VAL",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "LND_UNTS_C",
+      "type": "esriFieldTypeDouble",
+      "alias": "LND_UNTS_C",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "NO_LND_UNT",
+      "type": "esriFieldTypeDouble",
+      "alias": "NO_LND_UNT",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "LND_SQFOOT",
+      "type": "esriFieldTypeDouble",
+      "alias": "LND_SQFOOT",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "DT_LAST_IN",
+      "type": "esriFieldTypeDouble",
+      "alias": "DT_LAST_IN",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "IMP_QUAL",
+      "type": "esriFieldTypeString",
+      "alias": "IMP_QUAL",
+      "sqlType": "sqlTypeOther",
+      "length": 3,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "CONST_CLAS",
+      "type": "esriFieldTypeDouble",
+      "alias": "CONST_CLAS",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "EFF_YR_BLT",
+      "type": "esriFieldTypeDouble",
+      "alias": "EFF_YR_BLT",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "ACT_YR_BLT",
+      "type": "esriFieldTypeDouble",
+      "alias": "ACT_YR_BLT",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "TOT_LVG_AR",
+      "type": "esriFieldTypeDouble",
+      "alias": "TOT_LVG_AR",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "NO_BULDNG",
+      "type": "esriFieldTypeDouble",
+      "alias": "NO_BULDNG",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "NO_RES_UNT",
+      "type": "esriFieldTypeDouble",
+      "alias": "NO_RES_UNT",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SPEC_FEAT_",
+      "type": "esriFieldTypeDouble",
+      "alias": "SPEC_FEAT_",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "M_PAR_SAL1",
+      "type": "esriFieldTypeString",
+      "alias": "M_PAR_SAL1",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "QUAL_CD1",
+      "type": "esriFieldTypeString",
+      "alias": "QUAL_CD1",
+      "sqlType": "sqlTypeOther",
+      "length": 2,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "VI_CD1",
+      "type": "esriFieldTypeString",
+      "alias": "VI_CD1",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SALE_PRC1",
+      "type": "esriFieldTypeDouble",
+      "alias": "SALE_PRC1",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SALE_YR1",
+      "type": "esriFieldTypeDouble",
+      "alias": "SALE_YR1",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SALE_MO1",
+      "type": "esriFieldTypeString",
+      "alias": "SALE_MO1",
+      "sqlType": "sqlTypeOther",
+      "length": 2,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OR_BOOK1",
+      "type": "esriFieldTypeString",
+      "alias": "OR_BOOK1",
+      "sqlType": "sqlTypeOther",
+      "length": 6,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OR_PAGE1",
+      "type": "esriFieldTypeString",
+      "alias": "OR_PAGE1",
+      "sqlType": "sqlTypeOther",
+      "length": 6,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "CLERK_NO1",
+      "type": "esriFieldTypeString",
+      "alias": "CLERK_NO1",
+      "sqlType": "sqlTypeOther",
+      "length": 20,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "S_CHNG_CD1",
+      "type": "esriFieldTypeDouble",
+      "alias": "S_CHNG_CD1",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "M_PAR_SAL2",
+      "type": "esriFieldTypeString",
+      "alias": "M_PAR_SAL2",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "QUAL_CD2",
+      "type": "esriFieldTypeString",
+      "alias": "QUAL_CD2",
+      "sqlType": "sqlTypeOther",
+      "length": 2,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "VI_CD2",
+      "type": "esriFieldTypeString",
+      "alias": "VI_CD2",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SALE_PRC2",
+      "type": "esriFieldTypeDouble",
+      "alias": "SALE_PRC2",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SALE_YR2",
+      "type": "esriFieldTypeDouble",
+      "alias": "SALE_YR2",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SALE_MO2",
+      "type": "esriFieldTypeString",
+      "alias": "SALE_MO2",
+      "sqlType": "sqlTypeOther",
+      "length": 2,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OR_BOOK2",
+      "type": "esriFieldTypeString",
+      "alias": "OR_BOOK2",
+      "sqlType": "sqlTypeOther",
+      "length": 6,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OR_PAGE2",
+      "type": "esriFieldTypeString",
+      "alias": "OR_PAGE2",
+      "sqlType": "sqlTypeOther",
+      "length": 6,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "CLERK_NO2",
+      "type": "esriFieldTypeString",
+      "alias": "CLERK_NO2",
+      "sqlType": "sqlTypeOther",
+      "length": 20,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "S_CHNG_CD2",
+      "type": "esriFieldTypeDouble",
+      "alias": "S_CHNG_CD2",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OWN_NAME",
+      "type": "esriFieldTypeString",
+      "alias": "OWN_NAME",
+      "sqlType": "sqlTypeOther",
+      "length": 33,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OWN_ADDR1",
+      "type": "esriFieldTypeString",
+      "alias": "OWN_ADDR1",
+      "sqlType": "sqlTypeOther",
+      "length": 40,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OWN_ADDR2",
+      "type": "esriFieldTypeString",
+      "alias": "OWN_ADDR2",
+      "sqlType": "sqlTypeOther",
+      "length": 40,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OWN_CITY",
+      "type": "esriFieldTypeString",
+      "alias": "OWN_CITY",
+      "sqlType": "sqlTypeOther",
+      "length": 40,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OWN_STATE",
+      "type": "esriFieldTypeString",
+      "alias": "OWN_STATE",
+      "sqlType": "sqlTypeOther",
+      "length": 30,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OWN_ZIPCD",
+      "type": "esriFieldTypeDouble",
+      "alias": "OWN_ZIPCD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "OWN_STATE_",
+      "type": "esriFieldTypeString",
+      "alias": "OWN_STATE_",
+      "sqlType": "sqlTypeOther",
+      "length": 2,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "FIDU_NAME",
+      "type": "esriFieldTypeString",
+      "alias": "FIDU_NAME",
+      "sqlType": "sqlTypeOther",
+      "length": 33,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "FIDU_ADDR1",
+      "type": "esriFieldTypeString",
+      "alias": "FIDU_ADDR1",
+      "sqlType": "sqlTypeOther",
+      "length": 40,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "FIDU_ADDR2",
+      "type": "esriFieldTypeString",
+      "alias": "FIDU_ADDR2",
+      "sqlType": "sqlTypeOther",
+      "length": 40,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "FIDU_CITY",
+      "type": "esriFieldTypeString",
+      "alias": "FIDU_CITY",
+      "sqlType": "sqlTypeOther",
+      "length": 40,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "FIDU_STATE",
+      "type": "esriFieldTypeString",
+      "alias": "FIDU_STATE",
+      "sqlType": "sqlTypeOther",
+      "length": 30,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "FIDU_ZIPCD",
+      "type": "esriFieldTypeString",
+      "alias": "FIDU_ZIPCD",
+      "sqlType": "sqlTypeOther",
+      "length": 5,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "FIDU_CD",
+      "type": "esriFieldTypeDouble",
+      "alias": "FIDU_CD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "S_LEGAL",
+      "type": "esriFieldTypeString",
+      "alias": "S_LEGAL",
+      "sqlType": "sqlTypeOther",
+      "length": 35,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "APP_STAT",
+      "type": "esriFieldTypeString",
+      "alias": "APP_STAT",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "CO_APP_STA",
+      "type": "esriFieldTypeString",
+      "alias": "CO_APP_STA",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "MKT_AR",
+      "type": "esriFieldTypeString",
+      "alias": "MKT_AR",
+      "sqlType": "sqlTypeOther",
+      "length": 3,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "NBRHD_CD",
+      "type": "esriFieldTypeString",
+      "alias": "NBRHD_CD",
+      "sqlType": "sqlTypeOther",
+      "length": 10,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PUBLIC_LND",
+      "type": "esriFieldTypeString",
+      "alias": "PUBLIC_LND",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "TAX_AUTH_C",
+      "type": "esriFieldTypeString",
+      "alias": "TAX_AUTH_C",
+      "sqlType": "sqlTypeOther",
+      "length": 5,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "TWN",
+      "type": "esriFieldTypeString",
+      "alias": "TWN",
+      "sqlType": "sqlTypeOther",
+      "length": 3,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "RNG",
+      "type": "esriFieldTypeString",
+      "alias": "RNG",
+      "sqlType": "sqlTypeOther",
+      "length": 3,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SEC",
+      "type": "esriFieldTypeString",
+      "alias": "SEC",
+      "sqlType": "sqlTypeOther",
+      "length": 3,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "CENSUS_BK",
+      "type": "esriFieldTypeString",
+      "alias": "CENSUS_BK",
+      "sqlType": "sqlTypeOther",
+      "length": 16,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PHY_ADDR1",
+      "type": "esriFieldTypeString",
+      "alias": "PHY_ADDR1",
+      "sqlType": "sqlTypeOther",
+      "length": 40,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PHY_ADDR2",
+      "type": "esriFieldTypeString",
+      "alias": "PHY_ADDR2",
+      "sqlType": "sqlTypeOther",
+      "length": 40,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PHY_CITY",
+      "type": "esriFieldTypeString",
+      "alias": "PHY_CITY",
+      "sqlType": "sqlTypeOther",
+      "length": 40,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PHY_ZIPCD",
+      "type": "esriFieldTypeDouble",
+      "alias": "PHY_ZIPCD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "ALT_KEY",
+      "type": "esriFieldTypeString",
+      "alias": "ALT_KEY",
+      "sqlType": "sqlTypeOther",
+      "length": 26,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "ASS_TRNSFR",
+      "type": "esriFieldTypeString",
+      "alias": "ASS_TRNSFR",
+      "sqlType": "sqlTypeOther",
+      "length": 1,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PREV_HMSTD",
+      "type": "esriFieldTypeDouble",
+      "alias": "PREV_HMSTD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "ASS_DIF_TR",
+      "type": "esriFieldTypeDouble",
+      "alias": "ASS_DIF_TR",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "CONO_PRV_H",
+      "type": "esriFieldTypeDouble",
+      "alias": "CONO_PRV_H",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "PARCEL_ID_",
+      "type": "esriFieldTypeString",
+      "alias": "PARCEL_ID_",
+      "sqlType": "sqlTypeOther",
+      "length": 30,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "YR_VAL_TRN",
+      "type": "esriFieldTypeDouble",
+      "alias": "YR_VAL_TRN",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SEQ_NO",
+      "type": "esriFieldTypeDouble",
+      "alias": "SEQ_NO",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "RS_ID",
+      "type": "esriFieldTypeString",
+      "alias": "RS_ID",
+      "sqlType": "sqlTypeOther",
+      "length": 4,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "MP_ID",
+      "type": "esriFieldTypeString",
+      "alias": "MP_ID",
+      "sqlType": "sqlTypeOther",
+      "length": 8,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "STATE_PAR_",
+      "type": "esriFieldTypeString",
+      "alias": "STATE_PAR_",
+      "sqlType": "sqlTypeOther",
+      "length": 18,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SPC_CIR_CD",
+      "type": "esriFieldTypeDouble",
+      "alias": "SPC_CIR_CD",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SPC_CIR_YR",
+      "type": "esriFieldTypeDouble",
+      "alias": "SPC_CIR_YR",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "SPC_CIR_TX",
+      "type": "esriFieldTypeString",
+      "alias": "SPC_CIR_TX",
+      "sqlType": "sqlTypeOther",
+      "length": 50,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "BATCHING_ID",
+      "type": "esriFieldTypeInteger",
+      "alias": "BATCHING_ID",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Shape__Area",
+      "type": "esriFieldTypeDouble",
+      "alias": "Shape__Area",
+      "sqlType": "sqlTypeDouble",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Shape__Length",
+      "type": "esriFieldTypeDouble",
+      "alias": "Shape__Length",
+      "sqlType": "sqlTypeDouble",
+      "domain": null,
+      "defaultValue": null
+    }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "OBJECTID": 2788331,
+        "PARCELNO": "082S305005000002",
+        "OID_": 40111,
+        "CO_NO": 27,
+        "PARCEL_ID": "082S305005000002",
+        "FILE_T": "R",
+        "ASMNT_YR": 2026,
+        "BAS_STRT": "07",
+        "ATV_STRT": "7",
+        "GRP_NO": "5",
+        "DOR_UC": "086",
+        "PA_UC": "10",
+        "SPASS_CD": " ",
+        "JV": 72680,
+        "JV_CHNG": 0,
+        "JV_CHNG_CD": 0,
+        "AV_SD": 72680,
+        "AV_NSD": 65565,
+        "TV_SD": 0,
+        "TV_NSD": 0,
+        "JV_HMSTD": 0,
+        "AV_HMSTD": 0,
+        "JV_NON_HMS": 0,
+        "AV_NON_HMS": 0,
+        "JV_RESD_NO": 72680,
+        "AV_RESD_NO": 65565,
+        "JV_CLASS_U": 0,
+        "AV_CLASS_U": 0,
+        "JV_H2O_REC": 0,
+        "AV_H2O_REC": 0,
+        "JV_CONSRV_": 0,
+        "AV_CONSRV_": 0,
+        "JV_HIST_CO": 0,
+        "AV_HIST_CO": 0,
+        "JV_HIST_SI": 0,
+        "AV_HIST_SI": 0,
+        "JV_WRKNG_W": 0,
+        "AV_WRKNG_W": 0,
+        "NCONST_VAL": 0,
+        "DEL_VAL": 0,
+        "PAR_SPLT": 0,
+        "DISTR_CD": 0,
+        "DISTR_YR": 0,
+        "LND_VAL": 71400,
+        "LND_UNTS_C": 2,
+        "NO_LND_UNT": 35700,
+        "LND_SQFOOT": 35702,
+        "DT_LAST_IN": 1125,
+        "IMP_QUAL": " ",
+        "CONST_CLAS": 0,
+        "EFF_YR_BLT": 0,
+        "ACT_YR_BLT": 0,
+        "TOT_LVG_AR": 0,
+        "NO_BULDNG": 0,
+        "NO_RES_UNT": 0,
+        "SPEC_FEAT_": 1280,
+        "M_PAR_SAL1": " ",
+        "QUAL_CD1": " ",
+        "VI_CD1": " ",
+        "SALE_PRC1": 0,
+        "SALE_YR1": 0,
+        "SALE_MO1": " ",
+        "OR_BOOK1": " ",
+        "OR_PAGE1": " ",
+        "CLERK_NO1": " ",
+        "S_CHNG_CD1": 0,
+        "M_PAR_SAL2": " ",
+        "QUAL_CD2": " ",
+        "VI_CD2": " ",
+        "SALE_PRC2": 0,
+        "SALE_YR2": 0,
+        "SALE_MO2": " ",
+        "OR_BOOK2": " ",
+        "OR_PAGE2": " ",
+        "CLERK_NO2": " ",
+        "S_CHNG_CD2": 0,
+        "OWN_NAME": "ESCAMBIA COUNTY BOARD OF COUNT",
+        "OWN_ADDR1": "221 PALAFOX PL STE 420",
+        "OWN_ADDR2": " ",
+        "OWN_CITY": "PENSACOLA",
+        "OWN_STATE": "FL",
+        "OWN_ZIPCD": 32502,
+        "OWN_STATE_": " ",
+        "FIDU_NAME": " ",
+        "FIDU_ADDR1": " ",
+        "FIDU_ADDR2": " ",
+        "FIDU_CITY": " ",
+        "FIDU_STATE": " ",
+        "FIDU_ZIPCD": " ",
+        "FIDU_CD": 0,
+        "S_LEGAL": "BEG AT A PT ON THE WLY R/W LI",
+        "APP_STAT": " ",
+        "CO_APP_STA": " ",
+        "MKT_AR": "11",
+        "NBRHD_CD": " ",
+        "PUBLIC_LND": "C",
+        "TAX_AUTH_C": "MSTU",
+        "TWN": "02S",
+        "RNG": "30W",
+        "SEC": "8",
+        "CENSUS_BK": "120330017001",
+        "PHY_ADDR1": "4109 N PALAFOX ST",
+        "PHY_ADDR2": " ",
+        "PHY_CITY": "PENSACOLA",
+        "PHY_ZIPCD": 32505,
+        "ALT_KEY": "051891000",
+        "ASS_TRNSFR": " ",
+        "PREV_HMSTD": 0,
+        "ASS_DIF_TR": 0,
+        "CONO_PRV_H": 0,
+        "PARCEL_ID_": " ",
+        "YR_VAL_TRN": 0,
+        "SEQ_NO": 40238,
+        "RS_ID": "2E08",
+        "MP_ID": "0031E052",
+        "STATE_PAR_": "C27-000-326-8690-9",
+        "SPC_CIR_CD": 0,
+        "SPC_CIR_YR": 0,
+        "SPC_CIR_TX": " ",
+        "BATCHING_ID": 2788331,
+        "Shape__Area": 3357.6451454162598,
+        "Shape__Length": 308.46244541188651
+      }
+    }
+  ]
+}
