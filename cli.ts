@@ -31,6 +31,12 @@ import {
   removeSuppression,
 } from "./pipeline_core/suppressions.js";
 import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
+import { checkSendable } from "./pipeline_core/compliance/send.js";
+import { ConsentRecordSchema } from "./pipeline_core/compliance/consent.js";
+import { ChannelSchema, ContactPointSchema } from "./pipeline_core/models.js";
+import { registerBuiltinPacks, resolvePack } from "./pipeline_core/packs/index.js";
+import { loadSuppressionList } from "./pipeline_core/suppressions.js";
+import { z } from "zod";
 
 /** A bad or missing flag: printed to stderr, exit code 2. */
 export class UsageError extends Error {
@@ -138,6 +144,8 @@ export function printHelp(): void {
       "  intent-outreach suppress add <email|domain|phone|\"address\"> [--kind <k>] [--reason <text>]",
       "  intent-outreach suppress remove <value> [--kind <k>]",
       "  intent-outreach suppress list       opt-outs honored by every run",
+      "  intent-outreach check-send [--profile <p>] < message.json",
+      "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
       "",
       "run options:",
@@ -350,6 +358,76 @@ async function cmdSuppress(args: string[]): Promise<void> {
   throw new UsageError(SUPPRESS_USAGE);
 }
 
+const CHECK_SEND_USAGE =
+  "usage: intent-outreach check-send [--profile <name|path>] < input.json\n" +
+  '  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,' +
+  '"now"?,"consents"?,"recipientState"?,"pack"?}';
+
+const CheckSendInputSchema = z.object({
+  message: z.object({ channel: ChannelSchema, body: z.string().min(1), needsSenderIdentity: z.boolean().optional() }),
+  channel: ChannelSchema,
+  contactPoint: ContactPointSchema.optional(),
+  contactEmail: z.string().email().optional(),
+  /** Defaults to the current time: the CLI is the I/O boundary that reads the clock. */
+  now: z.string().datetime({ offset: true }).optional(),
+  consents: z.array(ConsentRecordSchema).default([]),
+  recipientState: z.string().regex(/^[A-Z]{2}$/).optional(),
+  /** Pack whose channel policy applies (tighten-only). Defaults to b2b-sdr. */
+  pack: z.string().min(1).optional(),
+});
+
+async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+/**
+ * `check-send` — the send-time check for dispatchers outside this process
+ * (coastal's Python dispatcher shells out to it). Reads one JSON input on stdin,
+ * applies the local suppression list and the profile's sender identity, prints
+ * the verdict as JSON, and exits 0 when sendable, 3 when not, 2 on bad input.
+ */
+async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readStdin): Promise<void> {
+  let values: { profile?: string | undefined };
+  try {
+    ({ values } = parseArgs({ args, options: { profile: { type: "string" } }, allowPositionals: false }));
+  } catch {
+    throw new UsageError(CHECK_SEND_USAGE);
+  }
+  let parsed: z.infer<typeof CheckSendInputSchema>;
+  try {
+    parsed = CheckSendInputSchema.parse(JSON.parse(await stdin()));
+  } catch (err) {
+    const why = err instanceof z.ZodError ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : "not valid JSON";
+    throw new UsageError(`check-send: invalid input (${why})\n${CHECK_SEND_USAGE}`);
+  }
+  let sender;
+  if (values.profile) {
+    try {
+      sender = loadProfileRef(values.profile).sender;
+    } catch (err) {
+      throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  registerBuiltinPacks();
+  const pack = resolvePack(parsed.pack ?? "b2b-sdr");
+  const verdict = checkSendable({
+    message: parsed.message,
+    channel: parsed.channel,
+    contactPoint: parsed.contactPoint,
+    contactEmail: parsed.contactEmail,
+    now: parsed.now ? new Date(parsed.now) : new Date(),
+    consents: parsed.consents,
+    suppressions: await loadSuppressionList(),
+    recipientState: parsed.recipientState,
+    sender,
+    policy: pack.channels?.[parsed.channel],
+  });
+  process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
+  if (!verdict.sendable) process.exitCode = 3;
+}
+
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
@@ -361,6 +439,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       return void cmdProviders();
     case "suppress":
       return cmdSuppress(rest);
+    case "check-send":
+      return cmdCheckSend(rest);
     case "help":
     case "--help":
     case "-h":

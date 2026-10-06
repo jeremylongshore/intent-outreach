@@ -13,6 +13,8 @@
  */
 
 import type { ServiceArea } from "../compliance/index.js";
+import type { ChannelPolicy } from "../compliance/send.js";
+import type { Channel } from "../models.js";
 import type { Contact, Enrichment, Lead } from "../models.js";
 
 /** A compliance verdict for a single contact. Fail-closed: ambiguity → blocked. */
@@ -77,6 +79,12 @@ export interface Pack {
    * the engine never consults it. `b2b-sdr` has none.
    */
   serviceArea?: ServiceArea;
+  /**
+   * Pack v2: per-channel send-time policy overrides, applied by
+   * `checkSendable` on top of DEFAULT_CHANNEL_POLICIES. Tighten-only: a pack
+   * can require written consent or license disclosure, never relax a default.
+   */
+  channels?: Partial<Record<Channel, Partial<ChannelPolicy>>>;
 }
 
 /** The pack resolved when a caller names none. */
