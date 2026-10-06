@@ -2,7 +2,7 @@
  * pipeline_core/suppressions.ts — the local suppression (opt-out) list: file I/O.
  *
  * File: `${INTENT_OUTREACH_HOME}/suppressions.jsonl` (default ~/.intent-outreach),
- * one JSON object per line: { kind: "email"|"domain", value, addedAt, reason? }.
+ * one JSON object per line: { kind: "email"|"domain"|"phone"|"address", value, addedAt, reason? }.
  * Local-only, mode 0600 like the run store; never a hosted list.
  *
  * This is the I/O half. The CHECK is pure and lives in compliance/suppression.ts;
@@ -20,10 +20,11 @@ import { dirname, join } from "node:path";
 import { intentOutreachHome } from "./secrets.js";
 import {
   buildSuppressionList,
-  normalizeSuppressionDomain,
-  normalizeSuppressionEmail,
+  normalizeSuppression,
   parseSuppressionValue,
+  SUPPRESSION_KINDS,
   type SuppressionEntry,
+  type SuppressionKind,
   type SuppressionList,
 } from "./compliance/suppression.js";
 
@@ -38,17 +39,20 @@ function parseEntry(raw: unknown, line: number, path: string): SuppressionEntry 
   };
   if (!raw || typeof raw !== "object") return fail("not an object");
   const o = raw as Record<string, unknown>;
-  if (o.kind !== "email" && o.kind !== "domain") return fail("kind must be email|domain");
+  if (!SUPPRESSION_KINDS.includes(o.kind as SuppressionKind)) {
+    return fail(`kind must be ${SUPPRESSION_KINDS.join("|")}`);
+  }
+  const kind = o.kind as SuppressionKind;
   if (typeof o.value !== "string") return fail("value must be a string");
   let value: string;
   try {
-    value = o.kind === "email" ? normalizeSuppressionEmail(o.value) : normalizeSuppressionDomain(o.value);
+    value = normalizeSuppression(kind, o.value);
   } catch (err) {
     return fail(err instanceof Error ? err.message : "unparseable value");
   }
   const addedAt = typeof o.addedAt === "string" ? o.addedAt : fail("addedAt must be a string");
   return {
-    kind: o.kind,
+    kind,
     value,
     addedAt,
     ...(typeof o.reason === "string" && o.reason ? { reason: o.reason } : {}),
@@ -140,15 +144,17 @@ export interface AddSuppressionResult {
 }
 
 /**
- * Suppress an email or domain ("@" ⇒ email). Idempotent: an existing entry is
- * returned unchanged. Throws on a malformed value — nothing is written.
+ * Suppress an email, domain, phone or mailing address. The kind is inferred
+ * (see `parseSuppressionValue`) unless `opts.kind` names it. Idempotent: an
+ * existing entry is returned unchanged. Throws on a malformed value — nothing
+ * is written.
  */
 export async function addSuppression(
   input: string,
-  opts: { reason?: string; now?: () => string; path?: string } = {},
+  opts: { reason?: string; now?: () => string; path?: string; kind?: SuppressionKind } = {},
 ): Promise<AddSuppressionResult> {
   const path = opts.path ?? defaultSuppressionsPath();
-  const { kind, value } = parseSuppressionValue(input);
+  const { kind, value } = parseSuppressionValue(input, opts.kind);
   return withLockAt(path, async () => {
     const entries = await readSuppressions(path);
     const existing = entries.find((e) => e.kind === kind && e.value === value);
@@ -165,9 +171,12 @@ export async function addSuppression(
 }
 
 /** Remove a suppression. Returns false when it was not on the list. */
-export async function removeSuppression(input: string, opts: { path?: string } = {}): Promise<boolean> {
+export async function removeSuppression(
+  input: string,
+  opts: { path?: string; kind?: SuppressionKind } = {},
+): Promise<boolean> {
   const path = opts.path ?? defaultSuppressionsPath();
-  const { kind, value } = parseSuppressionValue(input);
+  const { kind, value } = parseSuppressionValue(input, opts.kind);
   return withLockAt(path, async () => {
     const entries = await readSuppressions(path);
     const kept = entries.filter((e) => !(e.kind === kind && e.value === value));

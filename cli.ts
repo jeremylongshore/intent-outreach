@@ -30,6 +30,7 @@ import {
   readSuppressions,
   removeSuppression,
 } from "./pipeline_core/suppressions.js";
+import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
 
 /** A bad or missing flag: printed to stderr, exit code 2. */
 export class UsageError extends Error {
@@ -134,8 +135,8 @@ export function printHelp(): void {
       "  intent-outreach run --icp <text> --domains <a.com,b.com> [options]",
       "  intent-outreach connectors          list connectors + whether each is configured",
       "  intent-outreach providers           list model providers + gate status",
-      "  intent-outreach suppress add <email|domain> [--reason <text>]",
-      "  intent-outreach suppress remove <email|domain>",
+      "  intent-outreach suppress add <email|domain|phone|\"address\"> [--kind <k>] [--reason <text>]",
+      "  intent-outreach suppress remove <value> [--kind <k>]",
       "  intent-outreach suppress list       opt-outs honored by every run",
       "  intent-outreach help",
       "",
@@ -292,17 +293,27 @@ async function cmdRun(args: string[]): Promise<void> {
 }
 
 const SUPPRESS_USAGE =
-  "usage: intent-outreach suppress add <email|domain> [--reason <text>] | remove <email|domain> | list";
+  "usage: intent-outreach suppress add <value> [--kind email|domain|phone|address] [--reason <text>]" +
+  " | remove <value> [--kind <k>] | list\n" +
+  '  the kind is inferred when --kind is omitted; quote a mailing address: "12 Main St, Foley, AL 36535"';
 
 /** `suppress add|remove|list` — manage the local opt-out list (suppressions.jsonl, mode 0600). */
 async function cmdSuppress(args: string[]): Promise<void> {
   let parsed;
   try {
-    parsed = parseArgs({ args, options: { reason: { type: "string" } }, allowPositionals: true });
+    parsed = parseArgs({
+      args,
+      options: { reason: { type: "string" }, kind: { type: "string" } },
+      allowPositionals: true,
+    });
   } catch {
     throw new UsageError(SUPPRESS_USAGE);
   }
   const { values, positionals } = parsed;
+  if (values.kind !== undefined && !SUPPRESSION_KINDS.includes(values.kind as SuppressionKind)) {
+    throw new UsageError(SUPPRESS_USAGE);
+  }
+  const kindOpt = values.kind !== undefined ? { kind: values.kind as SuppressionKind } : {};
   const [action, target, ...extra] = positionals;
   const path = defaultSuppressionsPath();
   if (action === "list" && target === undefined) {
@@ -317,12 +328,15 @@ async function cmdSuppress(args: string[]): Promise<void> {
   }
   if ((action === "add" || action === "remove") && target && extra.length === 0) {
     if (action === "add") {
-      const { entry, added } = await addSuppression(target, values.reason ? { reason: values.reason } : {});
+      const { entry, added } = await addSuppression(target, {
+        ...kindOpt,
+        ...(values.reason ? { reason: values.reason } : {}),
+      });
       process.stdout.write(
         `${added ? "suppressed" : "already suppressed"}: ${entry.kind} ${entry.value} → ${path}\n`,
       );
     } else {
-      const removed = await removeSuppression(target);
+      const removed = await removeSuppression(target, kindOpt);
       process.stdout.write(`${removed ? "removed" : "not on the list"}: ${target} (${path})\n`);
     }
     return;
