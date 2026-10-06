@@ -72,6 +72,28 @@ describe("normalizeMailingAddress", () => {
     expect(normalizeMailingAddress("P.O. Box 77, Orange Beach, AL 36561")).toBe("PO BOX 77 ORANGE BEACH AL 36561");
   });
 
+  it("every unit designator spelling of one unit shares a key", () => {
+    const key = "12 MAIN ST UNIT 5 FOLEY AL 36535";
+    for (const v of ["Apt 5", "#5", "# 5", "Unit 5", "Apt #5", "Apartment 5", "Ste 5", "Suite #5"]) {
+      expect(normalizeMailingAddress(`12 Main St ${v}, Foley, AL 36535`), v).toBe(key);
+    }
+  });
+
+  it("every PO box spelling shares a key", () => {
+    const key = "PO BOX 12 FOLEY AL 36535";
+    for (const v of ["PO Box 12", "P.O. Box 12", "PO Box #12", "Post Office Box 12", "P O Box 12"]) {
+      expect(normalizeMailingAddress(`${v}, Foley, AL 36535`), v).toBe(key);
+    }
+  });
+
+  it("a spelled-out state before the ZIP becomes its postal code", () => {
+    expect(normalizeMailingAddress("12 Main St, Foley, Alabama 36535")).toBe("12 MAIN ST FOLEY AL 36535");
+    expect(normalizeMailingAddress("9 Oak Ln, Raleigh, North Carolina 27601")).toBe("9 OAK LN RALEIGH NC 27601");
+    expect(normalizeMailingAddress("9 Oak Ln, Wheeling, West Virginia 26003")).toBe("9 OAK LN WHEELING WV 26003");
+    // A state word inside the street stays a street word.
+    expect(normalizeMailingAddress("1 Florida Ave, Foley, AL 36535")).toBe("1 FLORIDA AVE FOLEY AL 36535");
+  });
+
   it.each([
     "", // empty
     "Gulf Shores, AL", // no ZIP
@@ -130,6 +152,16 @@ describe("checkSuppression / suppressionGate: phone + address", () => {
     expect(suppressionGate(emailOnly).check(ctx([phoneEnrichment("ext 12")]))).toEqual({ status: "clean" });
     expect(suppressionGate(EMPTY_SUPPRESSION_LIST).check(ctx([phoneEnrichment("ext 12")]))).toEqual({
       status: "clean",
+    });
+  });
+
+  it("a phone-only list never blocks over a malformed email or domain", () => {
+    const phoneOnly = buildSuppressionList([{ kind: "phone", value: "251-555-0100" }]);
+    expect(checkSuppression(phoneOnly, { email: "sales@", domains: ["localhost"] })).toEqual({ status: "clean" });
+    // ...but still blocks the suppressed phone.
+    expect(checkSuppression(phoneOnly, { email: "sales@", domains: [], phones: ["2515550100"] })).toEqual({
+      status: "blocked",
+      reason: "suppressed:phone",
     });
   });
 
@@ -212,6 +244,7 @@ describe("CLI: suppress --kind", () => {
     expect(phone.stdout).toContain("suppressed: phone +12515550100");
     const addr = run("add", ADDR);
     expect(addr.status).toBe(0);
+    expect(addr.stderr).toMatch(/runs do not carry mailing addresses yet/);
     expect(addr.stdout).toContain("suppressed: address 1204 W BEACH BLVD GULF SHORES AL 36542");
 
     const list = run("list");

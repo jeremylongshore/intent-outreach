@@ -335,6 +335,12 @@ async function cmdSuppress(args: string[]): Promise<void> {
       process.stdout.write(
         `${added ? "suppressed" : "already suppressed"}: ${entry.kind} ${entry.value} → ${path}\n`,
       );
+      if (entry.kind === "address") {
+        process.stderr.write(
+          "note: runs do not carry mailing addresses yet, so pipeline runs cannot enforce this entry;" +
+            " a send-time check that holds the address does (checkSuppression).\n",
+        );
+      }
     } else {
       const removed = await removeSuppression(target, kindOpt);
       process.stdout.write(`${removed ? "removed" : "not on the list"}: ${target} (${path})\n`);

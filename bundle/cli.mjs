@@ -75577,22 +75577,93 @@ var ADDRESS_ABBREVIATIONS = {
   NORTHWEST: "NW",
   SOUTHEAST: "SE",
   SOUTHWEST: "SW",
-  APARTMENT: "APT",
-  SUITE: "STE",
-  UNIT: "UNIT",
   BUILDING: "BLDG",
   FLOOR: "FL"
 };
+var UNIT_DESIGNATORS = /* @__PURE__ */ new Set(["#", "APT", "APARTMENT", "UNIT", "STE", "SUITE"]);
+var STATE_CODES = {
+  ALABAMA: "AL",
+  ALASKA: "AK",
+  ARIZONA: "AZ",
+  ARKANSAS: "AR",
+  CALIFORNIA: "CA",
+  COLORADO: "CO",
+  CONNECTICUT: "CT",
+  DELAWARE: "DE",
+  "DISTRICT OF COLUMBIA": "DC",
+  FLORIDA: "FL",
+  GEORGIA: "GA",
+  HAWAII: "HI",
+  IDAHO: "ID",
+  ILLINOIS: "IL",
+  INDIANA: "IN",
+  IOWA: "IA",
+  KANSAS: "KS",
+  KENTUCKY: "KY",
+  LOUISIANA: "LA",
+  MAINE: "ME",
+  MARYLAND: "MD",
+  MASSACHUSETTS: "MA",
+  MICHIGAN: "MI",
+  MINNESOTA: "MN",
+  MISSISSIPPI: "MS",
+  MISSOURI: "MO",
+  MONTANA: "MT",
+  NEBRASKA: "NE",
+  NEVADA: "NV",
+  "NEW HAMPSHIRE": "NH",
+  "NEW JERSEY": "NJ",
+  "NEW MEXICO": "NM",
+  "NEW YORK": "NY",
+  "NORTH CAROLINA": "NC",
+  "NORTH DAKOTA": "ND",
+  OHIO: "OH",
+  OKLAHOMA: "OK",
+  OREGON: "OR",
+  PENNSYLVANIA: "PA",
+  "RHODE ISLAND": "RI",
+  "SOUTH CAROLINA": "SC",
+  "SOUTH DAKOTA": "SD",
+  TENNESSEE: "TN",
+  TEXAS: "TX",
+  UTAH: "UT",
+  VERMONT: "VT",
+  VIRGINIA: "VA",
+  WASHINGTON: "WA",
+  "WEST VIRGINIA": "WV",
+  WISCONSIN: "WI",
+  WYOMING: "WY",
+  "PUERTO RICO": "PR"
+};
+var STATE_NAMES = Object.keys(STATE_CODES).sort((a, b) => b.length - a.length);
 var ZIP_TAIL_RE = /\b(\d{5})(?:-\d{4})?$/;
 function normalizeMailingAddress(input2) {
   if (typeof input2 !== "string" || !input2.trim()) throw new Error("address is empty");
-  let a = input2.toUpperCase().replace(/#/g, " UNIT ");
-  a = a.replace(/\bP\.?\s*O\.?\s*BOX\b/g, "PO BOX");
+  let a = input2.toUpperCase().replace(/#/g, " # ");
+  a = a.replace(/\bP\.?\s*O\.?\s*BOX\b/g, "PO BOX").replace(/\bPOST\s+OFFICE\s+BOX\b/g, "PO BOX");
   a = a.replace(/[.,;]/g, " ").replace(/\s+/g, " ").trim();
   const zip = ZIP_TAIL_RE.exec(a);
   if (!zip) throw new Error(`${JSON.stringify(input2)} has no trailing 5-digit ZIP`);
-  const head = a.slice(0, zip.index).trim();
-  const tokens = head.split(" ").filter(Boolean).map((t) => ADDRESS_ABBREVIATIONS[t] ?? t);
+  let head = a.slice(0, zip.index).trim();
+  let state;
+  for (const name31 of STATE_NAMES) {
+    if (head === name31 || head.endsWith(` ${name31}`)) {
+      state = STATE_CODES[name31];
+      head = head.slice(0, head.length - name31.length).trim();
+      break;
+    }
+  }
+  const tokens = [];
+  for (const raw of head.split(" ")) {
+    if (!raw) continue;
+    const prev = tokens[tokens.length - 1];
+    if (UNIT_DESIGNATORS.has(raw)) {
+      if (prev !== "UNIT" && prev !== "BOX") tokens.push("UNIT");
+      continue;
+    }
+    tokens.push(ADDRESS_ABBREVIATIONS[raw] ?? raw);
+  }
+  if (state) tokens.push(state);
   if (tokens.length < 3 || !/\d/.test(tokens.join(" "))) {
     throw new Error(`${JSON.stringify(input2)} is not a full mailing address (street, city, state, ZIP)`);
   }
@@ -75650,7 +75721,8 @@ function domainSuppressed(list, domain2) {
 }
 function checkSuppression(list, subject) {
   if (isEmptyList(list)) return { status: "clean" };
-  if (subject.email !== void 0) {
+  const checkEmailDomain = list.emails.size + list.domains.size > 0;
+  if (checkEmailDomain && subject.email !== void 0) {
     let email3;
     try {
       email3 = normalizeSuppressionEmail(subject.email);
@@ -75662,7 +75734,7 @@ function checkSuppression(list, subject) {
       return { status: "blocked", reason: "suppressed:domain" };
     }
   }
-  for (const d of subject.domains) {
+  for (const d of checkEmailDomain ? subject.domains : []) {
     let domain2;
     try {
       domain2 = normalizeSuppressionDomain(d);
@@ -76959,6 +77031,11 @@ async function cmdSuppress(args) {
         `${added ? "suppressed" : "already suppressed"}: ${entry.kind} ${entry.value} \u2192 ${path}
 `
       );
+      if (entry.kind === "address") {
+        process.stderr.write(
+          "note: runs do not carry mailing addresses yet, so pipeline runs cannot enforce this entry; a send-time check that holds the address does (checkSuppression).\n"
+        );
+      }
     } else {
       const removed = await removeSuppression(target, kindOpt);
       process.stdout.write(`${removed ? "removed" : "not on the list"}: ${target} (${path})

@@ -96,33 +96,74 @@ export function normalizeSuppressionPhone(input: string): string {
 
 // USPS Publication 28 abbreviations for the tokens that vary most between data
 // sources. Not a full CASS standardization: the goal is that the same mailbox
-// typed two common ways produces the same key.
+// typed the common ways produces the same key.
 const ADDRESS_ABBREVIATIONS: Readonly<Record<string, string>> = {
   STREET: "ST", AVENUE: "AVE", ROAD: "RD", DRIVE: "DR", BOULEVARD: "BLVD", LANE: "LN",
   COURT: "CT", CIRCLE: "CIR", PLACE: "PL", PARKWAY: "PKWY", HIGHWAY: "HWY", TERRACE: "TER",
   TRAIL: "TRL", WAY: "WAY", SQUARE: "SQ", POINT: "PT", COVE: "CV", LOOP: "LOOP",
   NORTH: "N", SOUTH: "S", EAST: "E", WEST: "W",
   NORTHEAST: "NE", NORTHWEST: "NW", SOUTHEAST: "SE", SOUTHWEST: "SW",
-  APARTMENT: "APT", SUITE: "STE", UNIT: "UNIT", BUILDING: "BLDG", FLOOR: "FL",
+  BUILDING: "BLDG", FLOOR: "FL",
 };
+
+// Secondary-unit designators all collapse to one token, so "Apt 5", "#5",
+// "Unit 5", "Ste 5" and "Apt #5" share a key: a mailbox has one unit number,
+// and vendors disagree on the word in front of it.
+const UNIT_DESIGNATORS: ReadonlySet<string> = new Set(["#", "APT", "APARTMENT", "UNIT", "STE", "SUITE"]);
+
+const STATE_CODES: Readonly<Record<string, string>> = {
+  ALABAMA: "AL", ALASKA: "AK", ARIZONA: "AZ", ARKANSAS: "AR", CALIFORNIA: "CA", COLORADO: "CO",
+  CONNECTICUT: "CT", DELAWARE: "DE", "DISTRICT OF COLUMBIA": "DC", FLORIDA: "FL", GEORGIA: "GA",
+  HAWAII: "HI", IDAHO: "ID", ILLINOIS: "IL", INDIANA: "IN", IOWA: "IA", KANSAS: "KS",
+  KENTUCKY: "KY", LOUISIANA: "LA", MAINE: "ME", MARYLAND: "MD", MASSACHUSETTS: "MA",
+  MICHIGAN: "MI", MINNESOTA: "MN", MISSISSIPPI: "MS", MISSOURI: "MO", MONTANA: "MT",
+  NEBRASKA: "NE", NEVADA: "NV", "NEW HAMPSHIRE": "NH", "NEW JERSEY": "NJ", "NEW MEXICO": "NM",
+  "NEW YORK": "NY", "NORTH CAROLINA": "NC", "NORTH DAKOTA": "ND", OHIO: "OH", OKLAHOMA: "OK",
+  OREGON: "OR", PENNSYLVANIA: "PA", "RHODE ISLAND": "RI", "SOUTH CAROLINA": "SC",
+  "SOUTH DAKOTA": "SD", TENNESSEE: "TN", TEXAS: "TX", UTAH: "UT", VERMONT: "VT", VIRGINIA: "VA",
+  WASHINGTON: "WA", "WEST VIRGINIA": "WV", WISCONSIN: "WI", WYOMING: "WY", "PUERTO RICO": "PR",
+};
+// Longest names first, so "WEST VIRGINIA" wins over "VIRGINIA".
+const STATE_NAMES = Object.keys(STATE_CODES).sort((a, b) => b.length - a.length);
 const ZIP_TAIL_RE = /\b(\d{5})(?:-\d{4})?$/;
 
 /**
  * Canonical mailing address: uppercase, punctuation dropped, whitespace
- * collapsed, common street/direction/unit words abbreviated, "P.O. Box" → "PO
- * BOX", ZIP+4 trimmed to ZIP5. Requires a trailing 5-digit ZIP and a street
- * part, so a bare city or a fragment can never become a suppression key that
- * fails to match the real mailbox. Throws if malformed.
+ * collapsed, a spelled-out state before the ZIP turned into its postal code,
+ * "P.O. Box" / "Post Office Box" → "PO BOX", every unit designator → "UNIT",
+ * common street and direction words abbreviated, ZIP+4 trimmed to ZIP5.
+ * Requires a trailing 5-digit ZIP and a street part with a number, so a bare
+ * city or a fragment can never become a suppression key that fails to match the
+ * real mailbox. Throws if malformed.
  */
 export function normalizeMailingAddress(input: string): string {
   if (typeof input !== "string" || !input.trim()) throw new Error("address is empty");
-  let a = input.toUpperCase().replace(/#/g, " UNIT ");
-  a = a.replace(/\bP\.?\s*O\.?\s*BOX\b/g, "PO BOX");
+  let a = input.toUpperCase().replace(/#/g, " # ");
+  a = a.replace(/\bP\.?\s*O\.?\s*BOX\b/g, "PO BOX").replace(/\bPOST\s+OFFICE\s+BOX\b/g, "PO BOX");
   a = a.replace(/[.,;]/g, " ").replace(/\s+/g, " ").trim();
   const zip = ZIP_TAIL_RE.exec(a);
   if (!zip) throw new Error(`${JSON.stringify(input)} has no trailing 5-digit ZIP`);
-  const head = a.slice(0, zip.index).trim();
-  const tokens = head.split(" ").filter(Boolean).map((t) => ADDRESS_ABBREVIATIONS[t] ?? t);
+  let head = a.slice(0, zip.index).trim();
+  let state: string | undefined;
+  for (const name of STATE_NAMES) {
+    if (head === name || head.endsWith(` ${name}`)) {
+      state = STATE_CODES[name];
+      head = head.slice(0, head.length - name.length).trim();
+      break;
+    }
+  }
+  const tokens: string[] = [];
+  for (const raw of head.split(" ")) {
+    if (!raw) continue;
+    const prev = tokens[tokens.length - 1];
+    if (UNIT_DESIGNATORS.has(raw)) {
+      // "Apt #5" and "PO Box #12": a designator right after a unit or a box adds nothing.
+      if (prev !== "UNIT" && prev !== "BOX") tokens.push("UNIT");
+      continue;
+    }
+    tokens.push(ADDRESS_ABBREVIATIONS[raw] ?? raw);
+  }
+  if (state) tokens.push(state);
   if (tokens.length < 3 || !/\d/.test(tokens.join(" "))) {
     throw new Error(`${JSON.stringify(input)} is not a full mailing address (street, city, state, ZIP)`);
   }
@@ -218,7 +259,11 @@ export interface SuppressionSubject {
 export function checkSuppression(list: SuppressionList, subject: SuppressionSubject): ComplianceResult {
   if (isEmptyList(list)) return { status: "clean" };
 
-  if (subject.email !== undefined) {
+  // Each kind is inspected only when the list holds entries it could match, so
+  // a phone-only list never blocks a contact over a messy vendor email or domain.
+  const checkEmailDomain = list.emails.size + list.domains.size > 0;
+
+  if (checkEmailDomain && subject.email !== undefined) {
     let email: string;
     try {
       email = normalizeSuppressionEmail(subject.email);
@@ -231,7 +276,7 @@ export function checkSuppression(list: SuppressionList, subject: SuppressionSubj
     }
   }
 
-  for (const d of subject.domains) {
+  for (const d of checkEmailDomain ? subject.domains : []) {
     let domain: string;
     try {
       domain = normalizeSuppressionDomain(d);
