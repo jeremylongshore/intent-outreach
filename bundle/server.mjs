@@ -41161,6 +41161,7 @@ var APPROVED_MODELS = (
     {
       "provider": "anthropic",
       "model": "claude-sonnet-4-6",
+      "pack": "b2b-sdr",
       "resultFile": null,
       "verified": false,
       "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
@@ -41168,6 +41169,7 @@ var APPROVED_MODELS = (
     {
       "provider": "openai",
       "model": "gpt-4o",
+      "pack": "b2b-sdr",
       "resultFile": null,
       "verified": false,
       "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
@@ -41175,14 +41177,16 @@ var APPROVED_MODELS = (
     {
       "provider": "minimax",
       "model": "MiniMax-M3",
+      "pack": "b2b-sdr",
       "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
       "verified": true,
       "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
     }
   ]
 );
-function supportedProviderNames(entries = APPROVED_MODELS) {
-  return [...new Set(entries.map((e) => e.provider))];
+var DEFAULT_EVAL_PACK = "b2b-sdr";
+function supportedProviderNames(entries = APPROVED_MODELS, pack = DEFAULT_EVAL_PACK) {
+  return [...new Set(entries.filter((e) => e.pack === pack).map((e) => e.provider))];
 }
 
 // pipeline_core/providers.ts

@@ -107,7 +107,31 @@ function propertySuppression(ctx: PropertyGateContext, suppressions: Suppression
   return { status: "clean" };
 }
 
-function gateVerdict(
+/**
+ * The gate context for one parcel and its owner: every party, ownership and
+ * contact point recorded on it. Exported so the eval harness gates fixtures
+ * through exactly the code a campaign runs.
+ */
+export function propertyGateContext(property: Property, owner: Party, model: PropertyModel, now: Date): PropertyGateContext {
+  const ownerships = model.ownerships.filter((o: Ownership) => o.propertyKey === property.key);
+  const partyKeys = new Set(ownerships.map((o) => o.partyKey));
+  return {
+    property,
+    owner,
+    parties: model.parties.filter((p) => partyKeys.has(p.key)),
+    ownerships,
+    contactPoints: model.contactPoints.filter((c) => partyKeys.has(c.partyKey)),
+    now,
+  };
+}
+
+/**
+ * The full pre-model gate for one parcel, in order: the engine's suppression
+ * check, the mail-address requirement, then the pack's `propertyGate`. Only
+ * exactly {status:"clean"} passes; a throw blocks. Exported for the eval
+ * harness (evals/residential.ts), which must not re-implement it.
+ */
+export function gateVerdict(
   pack: Pack,
   ctx: PropertyGateContext,
   suppressions: SuppressionList,
@@ -197,16 +221,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
       continue;
     }
     const nowDate = new Date(now());
-    const ownerships = merged.ownerships.filter((o: Ownership) => o.propertyKey === property.key);
-    const partyKeys = new Set(ownerships.map((o) => o.partyKey));
-    const ctx: PropertyGateContext = {
-      property,
-      owner,
-      parties: merged.parties.filter((p) => partyKeys.has(p.key)),
-      ownerships,
-      contactPoints: merged.contactPoints.filter((c) => partyKeys.has(c.partyKey)),
-      now: nowDate,
-    };
+    const ctx = propertyGateContext(property, owner, merged, nowDate);
     const gate = gateVerdict(pack, ctx, suppressions, channel);
     if (!gate.ok) {
       blockedContacts.push({ contactKey: owner.key, reason: gate.reason, propertyKey: property.key });

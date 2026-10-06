@@ -101,8 +101,9 @@ never import a cloud SDK, and forward the context `signal` to `httpJson`. Regist
 Approval is **per model**, recorded in `evals/supported.ts`. `SUPPORTED_PROVIDERS` is derived from it, so
 never hand-edit that list. A new provider needs an adapter in `providers.ts` (`ProviderName`,
 `DEFAULT_MODEL`, a dynamically imported optional `@ai-sdk/*` dependency). To approve a model, run with a
-real key: `npm run evals:promote -- --provider <name> --model <id>` (keyed harness, repeat ≥3, every
-fixture must pass every run). On a pass it writes `evals/results/<record>.json` and upserts a
+real key: `npm run evals:promote -- --provider <name> --model <id> [--pack residential-re]` (keyed
+harness, repeat ≥3, every fixture must pass every run). Approval is per `{provider, model, pack}`;
+`SUPPORTED_PROVIDERS` comes from the `b2b-sdr` entries only. On a pass it writes `evals/results/<record>.json` and upserts a
 `verified: true` entry in `supported.ts`; commit both. It never changes `DEFAULT_MODEL`: that is a separate
 reviewed edit, and the script prints the line. `INTENT_OUTREACH_ALLOW_UNGATED=1` overrides the gate for
 local testing. See `evals/README.md`.
