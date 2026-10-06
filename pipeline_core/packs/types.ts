@@ -15,6 +15,7 @@
 import type { ServiceArea } from "../compliance/index.js";
 import type { ChannelPolicy } from "../compliance/send.js";
 import type { Channel } from "../models.js";
+import type { Capability, Routing } from "../routing.js";
 import type { Contact, Enrichment, Lead } from "../models.js";
 
 /** A compliance verdict for a single contact. Fail-closed: ambiguity → blocked. */
@@ -85,6 +86,16 @@ export interface Pack {
    * can require written consent or license disclosure, never relax a default.
    */
   channels?: Partial<Record<Channel, Partial<ChannelPolicy>>>;
+  /**
+   * Pack v2: FIXED provider routing. `research` maps a capability (see
+   * capabilityForQuery) to an ordered connector list and a policy
+   * (first-hit / ordered-fallback / all); `enrich` routes the enrich phase.
+   * Configuration, never chosen by the model (invariant 5).
+   */
+  dataSources?: {
+    research?: Partial<Record<Capability, Routing>>;
+    enrich?: Routing;
+  };
 }
 
 /** The pack resolved when a caller names none. */

@@ -1009,6 +1009,14 @@ export interface RunCampaignInput {
    * `${INTENT_OUTREACH_HOME}/suppressions.jsonl` (missing file ⇒ nothing suppressed).
    */
   suppressions?: SuppressionList;
+  /**
+   * Vendor-credit ceiling for the run. Each paid connector call is charged
+   * before it is made; once a call would cross the ceiling, no further paid
+   * call is made and the run records it in `credits`. Absent = no ceiling.
+   */
+  budgetCredits?: number;
+  /** Response cache for connectors that declare `cacheTtlMs`. */
+  cache?: ResponseCache;
 }
 
 export interface RunCampaignResult {
@@ -1032,16 +1040,25 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const minScore = input.minScore ?? 0;
   const maxContacts = input.maxContactsPerLead ?? 1;
   const buyerTitles = cleanBuyerTitles(input.buyerTitles);
-  const connectorOpts: ConnectorRunOptions = {
-    ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
-    ...(buyerTitles.length > 0 ? { buyerTitles } : {}),
-  };
+  const budget = input.budgetCredits !== undefined ? new CreditBudget(input.budgetCredits) : undefined;
   // Opt-outs are loaded (I/O, pipeline layer) BEFORE anything is spent; a corrupt
   // suppression file throws here — fail closed rather than draft to an opt-out.
   const suppressions = input.suppressions ?? (await loadSuppressionList());
   const provider = input.provider ?? (await getProvider());
   registerBuiltinPacks();
   const pack = resolvePack(input.pack);
+  const researchRouting = pack.dataSources?.research?.["company.research"];
+  const connectorOpts: ConnectorRunOptions = {
+    ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
+    ...(buyerTitles.length > 0 ? { buyerTitles } : {}),
+    ...(budget ? { budget } : {}),
+    ...(input.cache ? { cache: input.cache } : {}),
+  };
+  const researchOpts: ConnectorRunOptions = { ...connectorOpts, ...(researchRouting ? { routing: researchRouting } : {}) };
+  const enrichOpts: ConnectorRunOptions = {
+    ...connectorOpts,
+    ...(pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {}),
+  };
   // The suppression gate runs FIRST for EVERY pack (an unsubscribe is not
   // vertical-specific — swapping packs must never drop it), then the pack's own
   // gate. Both run under evaluateGate's fail-closed handling.
@@ -1075,7 +1092,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   };
 
   for (const domain of domains) {
-    const research = await runResearch(domain, icp, connectorOpts);
+    const research = await runResearch(domain, icp, researchOpts);
     research.skipped.forEach((s) => skipped.add(s));
     failedConnectors.push(...research.failedConnectors);
     // Carried into the run as-is: property data a connector fetched is never silently discarded.
@@ -1089,7 +1106,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
 
     for (const lead of research.leads) {
       const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
-      const enrich = await runEnrich(lead, leadContacts, connectorOpts);
+      const enrich = await runEnrich(lead, leadContacts, enrichOpts);
       enrich.skipped.forEach((s) => skipped.add(s));
       failedConnectors.push(...enrich.failedConnectors);
       const contacts = enrich.contacts; // emails found during enrichment folded in
@@ -1222,6 +1239,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     contacts: dedupeContacts(allContacts),
     enrichments: allEnrichments,
     ...mergePropertyModel(allProperty),
+    ...(budget ? { credits: budget.summary() } : {}),
     messages,
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],

@@ -32,6 +32,9 @@ import {
 } from "./pipeline_core/suppressions.js";
 import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
 import { checkSendable } from "./pipeline_core/compliance/send.js";
+import { join } from "node:path";
+import { FileResponseCache } from "./pipeline_core/routing.js";
+import { intentOutreachHome } from "./pipeline_core/secrets.js";
 import { ConsentRecordSchema } from "./pipeline_core/compliance/consent.js";
 import { ChannelSchema, ContactPointSchema } from "./pipeline_core/models.js";
 import { registerBuiltinPacks, resolvePack } from "./pipeline_core/packs/index.js";
@@ -162,6 +165,7 @@ export function printHelp(): void {
       "  --buyer-titles <list>   comma-separated buyer titles (e.g. \"CTO,COO,VP Operations\"):",
       "                          contacts are ranked buyers-first before drafting and Apollo",
       "                          reveals are aimed at them; overrides profile filtering.contactTitles",
+      "  --budget-credits <n>    vendor-credit ceiling for the run: paid calls stop before crossing it",
       "  --out <path>            JSONL store path (default: " + defaultStorePath() + ")",
       "  --json                  print the full run as JSON",
       "",
@@ -212,6 +216,7 @@ async function cmdRun(args: string[]): Promise<void> {
         "min-score": { type: "string" },
         "max-contacts": { type: "string" },
         "buyer-titles": { type: "string" },
+        "budget-credits": { type: "string" },
         out: { type: "string" },
         json: { type: "boolean" },
       },
@@ -232,6 +237,10 @@ async function cmdRun(args: string[]): Promise<void> {
   const maxContacts =
     values["max-contacts"] !== undefined
       ? parseNumberFlag("--max-contacts", values["max-contacts"], { min: 1, max: MAX_CONTACTS_LIMIT, integer: true })
+      : undefined;
+  const budgetCredits =
+    values["budget-credits"] !== undefined
+      ? parseNumberFlag("--budget-credits", values["budget-credits"], { min: 0, max: 1_000_000 })
       : undefined;
   const channel = values.channel !== undefined ? parseChannelFlag(values.channel) : undefined;
   const flagBuyerTitles =
@@ -274,6 +283,9 @@ async function cmdRun(args: string[]): Promise<void> {
     ...(minScore !== undefined ? { minScore } : {}),
     ...(maxContacts !== undefined ? { maxContactsPerLead: maxContacts } : {}),
     ...(buyerTitles ? { buyerTitles } : {}),
+    ...(budgetCredits !== undefined ? { budgetCredits } : {}),
+    // Only connectors that declare cacheTtlMs are cached; files are 0600 under the local home.
+    cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
   });
 
   const store = new JsonlRunStore(values.out);
