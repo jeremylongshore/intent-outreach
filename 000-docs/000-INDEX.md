@@ -1,7 +1,7 @@
 # 000-INDEX — Intent Outreach Documentation Index
 
-**Last Updated:** 2026-10-04
-**Purpose:** Map of the docs in this directory. Current docs are `017`–`022`. Everything in `001`–`016`
+**Last Updated:** 2026-10-06
+**Purpose:** Map of the docs in this directory. Current docs are `017`–`022` and `031` onward. Everything in `001`–`016`
 and `023`–`030` predates the rebuild and describes the retired Gemini-on-Vertex "PipelinePilot" system;
 it is kept for history only, and each of those files carries a "Historical (pre-rebuild)" banner.
 
@@ -26,6 +26,13 @@ The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR 
   the owner decisions, the stream plan and waves, and what shipped in each PR.
 - **`022-AA-AACR-hardening-after-action-review.md`** — after-action review of the hardening: what went
   well, what didn't, and the open follow-ups.
+- **`031-AT-DECR-real-estate-engine-one-engine-many-packs.md`** — the real estate decision record: one engine,
+  many packs, thin client repos; the three structural pieces that land first (send-time per-channel compliance,
+  the property/owner model, capability routing with budgets); the repo boundaries with coastal-realty-ops and
+  comehomealabama; alternatives rejected; open owner decisions.
+- **`032-RA-SYNT-real-estate-engine-research-synthesis.md`** — synthesis of the five research reports behind
+  `031` (market, data APIs, compliance, AI-native future-proofing, internal gap review), with sources, the
+  unverified claims marked, and the contradictions the plan resolved.
 
 For how the system works and how to run it, read the repo root:
 
@@ -50,7 +57,7 @@ billing scaffold). They are retained only as a historical record — do **not** 
 | `015`–`016` | Autonomous-decision diagnosis, orchestration-fix AAR |
 | `023`–`030` | Original PipelinePilot product docs, renumbered on 2026-10-04 to resolve number collisions (see below) |
 
-If a claim in a historical doc contradicts `017`–`022`, the README, or `CLAUDE.md`, the latter win.
+If a claim in a historical doc contradicts `017`–`022` or `031` onward, the README, or `CLAUDE.md`, the latter win.
 
 ### Renumbered on 2026-10-04 (number collisions)
 
