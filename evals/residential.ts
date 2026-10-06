@@ -276,6 +276,25 @@ function expandedAddresses(ctx: PropertyDraftContext): string[] {
   return allowedIdentifiers(ctx).map((a) => a.replace(/\b[A-Za-z]+\b/g, (w) => STREET_ABBREVIATIONS[w.toLowerCase()] ?? w));
 }
 
+/** USPS state codes: "Baldwin County, AL" on record grounds "the Alabama coast" in a letter. */
+const US_STATE_NAMES: Readonly<Record<string, string>> = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut",
+  DE: "Delaware", DC: "District of Columbia", FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois",
+  IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+  MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana",
+  NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York",
+  NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania",
+  RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah",
+  VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+};
+
+/** Full names of the state codes that appear in the facts (an extra fact, never a replacement). */
+export function expandedStates(facts: readonly string[]): string[] {
+  const names = new Set<string>();
+  for (const f of facts) for (const m of f.matchAll(/\b([A-Z]{2})\b/g)) if (US_STATE_NAMES[m[1]!]) names.add(US_STATE_NAMES[m[1]!]!);
+  return [...names];
+}
+
 const splitSentences = (text: string) =>
   text
     .split(/(?<=[.!?])\s+|\n+/)
@@ -291,7 +310,13 @@ const splitSentences = (text: string) =>
 export function residentialDraftGrounding(ctx: PropertyDraftContext, out: DraftText): ScoreResult {
   const text = [out.subject ?? "", out.body, out.cta].join("\n");
   const { dropped } = groundAngles(splitSentences(text), {
-    facts: [...propertyFacts(ctx), ...expandedAddresses(ctx), ...ctx.reasons, LETTER_BENIGN_VOCAB],
+    facts: [
+      ...propertyFacts(ctx),
+      ...expandedAddresses(ctx),
+      ...expandedStates([...propertyFacts(ctx), ...allowedIdentifiers(ctx)]),
+      ...ctx.reasons,
+      LETTER_BENIGN_VOCAB,
+    ],
     identifiers: allowedIdentifiers(ctx),
   });
   const findings = dropped
