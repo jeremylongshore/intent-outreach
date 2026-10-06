@@ -8,6 +8,11 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **A separate model per seam** (#83 phase 8). `runCampaign` and `runPropertyCampaign` take an optional
+  `scoreProvider` (a cheap model that scores; `provider` drafts), and the CLI `run` and `property-run` take
+  `--score-provider` / `--score-model`. Both models resolve through the eval gate like any provider; costs are
+  metered per model; the run records `seamModels` (score and draft provider + model) when they differ.
+
 - **Event monitors** (#83 phase 8). `intent-outreach monitor add <id> --zips ... | --parcels fips:apn`, `monitor list`
   and `monitor check <id> [--draft --icp ...]`. A check re-runs the query through the normal research path,
   fingerprints each parcel (owner, value, listing status, distress signals) and diffs it against the last snapshot
