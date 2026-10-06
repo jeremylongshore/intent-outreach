@@ -33,6 +33,11 @@ The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR 
 - **`032-RA-SYNT-real-estate-engine-research-synthesis.md`** — synthesis of the five research reports behind
   `031` (market, data APIs, compliance, AI-native future-proofing, internal gap review), with sources, the
   unverified claims marked, and the contradictions the plan resolved.
+- **`033-AT-DECR-social-intent-pack-decision.md`** — go/no-go for a `social-reply` pack that turns public
+  comment friction into human-approved replies: conditional GO behind a 30-day manual pilot, the
+  never-post boundary, and per-platform verdicts with sourced terms. Proposed.
+- **`034-AT-PLAN-social-intent-pack-plan.md`** — the phased build on Pack v2: zod model sketch, scoring
+  rubric, gate and draft rules, the fail-closed test list, the 30-day cadence and kill criteria. Proposed.
 
 For how the system works and how to run it, read the repo root:
 
