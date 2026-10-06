@@ -31,7 +31,7 @@ standalone CLI ────┘   handlers mcp/tools.ts) └─ save_run ──�
 
 | File | Role |
 |---|---|
-| `models.ts` | The five value types (Lead/Contact/Enrichment/Message/CampaignRun) as **zod** schemas, plus `SCHEMA_VERSION` (now **5**) and `SUPPORTED_SCHEMA_VERSIONS`. `source` is an open string so custom connectors stamp their own. |
+| `models.ts` | The five B2B value types (Lead/Contact/Enrichment/Message/CampaignRun) as **zod** schemas, the v6 property/owner model (Property keyed `FIPS:APN`, Party, Ownership, EntityLink, ContactPoint with DNC defaulting `unknown`, every vendor value a `Fact` with provenance + license terms) and the typed `ResearchQuery` (domain/area/parcel), plus `SCHEMA_VERSION` (now **6**) and `SUPPORTED_SCHEMA_VERSIONS`. `source` is an open string so custom connectors stamp their own. |
 | `validator.ts` | **The gate.** Mints `Validated<T>` (`DeepReadonly<T>` plus a brand only this module can name) and deep-freezes every record it returns. |
 | `store.ts` | `RunStore`, local JSONL (`~/.intent-outreach/runs.jsonl`). `saveRun` takes only `Validated<CampaignRun>` **and re-validates at runtime**. Lockfile + fsync append, torn-tail repair, `DuplicateRunError` unless `{overwrite: true}`, `corruptLines()`, files 0600 / dirs 0700. Never a hosted DB. |
 | `secrets.ts` | `getSecret()` = env (default) or a local file. Empty and `${...}` values count as unset; path env vars must be absolute. **No cloud secret store.** |
@@ -67,7 +67,7 @@ Outside the spine: `mcp/tools.ts` holds every MCP handler (`server.ts` is a thin
 4. **No framework bloat** (LangChain/LlamaIndex/Genkit): use the Vercel AI SDK.
 5. **Determinism:** connectors are called in fixed registration order; the LLM does not choose which API to
    call. Asserted in `tests/pipeline.test.ts`.
-6. **Schema bumps are additive + backward-readable.** The schema is at **v5**. `schemaVersion` is a
+6. **Schema bumps are additive + backward-readable.** The schema is at **v6**. `schemaVersion` is a
    `z.union` built from `SUPPORTED_SCHEMA_VERSIONS`, **never** a single `z.literal`: `store.ts` re-validates
    every JSONL line on read, so a re-literal would silently drop every older run. New fields are
    `.default(...)` or optional. The golden fixture `tests/fixtures/runs.legacy.jsonl` (v1 and v2 lines,
