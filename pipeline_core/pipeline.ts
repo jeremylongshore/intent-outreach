@@ -732,7 +732,7 @@ export async function runPropertyEnrich(properties: Property[], opts: ConnectorR
 const MAX_ERROR_MESSAGE = 500;
 
 /** Error text for the audit trail: secrets redacted, length-capped. */
-function sanitizeErrorMessage(err: unknown): string {
+export function sanitizeErrorMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : typeof err === "string" ? err : "unknown error";
   const redacted = msg
     .replace(/([?&](?:api[_-]?key|key|token|access_token|secret|password)=)[^&\s"']+/gi, "$1[redacted]")

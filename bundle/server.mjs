@@ -38698,8 +38698,8 @@ var RunErrorSchema = external_exports.object({
   message: external_exports.string(),
   /** AI SDK finish reason when the error carried one (e.g. "length"). */
   finishReason: external_exports.string().optional()
-}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0, {
-  message: "a run error needs a domain or a propertyKey"
+}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0 || e.contactKey !== void 0, {
+  message: "a run error needs a domain, a propertyKey or a contactKey"
 });
 var FailedConnectorSchema = external_exports.object({
   name: external_exports.string().min(1),
@@ -38808,6 +38808,16 @@ var CampaignRunSchema = external_exports.object({
   seamModels: external_exports.object({
     score: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) }),
     draft: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) })
+  }).optional(),
+  /**
+   * An inbound reply (v6, optional): where the inquiry came from, when it
+   * arrived, when the reply was drafted, and the speed-to-lead in between.
+   */
+  inbound: external_exports.object({
+    source: external_exports.string().min(1),
+    receivedAt: external_exports.string().datetime({ offset: true }),
+    draftedAt: external_exports.string().datetime(),
+    speedToLeadMs: external_exports.number().int().nonnegative()
   }).optional(),
   /** Vendor-credit accounting when the run had a budget (v6, optional). */
   credits: external_exports.object({
@@ -39932,7 +39942,16 @@ var OUTREACH_AGE_FAMILIAL_HARD = [
   "your family",
   "your spouse",
   "your husband",
-  "your wife"
+  "your wife",
+  // Describing who an area or home is "for" by family or age (familial status steering).
+  "young families",
+  "young family",
+  "for families",
+  "family neighborhood",
+  "young couples",
+  "young couple",
+  "newlyweds",
+  "young professionals"
 ];
 var FAIR_HOUSING_WARN = [
   "family-friendly",
