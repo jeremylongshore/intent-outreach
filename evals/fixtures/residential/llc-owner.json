@@ -1,0 +1,90 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "llc-owner",
+  "kind": "model",
+  "note": "LLC owner of record: drafted to the entity, never to a guessed member or a Mr./Ms.",
+  "property": {
+    "key": "01003:05-69-01-12-0-004-006.000",
+    "apn": "05-69-01-12-0-004-006.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "27 Cotton Bayou Dr",
+      "city": "Orange Beach",
+      "state": "AL",
+      "zip": "36561"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "yearBuilt": {
+        "value": 2005,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "bedrooms": {
+        "value": 4,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "livingAreaSqFt": {
+        "value": 2210,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "floodZone": {
+        "value": "VE",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "entity:AL:perdido-pass",
+      "kind": "entity",
+      "name": "Perdido Pass Holdings LLC",
+      "source": "fixture-county-gis",
+      "entityType": "llc",
+      "mailingAddress": {
+        "line1": "1900 1st Ave N",
+        "city": "Birmingham",
+        "state": "AL",
+        "zip": "35203"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-69-01-12-0-004-006.000",
+      "partyKey": "entity:AL:perdido-pass",
+      "role": "owner",
+      "asOf": "2015-03-02",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expect": {
+    "bands": [
+      "hot",
+      "warm"
+    ]
+  },
+  "draft": {
+    "reasons": [
+      "The owner is an LLC whose mailing address is in Birmingham, AL, not at the property.",
+      "Ownership recorded in 2015."
+    ],
+    "addressEntity": true,
+    "judgeMin": 4
+  }
+}

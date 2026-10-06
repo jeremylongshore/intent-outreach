@@ -1,0 +1,62 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "suppressed-mailing-address",
+  "kind": "gate",
+  "note": "The owner asked not to be mailed; the opt-out is stored in a different spelling of the same address.",
+  "property": {
+    "key": "01003:05-09-27-0-000-105.000",
+    "apn": "05-09-27-0-000-105.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "19 Dune Dr",
+      "city": "Gulf Shores",
+      "state": "AL",
+      "zip": "36542"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:optout",
+      "kind": "person",
+      "name": "Victor Hale",
+      "source": "fixture-county-gis",
+      "mailingAddress": {
+        "line1": "88 Music Sq E",
+        "city": "Nashville",
+        "state": "TN",
+        "zip": "37203"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-09-27-0-000-105.000",
+      "partyKey": "person:optout",
+      "role": "owner",
+      "asOf": "2006-02-10",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "suppressions": [
+    {
+      "kind": "address",
+      "value": "88 Music Square East, Nashville, Tennessee 37203"
+    }
+  ],
+  "expectBlocked": "suppressed:address"
+}
