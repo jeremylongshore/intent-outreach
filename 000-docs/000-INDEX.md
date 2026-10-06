@@ -38,6 +38,11 @@ The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR 
   never-post boundary, and per-platform verdicts with sourced terms. Proposed.
 - **`034-AT-PLAN-social-intent-pack-plan.md`** — the phased build on Pack v2: zod model sketch, scoring
   rubric, gate and draft rules, the fail-closed test list, the 30-day cadence and kill criteria. Proposed.
+- **`035-DR-DATA-residential-free-data-sources.md`** — the free public data behind the `residential-re` pack,
+  verified live on 2026-10-06: parcel layers for Baldwin, Mobile, Escambia and Okaloosa (query URLs, field
+  mappings, limits, terms), the FL DOR statewide roll, FEMA NFHL flood zones, the Census geocoder, and LLC-to-person
+  sources (OpenCorporates, Sunbiz bulk SFTP, Alabama SOS). Includes per-source verdicts; fixtures are in
+  `tests/fixtures/property/`.
 
 For how the system works and how to run it, read the repo root:
 
