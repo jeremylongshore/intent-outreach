@@ -19,11 +19,23 @@
  *     The opt-out sentence is still useful courtesy, so it is OPT-IN per sender
  *     (`optOutOnLinkedin: true`); default off keeps LinkedIn drafts unchanged.
  *
+ *   • SMS: sender name + company (+ license disclosure) and "Reply STOP to opt
+ *     out." on every text. No postal address (it does not fit and is not required).
+ *   • MAIL: the email footer block (identity, postal address, license, opt-out).
+ *   • CALL_SCRIPT: a "say this" disclosure block for the human caller: who is
+ *     calling, for which company, the license, and what to do on "don't call".
+ *   • A real estate sender adds `licenses`; every channel's footer then carries
+ *     the brokerage + license number line(s) the AL and FL commissions require.
+ *
  * Pure: no I/O, no clock, no model. Idempotent: a body that already ends with
  * the exact footer is returned unchanged.
  */
 
 import { z } from "zod";
+import type { Channel } from "./models.js";
+
+/** SMS opt-out line (CTIA / carrier standard wording). */
+export const SMS_OPT_OUT_TEXT = "Reply STOP to opt out.";
 
 /** Default opt-out line. Plain reply-based opt-out (no tracking link to host). */
 export const DEFAULT_OPT_OUT_TEXT =
@@ -48,24 +60,46 @@ export const SenderIdentitySchema = z.object({
   optOutText: nonBlank.optional(),
   /** Append the opt-out sentence to LinkedIn drafts too (no postal footer). Default false. */
   optOutOnLinkedin: z.boolean().optional(),
+  /**
+   * Real estate licenses to disclose on every outbound message, e.g.
+   * `{ state: "AL", number: "000123", brokerage: "Example Realty" }`.
+   */
+  licenses: z
+    .array(
+      z.object({
+        state: z.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code"),
+        number: nonBlank,
+        brokerage: nonBlank,
+      }),
+    )
+    .optional(),
 });
 export type SenderIdentity = z.infer<typeof SenderIdentitySchema>;
 
 /** The message fields the footer reads/writes. Structural so any Message fits. */
 export interface FooterableMessage {
-  channel: "email" | "linkedin";
+  channel: Channel;
   body: string;
 }
 
 const isBlank = (v: unknown) => typeof v !== "string" || v.trim() === "";
 
-/** The required sender fields that are missing/blank (empty = identity is complete). */
-export function missingSenderFields(sender: Partial<SenderIdentity> | undefined): string[] {
+/**
+ * The required sender fields that are missing/blank (empty = identity is
+ * complete). Email and mail need a postal address; sms and call_script need
+ * only a name and company. Defaults to the email requirement.
+ */
+export function missingSenderFields(sender: Partial<SenderIdentity> | undefined, channel: Channel = "email"): string[] {
   const missing: string[] = [];
   if (isBlank(sender?.name)) missing.push("name");
   if (isBlank(sender?.company)) missing.push("company");
-  if (isBlank(sender?.postalAddress)) missing.push("postalAddress");
+  if ((channel === "email" || channel === "mail") && isBlank(sender?.postalAddress)) missing.push("postalAddress");
   return missing;
+}
+
+/** One line per license: "Example Realty, AL license #000123". */
+export function licenseLines(sender: Partial<SenderIdentity> | undefined): string[] {
+  return (sender?.licenses ?? []).map((l) => `${oneLine(l.brokerage)}, ${l.state} license #${oneLine(l.number)}`);
 }
 
 const oneLine = (s: string) => s.replace(/\s*[\r\n]+\s*/g, " ").trim();
@@ -86,7 +120,25 @@ export function emailFooter(sender: SenderIdentity): string {
     `${oneLine(sender.name)}, ${oneLine(sender.company)}`,
     address,
     ...(sender.replyToEmail ? [`Reply-To: ${sender.replyToEmail.trim()}`] : []),
+    ...licenseLines(sender),
     optOutOf(sender),
+  ].join("\n");
+}
+
+/** The SMS footer: who is texting, the license, and the STOP line. */
+export function smsFooter(sender: SenderIdentity): string {
+  const licenses = licenseLines(sender);
+  return [`- ${oneLine(sender.name)}, ${oneLine(sender.company)}`, ...licenses, SMS_OPT_OUT_TEXT].join("\n");
+}
+
+/** The disclosure block a human caller reads; the engine never dials. */
+export function callScriptFooter(sender: SenderIdentity): string {
+  const licenses = licenseLines(sender);
+  return [
+    "[Required disclosures]",
+    `Open with: "This is ${oneLine(sender.name)} with ${oneLine(sender.company)}."`,
+    ...licenses.map((l) => `State the license: ${l}.`),
+    "If they ask not to be called again: end the call politely and add the number to the suppression list.",
   ].join("\n");
 }
 
@@ -113,8 +165,14 @@ export function applyComplianceFooter<M extends FooterableMessage>(
       sender?.optOutOnLinkedin === true ? appendBlock(message.body, optOutOf(sender)) : message.body;
     return { ...message, body, needsSenderIdentity: false };
   }
-  if (!sender || missingSenderFields(sender).length > 0) {
+  if (!sender || missingSenderFields(sender, message.channel).length > 0) {
     return { ...message, needsSenderIdentity: true };
   }
-  return { ...message, body: appendBlock(message.body, emailFooter(sender)), needsSenderIdentity: false };
+  const footer =
+    message.channel === "sms"
+      ? smsFooter(sender)
+      : message.channel === "call_script"
+        ? callScriptFooter(sender)
+        : emailFooter(sender); // email and mail carry the full postal block
+  return { ...message, body: appendBlock(message.body, footer), needsSenderIdentity: false };
 }
