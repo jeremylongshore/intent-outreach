@@ -79031,17 +79031,27 @@ async function runInbound(input2) {
   const pack = resolvePack(input2.pack ?? "residential-re");
   const channel = replyChannel(input2);
   const suppressions = input2.suppressions ?? await loadSuppressionList();
-  const value = channel === "email" ? inquiry.email : inquiry.phone;
-  if (value === void 0) throw new Error(`runInbound: a ${channel} reply needs the inquiry's ${channel === "email" ? "email" : "phone"}`);
-  const normalized = channel === "email" ? normalizeSuppressionEmail(value) : normalizePhone(value);
-  const contactKey2 = `${channel === "email" ? "email" : "phone"}:${normalized}`;
+  const warnings2 = [];
+  const email3 = inquiry.email !== void 0 ? normalizeSuppressionEmail(inquiry.email) : void 0;
+  let phone;
+  if (inquiry.phone !== void 0) {
+    try {
+      phone = normalizePhone(inquiry.phone);
+    } catch {
+      warnings2.push("inquiry phone is not a recognized number; it was not used");
+    }
+  }
+  const replyValue = channel === "email" ? email3 : phone;
+  if (channel === "email" && email3 === void 0) throw new Error("runInbound: an email reply needs the inquiry's email");
+  if (channel === "sms" && inquiry.phone === void 0) throw new Error("runInbound: an sms reply needs the inquiry's phone");
+  const contactKey2 = channel === "email" ? `email:${email3}` : `phone:${phone ?? inquiry.phone.trim()}`;
   const receivedIso = new Date(inquiry.receivedAt).toISOString();
   const partyKey2 = `inbound:${contactKey2}`;
   const party = { key: partyKey2, kind: "person", name: inquiry.firstName ?? "Website inquiry", source: inquiry.source };
   const contactPoints = [];
   for (const [kind, v] of [
-    ["email", inquiry.email ? normalizeSuppressionEmail(inquiry.email) : void 0],
-    ["phone", inquiry.phone ? normalizePhone(inquiry.phone) : void 0]
+    ["email", email3],
+    ["phone", phone]
   ]) {
     if (v !== void 0) contactPoints.push({ partyKey: partyKey2, kind, value: v, dnc: "unknown", source: inquiry.source, fetchedAt: receivedIso });
   }
@@ -79056,16 +79066,22 @@ async function runInbound(input2) {
   let draftedAt;
   const suppression = checkSuppression(suppressions, {
     domains: [],
-    ...inquiry.email ? { email: inquiry.email } : {},
-    phones: inquiry.phone ? [inquiry.phone] : [],
-    addresses: inquiry.propertyAddress ? [inquiry.propertyAddress] : []
+    ...email3 ? { email: email3 } : {},
+    phones: phone ? [phone] : []
   });
   const policy2 = channelPolicy(channel, pack.channels?.[channel]);
-  const consent = checkConsent(consents, { kind: channel === "email" ? "email" : "phone", value: normalized }, channel, new Date(startedAt), policy2.consent);
+  const nowDate = new Date(startedAt);
+  const consent = replyValue === void 0 ? { ok: false, reason: "contact-point:malformed-phone" } : checkConsent(consents, { kind: channel === "email" ? "email" : "phone", value: replyValue }, channel, nowDate, policy2.consent);
+  const revokedElsewhere = contactPoints.some((cp) => {
+    const v = checkConsent(consents, cp, channel, nowDate, "none");
+    return !v.ok && v.reason === "consent:revoked";
+  });
   if (suppression.status !== "clean") {
     blockedContacts.push({ contactKey: contactKey2, reason: suppression.reason ?? "suppressed" });
   } else if (!consent.ok) {
     blockedContacts.push({ contactKey: contactKey2, reason: consent.reason });
+  } else if (revokedElsewhere) {
+    blockedContacts.push({ contactKey: contactKey2, reason: "consent:revoked" });
   } else {
     provider ??= await getProvider();
     const file2 = pack.prompts.inbound ?? DEFAULT_INBOUND_PROMPT;
@@ -79097,8 +79113,9 @@ async function runInbound(input2) {
         rejectedDrafts.push({ contactKey: contactKey2, issues: [`${DECLINED_PREFIX}${object3.declineReason ?? "not a real estate inquiry"}`] });
       } else {
         const verdict = guardDraft(object3, {
-          // Only the address they gave may be repeated; never a link or number from their text.
-          allowedText: inquiry.propertyAddress ? [inquiry.propertyAddress] : [],
+          // Nothing the stranger typed may vouch for a link, email or phone (the
+          // property address is free text too). Quantities are checked against it.
+          allowedText: [],
           facts: [input2.offer, inquiry.message, ...inquiry.propertyAddress ? [inquiry.propertyAddress] : []],
           ...pack.draftRules ? { rules: pack.draftRules } : {}
         });
@@ -79122,7 +79139,9 @@ async function runInbound(input2) {
           if (!finalized.ok) rejectedDrafts.push({ contactKey: contactKey2, issues: finalized.issues });
           else {
             messages.push(finalized.message);
-            speedToLeadMs = Math.max(0, Date.parse(draftedAt) - Date.parse(inquiry.receivedAt));
+            const elapsed = Date.parse(draftedAt) - Date.parse(inquiry.receivedAt);
+            if (elapsed >= 0) speedToLeadMs = elapsed;
+            else warnings2.push("inquiry receivedAt is later than the draft time; speed-to-lead not recorded");
           }
         }
       }
@@ -79139,14 +79158,16 @@ async function runInbound(input2) {
     domains: [],
     provider: provider?.name ?? "none",
     model: provider?.model ?? "none",
-    status: messages.length > 0 ? "complete" : errors.length > 0 ? "failed" : "researched",
+    // Same rule as the property loop: drafted ⇒ complete, errored ⇒ failed, otherwise
+    // "researched" (nothing drafted by design; blockedContacts/rejectedDrafts say why).
+    status: deriveRunStatus({ messages: messages.length, leads: 0, researchRan: true, errors: errors.length }),
     messages,
     blockedContacts,
     rejectedDrafts,
     errors,
     parties: [party],
     contactPoints,
-    complianceWarnings: senderComplianceWarnings(messages.filter((m) => m.needsSenderIdentity).length, input2.sender, channel),
+    complianceWarnings: [...senderComplianceWarnings(messages.filter((m) => m.needsSenderIdentity).length, input2.sender, channel), ...warnings2],
     ...draftRef ? { promptRefs: { draft: draftRef } } : {},
     ...speedToLeadMs !== void 0 && draftedAt ? { inbound: { source: inquiry.source, receivedAt: inquiry.receivedAt, draftedAt, speedToLeadMs } } : {},
     origin: "pipeline",

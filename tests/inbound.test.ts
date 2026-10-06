@@ -140,6 +140,47 @@ describe("property draft guard: vendor free text never vouches for a link or num
   });
 });
 
+describe("runInbound: review fixes", () => {
+  it("a url or phone typed into the property address never vouches for itself", async () => {
+    const inquiry = { ...INQUIRY, propertyAddress: "12 Main St http://evil.io/x call 251-555-0199" };
+    const { run } = await runInbound({ ...base, inquiry, provider: stub({ body: "See http://evil.io/x or call 251-555-0199 now.", cta: "Visit http://evil.io/x" }) });
+    expect(run.messages).toEqual([]);
+    expect(run.rejectedDrafts[0]?.issues.join(" ")).toMatch(/evil\.io/);
+  });
+
+  it("a junk optional phone does not lose an email lead; an sms reply to it is blocked and recorded", async () => {
+    const inquiry = { ...INQUIRY, phone: "12345678" };
+    const email = await runInbound({ ...base, inquiry, provider: stub({}) });
+    expect(email.run.messages).toHaveLength(1);
+    expect(email.run.contactPoints.map((c) => c.kind)).toEqual(["email"]);
+    expect(email.run.complianceWarnings).toContain("inquiry phone is not a recognized number; it was not used");
+    const sms = await runInbound({ ...base, channel: "sms", inquiry, provider: stub({}) });
+    expect(sms.run.blockedContacts).toEqual([{ contactKey: "phone:12345678", reason: "contact-point:malformed-phone" }]);
+  });
+
+  it("the property they asked about is not checked against address suppressions", async () => {
+    const suppressions = buildSuppressionList([{ kind: "address", value: "12 Bay St, Foley, AL 36535" }]);
+    const zipless = await runInbound({ ...base, suppressions, inquiry: { ...INQUIRY, propertyAddress: "12 Main St" }, provider: stub({}) });
+    expect(zipless.run.blockedContacts).toEqual([]);
+    const same = await runInbound({ ...base, suppressions, inquiry: INQUIRY, provider: stub({}) });
+    expect(same.run.messages).toHaveLength(1);
+  });
+
+  it("a revoked consent on the person's phone blocks an email reply too", async () => {
+    const consents = [smsConsent({ revokedAt: "2026-10-06T15:00:01.000Z" })];
+    const { run } = await runInbound({ ...base, consents, inquiry: INQUIRY, provider: stub({}), now: () => "2026-10-06T15:01:00.000Z" });
+    expect(run.blockedContacts).toEqual([{ contactKey: "email:jo@example.com", reason: "consent:revoked" }]);
+  });
+
+  it("a receivedAt later than the draft is a warning, never a perfect speed-to-lead", async () => {
+    const { run, speedToLeadMs } = await runInbound({ ...base, inquiry: INQUIRY, provider: stub({}), now: () => "2026-10-06T14:00:00.000Z" });
+    expect(run.messages).toHaveLength(1);
+    expect(speedToLeadMs).toBeUndefined();
+    expect(run.inbound).toBeUndefined();
+    expect(run.complianceWarnings).toContain("inquiry receivedAt is later than the draft time; speed-to-lead not recorded");
+  });
+});
+
 describe("CLI: inbound", () => {
   it("records a blocked SMS reply (no consent) without a model key, and validates input", async () => {
     const { Readable } = await import("node:stream");

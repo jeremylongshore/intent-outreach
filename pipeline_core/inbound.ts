@@ -28,7 +28,7 @@ import { guardDraft } from "./draft-guard.js";
 import type { SenderIdentity } from "./footer.js";
 import { SCHEMA_VERSION, type CampaignRun, type ContactPoint, type Message, type Party } from "./models.js";
 import { registerBuiltinPacks, resolvePack } from "./packs/index.js";
-import { finalizeDraft, sanitizeErrorMessage, senderComplianceWarnings } from "./pipeline.js";
+import { deriveRunStatus, finalizeDraft, sanitizeErrorMessage, senderComplianceWarnings } from "./pipeline.js";
 import { loadPrompt, promptRef } from "./prompts.js";
 import { getProvider, type LLMProvider } from "./providers.js";
 import { DECLINED_PREFIX, DRAFT_CALL, DraftOutputSchema, fence, SEAM_TIMEOUT_MS, type DraftOutput } from "./seam.js";
@@ -90,20 +90,31 @@ export async function runInbound(input: RunInboundInput): Promise<RunInboundResu
   const channel = replyChannel(input);
   const suppressions = input.suppressions ?? (await loadSuppressionList());
 
-  // The person, as a contact point on the reply channel.
-  const value = channel === "email" ? inquiry.email : inquiry.phone;
-  if (value === undefined) throw new Error(`runInbound: a ${channel} reply needs the inquiry's ${channel === "email" ? "email" : "phone"}`);
-  const normalized = channel === "email" ? normalizeSuppressionEmail(value) : normalizePhone(value);
-  const contactKey = `${channel === "email" ? "email" : "phone"}:${normalized}`;
+  // Normalized contact details. A phone that is not a recognized number is
+  // never used (and never thrown on: the lead must still be recorded).
+  const warnings: string[] = [];
+  const email = inquiry.email !== undefined ? normalizeSuppressionEmail(inquiry.email) : undefined;
+  let phone: string | undefined;
+  if (inquiry.phone !== undefined) {
+    try {
+      phone = normalizePhone(inquiry.phone);
+    } catch {
+      warnings.push("inquiry phone is not a recognized number; it was not used");
+    }
+  }
+  const replyValue = channel === "email" ? email : phone;
+  if (channel === "email" && email === undefined) throw new Error("runInbound: an email reply needs the inquiry's email");
+  if (channel === "sms" && inquiry.phone === undefined) throw new Error("runInbound: an sms reply needs the inquiry's phone");
+  const contactKey = channel === "email" ? `email:${email}` : `phone:${phone ?? inquiry.phone!.trim()}`;
   const receivedIso = new Date(inquiry.receivedAt).toISOString();
   const partyKey = `inbound:${contactKey}`;
-  const party: Party = { key: partyKey, kind: "person", name: inquiry.firstName ?? "Website inquiry", source: inquiry.source } as Party;
+  const party: Party = { key: partyKey, kind: "person", name: inquiry.firstName ?? "Website inquiry", source: inquiry.source };
   const contactPoints: ContactPoint[] = [];
   for (const [kind, v] of [
-    ["email", inquiry.email ? normalizeSuppressionEmail(inquiry.email) : undefined],
-    ["phone", inquiry.phone ? normalizePhone(inquiry.phone) : undefined],
+    ["email", email],
+    ["phone", phone],
   ] as const) {
-    if (v !== undefined) contactPoints.push({ partyKey, kind, value: v, dnc: "unknown", source: inquiry.source, fetchedAt: receivedIso } as ContactPoint);
+    if (v !== undefined) contactPoints.push({ partyKey, kind, value: v, dnc: "unknown", source: inquiry.source, fetchedAt: receivedIso });
   }
 
   const blockedContacts: CampaignRun["blockedContacts"] = [];
@@ -116,19 +127,31 @@ export async function runInbound(input: RunInboundInput): Promise<RunInboundResu
   let speedToLeadMs: number | undefined;
   let draftedAt: string | undefined;
 
+  // Suppression on every way to reach the PERSON. The property they asked about
+  // is not their address, so it is never checked here.
   const suppression = checkSuppression(suppressions, {
     domains: [],
-    ...(inquiry.email ? { email: inquiry.email } : {}),
-    phones: inquiry.phone ? [inquiry.phone] : [],
-    addresses: inquiry.propertyAddress ? [inquiry.propertyAddress] : [],
+    ...(email ? { email } : {}),
+    phones: phone ? [phone] : [],
   });
   const policy = channelPolicy(channel, pack.channels?.[channel]);
-  const consent = checkConsent(consents, { kind: channel === "email" ? "email" : "phone", value: normalized }, channel, new Date(startedAt), policy.consent);
+  const nowDate = new Date(startedAt);
+  const consent =
+    replyValue === undefined
+      ? ({ ok: false, reason: "contact-point:malformed-phone" } as const)
+      : checkConsent(consents, { kind: channel === "email" ? "email" : "phone", value: replyValue }, channel, nowDate, policy.consent);
+  // A revocation on ANY of the person's contact points blocks the reply (revoke-all is per person).
+  const revokedElsewhere = contactPoints.some((cp) => {
+    const v = checkConsent(consents, cp, channel, nowDate, "none");
+    return !v.ok && v.reason === "consent:revoked";
+  });
 
   if (suppression.status !== "clean") {
     blockedContacts.push({ contactKey, reason: suppression.reason ?? "suppressed" });
   } else if (!consent.ok) {
     blockedContacts.push({ contactKey, reason: consent.reason });
+  } else if (revokedElsewhere) {
+    blockedContacts.push({ contactKey, reason: "consent:revoked" });
   } else {
     provider ??= await getProvider();
     const file = pack.prompts.inbound ?? DEFAULT_INBOUND_PROMPT;
@@ -160,8 +183,9 @@ export async function runInbound(input: RunInboundInput): Promise<RunInboundResu
         rejectedDrafts.push({ contactKey, issues: [`${DECLINED_PREFIX}${object.declineReason ?? "not a real estate inquiry"}`] });
       } else {
         const verdict = guardDraft(object, {
-          // Only the address they gave may be repeated; never a link or number from their text.
-          allowedText: inquiry.propertyAddress ? [inquiry.propertyAddress] : [],
+          // Nothing the stranger typed may vouch for a link, email or phone (the
+          // property address is free text too). Quantities are checked against it.
+          allowedText: [],
           facts: [input.offer, inquiry.message, ...(inquiry.propertyAddress ? [inquiry.propertyAddress] : [])],
           ...(pack.draftRules ? { rules: pack.draftRules } : {}),
         });
@@ -185,7 +209,10 @@ export async function runInbound(input: RunInboundInput): Promise<RunInboundResu
           if (!finalized.ok) rejectedDrafts.push({ contactKey, issues: finalized.issues });
           else {
             messages.push(finalized.message);
-            speedToLeadMs = Math.max(0, Date.parse(draftedAt) - Date.parse(inquiry.receivedAt));
+            const elapsed = Date.parse(draftedAt) - Date.parse(inquiry.receivedAt);
+            // A negative elapsed time is clock skew or a bad receivedAt: say so, never record a perfect 0.
+            if (elapsed >= 0) speedToLeadMs = elapsed;
+            else warnings.push("inquiry receivedAt is later than the draft time; speed-to-lead not recorded");
           }
         }
       }
@@ -203,14 +230,16 @@ export async function runInbound(input: RunInboundInput): Promise<RunInboundResu
     domains: [],
     provider: provider?.name ?? "none",
     model: provider?.model ?? "none",
-    status: messages.length > 0 ? "complete" : errors.length > 0 ? "failed" : "researched",
+    // Same rule as the property loop: drafted ⇒ complete, errored ⇒ failed, otherwise
+    // "researched" (nothing drafted by design; blockedContacts/rejectedDrafts say why).
+    status: deriveRunStatus({ messages: messages.length, leads: 0, researchRan: true, errors: errors.length }),
     messages,
     blockedContacts,
     rejectedDrafts,
     errors,
     parties: [party],
     contactPoints,
-    complianceWarnings: senderComplianceWarnings(messages.filter((m) => m.needsSenderIdentity).length, input.sender, channel),
+    complianceWarnings: [...senderComplianceWarnings(messages.filter((m) => m.needsSenderIdentity).length, input.sender, channel), ...warnings],
     ...(draftRef ? { promptRefs: { draft: draftRef } } : {}),
     ...(speedToLeadMs !== undefined && draftedAt
       ? { inbound: { source: inquiry.source, receivedAt: inquiry.receivedAt, draftedAt, speedToLeadMs } }
