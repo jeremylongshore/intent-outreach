@@ -18,6 +18,12 @@ allowed-tools:
   - mcp__intent-outreach__approve
   - mcp__plugin_intent-outreach_intent-outreach__reject
   - mcp__intent-outreach__reject
+  - mcp__plugin_intent-outreach_intent-outreach__suppress
+  - mcp__intent-outreach__suppress
+  - mcp__plugin_intent-outreach_intent-outreach__list_runs
+  - mcp__intent-outreach__list_runs
+  - mcp__plugin_intent-outreach_intent-outreach__underwrite
+  - mcp__intent-outreach__underwrite
 version: 0.3.0
 author: Jeremy Longshore <jeremy@intentsolutions.io>
 license: SEE LICENSE IN LICENSE
@@ -90,6 +96,9 @@ runs before writing them to the local JSONL store.
    show each draft in full with its digest. Call `approve` (with that digest) only for a draft the user
    explicitly approved, and `reject` for one they rejected. Never approve on your own judgment, and never
    approve a draft flagged `needsSenderIdentity`. Approving still sends nothing.
+9. **Honor opt-outs at once.** When anyone asks not to be contacted, call `suppress` with `action: "add"`
+   (their email, phone, mailing address or domain) before anything else. Use `list_runs` to find earlier
+   runs, and `underwrite` for any figure a draft cites: quote its result exactly, never compute.
 
 ## Safety and data handling
 
