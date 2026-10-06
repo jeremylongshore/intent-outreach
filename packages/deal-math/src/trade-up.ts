@@ -7,11 +7,18 @@
  * share and the financed P&I are rounded to WHOLE DOLLARS (half-even), because
  * the client one-pager never shows cents. A golden fixture generated from the
  * Python calculator pins every figure (tests/fixtures/deal-math/).
+ *
+ * PARITY OVER PURITY in one step: the sell cost mirrors Python's float product
+ * `round(value * rate)`. On an exact .5 tie the float product can land a hair
+ * below the tie (839,000 x 0.0725), so Python rounds down where exact integer
+ * math would round up. A $1 difference is immaterial on a one-pager, but the
+ * coastal model and this port must give the same number for the same inputs,
+ * so this step reproduces the float. Every other library function stays exact.
  */
 
 import { z } from "zod";
 import { levelPayment } from "./amortize.js";
-import { Bps, divRoundHalfEven, NonNegCents, parseOrThrow, result, type DealMathResult } from "./core.js";
+import { Bps, divRoundHalfEven, NonNegCents, parseOrThrow, result, roundHalfEven, type DealMathResult } from "./core.js";
 
 export const TradeUpInputs = z.object({
   condoValueCents: NonNegCents,
@@ -91,7 +98,8 @@ export function tradeUp(
   const a = parseOrThrow("tradeUp", TradeUpAssumptions, assumptions);
 
   // SELL
-  const sellCosts = divRoundHalfEven(i.condoValueCents * a.sellCostBps, 10_000 * DOLLAR) * DOLLAR;
+  // Python parity (see header): float product of whole dollars and the decimal rate, then half-even.
+  const sellCosts = roundHalfEven((i.condoValueCents / DOLLAR) * (a.sellCostBps / 10_000)) * DOLLAR;
   const netProceeds = i.condoValueCents - i.mortgageBalanceCents - sellCosts;
   const condoCarry =
     i.condoHoaMonthlyCents + i.condoInsuranceMonthlyCents + monthlyTax(i.condoTaxAnnualCents) + i.condoAssessmentMonthlyCents;

@@ -226,7 +226,7 @@ describe("amortization and seller financing", () => {
 
 describe("1031 timeline (informational)", () => {
   it("45 and 180 calendar days after the transfer, across a year boundary", () => {
-    const r = exchange1031Timeline({ relinquishedCloseDate: "2026-11-15" }).value;
+    const r = exchange1031Timeline({ relinquishedCloseDate: "2026-11-15", taxReturnDueDate: "2027-10-15" }).value;
     expect(r.identificationDeadline).toBe("2026-12-30");
     expect(r.exchangeDeadline).toBe("2027-05-14");
     expect(r.exchangeDeadlineBasis).toBe("180-days");
@@ -240,7 +240,26 @@ describe("1031 timeline (informational)", () => {
     expect(r.exchangeDeadlineBasis).toBe("tax-return-due-date");
   });
 
-  it("rejects a malformed date", () => {
+  it("without a return due date, a late-year close assumes the unextended April 15 (never overstates)", () => {
+    const late = exchange1031Timeline({ relinquishedCloseDate: "2026-12-15" }).value;
+    expect(late.exchangeDeadline).toBe("2027-04-15");
+    expect(late.exchangeDeadlineBasis).toBe("assumed-unextended-return-due-date");
+    expect(late.note).toMatch(/extension/);
+    const early = exchange1031Timeline({ relinquishedCloseDate: "2026-03-01" }).value;
+    expect(early.exchangeDeadline).toBe("2026-08-28");
+    expect(early.exchangeDeadlineBasis).toBe("180-days");
+  });
+
+  it("rejects a malformed date and a return due date before the transfer", () => {
     expect(() => exchange1031Timeline({ relinquishedCloseDate: "11/15/2026" })).toThrow();
+    expect(() => exchange1031Timeline({ relinquishedCloseDate: "2026-11-15", taxReturnDueDate: "2026-04-15" })).toThrow(
+      /before the transfer/,
+    );
+  });
+
+  it("a rate past 1,000% is a validation error, not a float overflow", () => {
+    expect(() => monthlyPayment({ principalCents: 100_000_00, annualRateBps: 100_001, termMonths: 600 })).toThrow(
+      /invalid input/,
+    );
   });
 });

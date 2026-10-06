@@ -35,8 +35,8 @@ export function result<V, I, A>(value: V, inputs: I, assumptionsUsed: A): DealMa
 /** Integer cents (may be negative where a value can be, e.g. cash flow). */
 export const Cents = z.number().int().refine(Number.isSafeInteger, "cents must be a safe integer");
 export const NonNegCents = Cents.refine((n) => n >= 0, "must be >= 0 cents");
-/** Integer basis points, 0..1_000_000 (0%..10,000%). */
-export const Bps = z.number().int().min(0).max(1_000_000);
+/** Integer basis points, 0..100_000 (0%..1,000%): far past any real rate, short of float overflow. */
+export const Bps = z.number().int().min(0).max(100_000);
 
 /**
  * Round `x` to the nearest integer, ties to even (banker's rounding). This is
