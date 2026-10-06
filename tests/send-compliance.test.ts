@@ -16,6 +16,9 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkConsent, type ConsentRecord } from "../pipeline_core/compliance/consent.js";
 import { messageDigest } from "../pipeline_core/approvals.js";
+import { SCHEMA_VERSION } from "../pipeline_core/models.js";
+import { JsonlRunStore } from "../pipeline_core/store.js";
+import { assertCampaignRun } from "../pipeline_core/validator.js";
 import { withinContactWindow } from "../pipeline_core/compliance/timezones.js";
 import {
   assertSendable,
@@ -388,7 +391,24 @@ describe("CLI: check-send", () => {
     })}\n`,
   );
 
-  it("exit 0 + JSON verdict when sendable, 3 when not, 2 on bad input", { timeout: 60_000 }, () => {
+  it("exit 0 + JSON verdict when sendable, 3 when not, 2 on bad input", { timeout: 60_000 }, async () => {
+    await new JsonlRunStore(join(home, "runs.jsonl")).saveRun(
+      assertCampaignRun({
+        id: "run-1",
+        schemaVersion: SCHEMA_VERSION,
+        icp: "x",
+        domains: [],
+        provider: "anthropic",
+        model: "stub",
+        status: "complete",
+        parties: [{ key: "person:1", kind: "person", name: "Pat Owner", source: "fixture" }],
+        contactPoints: [PHONE],
+        messages: [
+          { contactKey: "person:1", channel: "sms", body: smsBody(), cta: "Reply?", model: "stub", promptVersion: "p", createdAt: "2026-10-06T10:00:00.000Z" },
+        ],
+        createdAt: "2026-10-06T10:00:00.000Z",
+      }),
+    );
     const ok = run(input, "--profile", profile);
     expect(ok.stderr).toBe("");
     expect(ok.status).toBe(0);
@@ -403,6 +423,22 @@ describe("CLI: check-send", () => {
     expect(JSON.parse(edited.stdout).reasons).toContain("approval:missing");
     const anonymous = run({ ...input, runId: undefined }, "--profile", profile);
     expect(JSON.parse(anonymous.stdout).reasons).toContain("approval:missing");
+
+    // The approved text cannot be redirected to another number, or claimed for an unknown run.
+    const redirected = run(
+      {
+        ...input,
+        contactPoint: { ...PHONE, value: "+12515550199" },
+        consents: [{ ...WRITTEN, contact: { kind: "phone", value: "+12515550199" } }],
+      },
+      "--profile",
+      profile,
+    );
+    expect(redirected.status).toBe(3);
+    expect(JSON.parse(redirected.stdout).reasons).toEqual(["recipient:mismatch"]);
+    expect(JSON.parse(run({ ...input, runId: "run-404" }, "--profile", profile).stdout).reasons).toContain(
+      "run:message-not-found",
+    );
 
     expect(run("{not json", "--profile", profile).status).toBe(2);
     expect(run({ ...input, channel: "fax" }, "--profile", profile).status).toBe(2);

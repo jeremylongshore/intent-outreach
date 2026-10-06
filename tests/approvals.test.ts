@@ -13,13 +13,15 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { appendFileSync } from "node:fs";
+import { describe, expect, it, vi } from "vitest";
 import {
   approvalVerdict,
   decide,
   listPending,
   messageDigest,
   readApprovals,
+  recipientMatches,
   type ApprovalRecord,
 } from "../pipeline_core/approvals.js";
 import { SCHEMA_VERSION, type CampaignRun } from "../pipeline_core/models.js";
@@ -169,5 +171,64 @@ describe("CLI: intent-outreach approvals", () => {
     expect(ok.stdout).toContain("approved: c1 jane@acme.com");
     expect(JSON.parse(cli("pending", "--json", "--out", runs).stdout)).toEqual([]);
     expect(readFileSync(join(home, "approvals.jsonl"), "utf8").trim().split("\n")).toHaveLength(1);
+  });
+});
+
+describe("review regressions", () => {
+  it("a torn last line (a crash mid-write) is ignored on read and repaired on the next append", async () => {
+    const store = new MemoryRunStore();
+    await store.saveRun(run("t1"));
+    const path = ledger();
+    const base = { store, runId: "t1", contactKey: MSG.contactKey, by: "t", now, path };
+    await decide({ ...base, decision: "rejected" });
+    appendFileSync(path, '{"runId":"t1","contactKey":"jane@acme.co'); // torn, no newline
+    expect(await readApprovals(path)).toHaveLength(1);
+    await decide({ ...base, decision: "rejected", note: "again" });
+    const records = await readApprovals(path);
+    expect(records).toHaveLength(2);
+    expect(records[1]?.note).toBe("again");
+    expect(readFileSync(path, "utf8").endsWith("\n")).toBe(true);
+  });
+
+  it("an interior corrupt line still fails closed", async () => {
+    const path = ledger();
+    writeFileSync(path, "{not json\n{}\n");
+    await expect(readApprovals(path)).rejects.toThrow(/line 1/);
+  });
+
+  it("listPending reads the store once, not once per run", async () => {
+    const path = join(mkdtempSync(join(tmpdir(), "io-approvals-scan-")), "runs.jsonl");
+    const store = new JsonlRunStore(path);
+    for (let i = 0; i < 5; i++) await store.saveRun(run(`s${i}`));
+    const getRun = vi.spyOn(store, "getRun");
+    const listRuns = vi.spyOn(store, "listRuns");
+    expect(await listPending(store, ledger())).toHaveLength(5);
+    expect(getRun).not.toHaveBeenCalled();
+    expect(listRuns).toHaveBeenCalledTimes(1);
+  });
+
+  it("concurrent decisions all land intact", async () => {
+    const store = new MemoryRunStore();
+    for (let i = 0; i < 12; i++) await store.saveRun(run(`c${i}`));
+    const path = ledger();
+    await Promise.all(
+      Array.from({ length: 12 }, (_, i) => decide({ store, runId: `c${i}`, contactKey: MSG.contactKey, decision: "rejected", by: "t", now, path })),
+    );
+    expect(await readApprovals(path)).toHaveLength(12);
+  });
+
+  it("recipientMatches binds an approval to the drafted recipient", () => {
+    const phone = { partyKey: "o1", kind: "phone" as const, value: "+12515550100" };
+    const property = {
+      parties: [{ key: "o1", mailingAddress: { line1: "9 Elm St", city: "Nashville", state: "TN", zip: "37201" } }],
+      contactPoints: [phone],
+    };
+    expect(recipientMatches(property, "o1", { contactPoint: { kind: "phone", value: "(251) 555-0100" } })).toBe(true);
+    expect(recipientMatches(property, "o1", { contactPoint: { kind: "phone", value: "+12515550199" } })).toBe(false);
+    expect(recipientMatches(property, "o1", { contactPoint: { kind: "mail", value: "9 Elm Street, Nashville, Tennessee 37201" } })).toBe(true);
+    expect(recipientMatches(property, "o1", {})).toBe(false);
+    const company = { parties: [], contactPoints: [] };
+    expect(recipientMatches(company, "jane@acme.com", { contactEmail: "Jane@Acme.com" })).toBe(true);
+    expect(recipientMatches(company, "jane@acme.com", { contactPoint: { kind: "email", value: "bob@acme.com" } })).toBe(false);
   });
 });

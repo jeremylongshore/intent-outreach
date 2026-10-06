@@ -127,7 +127,9 @@ server.registerTool(
   "reject",
   {
     title: "Record a rejection of one draft",
-    description: "Record that the user rejected one draft (runId + contactKey). A rejected draft can never pass the send-time check.",
+    description:
+      "Record that the user rejected one draft (runId + contactKey). It cannot pass the send-time check unless a " +
+      "person later approves that exact text again (the latest decision wins).",
     inputSchema: DecideInput,
   },
   async (args) => handleReject(args),

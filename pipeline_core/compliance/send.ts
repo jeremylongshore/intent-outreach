@@ -22,7 +22,10 @@
  *   mail         suppression on the mailing address, the postal footer
  * APPROVAL on every channel: a person must have approved this exact message
  * (approvals.ts binds the decision to a digest of the text). Missing or
- * rejected blocks; a pack cannot turn this off.
+ * rejected blocks, and no pack or policy override can turn it off. This pure
+ * function takes the verdict as input; a library caller must compute it from
+ * the ledger (approvalVerdict). The `check-send` CLI does that, and also
+ * checks that the recipient is the one the stored run drafted for.
  * FOOTERS are checked as the EXACT block the footer module produces for this
  * sender, at the END of the body, so an edited, truncated or hand-written body
  * cannot pass on a substring. Every channel: a contact point whose license

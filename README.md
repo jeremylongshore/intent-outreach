@@ -193,7 +193,10 @@ intent-outreach approvals reject  <runId> <contactKey> [--note "..."]
 
 Decisions go to `$INTENT_OUTREACH_HOME/approvals.jsonl` (0600, append-only; a later decision on the same
 text supersedes an earlier one). In Claude Code the same queue is the `list_pending`, `approve` and
-`reject` MCP tools, which the skill calls only on your explicit word.
+`reject` MCP tools, which the skill calls only on your explicit word. Be clear about what that means: an
+MCP approval is agent-mediated. The server cannot prove a person read the draft; Claude Code's
+tool-permission prompt is the human checkpoint, and the ledger records such decisions as `by: "mcp"`. For
+a strictly human approval, use the CLI, which records your OS user.
 
 ## Send-time check (for whatever sends)
 

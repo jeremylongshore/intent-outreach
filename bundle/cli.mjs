@@ -75166,9 +75166,9 @@ function guardDraft(draft, inputs) {
     if (/^\s*(?:re|fwd?|fw)\s*:/i.test(draft.subject)) issues.push('subject: fake reply/forward prefix ("Re:"/"Fwd:")');
   }
   for (const [field, text2] of fields) {
-    const lower = normApostrophes(text2).toLowerCase();
+    const lower2 = normApostrophes(text2).toLowerCase();
     for (const phrase of BANNED_PHRASES) {
-      if (lower.includes(phrase)) {
+      if (lower2.includes(phrase)) {
         issues.push(`${field}: banned stock phrase ("${phrase}")`);
         break;
       }
@@ -75337,12 +75337,12 @@ function ungroundedReason(angle, corpusLower, pool, allow) {
   const startsWith = angle.trimStart();
   for (const phrase of words) {
     for (const word of phrase.split(/\s+/)) {
-      const lower = word.toLowerCase();
-      if (PROPER_STOPWORDS.has(lower)) continue;
+      const lower2 = word.toLowerCase();
+      if (PROPER_STOPWORDS.has(lower2)) continue;
       if (startsWith.startsWith(word) && phrase === words[0]) continue;
       if (word.length < 3) continue;
       if (/^[A-Z0-9]+$/.test(word)) continue;
-      if (!corpusLower.includes(lower)) return `name not in inputs (${word})`;
+      if (!corpusLower.includes(lower2)) return `name not in inputs (${word})`;
     }
   }
   return void 0;
@@ -77490,6 +77490,12 @@ var JsonlRunStore = class {
     const { runs } = await this.scan();
     return [...new Set(runs.map((r) => r.run.id))];
   }
+  async listRuns() {
+    const { runs } = await this.scan();
+    const latest = /* @__PURE__ */ new Map();
+    for (const r of runs) latest.set(r.run.id, r.run);
+    return [...latest.values()];
+  }
   async corruptLines() {
     return (await this.scan()).corrupt;
   }
@@ -77862,9 +77868,22 @@ function checkSendable(input2) {
 }
 
 // pipeline_core/approvals.ts
-import { createHash as createHash3 } from "node:crypto";
-import { constants as constants3, mkdir as mkdir4, open as open4, readFile as readFile4, unlink as unlink3, stat as stat3 } from "node:fs/promises";
+import { createHash as createHash3, randomUUID as randomUUID2 } from "node:crypto";
+import { constants as constants3, mkdir as mkdir4, open as open4, readFile as readFile4, rename as rename3, stat as stat3, truncate, unlink as unlink3 } from "node:fs/promises";
 import { dirname as dirname5, join as join7 } from "node:path";
+
+// pipeline_core/property-seam.ts
+var PropertyScoreOutputSchema = external_exports.object({
+  score: external_exports.number().int().min(0).max(100),
+  band: external_exports.enum(["hot", "warm", "cold"]),
+  reasons: external_exports.array(external_exports.string()).max(3)
+});
+function formatAddress(a) {
+  if (!a) return void 0;
+  return [a.line1, a.line2, `${a.city}, ${a.state} ${a.zip}`].filter(Boolean).join(", ");
+}
+
+// pipeline_core/approvals.ts
 var ApprovalRecordSchema = external_exports.object({
   runId: external_exports.string().min(1),
   contactKey: external_exports.string().min(1),
@@ -77899,8 +77918,10 @@ async function readApprovals(path = defaultApprovalsPath()) {
     throw err;
   }
   const out = [];
-  text2.split("\n").forEach((line, i) => {
-    if (!line.trim()) return;
+  const lines = text2.split("\n");
+  const tornTail = !text2.endsWith("\n") ? lines.length - 1 : -1;
+  lines.forEach((line, i) => {
+    if (!line.trim() || i === tornTail) return;
     let parsed;
     try {
       parsed = JSON.parse(line);
@@ -77917,15 +77938,22 @@ var sleep4 = (ms) => new Promise((r) => setTimeout(r, ms));
 async function withLock2(path, fn) {
   await mkdir4(dirname5(path), { recursive: true, mode: 448 });
   const lockPath = `${path}.lock`;
+  const token = randomUUID2();
   const deadline = Date.now() + 1e4;
   let lock;
   while (!lock) {
     try {
       lock = await open4(lockPath, "wx", 384);
+      await lock.write(token);
     } catch (err) {
       if (err.code !== "EEXIST") throw err;
       try {
-        if (Date.now() - (await stat3(lockPath)).mtimeMs > 3e4) await unlink3(lockPath).catch(() => void 0);
+        if (Date.now() - (await stat3(lockPath)).mtimeMs > 3e4) {
+          const stolen = `${lockPath}.stale.${token}`;
+          await rename3(lockPath, stolen);
+          await unlink3(stolen).catch(() => void 0);
+          continue;
+        }
       } catch {
       }
       if (Date.now() >= deadline) throw new Error(`approvals: timed out waiting for lock ${lockPath}`);
@@ -77936,11 +77964,24 @@ async function withLock2(path, fn) {
     return await fn();
   } finally {
     await lock.close().catch(() => void 0);
-    await unlink3(lockPath).catch(() => void 0);
+    const holder = await readFile4(lockPath, "utf8").catch(() => void 0);
+    if (holder === token) await unlink3(lockPath).catch(() => void 0);
   }
+}
+async function repairTornTail(path) {
+  let text2;
+  try {
+    text2 = await readFile4(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return;
+    throw err;
+  }
+  if (text2.length === 0 || text2.endsWith("\n")) return;
+  await truncate(path, Buffer.byteLength(text2.slice(0, text2.lastIndexOf("\n") + 1)));
 }
 async function append(path, record2) {
   await withLock2(path, async () => {
+    await repairTornTail(path);
     const fh = await open4(path, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_APPEND, 384);
     try {
       await fh.chmod(384);
@@ -77955,9 +77996,7 @@ async function append(path, record2) {
 async function listPending(store, path = defaultApprovalsPath()) {
   const records = await readApprovals(path);
   const out = [];
-  for (const id of await store.listRunIds()) {
-    const run = await store.getRun(id);
-    if (!run) continue;
+  for (const run of await store.listRuns()) {
     for (const m of run.messages) {
       if (approvalVerdict(records, run.id, m.contactKey, m) !== "missing") continue;
       out.push({
@@ -78003,6 +78042,30 @@ async function decide(input2) {
   });
   await append(input2.path ?? defaultApprovalsPath(), record2);
   return record2;
+}
+var lower = (v) => v.trim().toLowerCase();
+function sameContactPoint(a, b) {
+  if (a.kind !== b.kind) return false;
+  try {
+    if (a.kind === "phone") return normalizePhone(a.value) === normalizePhone(b.value);
+    if (a.kind === "email") return normalizeSuppressionEmail(a.value) === normalizeSuppressionEmail(b.value);
+    return normalizeMailingAddress(a.value) === normalizeMailingAddress(b.value);
+  } catch {
+    return false;
+  }
+}
+function recipientMatches(run, contactKey2, recipient) {
+  const party = run.parties.find((p) => p.key === contactKey2);
+  if (party) {
+    const cp = recipient.contactPoint;
+    if (!cp) return false;
+    if (run.contactPoints.some((c) => c.partyKey === contactKey2 && sameContactPoint(c, cp))) return true;
+    const mailing = formatAddress(party.mailingAddress);
+    return cp.kind === "mail" && mailing !== void 0 && sameContactPoint({ kind: "mail", value: mailing }, cp);
+  }
+  const email3 = recipient.contactPoint?.kind === "email" ? recipient.contactPoint.value : recipient.contactEmail;
+  if (email3 !== void 0) return lower(email3) === lower(contactKey2);
+  return recipient.contactPoint === void 0;
 }
 
 // cli.ts
@@ -78356,7 +78419,7 @@ async function readStdin() {
 async function cmdCheckSend(args, stdin = readStdin) {
   let values;
   try {
-    ({ values } = parseArgs({ args, options: { profile: { type: "string" } }, allowPositionals: false }));
+    ({ values } = parseArgs({ args, options: { profile: { type: "string" }, out: { type: "string" } }, allowPositionals: false }));
   } catch {
     throw new UsageError(CHECK_SEND_USAGE);
   }
@@ -78391,6 +78454,15 @@ ${CHECK_SEND_USAGE}`);
     policy: pack.channels?.[parsed.channel],
     approval: parsed.runId && parsed.contactKey ? approvalVerdict(await readApprovals(), parsed.runId, parsed.contactKey, parsed.message) : "missing"
   });
+  if (parsed.runId && parsed.contactKey) {
+    const run = await new JsonlRunStore(values.out).getRun(parsed.runId);
+    if (!run || !run.messages.some((m) => m.contactKey === parsed.contactKey)) {
+      verdict.reasons.push("run:message-not-found");
+    } else if (!recipientMatches(run, parsed.contactKey, { contactPoint: parsed.contactPoint, contactEmail: parsed.contactEmail })) {
+      verdict.reasons.push("recipient:mismatch");
+    }
+    verdict.sendable = verdict.reasons.length === 0;
+  }
   process.stdout.write(`${JSON.stringify(verdict, null, 2)}
 `);
   if (!verdict.sendable) process.exitCode = 3;

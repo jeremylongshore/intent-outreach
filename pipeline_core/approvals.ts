@@ -18,11 +18,14 @@
  * cannot be approved.
  */
 
-import { createHash } from "node:crypto";
-import { constants, mkdir, open, readFile, unlink, stat, type FileHandle } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { constants, mkdir, open, readFile, rename, stat, truncate, unlink, type FileHandle } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
-import { ChannelSchema, type Message } from "./models.js";
+import { normalizePhone } from "./compliance/index.js";
+import { normalizeMailingAddress, normalizeSuppressionEmail } from "./compliance/suppression.js";
+import { ChannelSchema, type CampaignRun, type ContactPoint, type Message } from "./models.js";
+import { formatAddress } from "./property-seam.js";
 import { intentOutreachHome } from "./secrets.js";
 import type { RunStore } from "./store.js";
 
@@ -75,7 +78,12 @@ export function defaultApprovalsPath(): string {
   return join(intentOutreachHome(), "approvals.jsonl");
 }
 
-/** Read the ledger. Missing file ⇒ []. A corrupt line THROWS (it might be a rejection). */
+/**
+ * Read the ledger. Missing file ⇒ []. A corrupt line THROWS (it might be a
+ * rejection), with one exception: an unterminated LAST line is a torn write
+ * from a crash. That write was never acknowledged, so it is ignored (and the
+ * next append truncates it), exactly as the run store treats a torn tail.
+ */
 export async function readApprovals(path: string = defaultApprovalsPath()): Promise<ApprovalRecord[]> {
   let text: string;
   try {
@@ -85,8 +93,10 @@ export async function readApprovals(path: string = defaultApprovalsPath()): Prom
     throw err;
   }
   const out: ApprovalRecord[] = [];
-  text.split("\n").forEach((line, i) => {
-    if (!line.trim()) return;
+  const lines = text.split("\n");
+  const tornTail = !text.endsWith("\n") ? lines.length - 1 : -1;
+  lines.forEach((line, i) => {
+    if (!line.trim() || i === tornTail) return;
     let parsed: unknown;
     try {
       parsed = JSON.parse(line);
@@ -102,20 +112,32 @@ export async function readApprovals(path: string = defaultApprovalsPath()): Prom
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * A lock file holding a unique token. A stale lock (> 30 s) is stolen by an
+ * atomic rename, so two waiters can never both steal it; on release the holder
+ * removes the lock only if it still holds ITS token.
+ */
 async function withLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const lockPath = `${path}.lock`;
+  const token = randomUUID();
   const deadline = Date.now() + 10_000;
   let lock: FileHandle | undefined;
   while (!lock) {
     try {
       lock = await open(lockPath, "wx", 0o600);
+      await lock.write(token);
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
       try {
-        if (Date.now() - (await stat(lockPath)).mtimeMs > 30_000) await unlink(lockPath).catch(() => undefined);
+        if (Date.now() - (await stat(lockPath)).mtimeMs > 30_000) {
+          const stolen = `${lockPath}.stale.${token}`;
+          await rename(lockPath, stolen); // only one waiter's rename can succeed
+          await unlink(stolen).catch(() => undefined);
+          continue;
+        }
       } catch {
-        // the lock vanished between open and stat; retry
+        // the lock vanished or another waiter stole it first; retry
       }
       if (Date.now() >= deadline) throw new Error(`approvals: timed out waiting for lock ${lockPath}`);
       await sleep(20);
@@ -125,13 +147,28 @@ async function withLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
     return await fn();
   } finally {
     await lock.close().catch(() => undefined);
-    await unlink(lockPath).catch(() => undefined);
+    const holder = await readFile(lockPath, "utf8").catch(() => undefined);
+    if (holder === token) await unlink(lockPath).catch(() => undefined);
   }
 }
 
-/** Append one decision (fsync'd, 0600, under a lock). */
+/** Drop an unterminated last line (a torn, never-acknowledged write) before appending. */
+async function repairTornTail(path: string): Promise<void> {
+  let text: string;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw err;
+  }
+  if (text.length === 0 || text.endsWith("\n")) return;
+  await truncate(path, Buffer.byteLength(text.slice(0, text.lastIndexOf("\n") + 1)));
+}
+
+/** Append one decision (torn tail repaired, fsync'd, 0600, under a lock). */
 async function append(path: string, record: ApprovalRecord): Promise<void> {
   await withLock(path, async () => {
+    await repairTornTail(path);
     const fh = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND, 0o600);
     try {
       await fh.chmod(0o600);
@@ -162,9 +199,7 @@ export interface PendingMessage {
 export async function listPending(store: RunStore, path: string = defaultApprovalsPath()): Promise<PendingMessage[]> {
   const records = await readApprovals(path);
   const out: PendingMessage[] = [];
-  for (const id of await store.listRunIds()) {
-    const run = await store.getRun(id);
-    if (!run) continue;
+  for (const run of await store.listRuns()) {
     for (const m of run.messages) {
       if (approvalVerdict(records, run.id, m.contactKey, m) !== "missing") continue;
       out.push({
@@ -229,4 +264,47 @@ export async function decide(input: DecideInput): Promise<ApprovalRecord> {
   });
   await append(input.path ?? defaultApprovalsPath(), record);
   return record;
+}
+
+const lower = (v: string) => v.trim().toLowerCase();
+
+function sameContactPoint(a: Pick<ContactPoint, "kind" | "value">, b: Pick<ContactPoint, "kind" | "value">): boolean {
+  if (a.kind !== b.kind) return false;
+  try {
+    if (a.kind === "phone") return normalizePhone(a.value) === normalizePhone(b.value);
+    if (a.kind === "email") return normalizeSuppressionEmail(a.value) === normalizeSuppressionEmail(b.value);
+    return normalizeMailingAddress(a.value) === normalizeMailingAddress(b.value);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Is `recipient` the person this stored message was drafted for? An approval
+ * covers a text TO a contact; it must not be replayed to someone else.
+ *   • company runs: the contactKey is the contact's email (or name@domain); an
+ *     email recipient must be that address.
+ *   • property runs: the contactKey is the owner's party key; the recipient
+ *     must be one of that party's contact points, or their mailing address.
+ */
+export function recipientMatches(
+  run: {
+    readonly contactPoints: readonly Pick<ContactPoint, "partyKey" | "kind" | "value">[];
+    readonly parties: readonly Pick<CampaignRun["parties"][number], "key" | "mailingAddress">[];
+  },
+  contactKey: string,
+  recipient: { contactPoint?: Pick<ContactPoint, "kind" | "value"> | undefined; contactEmail?: string | undefined },
+): boolean {
+  const party = run.parties.find((p) => p.key === contactKey);
+  if (party) {
+    const cp = recipient.contactPoint;
+    if (!cp) return false;
+    if (run.contactPoints.some((c) => c.partyKey === contactKey && sameContactPoint(c, cp))) return true;
+    const mailing = formatAddress(party.mailingAddress);
+    return cp.kind === "mail" && mailing !== undefined && sameContactPoint({ kind: "mail", value: mailing }, cp);
+  }
+  const email = recipient.contactPoint?.kind === "email" ? recipient.contactPoint.value : recipient.contactEmail;
+  if (email !== undefined) return lower(email) === lower(contactKey);
+  // A non-email channel to a company contact: nothing on record to bind it to.
+  return recipient.contactPoint === undefined;
 }

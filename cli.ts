@@ -32,7 +32,7 @@ import {
 } from "./pipeline_core/suppressions.js";
 import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
 import { checkSendable } from "./pipeline_core/compliance/send.js";
-import { approvalVerdict, decide, listPending, readApprovals } from "./pipeline_core/approvals.js";
+import { approvalVerdict, decide, listPending, readApprovals, recipientMatches } from "./pipeline_core/approvals.js";
 import { userInfo } from "node:os";
 import { join } from "node:path";
 import { FileResponseCache } from "./pipeline_core/routing.js";
@@ -471,9 +471,9 @@ async function readStdin(): Promise<string> {
  * the verdict as JSON, and exits 0 when sendable, 3 when not, 2 on bad input.
  */
 async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readStdin): Promise<void> {
-  let values: { profile?: string | undefined };
+  let values: { profile?: string | undefined; out?: string | undefined };
   try {
-    ({ values } = parseArgs({ args, options: { profile: { type: "string" } }, allowPositionals: false }));
+    ({ values } = parseArgs({ args, options: { profile: { type: "string" }, out: { type: "string" } }, allowPositionals: false }));
   } catch {
     throw new UsageError(CHECK_SEND_USAGE);
   }
@@ -510,6 +510,16 @@ async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readS
         ? approvalVerdict(await readApprovals(), parsed.runId, parsed.contactKey, parsed.message)
         : "missing",
   });
+  // An approval covers a text TO a contact: the recipient must be the one the stored run drafted for.
+  if (parsed.runId && parsed.contactKey) {
+    const run = await new JsonlRunStore(values.out).getRun(parsed.runId);
+    if (!run || !run.messages.some((m) => m.contactKey === parsed.contactKey)) {
+      verdict.reasons.push("run:message-not-found");
+    } else if (!recipientMatches(run, parsed.contactKey, { contactPoint: parsed.contactPoint, contactEmail: parsed.contactEmail })) {
+      verdict.reasons.push("recipient:mismatch");
+    }
+    verdict.sendable = verdict.reasons.length === 0;
+  }
   process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
   if (!verdict.sendable) process.exitCode = 3;
 }
