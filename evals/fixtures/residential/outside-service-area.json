@@ -1,0 +1,56 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "outside-service-area",
+  "kind": "gate",
+  "note": "Downtown Mobile is outside the pack's coastal service area.",
+  "property": {
+    "key": "01097:02-29-04-0-001-001.000",
+    "apn": "02-29-04-0-001-001.000",
+    "countyFips": "01097",
+    "address": {
+      "line1": "1 Dauphin St",
+      "city": "Mobile",
+      "state": "AL",
+      "zip": "36602"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:outside",
+      "kind": "person",
+      "name": "Kevin Moore",
+      "source": "fixture-county-gis",
+      "mailingAddress": {
+        "line1": "88 Music Sq E",
+        "city": "Nashville",
+        "state": "TN",
+        "zip": "37203"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01097:02-29-04-0-001-001.000",
+      "partyKey": "person:outside",
+      "role": "owner",
+      "asOf": "2012-01-01",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expectBlocked": "service-area:outside"
+}

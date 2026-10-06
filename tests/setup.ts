@@ -22,6 +22,9 @@ delete process.env.ANTHROPIC_BASE_URL;
 delete process.env.INTENT_OUTREACH_MODEL;
 delete process.env.INTENT_OUTREACH_PROMPTS_DIR;
 delete process.env.INTENT_OUTREACH_ALLOW_UNGATED;
+// Keyless public-records connectors (fl-dor-parcels, fema-nfhl) would otherwise count as configured in
+// every suite. Their own tests turn them back on explicitly.
+process.env.INTENT_OUTREACH_PUBLIC_RECORDS = "0";
 
 const home = mkdtempSync(join(tmpdir(), "io-test-home-"));
 process.env.INTENT_OUTREACH_HOME = home;

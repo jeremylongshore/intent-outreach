@@ -1,0 +1,85 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "commercial-parcel-decline",
+  "kind": "model",
+  "note": "A retail strip center against a homeowner offer: declining is correct; a draft is accepted only if it passes every rule.",
+  "property": {
+    "key": "01003:05-61-08-27-0-000-031.000",
+    "apn": "05-61-08-27-0-000-031.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "2100 S McKenzie St",
+      "city": "Foley",
+      "state": "AL",
+      "zip": "36535"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Commercial - Retail Strip Center",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "yearBuilt": {
+        "value": 1999,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "buildingAreaSqFt": {
+        "value": 14200,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "floodZone": {
+        "value": "X",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "entity:AL:foley-retail",
+      "kind": "entity",
+      "name": "Foley Retail Partners LLC",
+      "source": "fixture-county-gis",
+      "entityType": "llc",
+      "mailingAddress": {
+        "line1": "150 Government St",
+        "city": "Mobile",
+        "state": "AL",
+        "zip": "36602"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-61-08-27-0-000-031.000",
+      "partyKey": "entity:AL:foley-retail",
+      "role": "owner",
+      "asOf": "2012-09-14",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expect": {
+    "bands": [
+      "cold",
+      "warm"
+    ]
+  },
+  "draft": {
+    "reasons": [
+      "Land use on record: Commercial - Retail Strip Center."
+    ],
+    "expectDecline": true,
+    "addressEntity": true,
+    "judgeMin": 3
+  }
+}

@@ -1,0 +1,4354 @@
+{
+ "source": "coastal-realty-ops src/calculators/trade_up.py",
+ "generatedBy": "tests/fixtures/deal-math/generate_trade_up_golden.py",
+ "cases": [
+  {
+   "name": "017 worked example",
+   "inputs": {
+    "condo_value": 635000,
+    "horton_price": 330000,
+    "condo_hoa_monthly": 750,
+    "condo_insurance_monthly": 290,
+    "condo_tax_annual": 2032,
+    "new_hoa_monthly": 75,
+    "new_insurance_monthly": 185,
+    "new_tax_annual": 812
+   },
+   "result": {
+    "net_proceeds": 587375,
+    "sell_costs": 47625,
+    "condo_carry_monthly": 1209,
+    "horton_net_price": 330000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 328,
+    "cash_pocketed": 257375,
+    "monthly_savings": 881,
+    "annual_savings": 10572,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$257,375, cut your monthly carry by ~$881 (~$10,572/yr)."
+   }
+  },
+  {
+   "name": "017 with move costs",
+   "inputs": {
+    "condo_value": 635000,
+    "horton_price": 330000,
+    "condo_hoa_monthly": 750,
+    "condo_insurance_monthly": 290,
+    "condo_tax_annual": 2032,
+    "new_hoa_monthly": 75,
+    "new_insurance_monthly": 185,
+    "new_tax_annual": 812,
+    "buy_closing_costs": 5000
+   },
+   "result": {
+    "net_proceeds": 587375,
+    "sell_costs": 47625,
+    "condo_carry_monthly": 1209,
+    "horton_net_price": 330000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 328,
+    "cash_pocketed": 252375,
+    "monthly_savings": 881,
+    "annual_savings": 10572,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$252,375, cut your monthly carry by ~$881 (~$10,572/yr)."
+   }
+  },
+  {
+   "name": "017 with incentive",
+   "inputs": {
+    "condo_value": 635000,
+    "horton_price": 330000,
+    "condo_hoa_monthly": 750,
+    "condo_insurance_monthly": 290,
+    "condo_tax_annual": 2032,
+    "new_hoa_monthly": 75,
+    "new_insurance_monthly": 185,
+    "new_tax_annual": 812,
+    "horton_incentive": 10000
+   },
+   "result": {
+    "net_proceeds": 587375,
+    "sell_costs": 47625,
+    "condo_carry_monthly": 1209,
+    "horton_net_price": 320000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 328,
+    "cash_pocketed": 267375,
+    "monthly_savings": 881,
+    "annual_savings": 10572,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$267,375, cut your monthly carry by ~$881 (~$10,572/yr)."
+   }
+  },
+  {
+   "name": "017 with assessment",
+   "inputs": {
+    "condo_value": 635000,
+    "horton_price": 330000,
+    "condo_hoa_monthly": 750,
+    "condo_insurance_monthly": 290,
+    "condo_tax_annual": 2032,
+    "new_hoa_monthly": 75,
+    "new_insurance_monthly": 185,
+    "new_tax_annual": 812,
+    "condo_assessment_monthly": 500
+   },
+   "result": {
+    "net_proceeds": 587375,
+    "sell_costs": 47625,
+    "condo_carry_monthly": 1709,
+    "horton_net_price": 330000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 328,
+    "cash_pocketed": 257375,
+    "monthly_savings": 1381,
+    "annual_savings": 16572,
+    "assessment_risk_eliminated_monthly": 500,
+    "headline": "Buy your next home for cash and pocket ~$257,375, cut your monthly carry by ~$1,381 (~$16,572/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "017 with mortgage",
+   "inputs": {
+    "condo_value": 635000,
+    "horton_price": 330000,
+    "condo_hoa_monthly": 750,
+    "condo_insurance_monthly": 290,
+    "condo_tax_annual": 2032,
+    "new_hoa_monthly": 75,
+    "new_insurance_monthly": 185,
+    "new_tax_annual": 812,
+    "mortgage_balance": 100000
+   },
+   "result": {
+    "net_proceeds": 487375,
+    "sell_costs": 47625,
+    "condo_carry_monthly": 1209,
+    "horton_net_price": 330000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 328,
+    "cash_pocketed": 157375,
+    "monthly_savings": 881,
+    "annual_savings": 10572,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$157,375, cut your monthly carry by ~$881 (~$10,572/yr)."
+   }
+  },
+  {
+   "name": "financed path",
+   "inputs": {
+    "condo_value": 200000,
+    "horton_price": 330000
+   },
+   "result": {
+    "net_proceeds": 185000,
+    "sell_costs": 15000,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 330000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 145000,
+    "new_pi_monthly": 940,
+    "new_carry_monthly": 940,
+    "cash_pocketed": 0,
+    "monthly_savings": -940,
+    "annual_savings": -11280,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$940/mo in carry."
+   }
+  },
+  {
+   "name": "negative savings",
+   "inputs": {
+    "condo_value": 635000,
+    "horton_price": 330000,
+    "condo_hoa_monthly": 100,
+    "new_hoa_monthly": 900
+   },
+   "result": {
+    "net_proceeds": 587375,
+    "sell_costs": 47625,
+    "condo_carry_monthly": 100,
+    "horton_net_price": 330000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 900,
+    "cash_pocketed": 257375,
+    "monthly_savings": -800,
+    "annual_savings": -9600,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$257,375, add ~$800/mo in carry."
+   }
+  },
+  {
+   "name": "half-even tax 0.5",
+   "inputs": {
+    "condo_value": 100000,
+    "horton_price": 50000,
+    "condo_tax_annual": 6,
+    "new_tax_annual": 18
+   },
+   "result": {
+    "net_proceeds": 92500,
+    "sell_costs": 7500,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 50000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 2,
+    "cash_pocketed": 42500,
+    "monthly_savings": -2,
+    "annual_savings": -24,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$42,500, add ~$2/mo in carry."
+   }
+  },
+  {
+   "name": "half-even tax 2.5/3.5",
+   "inputs": {
+    "condo_value": 100000,
+    "horton_price": 50000,
+    "condo_tax_annual": 30,
+    "new_tax_annual": 42
+   },
+   "result": {
+    "net_proceeds": 92500,
+    "sell_costs": 7500,
+    "condo_carry_monthly": 2,
+    "horton_net_price": 50000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 4,
+    "cash_pocketed": 42500,
+    "monthly_savings": -2,
+    "annual_savings": -24,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$42,500, add ~$2/mo in carry."
+   }
+  },
+  {
+   "name": "half-even sell cost",
+   "inputs": {
+    "condo_value": 100020,
+    "horton_price": 50000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 92518,
+    "sell_costs": 7502,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 50000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 42518,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$42,518."
+   }
+  },
+  {
+   "name": "half-even sell cost even",
+   "inputs": {
+    "condo_value": 100060,
+    "horton_price": 50000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 92556,
+    "sell_costs": 7504,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 50000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 42556,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$42,556."
+   }
+  },
+  {
+   "name": "float tie below 0.0725",
+   "inputs": {
+    "condo_value": 839000,
+    "horton_price": 330000,
+    "sell_cost_rate": 0.0725
+   },
+   "result": {
+    "net_proceeds": 778173,
+    "sell_costs": 60827,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 330000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 448173,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$448,173."
+   }
+  },
+  {
+   "name": "zero rate financed",
+   "inputs": {
+    "condo_value": 100000,
+    "horton_price": 200000,
+    "new_loan_rate_annual": 0.0
+   },
+   "result": {
+    "net_proceeds": 92500,
+    "sell_costs": 7500,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 200000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 107500,
+    "new_pi_monthly": 299,
+    "new_carry_monthly": 299,
+    "cash_pocketed": 0,
+    "monthly_savings": -299,
+    "annual_savings": -3588,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$299/mo in carry."
+   }
+  },
+  {
+   "name": "nothing",
+   "inputs": {
+    "condo_value": 100000,
+    "horton_price": 92500
+   },
+   "result": {
+    "net_proceeds": 92500,
+    "sell_costs": 7500,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 92500,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 0,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "No material trade-up benefit at these inputs."
+   }
+  },
+  {
+   "name": "grid 0",
+   "inputs": {
+    "condo_value": 1447090,
+    "horton_price": 253290,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 1044,
+    "condo_insurance_monthly": 201,
+    "condo_tax_annual": 9159,
+    "condo_assessment_monthly": 477,
+    "horton_incentive": 0,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 5,
+    "new_insurance_monthly": 240,
+    "new_tax_annual": 954,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1338558,
+    "sell_costs": 108532,
+    "condo_carry_monthly": 2485,
+    "horton_net_price": 253290,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 325,
+    "cash_pocketed": 1085268,
+    "monthly_savings": 2160,
+    "annual_savings": 25920,
+    "assessment_risk_eliminated_monthly": 477,
+    "headline": "Buy your next home for cash and pocket ~$1,085,268, cut your monthly carry by ~$2,160 (~$25,920/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 1",
+   "inputs": {
+    "condo_value": 824630,
+    "horton_price": 502570,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 445,
+    "condo_insurance_monthly": 5,
+    "condo_tax_annual": 1407,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 65,
+    "new_insurance_monthly": 170,
+    "new_tax_annual": 5989,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 762783,
+    "sell_costs": 61847,
+    "condo_carry_monthly": 567,
+    "horton_net_price": 497570,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 734,
+    "cash_pocketed": 265213,
+    "monthly_savings": -167,
+    "annual_savings": -2004,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$265,213, add ~$167/mo in carry."
+   }
+  },
+  {
+   "name": "grid 2",
+   "inputs": {
+    "condo_value": 307140,
+    "horton_price": 219165,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 128,
+    "condo_insurance_monthly": 187,
+    "condo_tax_annual": 4473,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 81,
+    "new_insurance_monthly": 365,
+    "new_tax_annual": 1858,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 282569,
+    "sell_costs": 24571,
+    "condo_carry_monthly": 688,
+    "horton_net_price": 204165,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 601,
+    "cash_pocketed": 78404,
+    "monthly_savings": 87,
+    "annual_savings": 1044,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$78,404, cut your monthly carry by ~$87 (~$1,044/yr)."
+   }
+  },
+  {
+   "name": "grid 3",
+   "inputs": {
+    "condo_value": 1450070,
+    "horton_price": 200025,
+    "mortgage_balance": 330299,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 1341,
+    "condo_insurance_monthly": 214,
+    "condo_tax_annual": 1600,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 399,
+    "new_insurance_monthly": 173,
+    "new_tax_annual": 331,
+    "new_loan_rate_annual": 0.0675,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1018266,
+    "sell_costs": 101505,
+    "condo_carry_monthly": 1688,
+    "horton_net_price": 185025,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 600,
+    "cash_pocketed": 830241,
+    "monthly_savings": 1088,
+    "annual_savings": 13056,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$830,241, cut your monthly carry by ~$1,088 (~$13,056/yr)."
+   }
+  },
+  {
+   "name": "grid 4",
+   "inputs": {
+    "condo_value": 1070845,
+    "horton_price": 276740,
+    "mortgage_balance": 278207,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 1187,
+    "condo_insurance_monthly": 38,
+    "condo_tax_annual": 5054,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 254,
+    "new_insurance_monthly": 157,
+    "new_tax_annual": 4534,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 712325,
+    "sell_costs": 80313,
+    "condo_carry_monthly": 1646,
+    "horton_net_price": 271740,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 789,
+    "cash_pocketed": 435585,
+    "monthly_savings": 857,
+    "annual_savings": 10284,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$435,585, cut your monthly carry by ~$857 (~$10,284/yr)."
+   }
+  },
+  {
+   "name": "grid 5",
+   "inputs": {
+    "condo_value": 442920,
+    "horton_price": 503920,
+    "mortgage_balance": 17654,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 1011,
+    "condo_insurance_monthly": 659,
+    "condo_tax_annual": 3759,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 36,
+    "new_insurance_monthly": 74,
+    "new_tax_annual": 537,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 398691,
+    "sell_costs": 26575,
+    "condo_carry_monthly": 1983,
+    "horton_net_price": 498920,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 100229,
+    "new_pi_monthly": 792,
+    "new_carry_monthly": 947,
+    "cash_pocketed": 0,
+    "monthly_savings": 1036,
+    "annual_savings": 12432,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Cut your monthly carry by ~$1,036 (~$12,432/yr)."
+   }
+  },
+  {
+   "name": "grid 6",
+   "inputs": {
+    "condo_value": 447585,
+    "horton_price": 505600,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 215,
+    "condo_insurance_monthly": 636,
+    "condo_tax_annual": 8340,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 93,
+    "new_insurance_monthly": 23,
+    "new_tax_annual": 3299,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 414016,
+    "sell_costs": 33569,
+    "condo_carry_monthly": 1546,
+    "horton_net_price": 490600,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 76584,
+    "new_pi_monthly": 505,
+    "new_carry_monthly": 896,
+    "cash_pocketed": 0,
+    "monthly_savings": 650,
+    "annual_savings": 7800,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Cut your monthly carry by ~$650 (~$7,800/yr)."
+   }
+  },
+  {
+   "name": "grid 7",
+   "inputs": {
+    "condo_value": 432400,
+    "horton_price": 443625,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 1412,
+    "condo_insurance_monthly": 442,
+    "condo_tax_annual": 2781,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 38,
+    "new_insurance_monthly": 423,
+    "new_tax_annual": 3989,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 406456,
+    "sell_costs": 25944,
+    "condo_carry_monthly": 2086,
+    "horton_net_price": 438625,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 32169,
+    "new_pi_monthly": 214,
+    "new_carry_monthly": 1007,
+    "cash_pocketed": 0,
+    "monthly_savings": 1079,
+    "annual_savings": 12948,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Cut your monthly carry by ~$1,079 (~$12,948/yr)."
+   }
+  },
+  {
+   "name": "grid 8",
+   "inputs": {
+    "condo_value": 1340720,
+    "horton_price": 435205,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 131,
+    "condo_insurance_monthly": 215,
+    "condo_tax_annual": 7289,
+    "condo_assessment_monthly": 183,
+    "horton_incentive": 0,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 207,
+    "new_insurance_monthly": 291,
+    "new_tax_annual": 4932,
+    "new_loan_rate_annual": 0.0675,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 1233462,
+    "sell_costs": 107258,
+    "condo_carry_monthly": 1136,
+    "horton_net_price": 435205,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 909,
+    "cash_pocketed": 793257,
+    "monthly_savings": 227,
+    "annual_savings": 2724,
+    "assessment_risk_eliminated_monthly": 183,
+    "headline": "Buy your next home for cash and pocket ~$793,257, cut your monthly carry by ~$227 (~$2,724/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 9",
+   "inputs": {
+    "condo_value": 448740,
+    "horton_price": 490355,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 1012,
+    "condo_insurance_monthly": 6,
+    "condo_tax_annual": 7457,
+    "condo_assessment_monthly": 315,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 182,
+    "new_insurance_monthly": 100,
+    "new_tax_annual": 5691,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 421816,
+    "sell_costs": 26924,
+    "condo_carry_monthly": 1954,
+    "horton_net_price": 475355,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 53539,
+    "new_pi_monthly": 489,
+    "new_carry_monthly": 1245,
+    "cash_pocketed": 0,
+    "monthly_savings": 709,
+    "annual_savings": 8508,
+    "assessment_risk_eliminated_monthly": 315,
+    "headline": "Cut your monthly carry by ~$709 (~$8,508/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 10",
+   "inputs": {
+    "condo_value": 958085,
+    "horton_price": 207815,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 63,
+    "condo_insurance_monthly": 273,
+    "condo_tax_annual": 4608,
+    "condo_assessment_monthly": 1096,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 269,
+    "new_insurance_monthly": 248,
+    "new_tax_annual": 5195,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 881438,
+    "sell_costs": 76647,
+    "condo_carry_monthly": 1816,
+    "horton_net_price": 192815,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 950,
+    "cash_pocketed": 683623,
+    "monthly_savings": 866,
+    "annual_savings": 10392,
+    "assessment_risk_eliminated_monthly": 1096,
+    "headline": "Buy your next home for cash and pocket ~$683,623, cut your monthly carry by ~$866 (~$10,392/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 11",
+   "inputs": {
+    "condo_value": 443635,
+    "horton_price": 548035,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 367,
+    "condo_insurance_monthly": 740,
+    "condo_tax_annual": 7065,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 10000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 108,
+    "new_insurance_monthly": 420,
+    "new_tax_annual": 5313,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 417017,
+    "sell_costs": 26618,
+    "condo_carry_monthly": 1696,
+    "horton_net_price": 538035,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 121018,
+    "new_pi_monthly": 826,
+    "new_carry_monthly": 1797,
+    "cash_pocketed": 0,
+    "monthly_savings": -101,
+    "annual_savings": -1212,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$101/mo in carry."
+   }
+  },
+  {
+   "name": "grid 12",
+   "inputs": {
+    "condo_value": 316720,
+    "horton_price": 565595,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 440,
+    "condo_insurance_monthly": 641,
+    "condo_tax_annual": 8732,
+    "condo_assessment_monthly": 874,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 116,
+    "new_insurance_monthly": 288,
+    "new_tax_annual": 3995,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 291382,
+    "sell_costs": 25338,
+    "condo_carry_monthly": 2683,
+    "horton_net_price": 550595,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 259213,
+    "new_pi_monthly": 1711,
+    "new_carry_monthly": 2448,
+    "cash_pocketed": 0,
+    "monthly_savings": 235,
+    "annual_savings": 2820,
+    "assessment_risk_eliminated_monthly": 874,
+    "headline": "Cut your monthly carry by ~$235 (~$2,820/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 13",
+   "inputs": {
+    "condo_value": 1257480,
+    "horton_price": 403620,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 800,
+    "condo_insurance_monthly": 31,
+    "condo_tax_annual": 8472,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 72,
+    "new_insurance_monthly": 237,
+    "new_tax_annual": 4721,
+    "new_loan_rate_annual": 0.06,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 1163169,
+    "sell_costs": 94311,
+    "condo_carry_monthly": 1537,
+    "horton_net_price": 398620,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 702,
+    "cash_pocketed": 759549,
+    "monthly_savings": 835,
+    "annual_savings": 10020,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$759,549, cut your monthly carry by ~$835 (~$10,020/yr)."
+   }
+  },
+  {
+   "name": "grid 14",
+   "inputs": {
+    "condo_value": 842855,
+    "horton_price": 356785,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 876,
+    "condo_insurance_monthly": 388,
+    "condo_tax_annual": 2003,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 0,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 230,
+    "new_insurance_monthly": 157,
+    "new_tax_annual": 5812,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 783855,
+    "sell_costs": 59000,
+    "condo_carry_monthly": 1431,
+    "horton_net_price": 356785,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 871,
+    "cash_pocketed": 422070,
+    "monthly_savings": 560,
+    "annual_savings": 6720,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$422,070, cut your monthly carry by ~$560 (~$6,720/yr)."
+   }
+  },
+  {
+   "name": "grid 15",
+   "inputs": {
+    "condo_value": 1189875,
+    "horton_price": 548765,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 1411,
+    "condo_insurance_monthly": 239,
+    "condo_tax_annual": 9516,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 186,
+    "new_insurance_monthly": 448,
+    "new_tax_annual": 1132,
+    "new_loan_rate_annual": 0.06,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 1106584,
+    "sell_costs": 83291,
+    "condo_carry_monthly": 2443,
+    "horton_net_price": 543765,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 728,
+    "cash_pocketed": 557819,
+    "monthly_savings": 1715,
+    "annual_savings": 20580,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$557,819, cut your monthly carry by ~$1,715 (~$20,580/yr)."
+   }
+  },
+  {
+   "name": "grid 16",
+   "inputs": {
+    "condo_value": 150615,
+    "horton_price": 205195,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 75,
+    "condo_insurance_monthly": 118,
+    "condo_tax_annual": 6168,
+    "condo_assessment_monthly": 121,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 114,
+    "new_insurance_monthly": 541,
+    "new_tax_annual": 907,
+    "new_loan_rate_annual": 0.0675,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 140072,
+    "sell_costs": 10543,
+    "condo_carry_monthly": 828,
+    "horton_net_price": 190195,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 50123,
+    "new_pi_monthly": 444,
+    "new_carry_monthly": 1175,
+    "cash_pocketed": 0,
+    "monthly_savings": -347,
+    "annual_savings": -4164,
+    "assessment_risk_eliminated_monthly": 121,
+    "headline": "Add ~$347/mo in carry, eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 17",
+   "inputs": {
+    "condo_value": 916590,
+    "horton_price": 532905,
+    "mortgage_balance": 342932,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 749,
+    "condo_insurance_monthly": 643,
+    "condo_tax_annual": 6129,
+    "condo_assessment_monthly": 392,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 271,
+    "new_insurance_monthly": 254,
+    "new_tax_annual": 5908,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 500331,
+    "sell_costs": 73327,
+    "condo_carry_monthly": 2295,
+    "horton_net_price": 517905,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 17574,
+    "new_pi_monthly": 131,
+    "new_carry_monthly": 1148,
+    "cash_pocketed": 0,
+    "monthly_savings": 1147,
+    "annual_savings": 13764,
+    "assessment_risk_eliminated_monthly": 392,
+    "headline": "Cut your monthly carry by ~$1,147 (~$13,764/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 18",
+   "inputs": {
+    "condo_value": 762375,
+    "horton_price": 341405,
+    "mortgage_balance": 14685,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 52,
+    "condo_insurance_monthly": 213,
+    "condo_tax_annual": 9928,
+    "condo_assessment_monthly": 17,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 342,
+    "new_insurance_monthly": 423,
+    "new_tax_annual": 1818,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 690512,
+    "sell_costs": 57178,
+    "condo_carry_monthly": 1109,
+    "horton_net_price": 336405,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 917,
+    "cash_pocketed": 354107,
+    "monthly_savings": 192,
+    "annual_savings": 2304,
+    "assessment_risk_eliminated_monthly": 17,
+    "headline": "Buy your next home for cash and pocket ~$354,107, cut your monthly carry by ~$192 (~$2,304/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 19",
+   "inputs": {
+    "condo_value": 324360,
+    "horton_price": 279960,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 1080,
+    "condo_insurance_monthly": 109,
+    "condo_tax_annual": 10781,
+    "condo_assessment_monthly": 966,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 33,
+    "new_insurance_monthly": 510,
+    "new_tax_annual": 5820,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 300033,
+    "sell_costs": 24327,
+    "condo_carry_monthly": 3053,
+    "horton_net_price": 264960,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 1028,
+    "cash_pocketed": 32073,
+    "monthly_savings": 2025,
+    "annual_savings": 24300,
+    "assessment_risk_eliminated_monthly": 966,
+    "headline": "Buy your next home for cash and pocket ~$32,073, cut your monthly carry by ~$2,025 (~$24,300/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 20",
+   "inputs": {
+    "condo_value": 1447455,
+    "horton_price": 386090,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 234,
+    "condo_insurance_monthly": 789,
+    "condo_tax_annual": 5912,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 229,
+    "new_insurance_monthly": 6,
+    "new_tax_annual": 801,
+    "new_loan_rate_annual": 0.0675,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1338896,
+    "sell_costs": 108559,
+    "condo_carry_monthly": 1516,
+    "horton_net_price": 381090,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 302,
+    "cash_pocketed": 957806,
+    "monthly_savings": 1214,
+    "annual_savings": 14568,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$957,806, cut your monthly carry by ~$1,214 (~$14,568/yr)."
+   }
+  },
+  {
+   "name": "grid 21",
+   "inputs": {
+    "condo_value": 435660,
+    "horton_price": 400980,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 1009,
+    "condo_insurance_monthly": 705,
+    "condo_tax_annual": 9545,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 365,
+    "new_insurance_monthly": 77,
+    "new_tax_annual": 2819,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 409520,
+    "sell_costs": 26140,
+    "condo_carry_monthly": 2509,
+    "horton_net_price": 395980,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 677,
+    "cash_pocketed": 10540,
+    "monthly_savings": 1832,
+    "annual_savings": 21984,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$10,540, cut your monthly carry by ~$1,832 (~$21,984/yr)."
+   }
+  },
+  {
+   "name": "grid 22",
+   "inputs": {
+    "condo_value": 214585,
+    "horton_price": 302935,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 1377,
+    "condo_insurance_monthly": 707,
+    "condo_tax_annual": 4815,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 145,
+    "new_insurance_monthly": 553,
+    "new_tax_annual": 4984,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 197418,
+    "sell_costs": 17167,
+    "condo_carry_monthly": 2485,
+    "horton_net_price": 297935,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 100517,
+    "new_pi_monthly": 540,
+    "new_carry_monthly": 1653,
+    "cash_pocketed": 0,
+    "monthly_savings": 832,
+    "annual_savings": 9984,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Cut your monthly carry by ~$832 (~$9,984/yr)."
+   }
+  },
+  {
+   "name": "grid 23",
+   "inputs": {
+    "condo_value": 996020,
+    "horton_price": 208800,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 164,
+    "condo_insurance_monthly": 682,
+    "condo_tax_annual": 2077,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 10000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 39,
+    "new_insurance_monthly": 250,
+    "new_tax_annual": 3496,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 926299,
+    "sell_costs": 69721,
+    "condo_carry_monthly": 1019,
+    "horton_net_price": 198800,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 580,
+    "cash_pocketed": 724499,
+    "monthly_savings": 439,
+    "annual_savings": 5268,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$724,499, cut your monthly carry by ~$439 (~$5,268/yr)."
+   }
+  },
+  {
+   "name": "grid 24",
+   "inputs": {
+    "condo_value": 725355,
+    "horton_price": 425250,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 313,
+    "condo_insurance_monthly": 700,
+    "condo_tax_annual": 8899,
+    "condo_assessment_monthly": 26,
+    "horton_incentive": 10000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 277,
+    "new_insurance_monthly": 394,
+    "new_tax_annual": 1530,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 670953,
+    "sell_costs": 54402,
+    "condo_carry_monthly": 1781,
+    "horton_net_price": 415250,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 799,
+    "cash_pocketed": 250703,
+    "monthly_savings": 982,
+    "annual_savings": 11784,
+    "assessment_risk_eliminated_monthly": 26,
+    "headline": "Buy your next home for cash and pocket ~$250,703, cut your monthly carry by ~$982 (~$11,784/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 25",
+   "inputs": {
+    "condo_value": 210915,
+    "horton_price": 500540,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 1287,
+    "condo_insurance_monthly": 825,
+    "condo_tax_annual": 9654,
+    "condo_assessment_monthly": 966,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 159,
+    "new_insurance_monthly": 466,
+    "new_tax_annual": 2244,
+    "new_loan_rate_annual": 0.06,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 196151,
+    "sell_costs": 14764,
+    "condo_carry_monthly": 3882,
+    "horton_net_price": 495540,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 299389,
+    "new_pi_monthly": 2145,
+    "new_carry_monthly": 2957,
+    "cash_pocketed": 0,
+    "monthly_savings": 925,
+    "annual_savings": 11100,
+    "assessment_risk_eliminated_monthly": 966,
+    "headline": "Cut your monthly carry by ~$925 (~$11,100/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 26",
+   "inputs": {
+    "condo_value": 1463385,
+    "horton_price": 409010,
+    "mortgage_balance": 357153,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 155,
+    "condo_insurance_monthly": 129,
+    "condo_tax_annual": 8489,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 0,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 16,
+    "new_insurance_monthly": 302,
+    "new_tax_annual": 3139,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 1018429,
+    "sell_costs": 87803,
+    "condo_carry_monthly": 991,
+    "horton_net_price": 409010,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 580,
+    "cash_pocketed": 606419,
+    "monthly_savings": 411,
+    "annual_savings": 4932,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$606,419, cut your monthly carry by ~$411 (~$4,932/yr)."
+   }
+  },
+  {
+   "name": "grid 27",
+   "inputs": {
+    "condo_value": 515565,
+    "horton_price": 221755,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 1285,
+    "condo_insurance_monthly": 853,
+    "condo_tax_annual": 3572,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 63,
+    "new_insurance_monthly": 74,
+    "new_tax_annual": 484,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 484631,
+    "sell_costs": 30934,
+    "condo_carry_monthly": 2436,
+    "horton_net_price": 216755,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 177,
+    "cash_pocketed": 264876,
+    "monthly_savings": 2259,
+    "annual_savings": 27108,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$264,876, cut your monthly carry by ~$2,259 (~$27,108/yr)."
+   }
+  },
+  {
+   "name": "grid 28",
+   "inputs": {
+    "condo_value": 1146240,
+    "horton_price": 285340,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 330,
+    "condo_insurance_monthly": 119,
+    "condo_tax_annual": 5497,
+    "condo_assessment_monthly": 442,
+    "horton_incentive": 0,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 366,
+    "new_insurance_monthly": 483,
+    "new_tax_annual": 1629,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 1060272,
+    "sell_costs": 85968,
+    "condo_carry_monthly": 1349,
+    "horton_net_price": 285340,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 985,
+    "cash_pocketed": 771932,
+    "monthly_savings": 364,
+    "annual_savings": 4368,
+    "assessment_risk_eliminated_monthly": 442,
+    "headline": "Buy your next home for cash and pocket ~$771,932, cut your monthly carry by ~$364 (~$4,368/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 29",
+   "inputs": {
+    "condo_value": 657235,
+    "horton_price": 232110,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 1341,
+    "condo_insurance_monthly": 104,
+    "condo_tax_annual": 9786,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 0,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 180,
+    "new_insurance_monthly": 347,
+    "new_tax_annual": 2994,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 617801,
+    "sell_costs": 39434,
+    "condo_carry_monthly": 2261,
+    "horton_net_price": 232110,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 777,
+    "cash_pocketed": 382691,
+    "monthly_savings": 1484,
+    "annual_savings": 17808,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$382,691, cut your monthly carry by ~$1,484 (~$17,808/yr)."
+   }
+  },
+  {
+   "name": "grid 30",
+   "inputs": {
+    "condo_value": 1172835,
+    "horton_price": 488170,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 1022,
+    "condo_insurance_monthly": 668,
+    "condo_tax_annual": 2574,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 32,
+    "new_insurance_monthly": 288,
+    "new_tax_annual": 3277,
+    "new_loan_rate_annual": 0.0675,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1090737,
+    "sell_costs": 82098,
+    "condo_carry_monthly": 1904,
+    "horton_net_price": 483170,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 593,
+    "cash_pocketed": 607567,
+    "monthly_savings": 1311,
+    "annual_savings": 15732,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$607,567, cut your monthly carry by ~$1,311 (~$15,732/yr)."
+   }
+  },
+  {
+   "name": "grid 31",
+   "inputs": {
+    "condo_value": 823035,
+    "horton_price": 560460,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 1342,
+    "condo_insurance_monthly": 161,
+    "condo_tax_annual": 7190,
+    "condo_assessment_monthly": 226,
+    "horton_incentive": 10000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 170,
+    "new_insurance_monthly": 8,
+    "new_tax_annual": 4053,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 761307,
+    "sell_costs": 61728,
+    "condo_carry_monthly": 2328,
+    "horton_net_price": 550460,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 516,
+    "cash_pocketed": 210847,
+    "monthly_savings": 1812,
+    "annual_savings": 21744,
+    "assessment_risk_eliminated_monthly": 226,
+    "headline": "Buy your next home for cash and pocket ~$210,847, cut your monthly carry by ~$1,812 (~$21,744/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 32",
+   "inputs": {
+    "condo_value": 245365,
+    "horton_price": 299005,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 1291,
+    "condo_insurance_monthly": 229,
+    "condo_tax_annual": 8268,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 142,
+    "new_insurance_monthly": 231,
+    "new_tax_annual": 3539,
+    "new_loan_rate_annual": 0.0675,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 228189,
+    "sell_costs": 17176,
+    "condo_carry_monthly": 2209,
+    "horton_net_price": 294005,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 65816,
+    "new_pi_monthly": 427,
+    "new_carry_monthly": 1095,
+    "cash_pocketed": 0,
+    "monthly_savings": 1114,
+    "annual_savings": 13368,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Cut your monthly carry by ~$1,114 (~$13,368/yr)."
+   }
+  },
+  {
+   "name": "grid 33",
+   "inputs": {
+    "condo_value": 1335705,
+    "horton_price": 235165,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 893,
+    "condo_insurance_monthly": 206,
+    "condo_tax_annual": 5824,
+    "condo_assessment_monthly": 370,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 316,
+    "new_insurance_monthly": 276,
+    "new_tax_annual": 4045,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 1235527,
+    "sell_costs": 100178,
+    "condo_carry_monthly": 1954,
+    "horton_net_price": 220165,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 929,
+    "cash_pocketed": 1010362,
+    "monthly_savings": 1025,
+    "annual_savings": 12300,
+    "assessment_risk_eliminated_monthly": 370,
+    "headline": "Buy your next home for cash and pocket ~$1,010,362, cut your monthly carry by ~$1,025 (~$12,300/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 34",
+   "inputs": {
+    "condo_value": 1320390,
+    "horton_price": 563145,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 1212,
+    "condo_insurance_monthly": 425,
+    "condo_tax_annual": 2415,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 0,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 118,
+    "new_insurance_monthly": 362,
+    "new_tax_annual": 1219,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1214759,
+    "sell_costs": 105631,
+    "condo_carry_monthly": 1838,
+    "horton_net_price": 563145,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 582,
+    "cash_pocketed": 651614,
+    "monthly_savings": 1256,
+    "annual_savings": 15072,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$651,614, cut your monthly carry by ~$1,256 (~$15,072/yr)."
+   }
+  },
+  {
+   "name": "grid 35",
+   "inputs": {
+    "condo_value": 483260,
+    "horton_price": 478395,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 819,
+    "condo_insurance_monthly": 395,
+    "condo_tax_annual": 11615,
+    "condo_assessment_monthly": 938,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 48,
+    "new_insurance_monthly": 410,
+    "new_tax_annual": 1656,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 444599,
+    "sell_costs": 38661,
+    "condo_carry_monthly": 3120,
+    "horton_net_price": 473395,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 28796,
+    "new_pi_monthly": 182,
+    "new_carry_monthly": 778,
+    "cash_pocketed": 0,
+    "monthly_savings": 2342,
+    "annual_savings": 28104,
+    "assessment_risk_eliminated_monthly": 938,
+    "headline": "Cut your monthly carry by ~$2,342 (~$28,104/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 36",
+   "inputs": {
+    "condo_value": 1306840,
+    "horton_price": 481710,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 145,
+    "condo_insurance_monthly": 144,
+    "condo_tax_annual": 2045,
+    "condo_assessment_monthly": 4,
+    "horton_incentive": 10000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 80,
+    "new_insurance_monthly": 29,
+    "new_tax_annual": 5182,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1208827,
+    "sell_costs": 98013,
+    "condo_carry_monthly": 463,
+    "horton_net_price": 471710,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 541,
+    "cash_pocketed": 737117,
+    "monthly_savings": -78,
+    "annual_savings": -936,
+    "assessment_risk_eliminated_monthly": 4,
+    "headline": "Buy your next home for cash and pocket ~$737,117, add ~$78/mo in carry, eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 37",
+   "inputs": {
+    "condo_value": 605375,
+    "horton_price": 295710,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 1437,
+    "condo_insurance_monthly": 496,
+    "condo_tax_annual": 8596,
+    "condo_assessment_monthly": 225,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 353,
+    "new_insurance_monthly": 143,
+    "new_tax_annual": 3122,
+    "new_loan_rate_annual": 0.0675,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 556945,
+    "sell_costs": 48430,
+    "condo_carry_monthly": 2874,
+    "horton_net_price": 290710,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 756,
+    "cash_pocketed": 266235,
+    "monthly_savings": 2118,
+    "annual_savings": 25416,
+    "assessment_risk_eliminated_monthly": 225,
+    "headline": "Buy your next home for cash and pocket ~$266,235, cut your monthly carry by ~$2,118 (~$25,416/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 38",
+   "inputs": {
+    "condo_value": 1171040,
+    "horton_price": 299625,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 944,
+    "condo_insurance_monthly": 32,
+    "condo_tax_annual": 6755,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 206,
+    "new_insurance_monthly": 424,
+    "new_tax_annual": 4956,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 1077357,
+    "sell_costs": 93683,
+    "condo_carry_monthly": 1539,
+    "horton_net_price": 294625,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 1043,
+    "cash_pocketed": 782732,
+    "monthly_savings": 496,
+    "annual_savings": 5952,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$782,732, cut your monthly carry by ~$496 (~$5,952/yr)."
+   }
+  },
+  {
+   "name": "grid 39",
+   "inputs": {
+    "condo_value": 371215,
+    "horton_price": 585995,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 431,
+    "condo_insurance_monthly": 173,
+    "condo_tax_annual": 6070,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 362,
+    "new_insurance_monthly": 418,
+    "new_tax_annual": 796,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 345230,
+    "sell_costs": 25985,
+    "condo_carry_monthly": 1110,
+    "horton_net_price": 570995,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 225765,
+    "new_pi_monthly": 1502,
+    "new_carry_monthly": 2348,
+    "cash_pocketed": 0,
+    "monthly_savings": -1238,
+    "annual_savings": -14856,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$1,238/mo in carry."
+   }
+  },
+  {
+   "name": "grid 40",
+   "inputs": {
+    "condo_value": 922020,
+    "horton_price": 254520,
+    "mortgage_balance": 271451,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 255,
+    "condo_insurance_monthly": 40,
+    "condo_tax_annual": 11508,
+    "condo_assessment_monthly": 1116,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 13,
+    "new_insurance_monthly": 98,
+    "new_tax_annual": 2121,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 581417,
+    "sell_costs": 69152,
+    "condo_carry_monthly": 2370,
+    "horton_net_price": 239520,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 288,
+    "cash_pocketed": 341897,
+    "monthly_savings": 2082,
+    "annual_savings": 24984,
+    "assessment_risk_eliminated_monthly": 1116,
+    "headline": "Buy your next home for cash and pocket ~$341,897, cut your monthly carry by ~$2,082 (~$24,984/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 41",
+   "inputs": {
+    "condo_value": 1037825,
+    "horton_price": 262475,
+    "mortgage_balance": 75575,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 886,
+    "condo_insurance_monthly": 816,
+    "condo_tax_annual": 8783,
+    "condo_assessment_monthly": 237,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 186,
+    "new_insurance_monthly": 560,
+    "new_tax_annual": 3733,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 899980,
+    "sell_costs": 62270,
+    "condo_carry_monthly": 2671,
+    "horton_net_price": 247475,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 1057,
+    "cash_pocketed": 652505,
+    "monthly_savings": 1614,
+    "annual_savings": 19368,
+    "assessment_risk_eliminated_monthly": 237,
+    "headline": "Buy your next home for cash and pocket ~$652,505, cut your monthly carry by ~$1,614 (~$19,368/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 42",
+   "inputs": {
+    "condo_value": 1494765,
+    "horton_price": 466845,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 217,
+    "condo_insurance_monthly": 884,
+    "condo_tax_annual": 863,
+    "condo_assessment_monthly": 278,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 303,
+    "new_insurance_monthly": 341,
+    "new_tax_annual": 981,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 1405079,
+    "sell_costs": 89686,
+    "condo_carry_monthly": 1451,
+    "horton_net_price": 461845,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 726,
+    "cash_pocketed": 943234,
+    "monthly_savings": 725,
+    "annual_savings": 8700,
+    "assessment_risk_eliminated_monthly": 278,
+    "headline": "Buy your next home for cash and pocket ~$943,234, cut your monthly carry by ~$725 (~$8,700/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 43",
+   "inputs": {
+    "condo_value": 268215,
+    "horton_price": 206670,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 1351,
+    "condo_insurance_monthly": 719,
+    "condo_tax_annual": 917,
+    "condo_assessment_monthly": 1023,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 166,
+    "new_insurance_monthly": 555,
+    "new_tax_annual": 1158,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 252122,
+    "sell_costs": 16093,
+    "condo_carry_monthly": 3169,
+    "horton_net_price": 191670,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 817,
+    "cash_pocketed": 60452,
+    "monthly_savings": 2352,
+    "annual_savings": 28224,
+    "assessment_risk_eliminated_monthly": 1023,
+    "headline": "Buy your next home for cash and pocket ~$60,452, cut your monthly carry by ~$2,352 (~$28,224/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 44",
+   "inputs": {
+    "condo_value": 884045,
+    "horton_price": 269660,
+    "mortgage_balance": 284137,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 384,
+    "condo_insurance_monthly": 746,
+    "condo_tax_annual": 1088,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 0,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 27,
+    "new_insurance_monthly": 488,
+    "new_tax_annual": 1233,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 538025,
+    "sell_costs": 61883,
+    "condo_carry_monthly": 1221,
+    "horton_net_price": 269660,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 618,
+    "cash_pocketed": 263365,
+    "monthly_savings": 603,
+    "annual_savings": 7236,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$263,365, cut your monthly carry by ~$603 (~$7,236/yr)."
+   }
+  },
+  {
+   "name": "grid 45",
+   "inputs": {
+    "condo_value": 993290,
+    "horton_price": 378155,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 979,
+    "condo_insurance_monthly": 569,
+    "condo_tax_annual": 5402,
+    "condo_assessment_monthly": 450,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 290,
+    "new_insurance_monthly": 560,
+    "new_tax_annual": 3680,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 933693,
+    "sell_costs": 59597,
+    "condo_carry_monthly": 2448,
+    "horton_net_price": 363155,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 1157,
+    "cash_pocketed": 565538,
+    "monthly_savings": 1291,
+    "annual_savings": 15492,
+    "assessment_risk_eliminated_monthly": 450,
+    "headline": "Buy your next home for cash and pocket ~$565,538, cut your monthly carry by ~$1,291 (~$15,492/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 46",
+   "inputs": {
+    "condo_value": 1472760,
+    "horton_price": 564010,
+    "mortgage_balance": 355958,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 335,
+    "condo_insurance_monthly": 634,
+    "condo_tax_annual": 796,
+    "condo_assessment_monthly": 1046,
+    "horton_incentive": 0,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 330,
+    "new_insurance_monthly": 212,
+    "new_tax_annual": 4652,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1013709,
+    "sell_costs": 103093,
+    "condo_carry_monthly": 2081,
+    "horton_net_price": 564010,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 930,
+    "cash_pocketed": 446699,
+    "monthly_savings": 1151,
+    "annual_savings": 13812,
+    "assessment_risk_eliminated_monthly": 1046,
+    "headline": "Buy your next home for cash and pocket ~$446,699, cut your monthly carry by ~$1,151 (~$13,812/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 47",
+   "inputs": {
+    "condo_value": 1102240,
+    "horton_price": 569045,
+    "mortgage_balance": 176195,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 271,
+    "condo_insurance_monthly": 199,
+    "condo_tax_annual": 2257,
+    "condo_assessment_monthly": 567,
+    "horton_incentive": 0,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 259,
+    "new_insurance_monthly": 556,
+    "new_tax_annual": 2789,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 848888,
+    "sell_costs": 77157,
+    "condo_carry_monthly": 1225,
+    "horton_net_price": 569045,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 1047,
+    "cash_pocketed": 279843,
+    "monthly_savings": 178,
+    "annual_savings": 2136,
+    "assessment_risk_eliminated_monthly": 567,
+    "headline": "Buy your next home for cash and pocket ~$279,843, cut your monthly carry by ~$178 (~$2,136/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 48",
+   "inputs": {
+    "condo_value": 1036180,
+    "horton_price": 313560,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.07,
+    "condo_hoa_monthly": 129,
+    "condo_insurance_monthly": 886,
+    "condo_tax_annual": 6567,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 293,
+    "new_insurance_monthly": 181,
+    "new_tax_annual": 2871,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 963647,
+    "sell_costs": 72533,
+    "condo_carry_monthly": 1562,
+    "horton_net_price": 298560,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 713,
+    "cash_pocketed": 660087,
+    "monthly_savings": 849,
+    "annual_savings": 10188,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$660,087, cut your monthly carry by ~$849 (~$10,188/yr)."
+   }
+  },
+  {
+   "name": "grid 49",
+   "inputs": {
+    "condo_value": 1230635,
+    "horton_price": 435990,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 64,
+    "condo_insurance_monthly": 20,
+    "condo_tax_annual": 6804,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 394,
+    "new_insurance_monthly": 28,
+    "new_tax_annual": 5110,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 1132184,
+    "sell_costs": 98451,
+    "condo_carry_monthly": 651,
+    "horton_net_price": 420990,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 848,
+    "cash_pocketed": 711194,
+    "monthly_savings": -197,
+    "annual_savings": -2364,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$711,194, add ~$197/mo in carry."
+   }
+  },
+  {
+   "name": "grid 50",
+   "inputs": {
+    "condo_value": 282880,
+    "horton_price": 283730,
+    "mortgage_balance": 96619,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 573,
+    "condo_insurance_monthly": 334,
+    "condo_tax_annual": 799,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 144,
+    "new_insurance_monthly": 298,
+    "new_tax_annual": 3337,
+    "new_loan_rate_annual": 0.06,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 165045,
+    "sell_costs": 21216,
+    "condo_carry_monthly": 974,
+    "horton_net_price": 278730,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 113685,
+    "new_pi_monthly": 814,
+    "new_carry_monthly": 1534,
+    "cash_pocketed": 0,
+    "monthly_savings": -560,
+    "annual_savings": -6720,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$560/mo in carry."
+   }
+  },
+  {
+   "name": "grid 51",
+   "inputs": {
+    "condo_value": 1217190,
+    "horton_price": 508970,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 370,
+    "condo_insurance_monthly": 343,
+    "condo_tax_annual": 7496,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 10000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 349,
+    "new_insurance_monthly": 538,
+    "new_tax_annual": 2526,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 1125901,
+    "sell_costs": 91289,
+    "condo_carry_monthly": 1338,
+    "horton_net_price": 498970,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 1097,
+    "cash_pocketed": 621931,
+    "monthly_savings": 241,
+    "annual_savings": 2892,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$621,931, cut your monthly carry by ~$241 (~$2,892/yr)."
+   }
+  },
+  {
+   "name": "grid 52",
+   "inputs": {
+    "condo_value": 474610,
+    "horton_price": 487520,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 787,
+    "condo_insurance_monthly": 567,
+    "condo_tax_annual": 2634,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 270,
+    "new_insurance_monthly": 197,
+    "new_tax_annual": 2170,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 15
+   },
+   "result": {
+    "net_proceeds": 446133,
+    "sell_costs": 28477,
+    "condo_carry_monthly": 1574,
+    "horton_net_price": 482520,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 36387,
+    "new_pi_monthly": 317,
+    "new_carry_monthly": 965,
+    "cash_pocketed": 0,
+    "monthly_savings": 609,
+    "annual_savings": 7308,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Cut your monthly carry by ~$609 (~$7,308/yr)."
+   }
+  },
+  {
+   "name": "grid 53",
+   "inputs": {
+    "condo_value": 1276820,
+    "horton_price": 508800,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 1447,
+    "condo_insurance_monthly": 581,
+    "condo_tax_annual": 1615,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 17,
+    "new_insurance_monthly": 347,
+    "new_tax_annual": 928,
+    "new_loan_rate_annual": 0.06,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 1174674,
+    "sell_costs": 102146,
+    "condo_carry_monthly": 2163,
+    "horton_net_price": 493800,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 441,
+    "cash_pocketed": 675874,
+    "monthly_savings": 1722,
+    "annual_savings": 20664,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$675,874, cut your monthly carry by ~$1,722 (~$20,664/yr)."
+   }
+  },
+  {
+   "name": "grid 54",
+   "inputs": {
+    "condo_value": 1040900,
+    "horton_price": 219600,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 1417,
+    "condo_insurance_monthly": 444,
+    "condo_tax_annual": 7208,
+    "condo_assessment_monthly": 558,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 297,
+    "new_insurance_monthly": 585,
+    "new_tax_annual": 68,
+    "new_loan_rate_annual": 0.0725,
+    "new_loan_term_years": 20
+   },
+   "result": {
+    "net_proceeds": 957628,
+    "sell_costs": 83272,
+    "condo_carry_monthly": 3020,
+    "horton_net_price": 204600,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 888,
+    "cash_pocketed": 753028,
+    "monthly_savings": 2132,
+    "annual_savings": 25584,
+    "assessment_risk_eliminated_monthly": 558,
+    "headline": "Buy your next home for cash and pocket ~$753,028, cut your monthly carry by ~$2,132 (~$25,584/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 55",
+   "inputs": {
+    "condo_value": 1222945,
+    "horton_price": 415570,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 1254,
+    "condo_insurance_monthly": 109,
+    "condo_tax_annual": 11632,
+    "condo_assessment_monthly": 975,
+    "horton_incentive": 0,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 185,
+    "new_insurance_monthly": 470,
+    "new_tax_annual": 3375,
+    "new_loan_rate_annual": 0.05,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1125109,
+    "sell_costs": 97836,
+    "condo_carry_monthly": 3307,
+    "horton_net_price": 415570,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 936,
+    "cash_pocketed": 704539,
+    "monthly_savings": 2371,
+    "annual_savings": 28452,
+    "assessment_risk_eliminated_monthly": 975,
+    "headline": "Buy your next home for cash and pocket ~$704,539, cut your monthly carry by ~$2,371 (~$28,452/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 56",
+   "inputs": {
+    "condo_value": 580350,
+    "horton_price": 303575,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 1139,
+    "condo_insurance_monthly": 559,
+    "condo_tax_annual": 10765,
+    "condo_assessment_monthly": 241,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 5000,
+    "new_hoa_monthly": 365,
+    "new_insurance_monthly": 203,
+    "new_tax_annual": 4706,
+    "new_loan_rate_annual": 0.065,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 545529,
+    "sell_costs": 34821,
+    "condo_carry_monthly": 2836,
+    "horton_net_price": 298575,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 960,
+    "cash_pocketed": 241954,
+    "monthly_savings": 1876,
+    "annual_savings": 22512,
+    "assessment_risk_eliminated_monthly": 241,
+    "headline": "Buy your next home for cash and pocket ~$241,954, cut your monthly carry by ~$1,876 (~$22,512/yr), eliminate special-assessment risk."
+   }
+  },
+  {
+   "name": "grid 57",
+   "inputs": {
+    "condo_value": 1143350,
+    "horton_price": 556045,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.08,
+    "condo_hoa_monthly": 87,
+    "condo_insurance_monthly": 77,
+    "condo_tax_annual": 3345,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 5000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 339,
+    "new_insurance_monthly": 104,
+    "new_tax_annual": 1241,
+    "new_loan_rate_annual": 0.06,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1051882,
+    "sell_costs": 91468,
+    "condo_carry_monthly": 443,
+    "horton_net_price": 551045,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 546,
+    "cash_pocketed": 500837,
+    "monthly_savings": -103,
+    "annual_savings": -1236,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$500,837, add ~$103/mo in carry."
+   }
+  },
+  {
+   "name": "grid 58",
+   "inputs": {
+    "condo_value": 1257470,
+    "horton_price": 429985,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.06,
+    "condo_hoa_monthly": 143,
+    "condo_insurance_monthly": 118,
+    "condo_tax_annual": 8463,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 15000,
+    "buy_closing_costs": 0,
+    "new_hoa_monthly": 150,
+    "new_insurance_monthly": 391,
+    "new_tax_annual": 4838,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 1182022,
+    "sell_costs": 75448,
+    "condo_carry_monthly": 966,
+    "horton_net_price": 414985,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 944,
+    "cash_pocketed": 767037,
+    "monthly_savings": 22,
+    "annual_savings": 264,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$767,037, cut your monthly carry by ~$22 (~$264/yr)."
+   }
+  },
+  {
+   "name": "grid 59",
+   "inputs": {
+    "condo_value": 710220,
+    "horton_price": 496910,
+    "mortgage_balance": 0,
+    "sell_cost_rate": 0.075,
+    "condo_hoa_monthly": 78,
+    "condo_insurance_monthly": 547,
+    "condo_tax_annual": 10843,
+    "condo_assessment_monthly": 0,
+    "horton_incentive": 10000,
+    "buy_closing_costs": 3000,
+    "new_hoa_monthly": 387,
+    "new_insurance_monthly": 52,
+    "new_tax_annual": 5116,
+    "new_loan_rate_annual": 0.07,
+    "new_loan_term_years": 30
+   },
+   "result": {
+    "net_proceeds": 656954,
+    "sell_costs": 53266,
+    "condo_carry_monthly": 1529,
+    "horton_net_price": 486910,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 865,
+    "cash_pocketed": 167044,
+    "monthly_savings": 664,
+    "annual_savings": 7968,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$167,044, cut your monthly carry by ~$664 (~$7,968/yr)."
+   }
+  },
+  {
+   "name": "tie 1 (1633352 x 0.0625)",
+   "inputs": {
+    "condo_value": 1633352,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1531268,
+    "sell_costs": 102084,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1231268,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,231,268."
+   }
+  },
+  {
+   "name": "tie 2 (1105528 x 0.0625)",
+   "inputs": {
+    "condo_value": 1105528,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1036432,
+    "sell_costs": 69096,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 736432,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$736,432."
+   }
+  },
+  {
+   "name": "tie 3 (1779448 x 0.0625)",
+   "inputs": {
+    "condo_value": 1779448,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1668232,
+    "sell_costs": 111216,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1368232,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,368,232."
+   }
+  },
+  {
+   "name": "tie 4 (681300 x 0.085)",
+   "inputs": {
+    "condo_value": 681300,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.085
+   },
+   "result": {
+    "net_proceeds": 623389,
+    "sell_costs": 57911,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 323389,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$323,389."
+   }
+  },
+  {
+   "name": "tie 5 (484500 x 0.085)",
+   "inputs": {
+    "condo_value": 484500,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.085
+   },
+   "result": {
+    "net_proceeds": 443318,
+    "sell_costs": 41182,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 143318,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$143,318."
+   }
+  },
+  {
+   "name": "tie 6 (1802808 x 0.0625)",
+   "inputs": {
+    "condo_value": 1802808,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1690132,
+    "sell_costs": 112676,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1390132,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,390,132."
+   }
+  },
+  {
+   "name": "tie 7 (1664140 x 0.075)",
+   "inputs": {
+    "condo_value": 1664140,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1539330,
+    "sell_costs": 124810,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1239330,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,239,330."
+   }
+  },
+  {
+   "name": "tie 8 (366856 x 0.0625)",
+   "inputs": {
+    "condo_value": 366856,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 343928,
+    "sell_costs": 22928,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 43928,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$43,928."
+   }
+  },
+  {
+   "name": "tie 9 (1389180 x 0.075)",
+   "inputs": {
+    "condo_value": 1389180,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1284992,
+    "sell_costs": 104188,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 984992,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$984,992."
+   }
+  },
+  {
+   "name": "tie 10 (376872 x 0.0625)",
+   "inputs": {
+    "condo_value": 376872,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 353318,
+    "sell_costs": 23554,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 53318,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$53,318."
+   }
+  },
+  {
+   "name": "tie 11 (146744 x 0.0625)",
+   "inputs": {
+    "condo_value": 146744,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 137572,
+    "sell_costs": 9172,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 162428,
+    "new_pi_monthly": 1054,
+    "new_carry_monthly": 1054,
+    "cash_pocketed": 0,
+    "monthly_savings": -1054,
+    "annual_savings": -12648,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$1,054/mo in carry."
+   }
+  },
+  {
+   "name": "tie 12 (1740300 x 0.085)",
+   "inputs": {
+    "condo_value": 1740300,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.085
+   },
+   "result": {
+    "net_proceeds": 1592374,
+    "sell_costs": 147926,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1292374,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,292,374."
+   }
+  },
+  {
+   "name": "tie 13 (1452552 x 0.0625)",
+   "inputs": {
+    "condo_value": 1452552,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1361768,
+    "sell_costs": 90784,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1061768,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,061,768."
+   }
+  },
+  {
+   "name": "tie 14 (657816 x 0.0625)",
+   "inputs": {
+    "condo_value": 657816,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 616702,
+    "sell_costs": 41114,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 316702,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$316,702."
+   }
+  },
+  {
+   "name": "tie 15 (1016904 x 0.0625)",
+   "inputs": {
+    "condo_value": 1016904,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 953348,
+    "sell_costs": 63556,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 653348,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$653,348."
+   }
+  },
+  {
+   "name": "tie 16 (323720 x 0.0625)",
+   "inputs": {
+    "condo_value": 323720,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 303488,
+    "sell_costs": 20232,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 3488,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$3,488."
+   }
+  },
+  {
+   "name": "tie 17 (1128216 x 0.0625)",
+   "inputs": {
+    "condo_value": 1128216,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1057702,
+    "sell_costs": 70514,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 757702,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$757,702."
+   }
+  },
+  {
+   "name": "tie 18 (1722728 x 0.0625)",
+   "inputs": {
+    "condo_value": 1722728,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1615058,
+    "sell_costs": 107670,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1315058,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,315,058."
+   }
+  },
+  {
+   "name": "tie 19 (1345420 x 0.075)",
+   "inputs": {
+    "condo_value": 1345420,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1244514,
+    "sell_costs": 100906,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 944514,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$944,514."
+   }
+  },
+  {
+   "name": "tie 20 (226984 x 0.0625)",
+   "inputs": {
+    "condo_value": 226984,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 212798,
+    "sell_costs": 14186,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 87202,
+    "new_pi_monthly": 566,
+    "new_carry_monthly": 566,
+    "cash_pocketed": 0,
+    "monthly_savings": -566,
+    "annual_savings": -6792,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$566/mo in carry."
+   }
+  },
+  {
+   "name": "tie 21 (1521160 x 0.0625)",
+   "inputs": {
+    "condo_value": 1521160,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1426088,
+    "sell_costs": 95072,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1126088,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,126,088."
+   }
+  },
+  {
+   "name": "tie 22 (1735020 x 0.075)",
+   "inputs": {
+    "condo_value": 1735020,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1604894,
+    "sell_costs": 130126,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1304894,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,304,894."
+   }
+  },
+  {
+   "name": "tie 23 (427480 x 0.0625)",
+   "inputs": {
+    "condo_value": 427480,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 400762,
+    "sell_costs": 26718,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 100762,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$100,762."
+   }
+  },
+  {
+   "name": "tie 24 (429160 x 0.0625)",
+   "inputs": {
+    "condo_value": 429160,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 402338,
+    "sell_costs": 26822,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 102338,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$102,338."
+   }
+  },
+  {
+   "name": "tie 25 (668552 x 0.0625)",
+   "inputs": {
+    "condo_value": 668552,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 626768,
+    "sell_costs": 41784,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 326768,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$326,768."
+   }
+  },
+  {
+   "name": "tie 26 (1423304 x 0.0625)",
+   "inputs": {
+    "condo_value": 1423304,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1334348,
+    "sell_costs": 88956,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1034348,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,034,348."
+   }
+  },
+  {
+   "name": "tie 27 (1632904 x 0.0625)",
+   "inputs": {
+    "condo_value": 1632904,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1530848,
+    "sell_costs": 102056,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1230848,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,230,848."
+   }
+  },
+  {
+   "name": "tie 28 (140792 x 0.0625)",
+   "inputs": {
+    "condo_value": 140792,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 131992,
+    "sell_costs": 8800,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 168008,
+    "new_pi_monthly": 1090,
+    "new_carry_monthly": 1090,
+    "cash_pocketed": 0,
+    "monthly_savings": -1090,
+    "annual_savings": -13080,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$1,090/mo in carry."
+   }
+  },
+  {
+   "name": "tie 29 (1490660 x 0.075)",
+   "inputs": {
+    "condo_value": 1490660,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1378860,
+    "sell_costs": 111800,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1078860,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,078,860."
+   }
+  },
+  {
+   "name": "tie 30 (1427940 x 0.075)",
+   "inputs": {
+    "condo_value": 1427940,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1320844,
+    "sell_costs": 107096,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1020844,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,020,844."
+   }
+  },
+  {
+   "name": "tie 31 (1402872 x 0.0625)",
+   "inputs": {
+    "condo_value": 1402872,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1315192,
+    "sell_costs": 87680,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1015192,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,015,192."
+   }
+  },
+  {
+   "name": "tie 32 (1144136 x 0.0625)",
+   "inputs": {
+    "condo_value": 1144136,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1072628,
+    "sell_costs": 71508,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 772628,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$772,628."
+   }
+  },
+  {
+   "name": "tie 33 (685384 x 0.0625)",
+   "inputs": {
+    "condo_value": 685384,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 642548,
+    "sell_costs": 42836,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 342548,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$342,548."
+   }
+  },
+  {
+   "name": "tie 34 (1249784 x 0.0625)",
+   "inputs": {
+    "condo_value": 1249784,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1171672,
+    "sell_costs": 78112,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 871672,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$871,672."
+   }
+  },
+  {
+   "name": "tie 35 (1487528 x 0.0625)",
+   "inputs": {
+    "condo_value": 1487528,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1394558,
+    "sell_costs": 92970,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1094558,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,094,558."
+   }
+  },
+  {
+   "name": "tie 36 (1179240 x 0.0625)",
+   "inputs": {
+    "condo_value": 1179240,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1105538,
+    "sell_costs": 73702,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 805538,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$805,538."
+   }
+  },
+  {
+   "name": "tie 37 (131816 x 0.0625)",
+   "inputs": {
+    "condo_value": 131816,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 123578,
+    "sell_costs": 8238,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 176422,
+    "new_pi_monthly": 1144,
+    "new_carry_monthly": 1144,
+    "cash_pocketed": 0,
+    "monthly_savings": -1144,
+    "annual_savings": -13728,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$1,144/mo in carry."
+   }
+  },
+  {
+   "name": "tie 38 (254024 x 0.0625)",
+   "inputs": {
+    "condo_value": 254024,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 238148,
+    "sell_costs": 15876,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 61852,
+    "new_pi_monthly": 401,
+    "new_carry_monthly": 401,
+    "cash_pocketed": 0,
+    "monthly_savings": -401,
+    "annual_savings": -4812,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$401/mo in carry."
+   }
+  },
+  {
+   "name": "tie 39 (1894500 x 0.085)",
+   "inputs": {
+    "condo_value": 1894500,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.085
+   },
+   "result": {
+    "net_proceeds": 1733468,
+    "sell_costs": 161032,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1433468,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,433,468."
+   }
+  },
+  {
+   "name": "tie 40 (1447860 x 0.075)",
+   "inputs": {
+    "condo_value": 1447860,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1339270,
+    "sell_costs": 108590,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1039270,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,039,270."
+   }
+  },
+  {
+   "name": "tie 41 (1755740 x 0.075)",
+   "inputs": {
+    "condo_value": 1755740,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1624060,
+    "sell_costs": 131680,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1324060,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,324,060."
+   }
+  },
+  {
+   "name": "tie 42 (951064 x 0.0625)",
+   "inputs": {
+    "condo_value": 951064,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 891622,
+    "sell_costs": 59442,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 591622,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$591,622."
+   }
+  },
+  {
+   "name": "tie 43 (1526440 x 0.0625)",
+   "inputs": {
+    "condo_value": 1526440,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1431038,
+    "sell_costs": 95402,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1131038,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,131,038."
+   }
+  },
+  {
+   "name": "tie 44 (987400 x 0.0675)",
+   "inputs": {
+    "condo_value": 987400,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0675
+   },
+   "result": {
+    "net_proceeds": 920750,
+    "sell_costs": 66650,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 620750,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$620,750."
+   }
+  },
+  {
+   "name": "tie 45 (870020 x 0.075)",
+   "inputs": {
+    "condo_value": 870020,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 804768,
+    "sell_costs": 65252,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 504768,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$504,768."
+   }
+  },
+  {
+   "name": "tie 46 (490376 x 0.0625)",
+   "inputs": {
+    "condo_value": 490376,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 459728,
+    "sell_costs": 30648,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 159728,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$159,728."
+   }
+  },
+  {
+   "name": "tie 47 (1629368 x 0.0625)",
+   "inputs": {
+    "condo_value": 1629368,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1527532,
+    "sell_costs": 101836,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1227532,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,227,532."
+   }
+  },
+  {
+   "name": "tie 48 (387304 x 0.0625)",
+   "inputs": {
+    "condo_value": 387304,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 363098,
+    "sell_costs": 24206,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 63098,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$63,098."
+   }
+  },
+  {
+   "name": "tie 49 (1456460 x 0.075)",
+   "inputs": {
+    "condo_value": 1456460,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1347226,
+    "sell_costs": 109234,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1047226,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,047,226."
+   }
+  },
+  {
+   "name": "tie 50 (795480 x 0.0625)",
+   "inputs": {
+    "condo_value": 795480,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 745762,
+    "sell_costs": 49718,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 445762,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$445,762."
+   }
+  },
+  {
+   "name": "tie 51 (1672952 x 0.0625)",
+   "inputs": {
+    "condo_value": 1672952,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1568392,
+    "sell_costs": 104560,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1268392,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,268,392."
+   }
+  },
+  {
+   "name": "tie 52 (1799848 x 0.0625)",
+   "inputs": {
+    "condo_value": 1799848,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1687358,
+    "sell_costs": 112490,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1387358,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,387,358."
+   }
+  },
+  {
+   "name": "tie 53 (1043000 x 0.0725)",
+   "inputs": {
+    "condo_value": 1043000,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0725
+   },
+   "result": {
+    "net_proceeds": 967382,
+    "sell_costs": 75618,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 667382,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$667,382."
+   }
+  },
+  {
+   "name": "tie 54 (1148180 x 0.075)",
+   "inputs": {
+    "condo_value": 1148180,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1062066,
+    "sell_costs": 86114,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 762066,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$762,066."
+   }
+  },
+  {
+   "name": "tie 55 (1059944 x 0.0625)",
+   "inputs": {
+    "condo_value": 1059944,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 993698,
+    "sell_costs": 66246,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 693698,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$693,698."
+   }
+  },
+  {
+   "name": "tie 56 (819192 x 0.0625)",
+   "inputs": {
+    "condo_value": 819192,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 767992,
+    "sell_costs": 51200,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 467992,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$467,992."
+   }
+  },
+  {
+   "name": "tie 57 (1207928 x 0.0625)",
+   "inputs": {
+    "condo_value": 1207928,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1132432,
+    "sell_costs": 75496,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 832432,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$832,432."
+   }
+  },
+  {
+   "name": "tie 58 (292440 x 0.0625)",
+   "inputs": {
+    "condo_value": 292440,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 274162,
+    "sell_costs": 18278,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 25838,
+    "new_pi_monthly": 168,
+    "new_carry_monthly": 168,
+    "cash_pocketed": 0,
+    "monthly_savings": -168,
+    "annual_savings": -2016,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$168/mo in carry."
+   }
+  },
+  {
+   "name": "tie 59 (1353800 x 0.0625)",
+   "inputs": {
+    "condo_value": 1353800,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1269188,
+    "sell_costs": 84612,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 969188,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$969,188."
+   }
+  },
+  {
+   "name": "tie 60 (298900 x 0.075)",
+   "inputs": {
+    "condo_value": 298900,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 276482,
+    "sell_costs": 22418,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 23518,
+    "new_pi_monthly": 153,
+    "new_carry_monthly": 153,
+    "cash_pocketed": 0,
+    "monthly_savings": -153,
+    "annual_savings": -1836,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$153/mo in carry."
+   }
+  },
+  {
+   "name": "tie 61 (1033016 x 0.0625)",
+   "inputs": {
+    "condo_value": 1033016,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 968452,
+    "sell_costs": 64564,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 668452,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$668,452."
+   }
+  },
+  {
+   "name": "tie 62 (854300 x 0.085)",
+   "inputs": {
+    "condo_value": 854300,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.085
+   },
+   "result": {
+    "net_proceeds": 781684,
+    "sell_costs": 72616,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 481684,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$481,684."
+   }
+  },
+  {
+   "name": "tie 63 (1169304 x 0.0625)",
+   "inputs": {
+    "condo_value": 1169304,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1096222,
+    "sell_costs": 73082,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 796222,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$796,222."
+   }
+  },
+  {
+   "name": "tie 64 (276008 x 0.0625)",
+   "inputs": {
+    "condo_value": 276008,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 258758,
+    "sell_costs": 17250,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 41242,
+    "new_pi_monthly": 267,
+    "new_carry_monthly": 267,
+    "cash_pocketed": 0,
+    "monthly_savings": -267,
+    "annual_savings": -3204,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$267/mo in carry."
+   }
+  },
+  {
+   "name": "tie 65 (1329384 x 0.0625)",
+   "inputs": {
+    "condo_value": 1329384,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1246298,
+    "sell_costs": 83086,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 946298,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$946,298."
+   }
+  },
+  {
+   "name": "tie 66 (729096 x 0.0625)",
+   "inputs": {
+    "condo_value": 729096,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 683528,
+    "sell_costs": 45568,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 383528,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$383,528."
+   }
+  },
+  {
+   "name": "tie 67 (785896 x 0.0625)",
+   "inputs": {
+    "condo_value": 785896,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 736778,
+    "sell_costs": 49118,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 436778,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$436,778."
+   }
+  },
+  {
+   "name": "tie 68 (1965432 x 0.0625)",
+   "inputs": {
+    "condo_value": 1965432,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1842592,
+    "sell_costs": 122840,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1542592,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,542,592."
+   }
+  },
+  {
+   "name": "tie 69 (805500 x 0.085)",
+   "inputs": {
+    "condo_value": 805500,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.085
+   },
+   "result": {
+    "net_proceeds": 737032,
+    "sell_costs": 68468,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 437032,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$437,032."
+   }
+  },
+  {
+   "name": "tie 70 (398020 x 0.075)",
+   "inputs": {
+    "condo_value": 398020,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 368168,
+    "sell_costs": 29852,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 68168,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$68,168."
+   }
+  },
+  {
+   "name": "tie 71 (842584 x 0.0625)",
+   "inputs": {
+    "condo_value": 842584,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 789922,
+    "sell_costs": 52662,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 489922,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$489,922."
+   }
+  },
+  {
+   "name": "tie 72 (1511992 x 0.0625)",
+   "inputs": {
+    "condo_value": 1511992,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1417492,
+    "sell_costs": 94500,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1117492,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,117,492."
+   }
+  },
+  {
+   "name": "tie 73 (1034344 x 0.0625)",
+   "inputs": {
+    "condo_value": 1034344,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 969698,
+    "sell_costs": 64646,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 669698,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$669,698."
+   }
+  },
+  {
+   "name": "tie 74 (806700 x 0.085)",
+   "inputs": {
+    "condo_value": 806700,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.085
+   },
+   "result": {
+    "net_proceeds": 738130,
+    "sell_costs": 68570,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 438130,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$438,130."
+   }
+  },
+  {
+   "name": "tie 75 (315800 x 0.0675)",
+   "inputs": {
+    "condo_value": 315800,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0675
+   },
+   "result": {
+    "net_proceeds": 294484,
+    "sell_costs": 21316,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": false,
+    "new_loan_amount": 5516,
+    "new_pi_monthly": 36,
+    "new_carry_monthly": 36,
+    "cash_pocketed": 0,
+    "monthly_savings": -36,
+    "annual_savings": -432,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Add ~$36/mo in carry."
+   }
+  },
+  {
+   "name": "tie 76 (1671000 x 0.0625)",
+   "inputs": {
+    "condo_value": 1671000,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 1566562,
+    "sell_costs": 104438,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1266562,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,266,562."
+   }
+  },
+  {
+   "name": "tie 77 (1937260 x 0.075)",
+   "inputs": {
+    "condo_value": 1937260,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 1791966,
+    "sell_costs": 145294,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 1491966,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$1,491,966."
+   }
+  },
+  {
+   "name": "tie 78 (834060 x 0.075)",
+   "inputs": {
+    "condo_value": 834060,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.075
+   },
+   "result": {
+    "net_proceeds": 771506,
+    "sell_costs": 62554,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 471506,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$471,506."
+   }
+  },
+  {
+   "name": "tie 79 (644840 x 0.0625)",
+   "inputs": {
+    "condo_value": 644840,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 604538,
+    "sell_costs": 40302,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 304538,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$304,538."
+   }
+  },
+  {
+   "name": "tie 80 (810552 x 0.0625)",
+   "inputs": {
+    "condo_value": 810552,
+    "horton_price": 300000,
+    "sell_cost_rate": 0.0625
+   },
+   "result": {
+    "net_proceeds": 759892,
+    "sell_costs": 50660,
+    "condo_carry_monthly": 0,
+    "horton_net_price": 300000,
+    "cash_buy_feasible": true,
+    "new_loan_amount": 0,
+    "new_pi_monthly": 0,
+    "new_carry_monthly": 0,
+    "cash_pocketed": 459892,
+    "monthly_savings": 0,
+    "annual_savings": 0,
+    "assessment_risk_eliminated_monthly": 0,
+    "headline": "Buy your next home for cash and pocket ~$459,892."
+   }
+  }
+ ],
+ "monthlyPayment": [
+  {
+   "principal": 100000,
+   "rate": 0.06,
+   "years": 30,
+   "expected": 600
+  },
+  {
+   "principal": 0,
+   "rate": 0.06,
+   "years": 30,
+   "expected": 0
+  },
+  {
+   "principal": -500,
+   "rate": 0.06,
+   "years": 30,
+   "expected": 0
+  },
+  {
+   "principal": 120000,
+   "rate": 0.0,
+   "years": 30,
+   "expected": 333
+  },
+  {
+   "principal": 145000,
+   "rate": 0.0675,
+   "years": 30,
+   "expected": 940
+  },
+  {
+   "principal": 250000,
+   "rate": 0.07,
+   "years": 15,
+   "expected": 2247
+  },
+  {
+   "principal": 333333,
+   "rate": 0.0525,
+   "years": 20,
+   "expected": 2246
+  },
+  {
+   "principal": 1,
+   "rate": 0.06,
+   "years": 30,
+   "expected": 0
+  },
+  {
+   "principal": 500000,
+   "rate": 0.0725,
+   "years": 30,
+   "expected": 3411
+  }
+ ]
+}

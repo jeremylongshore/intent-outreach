@@ -131,3 +131,20 @@ export function getSecret(name: string): string {
 export function hasSecret(name: string): boolean {
   return resolve(name) !== undefined;
 }
+
+/**
+ * Every configured variant of a key, in a deterministic order: the bare name
+ * first, then labelled variants `NAME__LABEL` (e.g. APOLLO_API_KEY__TEAM,
+ * APOLLO_API_KEY__PERSONAL) sorted by label. From the environment and the
+ * local secrets file, unset values excluded.
+ */
+export function secretVariants(name: string): { envName: string; label: string }[] {
+  const prefix = `${name}__`;
+  const names = new Set<string>();
+  for (const k of [...Object.keys(process.env), ...Object.keys(loadLocalFile())]) {
+    if ((k === name || (k.startsWith(prefix) && /^[A-Z0-9_]+$/.test(k.slice(prefix.length)))) && resolve(k) !== undefined) names.add(k);
+  }
+  return [...names]
+    .map((envName) => ({ envName, label: envName === name ? "default" : envName.slice(prefix.length).toLowerCase() }))
+    .sort((a, b) => (a.envName === name ? -1 : b.envName === name ? 1 : a.label.localeCompare(b.label)));
+}

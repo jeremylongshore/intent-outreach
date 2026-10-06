@@ -1,14 +1,23 @@
 /**
- * evals/supported.ts — the approved {provider, model} pairs (D4 eval gate).
+ * evals/supported.ts — the approved {provider, model, pack} records (D4 eval gate).
  *
- * The gate is per MODEL, not per provider: a model is approved when a keyed run
- * of the eval harness (`evals/run.ts`, repeat ≥3, every fixture passing every
- * run) wrote a passing record under `evals/results/`. A provider is supported
- * (pipeline_core/providers.ts SUPPORTED_PROVIDERS) iff it has ≥1 entry here.
+ * The gate is per MODEL and per PACK, not per provider: a model is approved for
+ * a pack when a keyed run of the eval harness on that pack's fixtures
+ * (`evals/run.ts --pack <id>`, repeat ≥3, every fixture passing every run)
+ * wrote a passing record under `evals/results/`. A pass on one pack says
+ * nothing about another: the residential seams have different prompts, rules
+ * and failure modes from the B2B ones.
+ *
+ * A provider is supported (pipeline_core/providers.ts SUPPORTED_PROVIDERS) iff
+ * it has ≥1 `b2b-sdr` entry here. That derivation is unchanged by the pack
+ * key: an approval on another pack never switches a provider on for B2B.
  *
  * Fields:
  *   provider    — "anthropic" | "openai" | "xai" | "minimax".
  *   model       — exact model id the record was produced with.
+ *   pack        — the pack whose fixtures the record covers ("b2b-sdr",
+ *                 "residential-re"). Entries written before packs existed are
+ *                 "b2b-sdr".
  *   resultFile  — path (repo-relative) of the passing result record, or null.
  *   verified    — true ONLY when resultFile exists and its verdict is "pass".
  *                 tests/eval-gate.test.ts enforces this.
@@ -27,6 +36,8 @@ import type { ProviderName } from "../pipeline_core/providers.js";
 export interface ApprovedModel {
   provider: ProviderName;
   model: string;
+  /** The pack the approval covers (see EVAL_PACKS). */
+  pack: string;
   resultFile: string | null;
   verified: boolean;
   evidence: string;
@@ -39,6 +50,7 @@ export const APPROVED_MODELS: readonly ApprovedModel[] =
   {
     "provider": "anthropic",
     "model": "claude-sonnet-4-6",
+    "pack": "b2b-sdr",
     "resultFile": null,
     "verified": false,
     "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
@@ -46,6 +58,7 @@ export const APPROVED_MODELS: readonly ApprovedModel[] =
   {
     "provider": "openai",
     "model": "gpt-4o",
+    "pack": "b2b-sdr",
     "resultFile": null,
     "verified": false,
     "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
@@ -53,6 +66,7 @@ export const APPROVED_MODELS: readonly ApprovedModel[] =
   {
     "provider": "minimax",
     "model": "MiniMax-M3",
+    "pack": "b2b-sdr",
     "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
     "verified": true,
     "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
@@ -61,16 +75,34 @@ export const APPROVED_MODELS: readonly ApprovedModel[] =
 // END APPROVED_MODELS
 ;
 
-/** Providers with at least one approved model. */
-export function supportedProviderNames(entries: readonly ApprovedModel[] = APPROVED_MODELS): ProviderName[] {
-  return [...new Set(entries.map((e) => e.provider))];
+/** The pack an approval covers when none is named: the original B2B SDR pack. */
+export const DEFAULT_EVAL_PACK = "b2b-sdr";
+
+/** Packs the harness has fixtures for (evals/run.ts --pack). */
+export const EVAL_PACKS = ["b2b-sdr", "residential-re"] as const;
+export type EvalPack = (typeof EVAL_PACKS)[number];
+
+export function isEvalPack(x: string): x is EvalPack {
+  return (EVAL_PACKS as readonly string[]).includes(x);
 }
 
-/** The approved entry for an exact {provider, model} pair, if any. */
+/**
+ * Providers with at least one approved model FOR `pack` (default b2b-sdr, which
+ * is what pipeline_core/providers.ts SUPPORTED_PROVIDERS is derived from).
+ */
+export function supportedProviderNames(
+  entries: readonly ApprovedModel[] = APPROVED_MODELS,
+  pack: string = DEFAULT_EVAL_PACK,
+): ProviderName[] {
+  return [...new Set(entries.filter((e) => e.pack === pack).map((e) => e.provider))];
+}
+
+/** The approved entry for an exact {provider, model, pack}, if any (pack default b2b-sdr). */
 export function approvedEntry(
   provider: ProviderName,
   model: string,
   entries: readonly ApprovedModel[] = APPROVED_MODELS,
+  pack: string = DEFAULT_EVAL_PACK,
 ): ApprovedModel | undefined {
-  return entries.find((e) => e.provider === provider && e.model === model);
+  return entries.find((e) => e.provider === provider && e.model === model && e.pack === pack);
 }

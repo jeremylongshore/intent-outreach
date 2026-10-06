@@ -1,0 +1,383 @@
+{
+  "displayFieldName": "REFERENCE",
+  "fieldAliases": {
+    "OBJECTID": "OBJECTID",
+    "REFERENCE": "REFERENCE",
+    "REFNUM": "REFNUM",
+    "OWNER": "OWNER",
+    "MAILADDRESS1": "MAILING ADDRESS1",
+    "MAILADDRESS2": "MAILING ADDRESS2",
+    "MAILCITY": "MAILING CITY",
+    "MAILSTATE": "MAILING STATE",
+    "MAILZIP": "MAILING ZIP",
+    "MAILCOUNTRY": "MAILING COUNTRY",
+    "YEAR_": "YEAR",
+    "CONTROLNO": "CONTROLNO",
+    "SITEADDR": "SITE ADDRESS",
+    "CITY": "CITY",
+    "ZIP": "ZIP",
+    "SUBDIVCONDO": "SUBDIVCONDO",
+    "SUBDIVISION": "SUBDIVISION",
+    "LEGAL1": "LEGAL1",
+    "LEGAL2": "LEGAL2",
+    "LEGAL3": "LEGAL3",
+    "LEGAL4": "LEGAL4",
+    "LEGAL5": "LEGAL5",
+    "LEGAL6": "LEGAL6",
+    "CONFCD": "CONFCD",
+    "CITYCD": "CITYCD",
+    "TIFCD": "TIFCD",
+    "DORCD": "DORCD",
+    "DELINQCD": "DELINQCD",
+    "AGEXEMPT": "AGEXEMPT",
+    "CURRASDLAND": "CURRASDLAND",
+    "CURRASDBLDG": "CURRASDBLDG",
+    "CURRASDXF": "CURRASDXF",
+    "CURRMKT": "CURRMKT",
+    "PREVASDLAND": "PREVASDLAND",
+    "PREVASDBLDG": "PREVASDBLDG",
+    "PREVASDXF": "PREVASDXF",
+    "PREVMKT": "PREVMKT",
+    "SOHYEAR": "SOHYEAR",
+    "CAPPEDVALUE": "CAPPEDVALUE",
+    "OWNERSPLITPCT": "OWNERSPLITPCT",
+    "LANDAPPRAIS": "LANDAPPRAIS",
+    "LANDTYPE": "LANDTYPE",
+    "LANDSIZE": "LANDSIZE",
+    "MAPNUM": "MAPNUM",
+    "EXEMPTION": "EXEMPTION",
+    "LINK": "LINK",
+    "Shape.area": "Shape.area",
+    "Shape.len": "Shape.len"
+  },
+  "fields": [
+    {
+      "name": "OBJECTID",
+      "type": "esriFieldTypeOID",
+      "alias": "OBJECTID"
+    },
+    {
+      "name": "REFERENCE",
+      "type": "esriFieldTypeString",
+      "alias": "REFERENCE",
+      "length": 16
+    },
+    {
+      "name": "REFNUM",
+      "type": "esriFieldTypeString",
+      "alias": "REFNUM",
+      "length": 30
+    },
+    {
+      "name": "OWNER",
+      "type": "esriFieldTypeString",
+      "alias": "OWNER",
+      "length": 50
+    },
+    {
+      "name": "MAILADDRESS1",
+      "type": "esriFieldTypeString",
+      "alias": "MAILING ADDRESS1",
+      "length": 50
+    },
+    {
+      "name": "MAILADDRESS2",
+      "type": "esriFieldTypeString",
+      "alias": "MAILING ADDRESS2",
+      "length": 50
+    },
+    {
+      "name": "MAILCITY",
+      "type": "esriFieldTypeString",
+      "alias": "MAILING CITY",
+      "length": 50
+    },
+    {
+      "name": "MAILSTATE",
+      "type": "esriFieldTypeString",
+      "alias": "MAILING STATE",
+      "length": 2
+    },
+    {
+      "name": "MAILZIP",
+      "type": "esriFieldTypeString",
+      "alias": "MAILING ZIP",
+      "length": 10
+    },
+    {
+      "name": "MAILCOUNTRY",
+      "type": "esriFieldTypeString",
+      "alias": "MAILING COUNTRY",
+      "length": 50
+    },
+    {
+      "name": "YEAR_",
+      "type": "esriFieldTypeString",
+      "alias": "YEAR",
+      "length": 4
+    },
+    {
+      "name": "CONTROLNO",
+      "type": "esriFieldTypeString",
+      "alias": "CONTROLNO",
+      "length": 23
+    },
+    {
+      "name": "SITEADDR",
+      "type": "esriFieldTypeString",
+      "alias": "SITE ADDRESS",
+      "length": 500
+    },
+    {
+      "name": "CITY",
+      "type": "esriFieldTypeString",
+      "alias": "CITY",
+      "length": 100
+    },
+    {
+      "name": "ZIP",
+      "type": "esriFieldTypeString",
+      "alias": "ZIP",
+      "length": 50
+    },
+    {
+      "name": "SUBDIVCONDO",
+      "type": "esriFieldTypeString",
+      "alias": "SUBDIVCONDO",
+      "length": 15
+    },
+    {
+      "name": "SUBDIVISION",
+      "type": "esriFieldTypeString",
+      "alias": "SUBDIVISION",
+      "length": 50
+    },
+    {
+      "name": "LEGAL1",
+      "type": "esriFieldTypeString",
+      "alias": "LEGAL1",
+      "length": 50
+    },
+    {
+      "name": "LEGAL2",
+      "type": "esriFieldTypeString",
+      "alias": "LEGAL2",
+      "length": 50
+    },
+    {
+      "name": "LEGAL3",
+      "type": "esriFieldTypeString",
+      "alias": "LEGAL3",
+      "length": 50
+    },
+    {
+      "name": "LEGAL4",
+      "type": "esriFieldTypeString",
+      "alias": "LEGAL4",
+      "length": 50
+    },
+    {
+      "name": "LEGAL5",
+      "type": "esriFieldTypeString",
+      "alias": "LEGAL5",
+      "length": 50
+    },
+    {
+      "name": "LEGAL6",
+      "type": "esriFieldTypeString",
+      "alias": "LEGAL6",
+      "length": 50
+    },
+    {
+      "name": "CONFCD",
+      "type": "esriFieldTypeString",
+      "alias": "CONFCD",
+      "length": 1
+    },
+    {
+      "name": "CITYCD",
+      "type": "esriFieldTypeString",
+      "alias": "CITYCD",
+      "length": 6
+    },
+    {
+      "name": "TIFCD",
+      "type": "esriFieldTypeString",
+      "alias": "TIFCD",
+      "length": 10
+    },
+    {
+      "name": "DORCD",
+      "type": "esriFieldTypeString",
+      "alias": "DORCD",
+      "length": 16
+    },
+    {
+      "name": "DELINQCD",
+      "type": "esriFieldTypeString",
+      "alias": "DELINQCD",
+      "length": 1
+    },
+    {
+      "name": "AGEXEMPT",
+      "type": "esriFieldTypeString",
+      "alias": "AGEXEMPT",
+      "length": 1
+    },
+    {
+      "name": "CURRASDLAND",
+      "type": "esriFieldTypeDouble",
+      "alias": "CURRASDLAND"
+    },
+    {
+      "name": "CURRASDBLDG",
+      "type": "esriFieldTypeDouble",
+      "alias": "CURRASDBLDG"
+    },
+    {
+      "name": "CURRASDXF",
+      "type": "esriFieldTypeDouble",
+      "alias": "CURRASDXF"
+    },
+    {
+      "name": "CURRMKT",
+      "type": "esriFieldTypeDouble",
+      "alias": "CURRMKT"
+    },
+    {
+      "name": "PREVASDLAND",
+      "type": "esriFieldTypeDouble",
+      "alias": "PREVASDLAND"
+    },
+    {
+      "name": "PREVASDBLDG",
+      "type": "esriFieldTypeDouble",
+      "alias": "PREVASDBLDG"
+    },
+    {
+      "name": "PREVASDXF",
+      "type": "esriFieldTypeDouble",
+      "alias": "PREVASDXF"
+    },
+    {
+      "name": "PREVMKT",
+      "type": "esriFieldTypeDouble",
+      "alias": "PREVMKT"
+    },
+    {
+      "name": "SOHYEAR",
+      "type": "esriFieldTypeInteger",
+      "alias": "SOHYEAR"
+    },
+    {
+      "name": "CAPPEDVALUE",
+      "type": "esriFieldTypeDouble",
+      "alias": "CAPPEDVALUE"
+    },
+    {
+      "name": "OWNERSPLITPCT",
+      "type": "esriFieldTypeInteger",
+      "alias": "OWNERSPLITPCT"
+    },
+    {
+      "name": "LANDAPPRAIS",
+      "type": "esriFieldTypeString",
+      "alias": "LANDAPPRAIS",
+      "length": 30
+    },
+    {
+      "name": "LANDTYPE",
+      "type": "esriFieldTypeString",
+      "alias": "LANDTYPE",
+      "length": 50
+    },
+    {
+      "name": "LANDSIZE",
+      "type": "esriFieldTypeDouble",
+      "alias": "LANDSIZE"
+    },
+    {
+      "name": "MAPNUM",
+      "type": "esriFieldTypeString",
+      "alias": "MAPNUM",
+      "length": 50
+    },
+    {
+      "name": "EXEMPTION",
+      "type": "esriFieldTypeString",
+      "alias": "EXEMPTION",
+      "length": 50
+    },
+    {
+      "name": "LINK",
+      "type": "esriFieldTypeString",
+      "alias": "LINK",
+      "length": 75
+    },
+    {
+      "name": "Shape.area",
+      "type": "esriFieldTypeDouble",
+      "alias": "Shape.area"
+    },
+    {
+      "name": "Shape.len",
+      "type": "esriFieldTypeDouble",
+      "alias": "Shape.len"
+    }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "OBJECTID": 1,
+        "REFERENCE": "000000000000000000",
+        "REFNUM": "00-0S-00-0000-000-000",
+        "OWNER": "********************",
+        "MAILADDRESS1": "*",
+        "MAILADDRESS2": "*",
+        "MAILCITY": "*",
+        "MAILSTATE": "*",
+        "MAILZIP": "*",
+        "MAILCOUNTRY": "*",
+        "YEAR_": null,
+        "CONTROLNO": "000000000",
+        "SITEADDR": "******************** *",
+        "CITY": "*",
+        "ZIP": "*",
+        "SUBDIVCONDO": "0000",
+        "SUBDIVISION": "SUBDIVISION PLACEHOLDER",
+        "LEGAL1": "LEGAL DESCRIPTION PLACEHOLDER",
+        "LEGAL2": "",
+        "LEGAL3": "",
+        "LEGAL4": "",
+        "LEGAL5": "",
+        "LEGAL6": "",
+        "CONFCD": "Y",
+        "CITYCD": "MSTU",
+        "TIFCD": "",
+        "DORCD": "5500",
+        "DELINQCD": "N",
+        "AGEXEMPT": "Y",
+        "CURRASDLAND": 3570.0,
+        "CURRASDBLDG": 0.0,
+        "CURRASDXF": 0.0,
+        "CURRMKT": 3570.0,
+        "PREVASDLAND": 3400.0,
+        "PREVASDBLDG": 0.0,
+        "PREVASDXF": 0.0,
+        "PREVMKT": 3400.0,
+        "SOHYEAR": 0,
+        "CAPPEDVALUE": 3570.0,
+        "OWNERSPLITPCT": 1,
+        "LANDAPPRAIS": "2/26/2026",
+        "LANDTYPE": "TIMBER 2",
+        "LANDSIZE": 29.07,
+        "MAPNUM": "00-0S-00-0",
+        "EXEMPTION": null,
+        "LINK": "http://www.escpa.org/cama/Detail_a.aspx?s=000000000000000000",
+        "Shape.area": 0,
+        "Shape.len": 0
+      }
+    }
+  ],
+  "exceededTransferLimit": true
+}

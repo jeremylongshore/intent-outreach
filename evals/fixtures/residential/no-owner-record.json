@@ -1,0 +1,30 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "no-owner-record",
+  "kind": "gate",
+  "note": "A parcel with no ownership on record: there is no one to write to.",
+  "property": {
+    "key": "01003:05-09-27-0-000-103.000",
+    "apn": "05-09-27-0-000-103.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "15 Dune Dr",
+      "city": "Gulf Shores",
+      "state": "AL",
+      "zip": "36542"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [],
+  "ownerships": [],
+  "expectBlocked": "owner:unknown"
+}

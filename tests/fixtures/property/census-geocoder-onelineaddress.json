@@ -1,0 +1,42 @@
+{
+  "result": {
+    "input": {
+      "address": {
+        "address": "1905 W 1st St, Gulf Shores, AL 36542"
+      },
+      "benchmark": {
+        "isDefault": true,
+        "benchmarkDescription": "Public Address Ranges - Current Benchmark",
+        "id": "4",
+        "benchmarkName": "Public_AR_Current"
+      }
+    },
+    "addressMatches": [
+      {
+        "tigerLine": {
+          "side": "R",
+          "tigerLineId": "131719743"
+        },
+        "coordinates": {
+          "x": -87.688822607517,
+          "y": 30.271774149463
+        },
+        "addressComponents": {
+          "zip": "36542",
+          "streetName": "1ST",
+          "preType": "",
+          "city": "GULF SHORES",
+          "preDirection": "W",
+          "suffixDirection": "",
+          "fromAddress": "1999",
+          "state": "AL",
+          "suffixType": "ST",
+          "toAddress": "1901",
+          "suffixQualifier": "",
+          "preQualifier": ""
+        },
+        "matchedAddress": "1905 W 1ST ST, GULF SHORES, AL, 36542"
+      }
+    ]
+  }
+}

@@ -39,6 +39,13 @@ export interface DraftLike {
   cta: string;
 }
 
+/**
+ * A pack's deterministic draft rule (Pack v2 `draftRules`): returns the issues
+ * it finds, [] when the draft passes. A rule that THROWS fails the draft
+ * (fail closed) with a "draft-rule-error" issue.
+ */
+export type DraftRule = (draft: Readonly<DraftLike>) => readonly string[];
+
 export interface GuardInputs {
   /**
    * Strings whose urls / email addresses / phone numbers a draft may repeat.
@@ -62,6 +69,8 @@ export interface GuardInputs {
    * compatible qualifier (checkQuantities). Absent ⇒ the check is skipped.
    */
   facts?: readonly string[] | undefined;
+  /** Pack draft rules, run after the built-in checks. Absent ⇒ none. */
+  rules?: readonly DraftRule[] | undefined;
 }
 
 export type GuardResult = { ok: true } | { ok: false; issues: string[] };
@@ -215,6 +224,14 @@ export function guardDraft(draft: DraftLike, inputs: GuardInputs): GuardResult {
   if (inputs.facts) issues.push(...checkQuantities([draft.subject ?? "", draft.body, draft.cta], inputs.facts));
 
   issues.push(...checkVoice(draft, inputs.voice));
+
+  for (const rule of inputs.rules ?? []) {
+    try {
+      issues.push(...rule(draft));
+    } catch (err) {
+      issues.push(`draft-rule-error: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
@@ -720,11 +737,32 @@ function quantityFactSet(facts: readonly string[]): Set<string> {
 /** Max words between a draft's quantity and its qualifier ("40 new acquisitions closed a year" has 3). */
 export const QUANTITY_QUALIFIER_WINDOW = 4;
 
+const STREET_SUFFIXES = new Set(
+  "st street ave avenue rd road dr drive blvd boulevard ln lane way ct court cir circle hwy highway pkwy parkway pl place trl trail loop ter terrace sq square pt point".split(" "),
+);
+
+/**
+ * A street address's house number ("412 Lagoon Ave", "18 N Main St") is a
+ * label, not a quantity: a bare integer followed by one to three capitalized
+ * words, the last a street suffix. "since 2004" after it qualifies the address,
+ * not the number.
+ */
+function isHouseNumber(text: string, toks: Tok[], q: Quantity): boolean {
+  if (q.first !== q.last || !/^\d{1,6}$/.test(toks[q.first]!.lower)) return false;
+  for (let k = q.last + 1; k <= q.last + 3 && k < toks.length; k++) {
+    const t = toks[k]!;
+    if (t.kind !== "word" || !/^[A-Z]/.test(text.slice(t.start, t.end))) return false;
+    if (k > q.last + 1 && STREET_SUFFIXES.has(t.lower.replace(/\.$/, ""))) return true;
+  }
+  return false;
+}
+
 function quantityIssuesIn(text: string, factSet: Set<string>): string[] {
   const issues: string[] = [];
   const { toks, quantities, qualifiers } = scanQuantities(text, false);
   const quantityStarts = new Set(quantities.map((q) => q.first));
   for (const q of quantities) {
+    if (isHouseNumber(text, toks, q)) continue;
     const ql = qualifiers.find((x) => x.first > q.last);
     if (!ql || ql.first - q.last - 1 > QUANTITY_QUALIFIER_WINDOW) continue;
     let attached = true;

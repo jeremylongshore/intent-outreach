@@ -11,7 +11,20 @@
  * can register their own at runtime via registerConnector() — no core edits.
  */
 
-import type { Contact, Enrichment, Lead } from "../models.js";
+import type {
+  Contact,
+  ContactPoint,
+  Enrichment,
+  EntityLink,
+  Lead,
+  Ownership,
+  Party,
+  Property,
+  ResearchQuery,
+  ResearchQueryKind,
+} from "../models.js";
+import type { RateLimit } from "../rate-limit.js";
+import type { Capability } from "../routing.js";
 
 /** Pricing/access reality of a connector, surfaced to the user. */
 export type ConnectorTier = "free" | "paid" | "enterprise" | "legacy";
@@ -20,8 +33,16 @@ export type ConnectorTier = "free" | "paid" | "enterprise" | "legacy";
 export type ConnectorPhase = "research" | "enrich";
 
 export interface ResearchInput {
-  /** Company domain to research. */
+  /**
+   * Company domain to research. Set for a `domain` query; empty ("") for an
+   * area or parcel query, which a domain-only connector never receives.
+   */
   domain: string;
+  /**
+   * The typed query (schema v6). Always set by the pipeline; a connector that
+   * declares only the `domain` kind may keep reading `domain` and ignore it.
+   */
+  query?: ResearchQuery;
   /** The campaign ICP, for connectors that can filter people by role/seniority. */
   icp: string;
   /**
@@ -54,6 +75,12 @@ export interface ConnectorItemFailure {
 export interface ResearchOutput {
   leads: Lead[];
   contacts: Contact[];
+  /** Property/owner model (schema v6); property connectors fill these. */
+  properties?: Property[];
+  parties?: Party[];
+  ownerships?: Ownership[];
+  entityLinks?: EntityLink[];
+  contactPoints?: ContactPoint[];
   /** Raw provider payload, retained for the audit trail. */
   raw?: unknown;
   /** Per-item / schema failures that did not abort the call. */
@@ -76,6 +103,17 @@ export interface EnrichOutput {
   failures?: ConnectorItemFailure[];
 }
 
+export interface PropertyEnrichInput {
+  properties: Property[];
+  signal?: AbortSignal;
+}
+
+export interface PropertyEnrichOutput {
+  /** Properties with attributes ADDED (merged by key; existing attributes are never overwritten). */
+  properties: Property[];
+  failures?: ConnectorItemFailure[];
+}
+
 export interface Connector {
   /** Unique, stable source name (also stamped on records as `source`). */
   readonly name: string;
@@ -92,6 +130,23 @@ export interface Connector {
    * research produced anything; the pipeline may exclude it from "research ran".
    */
   readonly pushOnly?: boolean;
+  /**
+   * Research query kinds this connector answers. Absent = `["domain"]`, so
+   * every existing B2B connector keeps its behavior and is never handed an
+   * area or parcel query. The pipeline routes by this list, never the LLM.
+   */
+  readonly queryKinds?: readonly ResearchQueryKind[];
+  /** What this connector can answer (routing vocabulary for Pack v2 `dataSources`). */
+  readonly capabilities?: readonly Capability[];
+  /**
+   * Vendor credits one research or enrich CALL costs, charged against the run's
+   * credit budget BEFORE the call. Absent or 0 = free.
+   */
+  readonly creditsPerCall?: number;
+  /** Cache this connector's research output for this long (ms). Absent = never cached. */
+  readonly cacheTtlMs?: number;
+  /** The vendor's published request limits; pass to httpJson as `rateLimit`. */
+  readonly rateLimit?: RateLimit;
 
   /** True when the connector has what it needs to run (its key, or none needed). */
   isConfigured(): boolean;
@@ -101,4 +156,7 @@ export interface Connector {
 
   /** Enrich a lead + its contacts → enrichments. Only if phases includes 'enrich'. */
   enrich?(input: EnrichInput): Promise<EnrichOutput>;
+
+  /** Add facts to properties (flood zone, ...) in a property campaign. Only if phases includes 'enrich'. */
+  enrichProperties?(input: PropertyEnrichInput): Promise<PropertyEnrichOutput>;
 }

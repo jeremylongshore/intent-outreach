@@ -56,6 +56,8 @@ export interface RunStore {
   getRun(id: string): Promise<Validated<CampaignRun> | null>;
   /** List all run ids currently persisted. */
   listRunIds(): Promise<string[]>;
+  /** Every run (latest write per id), in one read. */
+  listRuns(): Promise<Validated<CampaignRun>[]>;
   /** Lines that could not be read back as a valid run (empty for a clean store). */
   corruptLines(): Promise<CorruptLine[]>;
 }
@@ -146,6 +148,13 @@ export class JsonlRunStore implements RunStore {
   async listRunIds(): Promise<string[]> {
     const { runs } = await this.scan();
     return [...new Set(runs.map((r) => r.run.id))];
+  }
+
+  async listRuns(): Promise<Validated<CampaignRun>[]> {
+    const { runs } = await this.scan();
+    const latest = new Map<string, Validated<CampaignRun>>();
+    for (const r of runs) latest.set(r.run.id, r.run); // last write wins, first-seen order kept
+    return [...latest.values()];
   }
 
   async corruptLines(): Promise<CorruptLine[]> {
@@ -291,6 +300,9 @@ export class MemoryRunStore implements RunStore {
   }
   async listRunIds(): Promise<string[]> {
     return [...this.runs.keys()];
+  }
+  async listRuns(): Promise<Validated<CampaignRun>[]> {
+    return [...this.runs.values()];
   }
   async corruptLines(): Promise<CorruptLine[]> {
     return [];

@@ -11,6 +11,10 @@
  * no shortcut past compliance just because it arrived over MCP.
  */
 
+import { decide, listPending } from "../pipeline_core/approvals.js";
+import * as dealMath from "@intent-outreach/deal-math";
+import { addSuppression, readSuppressions } from "../pipeline_core/suppressions.js";
+import { SUPPRESSION_KINDS, type SuppressionKind } from "../pipeline_core/compliance/suppression.js";
 import { z } from "zod";
 import {
   applyMessageCompliance,
@@ -292,6 +296,7 @@ export async function handleSaveRun(rawArgs: SaveRunArgs, deps: SaveRunDeps = {}
     now,
     userText: [styleOverride],
     voice,
+    draftRules: pack.draftRules,
   });
 
   const errors = [...args.errors, ...gated.errors];
@@ -357,5 +362,185 @@ export async function handleSaveRun(rawArgs: SaveRunArgs, deps: SaveRunDeps = {}
       return toolError(`run NOT saved: ${err.message}; retry in a moment`);
     }
     throw err;
+  }
+}
+
+// ───────────────────────────── approval queue ───────────────────────────────
+
+export interface ApprovalDeps {
+  store?: RunStore;
+  approvalsPath?: string;
+  now?: () => string;
+}
+
+export const ListPendingInput = {
+  limit: z.number().int().min(1).max(200).optional().describe("Max drafts to return (default 50)."),
+};
+
+/** Drafts with no human decision yet. Each carries the digest a person must cite to approve it. */
+export async function handleListPending(args: { limit?: number | undefined }, deps: ApprovalDeps = {}): Promise<ToolResult> {
+  try {
+    const store = deps.store ?? new JsonlRunStore();
+    const pending = await listPending(store, deps.approvalsPath);
+    return asText({ total: pending.length, pending: pending.slice(0, args.limit ?? 50) });
+  } catch (err) {
+    return toolError(`could not list pending drafts: ${errMsg(err)}`);
+  }
+}
+
+export const DecideInput = {
+  runId: z.string().min(1),
+  contactKey: z.string().min(1),
+  digest: z
+    .string()
+    .min(8)
+    .optional()
+    .describe("Required to approve: the digest list_pending showed for this exact message."),
+  note: z.string().max(500).optional(),
+};
+
+async function decideVia(
+  decision: "approved" | "rejected",
+  args: { runId: string; contactKey: string; digest?: string | undefined; note?: string | undefined },
+  deps: ApprovalDeps,
+): Promise<ToolResult> {
+  try {
+    const record = await decide({
+      store: deps.store ?? new JsonlRunStore(),
+      runId: args.runId,
+      contactKey: args.contactKey,
+      decision,
+      by: "mcp",
+      note: args.note,
+      digest: args.digest,
+      now: deps.now ?? (() => new Date().toISOString()),
+      ...(deps.approvalsPath ? { path: deps.approvalsPath } : {}),
+    });
+    return asText(record);
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+}
+
+export const handleApprove = (args: Parameters<typeof decideVia>[1], deps: ApprovalDeps = {}) => decideVia("approved", args, deps);
+export const handleReject = (args: Parameters<typeof decideVia>[1], deps: ApprovalDeps = {}) => decideVia("rejected", args, deps);
+
+// ─────────────────────────────── list_runs ───────────────────────────────────
+
+export const ListRunsInput = {
+  limit: z.number().int().min(1).max(200).optional().describe("Most recent runs to return (default 20)."),
+};
+
+/** Summaries of the most recent runs in the LOCAL store (newest first). */
+export async function handleListRuns(args: { limit?: number | undefined }, deps: { store?: RunStore } = {}): Promise<ToolResult> {
+  try {
+    const store = deps.store ?? new JsonlRunStore();
+    const runs = await store.listRuns();
+    const corrupt = (await store.corruptLines()).length;
+    // Compare instants, not strings: "…:00Z" vs "…:00.500Z" sort wrong as text.
+    const summaries = [...runs]
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id))
+      .slice(0, args.limit ?? 20)
+      .map((r) => ({
+        id: r.id,
+        vertical: r.vertical,
+        status: r.status,
+        createdAt: r.createdAt,
+        messages: r.messages.length,
+        blockedContacts: r.blockedContacts.length,
+        rejectedDrafts: r.rejectedDrafts.length,
+        leads: r.leads.length,
+        properties: r.properties.length,
+        ...(r.credits ? { credits: r.credits } : {}),
+        ...(r.costUsd !== undefined ? { costUsd: r.costUsd } : {}),
+      }));
+    return asText({ total: runs.length, ...(corrupt > 0 ? { corruptLinesSkipped: corrupt } : {}), runs: summaries });
+  } catch (err) {
+    return toolError(`could not list runs: ${errMsg(err)}`);
+  }
+}
+
+// ─────────────────────────────── suppress ────────────────────────────────────
+
+export const SuppressInput = {
+  /** No "remove": undoing an opt-out re-allows contact, so it is a person's call at the CLI only. */
+  action: z.enum(["add", "list"]),
+  value: z
+    .string()
+    .min(1)
+    .max(300)
+    .optional()
+    .describe("Email, domain, phone or mailing address (required for add/remove)."),
+  kind: z.enum(SUPPRESSION_KINDS as unknown as [SuppressionKind, ...SuppressionKind[]]).optional(),
+  reason: z.string().max(300).optional(),
+};
+
+/**
+ * Add to or list the local opt-out list. Adding is always safe: it only ever
+ * stops outreach. REMOVING an opt-out re-allows contact, so this tool cannot do
+ * it: an agent steered by text in third-party data must never undo someone's
+ * opt-out. Removal is `intent-outreach suppress remove`, run by a person.
+ */
+export async function handleSuppress(
+  args: { action: "add" | "list" | "remove"; value?: string | undefined; kind?: SuppressionKind | undefined; reason?: string | undefined },
+  deps: { path?: string } = {},
+): Promise<ToolResult> {
+  try {
+    const path = deps.path;
+    if (args.action === "list") return asText(await readSuppressions(path));
+    if (!args.value) return toolError("value is required for add and remove");
+    if (args.action === "add") {
+      const r = await addSuppression(args.value, {
+        ...(path ? { path } : {}),
+        ...(args.kind ? { kind: args.kind } : {}),
+        ...(args.reason ? { reason: args.reason } : {}),
+      });
+      return asText({ added: r.added, entry: r.entry });
+    }
+    return toolError(
+      "removing an opt-out is not available to the agent; a person runs `intent-outreach suppress remove <value>`",
+    );
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+}
+
+// ─────────────────────────────── underwrite ──────────────────────────────────
+
+const CALCULATORS = {
+  noi: (i: unknown, a: unknown) => dealMath.noi(i as dealMath.NoiInputs, a as dealMath.NoiAssumptions),
+  capRate: (i: unknown) => dealMath.capRate(i as dealMath.CapRateInputs),
+  dscr: (i: unknown) => dealMath.dscr(i as dealMath.DscrInputs),
+  cashOnCash: (i: unknown) => dealMath.cashOnCash(i as dealMath.CashOnCashInputs),
+  monthlyPayment: (i: unknown) => dealMath.monthlyPayment(i as dealMath.PaymentInputs),
+  sellerFinance: (i: unknown, a: unknown) =>
+    dealMath.sellerFinance(i as dealMath.SellerFinanceInputs, a as dealMath.SellerFinanceAssumptions),
+  exchange1031Timeline: (i: unknown) => dealMath.exchange1031Timeline(i as dealMath.ExchangeInputs),
+  tradeUp: (i: unknown, a: unknown) => dealMath.tradeUp(i as dealMath.TradeUpInputs, a as dealMath.TradeUpAssumptions),
+} as const;
+
+export const UnderwriteInput = {
+  calculation: z.enum(Object.keys(CALCULATORS) as [keyof typeof CALCULATORS, ...(keyof typeof CALCULATORS)[]]),
+  inputs: z.record(z.string(), z.unknown()).describe("Money in integer cents, rates in basis points (6.75% = 675)."),
+  assumptions: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe("Required by noi, sellerFinance and tradeUp; explicit, never defaulted."),
+};
+
+/**
+ * Run one deal-math calculation in code and return {value, inputs,
+ * assumptionsUsed, version}. The model quotes these figures; it never computes
+ * them. Invalid input is a tool error naming the bad field.
+ */
+export function handleUnderwrite(args: {
+  calculation: keyof typeof CALCULATORS;
+  inputs: Record<string, unknown>;
+  assumptions?: Record<string, unknown> | undefined;
+}): ToolResult {
+  try {
+    return asText(CALCULATORS[args.calculation](args.inputs, args.assumptions ?? {}));
+  } catch (err) {
+    return toolError(errMsg(err));
   }
 }

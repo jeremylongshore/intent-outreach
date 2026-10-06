@@ -16,21 +16,38 @@
  */
 
 import {
+  acceptsQuery,
   getConfiguredConnectors,
   getConnector,
   getSkippedConnectors,
   registerBuiltinConnectors,
 } from "./connectors/index.js";
-import type { Connector, ConnectorItemFailure, ConnectorPhase } from "./connectors/types.js";
+import type { Connector, ConnectorItemFailure, ConnectorPhase, ResearchOutput } from "./connectors/types.js";
+import {
+  BudgetExceededError,
+  cacheKey,
+  capabilityForQuery,
+  CreditBudget,
+  orderByRouting,
+  type ResponseCache,
+  type Routing,
+} from "./routing.js";
 import { HttpError } from "./http.js";
 import { ContactSchema, SCHEMA_VERSION } from "./models.js";
 import type {
   CampaignRun,
+  Channel,
   Contact,
+  ContactPoint,
   Enrichment,
+  EntityLink,
   FailedConnector,
   Lead,
   Message,
+  Ownership,
+  Party,
+  Property,
+  ResearchQuery,
   RunError,
   RunStatus,
 } from "./models.js";
@@ -43,10 +60,11 @@ import type { ComplianceContext, ComplianceGate } from "./packs/types.js";
 import { composeGates, suppressionGate, type SuppressionList } from "./compliance/suppression.js";
 import { loadSuppressionList } from "./suppressions.js";
 import { applyComplianceFooter, missingSenderFields, type SenderIdentity } from "./footer.js";
-import { guardDraft, type VoiceRules } from "./draft-guard.js";
+import { guardDraft, type DraftRule, type VoiceRules } from "./draft-guard.js";
 import { loadProfile, type ReportProfile } from "./profiles.js";
 import { intentOutreachHome } from "./secrets.js";
 import { cleanBuyerTitles, rankContactsByTitle } from "./targeting.js";
+import { drainQuotaWarnings } from "./key-quotas.js";
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,6 +79,78 @@ export interface ConnectorRunOptions {
   connectorTimeoutMs?: number;
   /** Buyer titles passed to every connector (people search/reveal targeting). */
   buyerTitles?: string[];
+  /** Fixed routing (order + policy); absent = every eligible connector, policy "all". */
+  routing?: Routing | undefined;
+  /** The run's credit ceiling, charged before each paid call. */
+  budget?: CreditBudget | undefined;
+  /** Response cache for connectors that declare `cacheTtlMs`. */
+  cache?: ResponseCache | undefined;
+  /** Clock for cache expiry (ms). Default Date.now. */
+  clock?: (() => number) | undefined;
+}
+
+/** Charge a paid call. Returns false (and records why) when the budget refuses it. */
+function chargeOrStop(
+  connector: Connector,
+  phase: ConnectorPhase,
+  budget: CreditBudget | undefined,
+  failed: FailedConnector[],
+): boolean {
+  const cost = connector.creditsPerCall ?? 0;
+  if (!budget || cost <= 0) return true;
+  try {
+    budget.charge(connector.name, cost);
+    return true;
+  } catch (err) {
+    if (!(err instanceof BudgetExceededError)) throw err;
+    if (!failed.some((f) => f.name === connector.name && f.phase === phase && f.status === "budget-exhausted")) {
+      failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    }
+    return false;
+  }
+}
+
+const isArr = (v: unknown) => Array.isArray(v);
+
+/** A cached research output, or undefined when absent, unreadable or the wrong shape (a miss, never an error). */
+async function cacheRead(cache: ResponseCache, key: string, now: number): Promise<ResearchOutput | undefined> {
+  try {
+    const v = (await cache.get(key, now)) as Partial<ResearchOutput> | undefined;
+    if (!v || typeof v !== "object" || !isArr(v.leads) || !isArr(v.contacts)) return undefined;
+    for (const k of ["properties", "parties", "ownerships", "entityLinks", "contactPoints"] as const) {
+      if (v[k] !== undefined && !isArr(v[k])) return undefined;
+    }
+    return v as ResearchOutput;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Best-effort cache write: a full disk or a permission error never fails the (already paid) call. */
+async function cacheWrite(cache: ResponseCache, key: string, value: unknown, ttlMs: number, now: number): Promise<void> {
+  try {
+    await cache.set(key, value, ttlMs, now);
+  } catch {
+    // The lookup still succeeded; it simply will not be served from cache next time.
+  }
+}
+
+/** Append connector failures, keeping one budget-exhausted entry per connector and phase per run. */
+function pushFailures(into: FailedConnector[], from: readonly FailedConnector[]): void {
+  for (const f of from) {
+    const dup =
+      f.status === "budget-exhausted" &&
+      into.some((g) => g.name === f.name && g.phase === f.phase && g.status === "budget-exhausted");
+    if (!dup) into.push(f);
+  }
+}
+
+/** True when a research output carries any record (the "hit" of a first-hit route). */
+function researchHit(out: ResearchOutput): boolean {
+  return (
+    out.leads.length + out.contacts.length > 0 ||
+    [out.properties, out.parties, out.ownerships, out.entityLinks, out.contactPoints].some((a) => (a?.length ?? 0) > 0)
+  );
 }
 
 /** `{ buyerTitles }` when any usable title is set, else `{}` (connector input stays unchanged). */
@@ -72,6 +162,12 @@ function buyerTitlesArg(opts: ConnectorRunOptions): { buyerTitles?: string[] } {
 export interface ResearchResult {
   leads: Lead[];
   contacts: Contact[];
+  /** Property/owner model (schema v6), deduped by natural key. Empty for domain queries. */
+  properties: Property[];
+  parties: Party[];
+  ownerships: Ownership[];
+  entityLinks: EntityLink[];
+  contactPoints: ContactPoint[];
   /** Connectors that ran, in call order — the determinism witness. */
   ran: string[];
   /** Connectors that are NOT configured (no key) — never a failure. */
@@ -79,6 +175,10 @@ export interface ResearchResult {
   /** Configured connectors that threw or timed out (sanitized status only). */
   failedConnectors: FailedConnector[];
   raw: Record<string, unknown>;
+  /** Connectors whose output came from the response cache (no request, no credits). */
+  cached: string[];
+  /** True when the credit budget refused a call and paid research stopped. */
+  budgetExhausted: boolean;
 }
 
 export interface EnrichResult {
@@ -93,6 +193,8 @@ export interface EnrichResult {
   skipped: string[];
   failedConnectors: FailedConnector[];
   raw: Record<string, unknown>;
+  /** True when the credit budget refused a paid enrich call. */
+  budgetExhausted: boolean;
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -243,6 +345,8 @@ function failureStatus(err: unknown): number | string {
   if (err instanceof HttpError) return err.status;
   const name = (err as { name?: unknown } | null)?.name;
   if (err instanceof ConnectorTimeoutError || name === "TimeoutError" || name === "AbortError") return "timeout";
+  // A vendor MCP server changed its tool definitions: the operator must review and re-pin.
+  if (name === "McpPinMismatchError") return "pin-mismatch";
   return "error";
 }
 
@@ -280,6 +384,72 @@ function recordItemFailures(
   }
 }
 
+/** First record per key wins (registration order), so the result is deterministic. */
+function dedupeBy<T>(items: readonly T[], key: (t: T) => string): T[] {
+  const seen = new Map<string, T>();
+  for (const item of items) {
+    const k = key(item);
+    if (!seen.has(k)) seen.set(k, item);
+  }
+  return [...seen.values()];
+}
+
+/** The v6 property/owner model a research call returns. */
+export interface PropertyModel {
+  properties: Property[];
+  parties: Party[];
+  ownerships: Ownership[];
+  entityLinks: EntityLink[];
+  contactPoints: ContactPoint[];
+}
+
+const DNC_RANK: Record<ContactPoint["dnc"], number> = { clean: 0, unknown: 1, listed: 2 };
+
+const contactPointKey = (c: ContactPoint) =>
+  `${c.partyKey}|${c.kind}|${c.kind === "email" ? c.value.toLowerCase() : c.value}`;
+
+/**
+ * Merge two reports of the same contact point CONSERVATIVELY: the most
+ * restrictive DNC status wins (listed > unknown > clean) and a restriction from
+ * any source sticks (`outreachRestricted` is OR-ed). A later connector can add
+ * a restriction an earlier one missed; it can never lift one.
+ */
+function mergeContactPoint(a: ContactPoint, b: ContactPoint): ContactPoint {
+  const dnc = DNC_RANK[b.dnc] > DNC_RANK[a.dnc] ? b.dnc : a.dnc;
+  const restricted = Boolean(a.licenseTerms?.outreachRestricted || b.licenseTerms?.outreachRestricted);
+  const licenseTerms =
+    a.licenseTerms || b.licenseTerms
+      ? { ...b.licenseTerms, ...a.licenseTerms, ...(restricted ? { outreachRestricted: true } : {}) }
+      : undefined;
+  return {
+    ...a,
+    dnc,
+    ...(a.lineType === undefined || a.lineType === "unknown" ? (b.lineType ? { lineType: b.lineType } : {}) : {}),
+    ...(licenseTerms ? { licenseTerms } : {}),
+  };
+}
+
+/**
+ * Dedupe a property model by natural key, deterministically (first connector
+ * wins for descriptive fields). Contact points merge conservatively (see
+ * mergeContactPoint); an ownership keeps each distinct role.
+ */
+export function mergePropertyModel(model: PropertyModel): PropertyModel {
+  const points = new Map<string, ContactPoint>();
+  for (const c of model.contactPoints) {
+    const k = contactPointKey(c);
+    const prev = points.get(k);
+    points.set(k, prev ? mergeContactPoint(prev, c) : c);
+  }
+  return {
+    properties: dedupeBy(model.properties, (p) => p.key),
+    parties: dedupeBy(model.parties, (p) => p.key),
+    ownerships: dedupeBy(model.ownerships, (o) => `${o.propertyKey}|${o.partyKey}|${o.role}`),
+    entityLinks: dedupeBy(model.entityLinks, (l) => `${l.entityKey}|${l.personKey}|${l.role}`),
+    contactPoints: [...points.values()],
+  };
+}
+
 /**
  * Research one domain across every configured research connector, in order.
  * A connector that throws (or blows its deadline) is recorded in
@@ -290,38 +460,100 @@ export async function runResearch(
   icp: string,
   opts: ConnectorRunOptions = {},
 ): Promise<ResearchResult> {
+  return runResearchQuery({ kind: "domain", domain }, icp, opts);
+}
+
+/**
+ * Run one typed research query (schema v6) across every configured research
+ * connector that declares its kind, in registration order. The routing is
+ * fixed by each connector's `queryKinds`, never chosen by the model, so a
+ * B2B connector is never handed a parcel query (invariant 5). Connectors that
+ * are configured but do not answer this kind are neither run nor "skipped".
+ */
+export async function runResearchQuery(
+  query: ResearchQuery,
+  icp: string,
+  opts: ConnectorRunOptions = {},
+): Promise<ResearchResult> {
   registerBuiltinConnectors();
-  const target = normalizeDomain(domain);
+  const typed: ResearchQuery =
+    query.kind === "domain" ? { kind: "domain", domain: normalizeDomain(query.domain) } : query;
+  const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("research");
+  const connectors = orderByRouting(
+    getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind)),
+    opts.routing,
+  );
+  const policy = opts.routing?.policy ?? "all";
+  const clock = opts.clock ?? Date.now;
+  const cached: string[] = [];
+  let budgetExhausted = false;
   const leads: Lead[] = [];
   const contacts: Contact[] = [];
+  const properties: Property[] = [];
+  const parties: Party[] = [];
+  const ownerships: Ownership[] = [];
+  const entityLinks: EntityLink[] = [];
+  const contactPoints: ContactPoint[] = [];
   const raw: Record<string, unknown> = {};
   const ran: string[] = [];
-  const skipped = getSkippedConnectors("research").map((c) => c.name);
+  const skipped = getSkippedConnectors("research")
+    .filter((c) => acceptsQuery(c, typed.kind))
+    .map((c) => c.name);
   const failedConnectors: FailedConnector[] = [];
 
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
-      const out = await callWithDeadline(
-        (signal) => connector.research!({ domain: target, icp, ...targeting, signal }),
-        timeoutMs,
-      );
+      const ttl = connector.cacheTtlMs ?? 0;
+      const key =
+        opts.cache && ttl > 0
+          ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting })
+          : undefined;
+      let out = key ? await cacheRead(opts.cache!, key, clock()) : undefined;
+      if (out) {
+        cached.push(connector.name);
+      } else {
+        if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
+          // Only THIS paid call is refused; free and cached sources later in the route still run.
+          budgetExhausted = true;
+          continue;
+        }
+        out = await callWithDeadline(
+          (signal) => connector.research!({ domain: target, query: typed, icp, ...targeting, signal }),
+          timeoutMs,
+        );
+        // Cache only a COMPLETE answer: a result with item failures would replay
+        // the failure for the whole TTL. A complete empty answer is cached (a paid
+        // lookup that found nothing is not bought again).
+        if (key && (out.failures?.length ?? 0) === 0) {
+          const { raw: _raw, ...cacheable } = out;
+          await cacheWrite(opts.cache!, key, cacheable, ttl, clock());
+        }
+      }
       leads.push(...out.leads);
       contacts.push(...out.contacts);
+      properties.push(...(out.properties ?? []));
+      parties.push(...(out.parties ?? []));
+      ownerships.push(...(out.ownerships ?? []));
+      entityLinks.push(...(out.entityLinks ?? []));
+      contactPoints.push(...(out.contactPoints ?? []));
       raw[connector.name] = out.raw;
       ran.push(connector.name);
       recordItemFailures(connector, "research", out.failures, failedConnectors);
+      if (policy === "ordered-fallback" || (policy === "first-hit" && researchHit(out))) break;
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
   }
 
   return {
+    cached,
+    budgetExhausted: budgetExhausted || (opts.budget?.exhausted ?? false),
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
+    ...mergePropertyModel({ properties, parties, ownerships, entityLinks, contactPoints }),
     ran,
     skipped,
     failedConnectors,
@@ -393,7 +625,9 @@ export async function runEnrich(
   registerBuiltinConnectors();
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("enrich");
+  const connectors = orderByRouting(getConfiguredConnectors("enrich"), opts.routing);
+  const policy = opts.routing?.policy ?? "all";
+  let budgetExhausted = false;
   const enrichments: Enrichment[] = [];
   const raw: Record<string, unknown> = {};
   const ran: string[] = [];
@@ -403,6 +637,10 @@ export async function runEnrich(
 
   for (const connector of connectors) {
     if (!connector.enrich) continue;
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
+      budgetExhausted = true;
+      continue;
+    }
     try {
       const current = working;
       const out = await callWithDeadline(
@@ -414,12 +652,77 @@ export async function runEnrich(
       ran.push(connector.name);
       recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
+      if (policy === "ordered-fallback" || (policy === "first-hit" && out.enrichments.length > 0)) break;
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }
   }
 
-  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw };
+  return { enrichments, contacts: working, ran, skipped, failedConnectors, raw, budgetExhausted };
+}
+
+export interface PropertyEnrichResult {
+  properties: Property[];
+  ran: string[];
+  skipped: string[];
+  failedConnectors: FailedConnector[];
+  budgetExhausted: boolean;
+}
+
+/**
+ * Run every configured property enricher (phase "enrich" with
+ * `enrichProperties`, e.g. flood zones) over a property list, in routing order.
+ * Each one may ADD attributes; an attribute already on a property is never
+ * overwritten (first source wins, deterministically). A failing enricher is
+ * recorded and the properties pass through unchanged.
+ */
+/** Properties per enrichProperties call; each call gets the full per-connector deadline. */
+export const PROPERTY_ENRICH_CHUNK = 25;
+
+export async function runPropertyEnrich(properties: Property[], opts: ConnectorRunOptions = {}): Promise<PropertyEnrichResult> {
+  registerBuiltinConnectors();
+  const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
+  const connectors = orderByRouting(
+    getConfiguredConnectors("enrich").filter((c) => c.enrichProperties),
+    opts.routing,
+  );
+  const skipped = getSkippedConnectors("enrich")
+    .filter((c) => c.enrichProperties)
+    .map((c) => c.name);
+  const ran: string[] = [];
+  const failedConnectors: FailedConnector[] = [];
+  const raw: Record<string, unknown> = {};
+  let budgetExhausted = false;
+  let current = properties.map((p) => ({ ...p, attributes: { ...p.attributes } }));
+
+  for (const connector of connectors) {
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
+      budgetExhausted = true;
+      continue;
+    }
+    // In chunks, each under its own deadline: a slow, rate-limited source loses at most one chunk.
+    let anyChunkRan = false;
+    for (let i = 0; i < current.length; i += PROPERTY_ENRICH_CHUNK) {
+      const chunk = current.slice(i, i + PROPERTY_ENRICH_CHUNK);
+      try {
+        const out = await callWithDeadline((signal) => connector.enrichProperties!({ properties: chunk, signal }), timeoutMs);
+        const byKey = new Map(out.properties.map((p) => [p.key, p]));
+        current = current.map((p) => {
+          const add = byKey.get(p.key);
+          if (!add) return p;
+          const attributes = { ...p.attributes };
+          for (const [k, fact] of Object.entries(add.attributes)) if (!(k in attributes)) attributes[k] = fact;
+          return { ...p, attributes, ...(p.location === undefined && add.location ? { location: add.location } : {}) };
+        });
+        anyChunkRan = true;
+        recordItemFailures(connector, "enrich", out.failures, failedConnectors);
+      } catch (err) {
+        recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
+      }
+    }
+    if (anyChunkRan) ran.push(connector.name);
+  }
+  return { properties: current, ran, skipped, failedConnectors, budgetExhausted };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -429,7 +732,7 @@ export async function runEnrich(
 const MAX_ERROR_MESSAGE = 500;
 
 /** Error text for the audit trail: secrets redacted, length-capped. */
-function sanitizeErrorMessage(err: unknown): string {
+export function sanitizeErrorMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : typeof err === "string" ? err : "unknown error";
   const redacted = msg
     .replace(/([?&](?:api[_-]?key|key|token|access_token|secret|password)=)[^&\s"']+/gi, "$1[redacted]")
@@ -568,11 +871,16 @@ export function finalizeDraft(
 }
 
 /** The run-level warning for email drafts that could not carry a CAN-SPAM footer. */
-export function senderComplianceWarnings(draftsMissingSender: number, sender: SenderIdentity | undefined): string[] {
+export function senderComplianceWarnings(
+  draftsMissingSender: number,
+  sender: SenderIdentity | undefined,
+  channel: Channel = "email",
+): string[] {
   if (draftsMissingSender <= 0) return [];
-  const missing = missingSenderFields(sender).join(", ");
+  const missing = missingSenderFields(sender, channel).join(", ");
+  const what = channel === "email" ? "CAN-SPAM footer" : `${channel} footer`;
   return [
-    `${draftsMissingSender} email draft(s) have NO CAN-SPAM footer: sender identity is not configured ` +
+    `${draftsMissingSender} ${channel} draft(s) have NO ${what}: sender identity is not configured ` +
       `(missing: ${missing}). Set profile.sender { name, company, postalAddress } before sending.`,
   ];
 }
@@ -625,6 +933,8 @@ export interface MessageComplianceInput {
   userText?: readonly (string | undefined)[];
   /** Operator voice rules (Report Profile `voice`); enforced by the same guard as the seam path. */
   voice?: VoiceRules | undefined;
+  /** The pack's draft rules (Pack v2); same rules the seam path applies. */
+  draftRules?: readonly DraftRule[] | undefined;
 }
 
 export interface MessageComplianceResult {
@@ -700,6 +1010,7 @@ export async function applyMessageCompliance(input: MessageComplianceInput): Pro
         // turn "40 acquisitions" into "40 acquisitions a year" either.
         facts: factsOf({ icp: input.icp, lead, contacts: [contact], enrichments, userText: [...(input.userText ?? [])] }),
         ...(input.voice ? { voice: input.voice } : {}),
+        ...(input.draftRules ? { rules: input.draftRules } : {}),
       },
     );
     if (!verdict.ok) {
@@ -734,7 +1045,7 @@ export async function applyMessageCompliance(input: MessageComplianceInput): Pro
     blockedContacts,
     rejectedDrafts,
     errors,
-    complianceWarnings: senderComplianceWarnings(draftsMissingSender, input.sender),
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input.sender), ...drainQuotaWarnings()],
   };
 }
 
@@ -821,6 +1132,19 @@ export interface RunCampaignInput {
    * `${INTENT_OUTREACH_HOME}/suppressions.jsonl` (missing file ⇒ nothing suppressed).
    */
   suppressions?: SuppressionList;
+  /**
+   * Vendor-credit ceiling for the run. Each paid connector call is charged
+   * before it is made; once a call would cross the ceiling, no further paid
+   * call is made and the run records it in `credits`. Absent = no ceiling.
+   */
+  budgetCredits?: number;
+  /** Response cache for connectors that declare `cacheTtlMs`. */
+  cache?: ResponseCache;
+  /**
+   * A separate (usually cheaper) model for the SCORE seam. `provider` drafts.
+   * Both are resolved through the eval gate like any provider.
+   */
+  scoreProvider?: LLMProvider;
 }
 
 export interface RunCampaignResult {
@@ -844,16 +1168,25 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const minScore = input.minScore ?? 0;
   const maxContacts = input.maxContactsPerLead ?? 1;
   const buyerTitles = cleanBuyerTitles(input.buyerTitles);
-  const connectorOpts: ConnectorRunOptions = {
-    ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
-    ...(buyerTitles.length > 0 ? { buyerTitles } : {}),
-  };
+  const budget = input.budgetCredits !== undefined ? new CreditBudget(input.budgetCredits) : undefined;
   // Opt-outs are loaded (I/O, pipeline layer) BEFORE anything is spent; a corrupt
   // suppression file throws here — fail closed rather than draft to an opt-out.
   const suppressions = input.suppressions ?? (await loadSuppressionList());
   const provider = input.provider ?? (await getProvider());
   registerBuiltinPacks();
   const pack = resolvePack(input.pack);
+  const researchRouting = pack.dataSources?.research?.["company.research"];
+  const connectorOpts: ConnectorRunOptions = {
+    ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
+    ...(buyerTitles.length > 0 ? { buyerTitles } : {}),
+    ...(budget ? { budget } : {}),
+    ...(input.cache ? { cache: input.cache } : {}),
+  };
+  const researchOpts: ConnectorRunOptions = { ...connectorOpts, ...(researchRouting ? { routing: researchRouting } : {}) };
+  const enrichOpts: ConnectorRunOptions = {
+    ...connectorOpts,
+    ...(pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {}),
+  };
   // The suppression gate runs FIRST for EVERY pack (an unsubscribe is not
   // vertical-specific — swapping packs must never drop it), then the pack's own
   // gate. Both run under evaluateGate's fail-closed handling.
@@ -864,6 +1197,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const allLeads: Lead[] = [];
   const allContacts: Contact[] = [];
   const allEnrichments: Enrichment[] = [];
+  const allProperty: PropertyModel = { properties: [], parties: [], ownerships: [], entityLinks: [], contactPoints: [] };
   const messages: Message[] = [];
   const blockedContacts: { contactKey: string; reason: string }[] = [];
   const errors: RunError[] = [];
@@ -876,27 +1210,35 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   let draftsMissingSender = 0;
 
   // Cache-aware: the run total uses the same costFor split as the per-call Usage.
-  const recordUsage = (u: Usage) => meter.record(provider.model, u.inputTokens, u.outputTokens, cacheOf(u));
+  const scoreProvider = input.scoreProvider ?? provider;
+  const recordUsage = (u: Usage, model = provider.model) => meter.record(model, u.inputTokens, u.outputTokens, cacheOf(u));
 
   const recordError = (err: unknown, where: Omit<RunError, "message" | "finishReason">) => {
     const usage = usageFromError(err);
-    if (usage) meter.record(provider.model, usage.inputTokens, usage.outputTokens, usage.cache);
+    const model = where.stage === "score" ? scoreProvider.model : provider.model;
+    if (usage) meter.record(model, usage.inputTokens, usage.outputTokens, usage.cache);
     const finishReason = finishReasonFromError(err);
     errors.push({ ...where, message: sanitizeErrorMessage(err), ...(finishReason ? { finishReason } : {}) });
   };
 
   for (const domain of domains) {
-    const research = await runResearch(domain, icp, connectorOpts);
+    const research = await runResearch(domain, icp, researchOpts);
     research.skipped.forEach((s) => skipped.add(s));
-    failedConnectors.push(...research.failedConnectors);
+    pushFailures(failedConnectors, research.failedConnectors);
+    // Carried into the run as-is: property data a connector fetched is never silently discarded.
+    allProperty.properties.push(...research.properties);
+    allProperty.parties.push(...research.parties);
+    allProperty.ownerships.push(...research.ownerships);
+    allProperty.entityLinks.push(...research.entityLinks);
+    allProperty.contactPoints.push(...research.contactPoints);
     // A push-only sink (e.g. Clay) "running" is not research having happened.
     if (research.ran.some((name) => !isPushOnly(name))) anyResearchRan = true;
 
     for (const lead of research.leads) {
       const leadContacts = research.contacts.filter((c) => c.leadDomain === lead.domain);
-      const enrich = await runEnrich(lead, leadContacts, connectorOpts);
+      const enrich = await runEnrich(lead, leadContacts, enrichOpts);
       enrich.skipped.forEach((s) => skipped.add(s));
-      failedConnectors.push(...enrich.failedConnectors);
+      pushFailures(failedConnectors, enrich.failedConnectors);
       const contacts = enrich.contacts; // emails found during enrichment folded in
 
       allLeads.push(lead);
@@ -907,7 +1249,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
       // Isolated: a provider error here costs THIS lead, not the run.
       let scored: Awaited<ReturnType<typeof scoreLead>>;
       try {
-        scored = await scoreLead(provider, {
+        scored = await scoreLead(scoreProvider, {
           icp,
           lead,
           contacts,
@@ -918,7 +1260,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
         recordError(err, { domain: lead.domain, stage: "score" });
         continue;
       }
-      recordUsage(scored.usage);
+      recordUsage(scored.usage, scoreProvider.model);
       promptRefs.score ??= scored.promptRefs;
       for (const d of scored.droppedAngles ?? []) droppedAngles.push({ domain: lead.domain, ...d });
       if (scored.object.fitScore < minScore) continue;
@@ -959,6 +1301,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
             angles: scored.object.angles,
             channel,
             draftPrompt: pack.prompts.draft,
+            ...(pack.draftRules ? { draftRules: pack.draftRules } : {}),
             // Never shown to the model; widens the guard allowlist to verified emails/phones.
             enrichments: enrichmentsFor(lead, contact, enrich.enrichments),
             ...(input.styleOverride ? { styleOverride: input.styleOverride } : {}),
@@ -1022,10 +1365,20 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     domains,
     provider: provider.name,
     model: provider.model,
+    ...(scoreProvider.name !== provider.name || scoreProvider.model !== provider.model
+      ? {
+          seamModels: {
+            score: { provider: scoreProvider.name, model: scoreProvider.model },
+            draft: { provider: provider.name, model: provider.model },
+          },
+        }
+      : {}),
     status,
     leads: dedupeLeads(allLeads),
     contacts: dedupeContacts(allContacts),
     enrichments: allEnrichments,
+    ...mergePropertyModel(allProperty),
+    ...(budget ? { credits: budget.summary() } : {}),
     messages,
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],

@@ -1,0 +1,14 @@
+{
+  "name": "@intent-outreach/deal-math",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure real estate deal math for Intent Outreach packs: NOI, cap rate, DSCR, cash-on-cash, amortization and seller financing, 1031 timelines, and the condo trade-up model. Integer cents, basis points, explicit assumptions, zod only.",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

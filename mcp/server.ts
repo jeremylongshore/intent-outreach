@@ -19,8 +19,19 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerBuiltinConnectors } from "../pipeline_core/connectors/index.js";
 import {
+  handleListRuns,
+  handleSuppress,
+  handleUnderwrite,
+  ListRunsInput,
+  SuppressInput,
+  UnderwriteInput,
+  DecideInput,
   EnrichLeadInput,
+  handleApprove,
   handleEnrichLead,
+  handleListPending,
+  handleReject,
+  ListPendingInput,
   handleListConnectors,
   handleResearchDomain,
   handleSaveRun,
@@ -90,6 +101,80 @@ server.registerTool(
     inputSchema: SaveRunInput,
   },
   async (args) => handleSaveRun(args),
+);
+
+server.registerTool(
+  "list_pending",
+  {
+    title: "List drafts waiting for approval",
+    description:
+      "List drafted messages in the LOCAL run store that no person has approved or rejected yet, with " +
+      "the full text and a digest. Nothing may be sent until a person approves the exact text. Show the " +
+      "drafts to the user; never approve on your own judgment.",
+    inputSchema: ListPendingInput,
+  },
+  async (args) => handleListPending(args),
+);
+
+server.registerTool(
+  "approve",
+  {
+    title: "Record a person's approval of one draft",
+    description:
+      "Record that the USER approved one exact draft (runId + contactKey + the digest list_pending showed). " +
+      "Call this only after the user has read that draft and explicitly said to approve it. Editing a draft " +
+      "afterwards voids the approval. Approving does not send anything.",
+    inputSchema: DecideInput,
+  },
+  async (args) => handleApprove(args),
+);
+
+server.registerTool(
+  "reject",
+  {
+    title: "Record a rejection of one draft",
+    description:
+      "Record that the user rejected one draft (runId + contactKey). It cannot pass the send-time check unless a " +
+      "person later approves that exact text again (the latest decision wins).",
+    inputSchema: DecideInput,
+  },
+  async (args) => handleReject(args),
+);
+
+server.registerTool(
+  "list_runs",
+  {
+    title: "List recent campaign runs",
+    description: "Summaries of the most recent runs in the LOCAL run store: status, pack, drafts, blocks, rejections, credits and cost.",
+    inputSchema: ListRunsInput,
+  },
+  async (args) => handleListRuns(args),
+);
+
+server.registerTool(
+  "suppress",
+  {
+    title: "Manage the opt-out list",
+    description:
+      "Add to or list the local suppression list (email, domain, phone or mailing address). Add whenever someone " +
+      "asks not to be contacted; every run and the send-time check honor it. Removing an opt-out is not " +
+      "available here: a person does it with `intent-outreach suppress remove`.",
+    inputSchema: SuppressInput,
+  },
+  async (args) => handleSuppress(args),
+);
+
+server.registerTool(
+  "underwrite",
+  {
+    title: "Compute deal math",
+    description:
+      "Run one deal-math calculation in code (noi, capRate, dscr, cashOnCash, monthlyPayment, sellerFinance, " +
+      "exchange1031Timeline, tradeUp). Money is integer cents, rates are basis points. Quote the returned figures " +
+      "exactly; never do the arithmetic yourself. The 1031 timeline is informational, not tax advice.",
+    inputSchema: UnderwriteInput,
+  },
+  async (args) => handleUnderwrite(args),
 );
 
 async function main() {

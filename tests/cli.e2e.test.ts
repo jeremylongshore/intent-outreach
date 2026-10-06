@@ -39,12 +39,13 @@ describe("shipped CLI", () => {
     expect(r.out).toContain("auto-detected provider:");
   });
 
-  it("connectors lists connectors, all unconfigured in a keyless environment", () => {
+  it("connectors: every keyed connector is unconfigured; only the keyless public-records ones are on", () => {
     const r = cli("connectors");
     expect(r.code).toBe(0);
     expect(r.out).toContain("apollo");
     expect(r.out).toContain("set APOLLO_API_KEY");
-    expect(r.out).not.toMatch(/ configured$/m);
+    const configured = r.out.split("\n").filter((l) => / configured$/.test(l)).map((l) => l.split(/\s+/)[1]);
+    expect(configured).toEqual(["fl-dor-parcels", "fema-nfhl"]);
   });
 
   it("an unknown command exits 2 and says so", () => {

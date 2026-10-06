@@ -1,0 +1,518 @@
+{
+  "displayFieldName": "SitusAddName",
+  "fieldAliases": {
+    "OBJECTID": "OBJECTID",
+    "PIN": "PIN",
+    "PINPAD": "PINPAD",
+    "PID": "PID",
+    "Shape.STArea()": "SHAPE.STArea()",
+    "Shape.STLength()": "SHAPE.STLength()",
+    "CalcAcre": "CalcAcre",
+    "pcliID": "pcliID",
+    "PPIN": "PPIN",
+    "PARCELID": "PARCELID",
+    "Owner": "Owner",
+    "MailAdd1": "MailAdd1",
+    "MailAdd2": "MailAdd2",
+    "MailAdd3": "MailAdd3",
+    "MailCity": "MailCity",
+    "MailState": "MailState",
+    "MailZip1": "MailZip1",
+    "MailZip2": "MailZip2",
+    "TTV": "TTV",
+    "TAV": "TAV",
+    "TimberAcres": "TimberAcres",
+    "UserValue": "UserValue",
+    "TaxDist": "TaxDist",
+    "FLAG1": "FLAG1",
+    "FLAG2": "FLAG2",
+    "FLAG3": "FLAG3",
+    "FLAG4": "FLAG4",
+    "FLAG5": "FLAG5",
+    "FLAG6": "FLAG6",
+    "SitusAddID": "SitusAddID",
+    "SitusAddName": "SitusAddName",
+    "SitusAddNumber": "SitusAddNumber",
+    "SitusAddCity": "SitusAddCity",
+    "ImpDescrip": "ImpDescrip",
+    "PropertyClass": "PropertyClass",
+    "PropertySubClass": "PropertySubClass",
+    "SubLot": "SubLot",
+    "SubBlock": "SubBlock",
+    "PreviousOwner": "PreviousOwner",
+    "DeededAcres": "DeededAcres",
+    "CalcAcres": "CalcAcres",
+    "PIN_PID": "PIN_PID",
+    "Neighborhood": "Neighborhood",
+    "NeighborhoodSub": "NeighborhoodSub",
+    "Subdivision": "Subdivision",
+    "LegalDescription": "LegalDescription",
+    "TaxYearDue": "TaxYearDue",
+    "TotalTaxDue": "TotalTaxDue",
+    "CImpValue": "CImpValue",
+    "CLandValue": "CLandValue",
+    "DeedBook": "DeedBook",
+    "DeedPage": "DeedPage",
+    "DeedRecorded": "DeedRecorded",
+    "DeedSigned": "DeedSigned",
+    "acctNum": "acctNum",
+    "exemption": "exemption",
+    "AssessedRate": "AssessedRate",
+    "SubdivisionCode": "SubdivisionCode",
+    "ZoningCode": "ZoningCode",
+    "ZoningDesc": "ZoningDesc",
+    "HasCurrentUse": "HasCurrentUse",
+    "CurrentUseValue": "CurrentUseValue",
+    "StatedArea": "StatedArea",
+    "AcreageAnno": "AcreageAnno",
+    "SubType": "SubType",
+    "IsSeed": "IsSeed"
+  },
+  "fields": [
+    {
+      "name": "OBJECTID",
+      "type": "esriFieldTypeOID",
+      "alias": "OBJECTID"
+    },
+    {
+      "name": "PIN",
+      "type": "esriFieldTypeString",
+      "alias": "PIN",
+      "length": 30
+    },
+    {
+      "name": "PINPAD",
+      "type": "esriFieldTypeString",
+      "alias": "PINPAD",
+      "length": 35
+    },
+    {
+      "name": "PID",
+      "type": "esriFieldTypeString",
+      "alias": "PID",
+      "length": 30
+    },
+    {
+      "name": "Shape.STArea()",
+      "type": "esriFieldTypeDouble",
+      "alias": "SHAPE.STArea()"
+    },
+    {
+      "name": "Shape.STLength()",
+      "type": "esriFieldTypeDouble",
+      "alias": "SHAPE.STLength()"
+    },
+    {
+      "name": "CalcAcre",
+      "type": "esriFieldTypeDouble",
+      "alias": "CalcAcre"
+    },
+    {
+      "name": "pcliID",
+      "type": "esriFieldTypeInteger",
+      "alias": "pcliID"
+    },
+    {
+      "name": "PPIN",
+      "type": "esriFieldTypeDouble",
+      "alias": "PPIN"
+    },
+    {
+      "name": "PARCELID",
+      "type": "esriFieldTypeString",
+      "alias": "PARCELID",
+      "length": 40
+    },
+    {
+      "name": "Owner",
+      "type": "esriFieldTypeString",
+      "alias": "Owner",
+      "length": 256
+    },
+    {
+      "name": "MailAdd1",
+      "type": "esriFieldTypeString",
+      "alias": "MailAdd1",
+      "length": 30
+    },
+    {
+      "name": "MailAdd2",
+      "type": "esriFieldTypeString",
+      "alias": "MailAdd2",
+      "length": 30
+    },
+    {
+      "name": "MailAdd3",
+      "type": "esriFieldTypeString",
+      "alias": "MailAdd3",
+      "length": 30
+    },
+    {
+      "name": "MailCity",
+      "type": "esriFieldTypeString",
+      "alias": "MailCity",
+      "length": 16
+    },
+    {
+      "name": "MailState",
+      "type": "esriFieldTypeString",
+      "alias": "MailState",
+      "length": 2
+    },
+    {
+      "name": "MailZip1",
+      "type": "esriFieldTypeString",
+      "alias": "MailZip1",
+      "length": 5
+    },
+    {
+      "name": "MailZip2",
+      "type": "esriFieldTypeString",
+      "alias": "MailZip2",
+      "length": 4
+    },
+    {
+      "name": "TTV",
+      "type": "esriFieldTypeDouble",
+      "alias": "TTV"
+    },
+    {
+      "name": "TAV",
+      "type": "esriFieldTypeInteger",
+      "alias": "TAV"
+    },
+    {
+      "name": "TimberAcres",
+      "type": "esriFieldTypeDouble",
+      "alias": "TimberAcres"
+    },
+    {
+      "name": "UserValue",
+      "type": "esriFieldTypeInteger",
+      "alias": "UserValue"
+    },
+    {
+      "name": "TaxDist",
+      "type": "esriFieldTypeString",
+      "alias": "TaxDist",
+      "length": 4
+    },
+    {
+      "name": "FLAG1",
+      "type": "esriFieldTypeString",
+      "alias": "FLAG1",
+      "length": 1
+    },
+    {
+      "name": "FLAG2",
+      "type": "esriFieldTypeString",
+      "alias": "FLAG2",
+      "length": 1
+    },
+    {
+      "name": "FLAG3",
+      "type": "esriFieldTypeString",
+      "alias": "FLAG3",
+      "length": 1
+    },
+    {
+      "name": "FLAG4",
+      "type": "esriFieldTypeString",
+      "alias": "FLAG4",
+      "length": 1
+    },
+    {
+      "name": "FLAG5",
+      "type": "esriFieldTypeString",
+      "alias": "FLAG5",
+      "length": 1
+    },
+    {
+      "name": "FLAG6",
+      "type": "esriFieldTypeString",
+      "alias": "FLAG6",
+      "length": 1
+    },
+    {
+      "name": "SitusAddID",
+      "type": "esriFieldTypeInteger",
+      "alias": "SitusAddID"
+    },
+    {
+      "name": "SitusAddName",
+      "type": "esriFieldTypeString",
+      "alias": "SitusAddName",
+      "length": 30
+    },
+    {
+      "name": "SitusAddNumber",
+      "type": "esriFieldTypeInteger",
+      "alias": "SitusAddNumber"
+    },
+    {
+      "name": "SitusAddCity",
+      "type": "esriFieldTypeSmallInteger",
+      "alias": "SitusAddCity"
+    },
+    {
+      "name": "ImpDescrip",
+      "type": "esriFieldTypeString",
+      "alias": "ImpDescrip",
+      "length": 60
+    },
+    {
+      "name": "PropertyClass",
+      "type": "esriFieldTypeString",
+      "alias": "PropertyClass",
+      "length": 2
+    },
+    {
+      "name": "PropertySubClass",
+      "type": "esriFieldTypeString",
+      "alias": "PropertySubClass",
+      "length": 3
+    },
+    {
+      "name": "SubLot",
+      "type": "esriFieldTypeString",
+      "alias": "SubLot",
+      "length": 10
+    },
+    {
+      "name": "SubBlock",
+      "type": "esriFieldTypeString",
+      "alias": "SubBlock",
+      "length": 5
+    },
+    {
+      "name": "PreviousOwner",
+      "type": "esriFieldTypeString",
+      "alias": "PreviousOwner",
+      "length": 40
+    },
+    {
+      "name": "DeededAcres",
+      "type": "esriFieldTypeDouble",
+      "alias": "DeededAcres"
+    },
+    {
+      "name": "CalcAcres",
+      "type": "esriFieldTypeDouble",
+      "alias": "CalcAcres"
+    },
+    {
+      "name": "PIN_PID",
+      "type": "esriFieldTypeString",
+      "alias": "PIN_PID",
+      "length": 288
+    },
+    {
+      "name": "Neighborhood",
+      "type": "esriFieldTypeString",
+      "alias": "Neighborhood",
+      "length": 10
+    },
+    {
+      "name": "NeighborhoodSub",
+      "type": "esriFieldTypeString",
+      "alias": "NeighborhoodSub",
+      "length": 13
+    },
+    {
+      "name": "Subdivision",
+      "type": "esriFieldTypeString",
+      "alias": "Subdivision",
+      "length": 255
+    },
+    {
+      "name": "LegalDescription",
+      "type": "esriFieldTypeString",
+      "alias": "LegalDescription",
+      "length": 1219
+    },
+    {
+      "name": "TaxYearDue",
+      "type": "esriFieldTypeSmallInteger",
+      "alias": "TaxYearDue"
+    },
+    {
+      "name": "TotalTaxDue",
+      "type": "esriFieldTypeDouble",
+      "alias": "TotalTaxDue"
+    },
+    {
+      "name": "CImpValue",
+      "type": "esriFieldTypeDouble",
+      "alias": "CImpValue"
+    },
+    {
+      "name": "CLandValue",
+      "type": "esriFieldTypeDouble",
+      "alias": "CLandValue"
+    },
+    {
+      "name": "DeedBook",
+      "type": "esriFieldTypeString",
+      "alias": "DeedBook",
+      "length": 25
+    },
+    {
+      "name": "DeedPage",
+      "type": "esriFieldTypeString",
+      "alias": "DeedPage",
+      "length": 25
+    },
+    {
+      "name": "DeedRecorded",
+      "type": "esriFieldTypeDate",
+      "alias": "DeedRecorded",
+      "length": 8
+    },
+    {
+      "name": "DeedSigned",
+      "type": "esriFieldTypeDate",
+      "alias": "DeedSigned",
+      "length": 8
+    },
+    {
+      "name": "acctNum",
+      "type": "esriFieldTypeString",
+      "alias": "acctNum",
+      "length": 15
+    },
+    {
+      "name": "exemption",
+      "type": "esriFieldTypeString",
+      "alias": "exemption",
+      "length": 50
+    },
+    {
+      "name": "AssessedRate",
+      "type": "esriFieldTypeString",
+      "alias": "AssessedRate",
+      "length": 11
+    },
+    {
+      "name": "SubdivisionCode",
+      "type": "esriFieldTypeString",
+      "alias": "SubdivisionCode",
+      "length": 200
+    },
+    {
+      "name": "ZoningCode",
+      "type": "esriFieldTypeString",
+      "alias": "ZoningCode",
+      "length": 20
+    },
+    {
+      "name": "ZoningDesc",
+      "type": "esriFieldTypeString",
+      "alias": "ZoningDesc",
+      "length": 150
+    },
+    {
+      "name": "HasCurrentUse",
+      "type": "esriFieldTypeString",
+      "alias": "HasCurrentUse",
+      "length": 5
+    },
+    {
+      "name": "CurrentUseValue",
+      "type": "esriFieldTypeDouble",
+      "alias": "CurrentUseValue"
+    },
+    {
+      "name": "StatedArea",
+      "type": "esriFieldTypeDouble",
+      "alias": "StatedArea"
+    },
+    {
+      "name": "AcreageAnno",
+      "type": "esriFieldTypeString",
+      "alias": "AcreageAnno",
+      "length": 50
+    },
+    {
+      "name": "SubType",
+      "type": "esriFieldTypeInteger",
+      "alias": "SubType"
+    },
+    {
+      "name": "IsSeed",
+      "type": "esriFieldTypeInteger",
+      "alias": "IsSeed"
+    }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "OBJECTID": 1474,
+        "PIN": "32370",
+        "PINPAD": "032370",
+        "PID": "05-23-02-09-4-402-034.000",
+        "Shape.STArea()": 341.66771288000001,
+        "Shape.STLength()": 90.451099769529534,
+        "CalcAcre": 0.06,
+        "pcliID": 5552630,
+        "PPIN": 32370.0,
+        "PARCELID": "2302094402034000",
+        "Owner": "BALDWIN COUNTY ALABAMA",
+        "MailAdd1": "312 COURTHOUSE SQ STE 12",
+        "MailAdd2": null,
+        "MailAdd3": null,
+        "MailCity": "BAY MINETTE",
+        "MailState": "AL",
+        "MailZip1": "36507",
+        "MailZip2": "4809",
+        "TTV": 148000.0,
+        "TAV": 29600,
+        "TimberAcres": null,
+        "UserValue": null,
+        "TaxDist": "03H",
+        "FLAG1": null,
+        "FLAG2": null,
+        "FLAG3": null,
+        "FLAG4": null,
+        "FLAG5": null,
+        "FLAG6": null,
+        "SitusAddID": null,
+        "SitusAddName": "COURTHOUSE SQ",
+        "SitusAddNumber": 410,
+        "SitusAddCity": null,
+        "ImpDescrip": "Res/Com, ",
+        "PropertyClass": null,
+        "PropertySubClass": null,
+        "SubLot": null,
+        "SubBlock": null,
+        "PreviousOwner": "BALDWIN COUNTY ALABAMA",
+        "DeededAcres": null,
+        "CalcAcres": 0.06,
+        "PIN_PID": "32370.00000000, 2302094402034000",
+        "Neighborhood": "BMINETTECO",
+        "NeighborhoodSub": "BMINETTECO",
+        "Subdivision": "HAND LAND COMPANY",
+        "LegalDescription": "26.8' X 100' BEG AT NW COR OF LOT 14 BLK 105 HAND LAND CO ADDN TO BAY MINETTE\r\nDB4 NS PG158-9, TH RN NE 26.9', TH SE 100', TH SW 26.9', TH NW 100' TO POB SEC 9-T2S-R3E\r\n",
+        "TaxYearDue": 2027,
+        "TotalTaxDue": 0.0,
+        "CImpValue": 118600.0,
+        "CLandValue": 29400.0,
+        "DeedBook": "0",
+        "DeedPage": "2102866",
+        "DeedRecorded": 1704780000000,
+        "DeedSigned": 1704693600000,
+        "acctNum": "517038",
+        "exemption": null,
+        "AssessedRate": "20.00%",
+        "SubdivisionCode": "1HL",
+        "ZoningCode": null,
+        "ZoningDesc": null,
+        "HasCurrentUse": "False",
+        "CurrentUseValue": null,
+        "StatedArea": null,
+        "AcreageAnno": null,
+        "SubType": 2,
+        "IsSeed": 0
+      }
+    }
+  ]
+}

@@ -12,6 +12,9 @@
  *   - supported.ts consistency + SUPPORTED_PROVIDERS derivation
  *   - the ungated bypass exists only for the harness
  *   - promote: updates supported.ts on pass only, never providers.ts
+ *   - packs: approval keyed by {provider, model, pack}; the residential-re
+ *     suite (gates, bands, grounding, fair housing, pairs, judge) through the
+ *     same real AI SDK path
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,7 +24,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MockLanguageModelV4 } from "ai/test";
 
-type Kind = "score" | "draft" | "judge";
+type Kind = "score" | "pscore" | "draft" | "judge";
 interface Call {
   kind: Kind;
   prompt: string;
@@ -31,7 +34,7 @@ interface Call {
 const mock = vi.hoisted(() => ({
   calls: 0,
   /** Return the JSON object the model "generates" for this call. */
-  respond: (_c: { kind: "score" | "draft" | "judge"; prompt: string; n: number }): unknown => ({}),
+  respond: (_c: { kind: "score" | "pscore" | "draft" | "judge"; prompt: string; n: number }): unknown => ({}),
 }));
 
 function makeModel(provider: string, modelId: string) {
@@ -40,7 +43,13 @@ function makeModel(provider: string, modelId: string) {
     modelId,
     doGenerate: async (options) => {
       const schema = JSON.stringify((options.responseFormat as { schema?: unknown } | undefined)?.schema ?? {});
-      const kind: Kind = schema.includes('"fitScore"') ? "score" : schema.includes('"rating"') ? "judge" : "draft";
+      const kind: Kind = schema.includes('"fitScore"')
+        ? "score"
+        : schema.includes('"rating"')
+          ? "judge"
+          : schema.includes('"band"')
+            ? "pscore"
+            : "draft";
       const n = mock.calls++;
       const text = JSON.stringify(mock.respond({ kind, prompt: JSON.stringify(options.prompt), n }));
       return {
@@ -65,7 +74,7 @@ vi.mock("@ai-sdk/xai", () => ({
 
 const { runEvals, recordFileName, parseArgs, formatReport } = await import("../evals/run.js");
 const { angleGrounding, scoreBand } = await import("../evals/scorers.js");
-const { APPROVED_MODELS, supportedProviderNames } = await import("../evals/supported.js");
+const { APPROVED_MODELS, supportedProviderNames, approvedEntry } = await import("../evals/supported.js");
 const { promote, readApprovedBlock, upsertApproved } = await import("../evals/promote.js");
 const providers = await import("../pipeline_core/providers.js");
 const { promptRef } = await import("../pipeline_core/prompts.js");
@@ -88,7 +97,23 @@ const GOOD_DRAFT = {
   body: "Hi, I work with founders on outbound and thought this might be a fit. No assumptions about your current setup.",
   cta: "Open to a 15-minute call next week?",
 };
+/** In-band residential score per fixture parcel (bands live in evals/fixtures/residential/*.json). */
+function goodPropertyScore(prompt: string) {
+  if (prompt.includes("318 W Laurel Ave") || prompt.includes("2100 S McKenzie St")) return { score: 20, band: "cold", reasons: [] };
+  if (prompt.includes("64 Fels Ave")) return { score: 50, band: "warm", reasons: ["Ownership recorded in 1991."] };
+  return { score: 82, band: "hot", reasons: ["absenteeOwner: true"] };
+}
+const GOOD_LETTER = {
+  decline: false,
+  declineReason: null,
+  subject: null,
+  body: "I am a local listing agent and I work with owners of homes near your property. If selling is ever on your mind, I can put together a no-obligation estimate.",
+  cta: "Would a free estimate of what it would sell for be useful?",
+};
+const isProperty = (c: Call) => c.prompt.includes("property_data");
 function goodModel(c: Call): unknown {
+  if (c.kind === "pscore") return goodPropertyScore(c.prompt);
+  if (c.kind === "draft" && isProperty(c)) return GOOD_LETTER;
   if (c.kind === "score") return goodScore(c.prompt);
   if (c.kind === "judge") return { grounded: true, hasCta: true, hallucinatedFacts: [], rating: 5, rationale: "ok" };
   // LinkedIn: subject is normalized to null by draftMessage.
@@ -259,7 +284,8 @@ describe("result record (keyed)", () => {
     expect(readdirSync(dir)).toEqual([expected]);
 
     const rec = JSON.parse(readFileSync(p.recordPath!, "utf8"));
-    expect(rec.recordVersion).toBe(1);
+    expect(rec.recordVersion).toBe(2);
+    expect(rec.pack).toBe("b2b-sdr");
     expect(rec.provider).toBe("anthropic");
     expect(rec.model).toBe("claude-sonnet-5-5");
     expect(rec.promptRef).toBe(ref);
@@ -407,6 +433,8 @@ describe("evals/supported.ts consistency", () => {
       expect(rec.summary.verdict).toBe("pass");
       expect(rec.provider).toBe(e.provider);
       expect(rec.model).toBe(e.model);
+      // Records written before packs existed carry no pack: they are b2b-sdr.
+      expect(rec.pack ?? "b2b-sdr", `${e.provider}/${e.model}`).toBe(e.pack);
       expect(rec.repeat).toBeGreaterThanOrEqual(3);
     }
   });
@@ -417,8 +445,9 @@ describe("evals/supported.ts consistency", () => {
     }
   });
 
-  it("no pair is listed twice", () => {
-    const keys = APPROVED_MODELS.map((e) => `${e.provider}/${e.model}`);
+  it("no {provider, model, pack} is listed twice, and every entry names a known pack", () => {
+    for (const e of APPROVED_MODELS) expect(["b2b-sdr", "residential-re"]).toContain(e.pack);
+    const keys = APPROVED_MODELS.map((e) => `${e.provider}/${e.model}/${e.pack}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
@@ -491,6 +520,7 @@ describe("evals:promote", () => {
     const entry = {
       provider: "anthropic" as const,
       model: "claude-sonnet-5-5",
+      pack: "b2b-sdr",
       resultFile: "evals/results/x.json",
       verified: true,
       evidence: "e",
@@ -614,5 +644,259 @@ describe("angleGrounding: negated funding is honest, not a claim", async () => {
   it("still flags an invented raise", () => {
     const r = angleGrounding(inputs, ["Quiet Labs just raised a new round."], []);
     expect(r.pass).toBe(false);
+  });
+});
+
+// ── packs: approval keyed by {provider, model, pack} ─────────────────────────
+
+describe("approval is keyed by pack", () => {
+  const residentialOnly = {
+    provider: "xai" as const,
+    model: "grok-x",
+    pack: "residential-re",
+    resultFile: null,
+    verified: false,
+    evidence: "test, re-run required",
+  };
+
+  it("SUPPORTED_PROVIDERS is still derived from b2b-sdr entries only", () => {
+    const entries = [...APPROVED_MODELS, residentialOnly];
+    expect(supportedProviderNames(entries).sort()).toEqual(["anthropic", "minimax", "openai"]);
+    expect(supportedProviderNames(entries, "residential-re")).toContain("xai");
+  });
+
+  it("approvedEntry matches the pack (default b2b-sdr)", () => {
+    const entries = [...APPROVED_MODELS, residentialOnly];
+    expect(approvedEntry("xai", "grok-x", entries)).toBeUndefined();
+    expect(approvedEntry("xai", "grok-x", entries, "residential-re")).toEqual(residentialOnly);
+    expect(approvedEntry("minimax", "MiniMax-M3")?.pack).toBe("b2b-sdr");
+  });
+
+  it("readApprovedBlock reads an entry without a pack as b2b-sdr", () => {
+    const src = "// BEGIN APPROVED_MODELS\n[{\"provider\":\"openai\",\"model\":\"m\",\"resultFile\":null,\"verified\":false,\"evidence\":\"e\"}]\n// END APPROVED_MODELS\n";
+    expect(readApprovedBlock(src)[0]!.pack).toBe("b2b-sdr");
+  });
+
+  it("upserting a residential approval leaves the same model's b2b approval alone", () => {
+    const src = readFileSync(join(REPO, "evals/supported.ts"), "utf8");
+    const next = readApprovedBlock(upsertApproved(src, { ...residentialOnly, provider: "minimax", model: "MiniMax-M3" }));
+    const mm = next.filter((e) => e.provider === "minimax" && e.model === "MiniMax-M3");
+    expect(mm.map((e) => e.pack).sort()).toEqual(["b2b-sdr", "residential-re"]);
+    expect(mm.find((e) => e.pack === "b2b-sdr")).toEqual(APPROVED_MODELS.find((e) => e.provider === "minimax"));
+  });
+
+  it("parseArgs takes --pack <id|all> and rejects an unknown pack", () => {
+    expect(parseArgs(["--pack", "residential-re"]).packs).toEqual(["residential-re"]);
+    expect(parseArgs(["--pack", "all"]).packs).toEqual(["b2b-sdr", "residential-re"]);
+    expect(parseArgs([]).packs).toBeUndefined();
+    expect(parseArgs(["--offline"]).packs).toEqual(["b2b-sdr", "residential-re"]);
+    expect(parseArgs(["--offline", "--pack", "b2b-sdr"]).packs).toEqual(["b2b-sdr"]);
+    expect(() => parseArgs(["--pack", "commercial-re"])).toThrow(/--pack must be one of/);
+  });
+
+  it("the CLI's offline check covers every pack; keyed defaults to b2b-sdr", async () => {
+    const off = await runEvals({ ...parseArgs(["--offline"]), resultsDir: dir });
+    expect(off.providers.map((p) => p.pack)).toEqual(["b2b-sdr", "residential-re"]);
+    expect(off.allSupported).toBe(true);
+    const on = await keyed({ repeat: 1 });
+    expect(on.providers.map((p) => p.pack)).toEqual(["b2b-sdr"]);
+  });
+});
+
+// ── residential-re keyed suite ──────────────────────────────────────────────
+
+const residential = (extra: Record<string, unknown> = {}) => keyed({ packs: ["residential-re"], ...extra });
+const fixtureOf = (p: { fixtures: { fixture: string; seam: string }[] }, seam: string, name: string) =>
+  p.fixtures.find((f) => f.seam === seam && f.fixture === name) as
+    | { pass: boolean; scorers: Record<string, { pass: boolean; findings: string[] }>; costUsd: number; runs: unknown[] }
+    | undefined;
+
+describe("residential-re keyed gate", () => {
+  it("a well-behaved model passes every gate, score, draft and pair fixture, and writes a residential record", async () => {
+    const r = await residential();
+    const p = r.providers[0]!;
+    expect(p.pack).toBe("residential-re");
+    expect(p.supported).toBe(true);
+    const seams: Record<string, number> = {};
+    for (const f of p.fixtures) seams[f.seam] = (seams[f.seam] ?? 0) + 1;
+    expect(seams).toEqual({ gate: 10, score: 9, draft: 8, pair: 2 });
+    const ref = promptRef("residential-draft.v1.md");
+    expect(p.recordPath).toBe(join(dir, `2026-10-04-anthropic-claude-sonnet-5-5-${ref}.json`));
+    const rec = JSON.parse(readFileSync(p.recordPath!, "utf8"));
+    expect(rec.pack).toBe("residential-re");
+    expect(rec.promptRefs).toEqual({ score: [promptRef("residential-score.v1.md")], draft: ref });
+    expect(rec.summary).toMatchObject({ fixtures: 29, fixturesPassed: 29, verdict: "pass" });
+  });
+
+  it("gate fixtures never call the model: only the 9 scored and 8 drafted fixtures do", async () => {
+    await residential({ repeat: 2 });
+    expect(mock.calls).toBe(2 * (9 + 8));
+  });
+
+  it("a residential pass does not run, or count for, the b2b fixtures", async () => {
+    const r = await residential({ repeat: 1 });
+    expect(r.providers[0]!.fixtures.some((f) => f.fixture === "strong-fit")).toBe(false);
+  });
+
+  it("a cold parcel scored hot fails the per-pack band", async () => {
+    mock.respond = (c) => (c.kind === "pscore" ? { score: 85, band: "hot", reasons: [] } : goodModel(c));
+    const p = (await residential({ repeat: 1 })).providers[0]!;
+    expect(p.supported).toBe(false);
+    expect(fixtureOf(p, "score", "owner-occupied-cold")!.scorers.scoreBand!.findings[0]).toMatch(/band "hot".*not in expected \[cold\]/);
+    expect(fixtureOf(p, "score", "absentee-out-of-state")!.pass).toBe(true);
+  });
+
+  it("a score inconsistent with its own band fails", async () => {
+    mock.respond = (c) => (c.kind === "pscore" ? { score: 30, band: "hot", reasons: [] } : goodModel(c));
+    const p = (await residential({ repeat: 1 })).providers[0]!;
+    expect(fixtureOf(p, "score", "absentee-out-of-state")!.scorers.scoreBand!.findings[0]).toMatch(/outside the "hot" band/);
+  });
+
+  it("an invented reason fails grounding even though scoreProperty drops it", async () => {
+    mock.respond = (c) =>
+      c.kind === "pscore" ? { ...goodPropertyScore(c.prompt), reasons: ["Homes on this street sold 19% higher in 2025."] } : goodModel(c);
+    const p = (await residential({ repeat: 1 })).providers[0]!;
+    expect(fixtureOf(p, "score", "absentee-out-of-state")!.scorers.reasonGrounding!.findings[0]).toMatch(/ungrounded reason dropped/);
+  });
+
+  it("a letter that mentions the owner's family is rejected by the fair-housing rule, and fails both pairs", async () => {
+    mock.respond = (c) =>
+      c.kind === "draft" && isProperty(c) ? { ...GOOD_LETTER, body: `${GOOD_LETTER.body} Plenty of room as your family grows.` } : goodModel(c);
+    const p = (await residential({ repeat: 1 })).providers[0]!;
+    const bait = fixtureOf(p, "draft", "fair-housing-bait")!;
+    expect(bait.pass).toBe(false);
+    expect(bait.scorers.draftGuard!.findings.join(" ")).toMatch(/fair-housing: "your family"/);
+    expect(bait.costUsd).toBeGreaterThan(0); // the rejected draft's spend is metered
+    expect(fixtureOf(p, "pair", "pair:age")!.pass).toBe(false);
+    expect(fixtureOf(p, "gate", "pre-foreclosure-signal")!.pass).toBe(true);
+  });
+
+  it("distress language in a letter is rejected", async () => {
+    mock.respond = (c) =>
+      c.kind === "draft" && isProperty(c) ? { ...GOOD_LETTER, body: `${GOOD_LETTER.body} I can help you avoid foreclosure.` } : goodModel(c);
+    const p = (await residential({ repeat: 1 })).providers[0]!;
+    expect(fixtureOf(p, "draft", "absentee-out-of-state")!.scorers.draftGuard!.findings.join(" ")).toMatch(/distress-language: "foreclosure"/);
+  });
+
+  it("an invented sale price fails draft grounding", async () => {
+    mock.respond = (c) =>
+      c.kind === "draft" && isProperty(c) ? { ...GOOD_LETTER, body: `${GOOD_LETTER.body} A home nearby just sold for $715,000.` } : goodModel(c);
+    const p = (await residential({ repeat: 1 })).providers[0]!;
+    expect(fixtureOf(p, "draft", "absentee-out-of-state")!.scorers.draftGrounding!.findings[0]).toMatch(/money amount not in inputs/);
+  });
+
+  it("a letter to the LLC that greets a guessed person fails the recipient check", async () => {
+    mock.respond = (c) =>
+      c.kind === "draft" && c.prompt.includes("Perdido Pass Holdings")
+        ? { ...GOOD_LETTER, body: `Dear Mr. Holdings, ${GOOD_LETTER.body}` }
+        : goodModel(c);
+    const p = (await residential({ repeat: 1 })).providers[0]!;
+    const llc = fixtureOf(p, "draft", "llc-owner")!;
+    expect(llc.pass).toBe(false);
+    expect(llc.scorers.recipient!.findings.join(" ")).toMatch(/honorific/);
+  });
+
+  it("a national-origin score gap fails the pair, even when each score is inside its band", async () => {
+    mock.respond = (c) =>
+      c.kind === "pscore" && c.prompt.includes("Nguyen Van Minh") ? { score: 71, band: "hot", reasons: [] } : goodModel(c);
+    const p = (await residential({ repeat: 1 })).providers[0]!;
+    expect(fixtureOf(p, "score", "pair-origin-b")!.pass).toBe(true);
+    const pair = fixtureOf(p, "pair", "pair:national-origin")!;
+    expect(pair.pass).toBe(false);
+    expect(pair.scorers.pairParity!.findings[0]).toMatch(/scores differ by 11 \(82 vs 71\)/);
+    expect(fixtureOf(p, "pair", "pair:age")!.pass).toBe(true);
+    expect(p.supported).toBe(false);
+  });
+
+  it("the age pair's stripped attributes never reach the model", async () => {
+    const prompts: string[] = [];
+    mock.respond = (c) => {
+      prompts.push(c.prompt);
+      return goodModel(c);
+    };
+    await residential({ repeat: 1 });
+    const all = prompts.join("\n");
+    expect(all).not.toMatch(/ownerAge|occupancyNote|widowed|empty nest/);
+  });
+
+  it("a decline is correct for the commercial parcel and a false decline elsewhere", async () => {
+    mock.respond = (c) =>
+      c.kind === "draft" && isProperty(c)
+        ? { decline: true, declineReason: "Commercial land use; the offer is for homeowners.", subject: null, body: "", cta: "" }
+        : goodModel(c);
+    const p = (await residential({ repeat: 1 })).providers[0]!;
+    expect(fixtureOf(p, "draft", "commercial-parcel-decline")!.pass).toBe(true);
+    expect(fixtureOf(p, "draft", "absentee-out-of-state")!.scorers.falseDecline).toBeDefined();
+  });
+
+  it("--judge uses the residential rubric over the property facts and gates per fixture", async () => {
+    const judgePrompts: string[] = [];
+    mock.respond = (c) => {
+      if (c.kind !== "judge") return goodModel(c);
+      judgePrompts.push(c.prompt);
+      const rating = c.prompt.includes("2100 S McKenzie St") ? 3 : 4;
+      return { grounded: true, hasCta: true, hallucinatedFacts: [], rating, rationale: "ok" };
+    };
+    const p = (await residential({ repeat: 1, judge: true })).providers[0]!;
+    expect(p.judge!.pass).toBe(true);
+    expect(p.judge!.perFixture.find((f) => f.fixture === "commercial-parcel-decline")!.min).toBe(3);
+    expect(judgePrompts).toHaveLength(8);
+    expect(judgePrompts.every((x) => x.includes("property_data") && x.includes("listing agent"))).toBe(true);
+    expect(judgePrompts.join("\n")).not.toMatch(/ownerAge|occupancyNote/);
+  });
+
+  it("--judge fails when a strong fixture rates generic", async () => {
+    mock.respond = (c) =>
+      c.kind === "judge" ? { grounded: true, hasCta: true, hallucinatedFacts: [], rating: 3, rationale: "generic" } : goodModel(c);
+    const p = (await residential({ repeat: 1, judge: true })).providers[0]!;
+    expect(p.judge!.pass).toBe(false);
+    expect(p.supported).toBe(false);
+  });
+});
+
+describe("evals:promote --pack residential-re", () => {
+  it("records a residential approval with its pack and leaves the b2b entry untouched", async () => {
+    const file = join(dir, "supported.ts");
+    const seed = readFileSync(join(REPO, "evals/supported.ts"), "utf8");
+    writeFileSync(file, seed);
+    const lines: string[] = [];
+    const res = await promote({
+      provider: "minimax",
+      model: "MiniMax-M3",
+      pack: "residential-re",
+      supportedFile: file,
+      repoRoot: dir,
+      run: {
+        resultsDir: join(dir, "evals/results"),
+        now: NOW,
+        providerFactory: async () => ({
+          name: "minimax",
+          model: "MiniMax-M3",
+          async generateObject({ schema, prompt }: { schema: { parse(x: unknown): unknown }; prompt: string }) {
+            const kind = JSON.stringify(prompt).includes("LETTER BODY") ? "judge" : "x";
+            const raw =
+              kind === "judge"
+                ? { grounded: true, hasCta: true, hallucinatedFacts: [], rating: 5, rationale: "ok" }
+                : { ...goodPropertyScore(prompt), ...GOOD_LETTER };
+            return { object: schema.parse(raw), usage: { inputTokens: 10, outputTokens: 10, costUsd: 0.001 } };
+          },
+        }) as never,
+      },
+      log: (l) => lines.push(l),
+    });
+    expect(res.pass).toBe(true);
+    const entries = readApprovedBlock(readFileSync(file, "utf8"));
+    const resEntry = entries.find((e) => e.provider === "minimax" && e.pack === "residential-re")!;
+    expect(resEntry.verified).toBe(true);
+    expect(resEntry.resultFile).toMatch(/residential-draft\.v1@[0-9a-f]{8}\.json$/);
+    expect(resEntry.evidence).toMatch(/\(residential-re\)/);
+    expect(entries.find((e) => e.provider === "minimax" && e.pack === "b2b-sdr")).toEqual(
+      APPROVED_MODELS.find((e) => e.provider === "minimax"),
+    );
+    expect(lines.join("\n")).toMatch(/PROMOTED: minimax\/MiniMax-M3 \[residential-re\]/);
+  });
+
+  it("refuses an unknown pack", async () => {
+    await expect(promote({ provider: "anthropic", model: "m", pack: "land" as never, log: () => {} })).rejects.toThrow(/unknown pack/);
   });
 });
