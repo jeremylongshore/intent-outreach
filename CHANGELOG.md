@@ -8,6 +8,14 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Event monitors** (#83 phase 8). `intent-outreach monitor add <id> --zips ... | --parcels fips:apn`, `monitor list`
+  and `monitor check <id> [--draft --icp ...]`. A check re-runs the query through the normal research path,
+  fingerprints each parcel (owner, value, listing status, distress signals) and diffs it against the last snapshot
+  (`$INTENT_OUTREACH_HOME/monitors/<id>.json`, 0600): `new-parcel`, `owner-change`, `value-change` (threshold,
+  default 10%), `listing-change`, `distress-change`. The first check records a baseline; a check whose research
+  failed keeps the old snapshot so an outage never reads as every parcel being new. `--draft` runs a property
+  campaign over only the changed parcels; drafts wait in the approval queue.
+
 - **MCP tools `list_runs`, `suppress` and `underwrite`** (#83 phase 8). `list_runs` summarizes the newest
   runs in the local store (status, pack, drafts, blocks, credits, cost; corrupt lines are counted). `suppress`
   adds or lists opt-outs of any kind from inside Claude Code; removing an opt-out is deliberately CLI-only
