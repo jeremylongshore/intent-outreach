@@ -8,6 +8,13 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **MCP tools `list_runs`, `suppress` and `underwrite`** (#83 phase 8). `list_runs` summarizes the newest
+  runs in the local store (status, pack, drafts, blocks, credits, cost). `suppress` adds, removes or lists
+  opt-outs of any kind from inside Claude Code (removal is reported with a warning). `underwrite` runs one
+  `@intent-outreach/deal-math` calculation in code and returns `{value, inputs, assumptionsUsed, version}`,
+  so an agent quotes computed figures instead of doing arithmetic. The engine now declares the deal-math
+  workspace package as a dependency.
+
 - **Free public-records connectors and `property-run`** (#83 phase 6b). `fl-dor-parcels` (Florida statewide
   DOR roll: owner, mailing address, situs, just value, use code, year built, last sale, centroid; masked
   confidential owners dropped; one party per owner across parcels) and `fema-nfhl` (flood zone + SFHA by

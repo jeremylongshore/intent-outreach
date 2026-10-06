@@ -19,6 +19,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerBuiltinConnectors } from "../pipeline_core/connectors/index.js";
 import {
+  handleListRuns,
+  handleSuppress,
+  handleUnderwrite,
+  ListRunsInput,
+  SuppressInput,
+  UnderwriteInput,
   DecideInput,
   EnrichLeadInput,
   handleApprove,
@@ -133,6 +139,42 @@ server.registerTool(
     inputSchema: DecideInput,
   },
   async (args) => handleReject(args),
+);
+
+server.registerTool(
+  "list_runs",
+  {
+    title: "List recent campaign runs",
+    description: "Summaries of the most recent runs in the LOCAL run store: status, pack, drafts, blocks, rejections, credits and cost.",
+    inputSchema: ListRunsInput,
+  },
+  async (args) => handleListRuns(args),
+);
+
+server.registerTool(
+  "suppress",
+  {
+    title: "Manage the opt-out list",
+    description:
+      "Add, remove or list entries on the local suppression list (email, domain, phone or mailing address). " +
+      "Add whenever someone asks not to be contacted; every run and the send-time check honor it. Remove only " +
+      "when the person explicitly asked to be contacted again.",
+    inputSchema: SuppressInput,
+  },
+  async (args) => handleSuppress(args),
+);
+
+server.registerTool(
+  "underwrite",
+  {
+    title: "Compute deal math",
+    description:
+      "Run one deal-math calculation in code (noi, capRate, dscr, cashOnCash, monthlyPayment, sellerFinance, " +
+      "exchange1031Timeline, tradeUp). Money is integer cents, rates are basis points. Quote the returned figures " +
+      "exactly; never do the arithmetic yourself. The 1031 timeline is informational, not tax advice.",
+    inputSchema: UnderwriteInput,
+  },
+  async (args) => handleUnderwrite(args),
 );
 
 async function main() {
