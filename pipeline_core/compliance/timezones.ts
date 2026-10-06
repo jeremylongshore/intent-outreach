@@ -2,20 +2,25 @@
  * pipeline_core/compliance/timezones.ts — recipient-local contact windows (pure).
  *
  * TCPA (47 CFR 64.1200(c)(1)) allows telephone solicitation 8am–9pm in the
- * CALLED PARTY's local time. Florida's Telephone Solicitation Act (Fla. Stat.
- * 501.059(8)(a)) narrows that to 8am–8pm. A recipient's time zone is a guess
- * from two signals: the state of their mailing address and their phone's area
- * code. They can disagree (people keep numbers when they move), so this module
- * is deliberately conservative:
+ * CALLED PARTY's local time. Several states are stricter: Florida (Fla. Stat.
+ * 501.059(8)(a)) ends at 8pm, and as we understand them Louisiana and
+ * Mississippi also end at 8pm and bar Sundays, and Texas starts at 9am. Rather
+ * than encode each statute's fine print, every phone channel uses ONE
+ * conservative window that sits inside all of them:
  *
+ *     8am–8pm local, Monday–Saturday (Texas: from 9am)
+ *
+ * That gives up an hour against the federal rule and is NOT legal advice:
+ * holidays are not modeled, and counsel review before SMS or call automation is
+ * an open owner decision (000-docs/031).
+ *
+ * A recipient's time zone is a guess from two signals, the state of their
+ * mailing address and their phone's area code, which can disagree (people keep
+ * numbers when they move). So:
  *   • every candidate zone from EITHER signal must be inside the window;
- *   • a signal that maps to more than one zone (Florida's 850 spans Central
- *     and Eastern) contributes all of them;
- *   • with no usable signal, every US zone is a candidate and the strictest
- *     known window (8am–8pm) applies: the most restrictive reading.
- *
- * The area-code table covers the Gulf Coast markets the packs work today.
- * An unlisted area code is treated as unknown (all zones), never guessed.
+ *   • a signal that maps to more than one zone contributes all of them;
+ *   • an area code missing from the Gulf table, a non-US number, or no signal
+ *     at all makes EVERY US zone a candidate. Nothing is guessed.
  */
 
 const ET = "America/New_York";
@@ -27,13 +32,13 @@ const AK = "America/Anchorage";
 const HT = "Pacific/Honolulu";
 const PRT = "America/Puerto_Rico";
 
-export const ALL_US_ZONES: readonly string[] = [ET, CT, MT, AZ, PT, AK, HT, PRT];
+export const ALL_US_ZONES: readonly string[] = [ET, CT, MT, AZ, PT, AK, "America/Adak", HT, PRT];
 
 const STATE_ZONES: Readonly<Record<string, readonly string[]>> = {
-  AL: [CT], AK: [AK, "America/Adak"], AZ: [AZ], AR: [CT], CA: [PT], CO: [MT], CT: [ET], DE: [ET], DC: [ET],
+  AL: [CT], AK: [AK, "America/Adak"], AZ: [AZ, MT], // AZ: the Navajo Nation observes DST AR: [CT], CA: [PT], CO: [MT], CT: [ET], DE: [ET], DC: [ET],
   FL: [ET, CT], GA: [ET], HI: [HT], ID: [MT, PT], IL: [CT], IN: [ET, CT], IA: [CT], KS: [CT, MT],
   KY: [ET, CT], LA: [CT], ME: [ET], MD: [ET], MA: [ET], MI: [ET, CT], MN: [CT], MS: [CT], MO: [CT],
-  MT: [MT], NE: [CT, MT], NV: [PT], NH: [ET], NJ: [ET], NM: [MT], NY: [ET], NC: [ET], ND: [CT, MT],
+  MT: [MT], NE: [CT, MT], NV: [PT, MT], // NV: West Wendover is Mountain NH: [ET], NJ: [ET], NM: [MT], NY: [ET], NC: [ET], ND: [CT, MT],
   OH: [ET], OK: [CT], OR: [PT, MT], PA: [ET], RI: [ET], SC: [ET], SD: [CT, MT], TN: [ET, CT],
   TX: [CT, MT], UT: [MT], VT: [ET], VA: [ET], WA: [PT], WV: [ET], WI: [CT], WY: [MT], PR: [PRT],
 };
@@ -52,12 +57,18 @@ codes("GA", [ET], "229 404 470 478 678 706 762 770 912 943");
 codes("TN", [CT], "615 629 731 901");
 codes("TN", [ET, CT], "423 865 931");
 
-/** Local-time windows: [startHour, endHour) in 24h. */
-export const TCPA_WINDOW = { startHour: 8, endHour: 21 } as const;
-const STATE_WINDOWS: Readonly<Record<string, { startHour: number; endHour: number }>> = {
-  FL: { startHour: 8, endHour: 20 }, // Fla. Stat. 501.059(8)(a)
-};
-const STRICTEST_WINDOW = { startHour: 8, endHour: 20 } as const;
+/** A local-time window: [startHour, endHour) in 24h, and whether Sundays are allowed. */
+export interface ContactWindow {
+  startHour: number;
+  endHour: number;
+  sundays: boolean;
+}
+
+/** The federal TCPA window, for reference. Phone channels use the stricter PHONE_WINDOW. */
+export const TCPA_WINDOW: ContactWindow = Object.freeze({ startHour: 8, endHour: 21, sundays: true });
+/** The conservative window every phone channel uses (see the header). */
+export const PHONE_WINDOW: ContactWindow = Object.freeze({ startHour: 8, endHour: 20, sundays: false });
+const STATE_STARTS: Readonly<Record<string, number>> = { TX: 9 };
 
 export interface RecipientLocation {
   /** 2-letter state of the recipient's mailing address, when known. */
@@ -69,50 +80,62 @@ export interface RecipientLocation {
 export interface WindowCheck {
   ok: boolean;
   zones: string[];
-  window: { startHour: number; endHour: number };
-  /** True when no usable location signal existed, so every US zone was checked. */
+  window: ContactWindow;
+  /** True when some signal was missing or unrecognized, so every US zone was checked. */
   unknownLocation: boolean;
 }
 
-function areaCodeOf(phone: string | undefined): string | undefined {
-  const m = phone ? /^\+1(\d{3})\d{7}$/.exec(phone) : null;
-  return m?.[1];
-}
-
-/** Hour and minute of `now` in `zone` (DST-correct via Intl). */
-function localMinutes(now: Date, zone: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: zone, hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(now);
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? "0");
-  return (get("hour") % 24) * 60 + get("minute");
+/** Day of week (0 = Sunday) and minutes past midnight of `now` in `zone` (DST-correct). */
+function localTime(now: Date, zone: string): { day: number; minutes: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hour12: false,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
+  return { day, minutes: (Number(get("hour")) % 24) * 60 + Number(get("minute")) };
 }
 
 /**
- * Is `now` inside the contact window for this recipient? Checks every
- * candidate zone and applies the narrowest window of every candidate state.
+ * Is `now` inside the phone contact window for this recipient? Checks every
+ * candidate zone against PHONE_WINDOW, with any later state start applied.
  */
 export function withinContactWindow(now: Date, recipient: RecipientLocation): WindowCheck {
   const zones = new Set<string>();
   const states = new Set<string>();
+  let unknownLocation = false;
+
   const state = recipient.state?.trim().toUpperCase();
   if (state && STATE_ZONES[state]) {
     states.add(state);
     for (const z of STATE_ZONES[state]!) zones.add(z);
+  } else if (state) {
+    unknownLocation = true; // an unrecognized state is not a location
   }
-  const area = AREA_CODES[areaCodeOf(recipient.phone) ?? ""];
-  if (area) {
-    states.add(area.state);
-    for (const z of area.zones) zones.add(z);
+
+  if (recipient.phone !== undefined) {
+    const code = /^\+1(\d{3})\d{7}$/.exec(recipient.phone)?.[1];
+    const area = code !== undefined ? AREA_CODES[code] : undefined;
+    if (area) {
+      states.add(area.state);
+      for (const z of area.zones) zones.add(z);
+    } else {
+      unknownLocation = true; // unlisted code or non-US number: never guess
+    }
   }
-  const unknownLocation = zones.size === 0;
-  let window: { startHour: number; endHour: number } = unknownLocation ? { ...STRICTEST_WINDOW } : { ...TCPA_WINDOW };
-  for (const s of states) {
-    const w = STATE_WINDOWS[s];
-    if (w) window = { startHour: Math.max(window.startHour, w.startHour), endHour: Math.min(window.endHour, w.endHour) };
-  }
-  const candidates = unknownLocation ? [...ALL_US_ZONES] : [...zones];
+
+  if (zones.size === 0) unknownLocation = true;
+  const candidates = unknownLocation ? [...new Set([...zones, ...ALL_US_ZONES])] : [...zones];
+  const startHour = Math.max(PHONE_WINDOW.startHour, ...[...states].map((s) => STATE_STARTS[s] ?? 0));
+  const window: ContactWindow = { ...PHONE_WINDOW, startHour };
   const ok = candidates.every((z) => {
-    const m = localMinutes(now, z);
-    return m >= window.startHour * 60 && m < window.endHour * 60;
+    const t = localTime(now, z);
+    if (t.day < 0) return false;
+    if (!window.sundays && t.day === 0) return false;
+    return t.minutes >= window.startHour * 60 && t.minutes < window.endHour * 60;
   });
   return { ok, zones: candidates, window, unknownLocation };
 }

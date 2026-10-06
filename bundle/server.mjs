@@ -40003,6 +40003,19 @@ function callScriptFooter(sender) {
     "If they ask not to be called again: end the call politely and add the number to the suppression list."
   ].join("\n");
 }
+function footerFor(sender, channel) {
+  switch (channel) {
+    case "email":
+    case "mail":
+      return emailFooter(sender);
+    case "sms":
+      return smsFooter(sender);
+    case "call_script":
+      return callScriptFooter(sender);
+    default:
+      return void 0;
+  }
+}
 function appendBlock(body, block) {
   const trimmed = body.replace(/\s+$/, "");
   if (trimmed.endsWith(block)) return body;
@@ -40018,7 +40031,7 @@ function applyComplianceFooter(message, sender) {
   if (!sender || missingSenderFields(sender, message.channel).length > 0) {
     return { ...message, needsSenderIdentity: true };
   }
-  const footer = message.channel === "sms" ? smsFooter(sender) : message.channel === "call_script" ? callScriptFooter(sender) : emailFooter(sender);
+  const footer = footerFor(sender, message.channel) ?? "";
   return { ...message, body: appendBlock(message.body, footer), needsSenderIdentity: false };
 }
 

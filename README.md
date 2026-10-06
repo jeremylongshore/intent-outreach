@@ -188,14 +188,20 @@ arrive after drafting. In TypeScript call `checkSendable` / `assertSendable` fro
 `pipeline_core/compliance/send.ts`; from any other language pipe JSON to the CLI:
 
 ```bash
-intent-outreach check-send --profile ./my-profile.json < message.json   # exit 0 sendable, 3 not, 2 bad input
+intent-outreach check-send --profile ./my-profile.json < message.json   # exit 0 = sendable; anything else = do not send
 ```
 
 It checks the local suppression list, DNC status (phone channels need exactly `clean`), consent from the
 ledger you pass in (SMS needs written consent; any revocation voids every channel), the recipient-local
-window (8am–9pm, 8pm in Florida, the strictest window when the location is unknown), the channel footer
-(STOP wording for SMS, sender identity, license disclosure when the pack requires it), and data whose
-license restricts outreach. It prints every blocking reason as JSON.
+phone window, the channel footer (the exact block for that channel must end the body, including the
+license line when the pack requires it), and data whose license restricts outreach. It prints every
+blocking reason as JSON. Exit 0 means sendable, 3 means not sendable, 2 means bad input; a dispatcher
+must treat **any non-zero exit** as "do not send".
+
+The phone window is deliberately conservative: **8am–8pm recipient-local, Monday–Saturday** (Texas from
+9am), a superset of the TCPA and the Gulf states' telephone-solicitation statutes as we understand them.
+Holidays are not modeled. An unknown or unlisted location is checked against every US time zone. This
+is engineering, not legal advice: have counsel review before automating SMS or calls.
 
 ## Keys (bring your own)
 

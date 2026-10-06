@@ -13,22 +13,25 @@
  * recipient location, a missing consent, a missing disclosure: each blocks.
  *
  * Per-channel rules (defaults; a pack may only TIGHTEN them, see channelPolicy):
- *   email        suppression, sender identity / CAN-SPAM footer present
- *   linkedin     suppression on the contact's email when known
- *   sms          suppression, DNC "clean", WRITTEN consent, recipient-local
- *                8am–9pm (8pm in Florida), STOP wording + sender identity
+ *   email        suppression, the CAN-SPAM footer
+ *   linkedin     suppression and revocations on the contact's email when known
+ *   sms          suppression, DNC "clean", WRITTEN consent, the phone window
+ *                (8am–8pm local, Mon–Sat; see timezones.ts), the SMS footer
  *   call_script  suppression, DNC "clean", consent (written, unless a known
- *                landline), recipient-local window, the script's disclosures
- *   mail         suppression on the mailing address, sender identity
- * Every channel: a contact point whose license terms restrict outreach blocks,
- * and a policy that requires license disclosure needs every license number in
- * the body.
+ *                DNC-clean landline), the phone window, the disclosure block
+ *   mail         suppression on the mailing address, the postal footer
+ * FOOTERS are checked as the EXACT block the footer module produces for this
+ * sender, at the END of the body, so an edited, truncated or hand-written body
+ * cannot pass on a substring. Every channel: a contact point whose license
+ * terms restrict outreach blocks; a policy that requires license disclosure
+ * needs licenses configured (the footer then carries them); a policy that
+ * requires consent blocks when there is nothing to check consent against.
  *
  * Pure: no I/O, the clock is injected, no model.
  */
 
 import type { Channel, ContactPoint } from "../models.js";
-import { licenseLines, missingSenderFields, SMS_OPT_OUT_TEXT, type SenderIdentity } from "../footer.js";
+import { footerFor, missingSenderFields, type SenderIdentity } from "../footer.js";
 import { checkConsent, type ConsentRecord, type ConsentRequirement } from "./consent.js";
 import { checkSuppression, type SuppressionList, type SuppressionSubject } from "./suppression.js";
 import { withinContactWindow, type WindowCheck } from "./timezones.js";
@@ -47,12 +50,13 @@ export interface ChannelPolicy {
   requireLicenseDisclosure: boolean;
 }
 
-export const DEFAULT_CHANNEL_POLICIES: Readonly<Record<Channel, ChannelPolicy>> = Object.freeze({
-  email: { consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false },
-  linkedin: { consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false },
-  sms: { consent: "written", landlineExempt: false, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false },
-  call_script: { consent: "written", landlineExempt: true, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false },
-  mail: { consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false },
+const policy = (p: ChannelPolicy): Readonly<ChannelPolicy> => Object.freeze(p);
+export const DEFAULT_CHANNEL_POLICIES: Readonly<Record<Channel, Readonly<ChannelPolicy>>> = Object.freeze({
+  email: policy({ consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false }),
+  linkedin: policy({ consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false }),
+  sms: policy({ consent: "written", landlineExempt: false, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false }),
+  call_script: policy({ consent: "written", landlineExempt: true, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false }),
+  mail: policy({ consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false }),
 });
 
 const CONSENT_RANK: Record<ConsentRequirement, number> = { none: 0, any: 1, written: 2 };
@@ -64,7 +68,7 @@ const CONSENT_RANK: Record<ConsentRequirement, number> = { none: 0, any: 1, writ
  */
 export function channelPolicy(channel: Channel, override?: Partial<ChannelPolicy>): ChannelPolicy {
   const base = DEFAULT_CHANNEL_POLICIES[channel];
-  if (!override) return base;
+  if (!override) return { ...base }; // a copy: callers can never mutate the shared defaults
   return {
     consent:
       override.consent && CONSENT_RANK[override.consent] > CONSENT_RANK[base.consent] ? override.consent : base.consent,
@@ -150,6 +154,12 @@ export function checkSendable(input: SendableInput): SendVerdict {
   } else if (cp) {
     const consent = checkConsent(input.consents ?? [], cp, channel, now, policy.consent);
     if (!consent.ok) reasons.push(consent.reason);
+  } else if (input.contactEmail) {
+    // linkedin: consent and revocations keyed by the contact's email.
+    const consent = checkConsent(input.consents ?? [], { kind: "email", value: input.contactEmail }, channel, now, policy.consent);
+    if (!consent.ok) reasons.push(consent.reason);
+  } else if (policy.consent !== "none") {
+    reasons.push("consent:no-contact");
   }
 
   if (policy.quietHours && !reasons.includes("clock:invalid")) {
@@ -157,12 +167,14 @@ export function checkSendable(input: SendableInput): SendVerdict {
     if (!window.ok) reasons.push(window.unknownLocation ? "quiet-hours:unknown-location" : "quiet-hours");
   }
 
-  const body = input.message.body;
-  if (channel === "sms" && !body.includes(SMS_OPT_OUT_TEXT)) reasons.push("disclosure:sms-opt-out-missing");
-  if (policy.requireLicenseDisclosure) {
-    const licenses = input.sender?.licenses ?? [];
-    if (licenses.length === 0) reasons.push("disclosure:license-not-configured");
-    else if (!licenseLines(input.sender).every((line) => body.includes(line))) reasons.push("disclosure:license-missing");
+  if (input.sender && missing.length === 0) {
+    const footer = footerFor(input.sender, channel);
+    if (footer !== undefined && !input.message.body.replace(/\s+$/, "").endsWith(footer)) {
+      reasons.push("disclosure:footer-missing");
+    }
+  }
+  if (policy.requireLicenseDisclosure && (input.sender?.licenses ?? []).length === 0) {
+    reasons.push("disclosure:license-not-configured");
   }
 
   return { sendable: reasons.length === 0, reasons, policy, ...(window ? { window } : {}) };

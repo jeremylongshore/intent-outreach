@@ -13,7 +13,9 @@
  *     `recordedAt` on.
  *   • REVOKE-ALL: once any record for a contact is revoked, no consent for
  *     that contact counts on any channel. A person who says stop once has
- *     said stop.
+ *     said stop. A revocation timestamp that cannot be read counts as revoked.
+ *   • An UNREADABLE ledger fails the whole check: a record whose contact
+ *     cannot be normalized might be this person's revocation.
  *   • "Written" consent (what the TCPA requires for marketing texts and for
  *     autodialed or prerecorded calls to a cell) is only a method that leaves
  *     a written record the person signed or submitted: web_form, signed_form.
@@ -56,11 +58,13 @@ export type ConsentRecord = z.infer<typeof ConsentRecordSchema>;
 
 export type ConsentRequirement = "none" | "any" | "written";
 
-function contactKey(kind: ContactPoint["kind"], value: string): string | null {
+function contactKey(kind: ContactPoint["kind"] | undefined, value: string | undefined): string | null {
+  if (typeof value !== "string") return null;
   try {
     if (kind === "phone") return `phone:${normalizePhone(value)}`;
     if (kind === "email") return `email:${normalizeSuppressionEmail(value)}`;
-    return `mail:${normalizeMailingAddress(value)}`;
+    if (kind === "mail") return `mail:${normalizeMailingAddress(value)}`;
+    return null;
   } catch {
     return null;
   }
@@ -68,7 +72,15 @@ function contactKey(kind: ContactPoint["kind"], value: string): string | null {
 
 export type ConsentVerdict =
   | { ok: true; record?: ConsentRecord }
-  | { ok: false; reason: "consent:missing" | "consent:revoked" | "consent:not-written" | "consent:unreadable-contact" };
+  | {
+      ok: false;
+      reason:
+        | "consent:missing"
+        | "consent:revoked"
+        | "consent:not-written"
+        | "consent:unreadable-contact"
+        | "consent:ledger-unreadable";
+    };
 
 /**
  * Does the ledger hold consent good enough to contact `contact` on `channel` at
@@ -85,10 +97,15 @@ export function checkConsent(
 ): ConsentVerdict {
   const key = contactKey(contact.kind, contact.value);
   if (key === null) return { ok: false, reason: "consent:unreadable-contact" };
-  const mine = records.filter((r) => contactKey(r.contact.kind, r.contact.value) === key);
-  if (mine.some((r) => r.revokedAt !== undefined && Date.parse(r.revokedAt) <= now.getTime())) {
-    return { ok: false, reason: "consent:revoked" };
-  }
+  const keyed = records.map((r) => ({ r, key: contactKey(r?.contact?.kind, r?.contact?.value) }));
+  if (keyed.some((k) => k.key === null)) return { ok: false, reason: "consent:ledger-unreadable" };
+  const mine = keyed.filter((k) => k.key === key).map((k) => k.r);
+  const revoked = (r: ConsentRecord) => {
+    if (r.revokedAt === undefined) return false;
+    const at = Date.parse(r.revokedAt);
+    return Number.isNaN(at) || at <= now.getTime(); // unreadable ⇒ revoked
+  };
+  if (mine.some(revoked)) return { ok: false, reason: "consent:revoked" };
   if (requirement === "none") return { ok: true };
   const valid = mine.filter((r) => r.scope.includes(channel) && Date.parse(r.recordedAt) <= now.getTime());
   if (valid.length === 0) return { ok: false, reason: "consent:missing" };

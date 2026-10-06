@@ -142,6 +142,21 @@ export function callScriptFooter(sender: SenderIdentity): string {
   ].join("\n");
 }
 
+/** The exact footer block a channel's message must END with; undefined for linkedin. */
+export function footerFor(sender: SenderIdentity, channel: Channel): string | undefined {
+  switch (channel) {
+    case "email":
+    case "mail":
+      return emailFooter(sender);
+    case "sms":
+      return smsFooter(sender);
+    case "call_script":
+      return callScriptFooter(sender);
+    default:
+      return undefined;
+  }
+}
+
 function appendBlock(body: string, block: string): string {
   const trimmed = body.replace(/\s+$/, "");
   if (trimmed.endsWith(block)) return body; // idempotent
@@ -168,11 +183,6 @@ export function applyComplianceFooter<M extends FooterableMessage>(
   if (!sender || missingSenderFields(sender, message.channel).length > 0) {
     return { ...message, needsSenderIdentity: true };
   }
-  const footer =
-    message.channel === "sms"
-      ? smsFooter(sender)
-      : message.channel === "call_script"
-        ? callScriptFooter(sender)
-        : emailFooter(sender); // email and mail carry the full postal block
+  const footer = footerFor(sender, message.channel) ?? ""; // email and mail carry the full postal block
   return { ...message, body: appendBlock(message.body, footer), needsSenderIdentity: false };
 }

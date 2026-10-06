@@ -76123,6 +76123,19 @@ function callScriptFooter(sender) {
     "If they ask not to be called again: end the call politely and add the number to the suppression list."
   ].join("\n");
 }
+function footerFor(sender, channel) {
+  switch (channel) {
+    case "email":
+    case "mail":
+      return emailFooter(sender);
+    case "sms":
+      return smsFooter(sender);
+    case "call_script":
+      return callScriptFooter(sender);
+    default:
+      return void 0;
+  }
+}
 function appendBlock(body, block) {
   const trimmed = body.replace(/\s+$/, "");
   if (trimmed.endsWith(block)) return body;
@@ -76138,7 +76151,7 @@ function applyComplianceFooter(message, sender) {
   if (!sender || missingSenderFields(sender, message.channel).length > 0) {
     return { ...message, needsSenderIdentity: true };
   }
-  const footer = message.channel === "sms" ? smsFooter(sender) : message.channel === "call_script" ? callScriptFooter(sender) : emailFooter(sender);
+  const footer = footerFor(sender, message.channel) ?? "";
   return { ...message, body: appendBlock(message.body, footer), needsSenderIdentity: false };
 }
 
@@ -77033,10 +77046,12 @@ var ConsentRecordSchema = external_exports.object({
   revocationMethod: external_exports.string().min(1).optional()
 });
 function contactKey(kind, value) {
+  if (typeof value !== "string") return null;
   try {
     if (kind === "phone") return `phone:${normalizePhone(value)}`;
     if (kind === "email") return `email:${normalizeSuppressionEmail(value)}`;
-    return `mail:${normalizeMailingAddress(value)}`;
+    if (kind === "mail") return `mail:${normalizeMailingAddress(value)}`;
+    return null;
   } catch {
     return null;
   }
@@ -77044,10 +77059,15 @@ function contactKey(kind, value) {
 function checkConsent(records, contact, channel, now2, requirement) {
   const key = contactKey(contact.kind, contact.value);
   if (key === null) return { ok: false, reason: "consent:unreadable-contact" };
-  const mine = records.filter((r) => contactKey(r.contact.kind, r.contact.value) === key);
-  if (mine.some((r) => r.revokedAt !== void 0 && Date.parse(r.revokedAt) <= now2.getTime())) {
-    return { ok: false, reason: "consent:revoked" };
-  }
+  const keyed = records.map((r) => ({ r, key: contactKey(r?.contact?.kind, r?.contact?.value) }));
+  if (keyed.some((k) => k.key === null)) return { ok: false, reason: "consent:ledger-unreadable" };
+  const mine = keyed.filter((k) => k.key === key).map((k) => k.r);
+  const revoked = (r) => {
+    if (r.revokedAt === void 0) return false;
+    const at = Date.parse(r.revokedAt);
+    return Number.isNaN(at) || at <= now2.getTime();
+  };
+  if (mine.some(revoked)) return { ok: false, reason: "consent:revoked" };
   if (requirement === "none") return { ok: true };
   const valid = mine.filter((r) => r.scope.includes(channel) && Date.parse(r.recordedAt) <= now2.getTime());
   if (valid.length === 0) return { ok: false, reason: "consent:missing" };
@@ -77067,17 +77087,12 @@ var PT = "America/Los_Angeles";
 var AK = "America/Anchorage";
 var HT = "Pacific/Honolulu";
 var PRT = "America/Puerto_Rico";
-var ALL_US_ZONES = [ET, CT, MT, AZ, PT, AK, HT, PRT];
+var ALL_US_ZONES = [ET, CT, MT, AZ, PT, AK, "America/Adak", HT, PRT];
 var STATE_ZONES = {
   AL: [CT],
   AK: [AK, "America/Adak"],
-  AZ: [AZ],
-  AR: [CT],
-  CA: [PT],
-  CO: [MT],
-  CT: [ET],
-  DE: [ET],
-  DC: [ET],
+  AZ: [AZ, MT],
+  // AZ: the Navajo Nation observes DST AR: [CT], CA: [PT], CO: [MT], CT: [ET], DE: [ET], DC: [ET],
   FL: [ET, CT],
   GA: [ET],
   HI: [HT],
@@ -77097,13 +77112,8 @@ var STATE_ZONES = {
   MO: [CT],
   MT: [MT],
   NE: [CT, MT],
-  NV: [PT],
-  NH: [ET],
-  NJ: [ET],
-  NM: [MT],
-  NY: [ET],
-  NC: [ET],
-  ND: [CT, MT],
+  NV: [PT, MT],
+  // NV: West Wendover is Mountain NH: [ET], NJ: [ET], NM: [MT], NY: [ET], NC: [ET], ND: [CT, MT],
   OH: [ET],
   OK: [CT],
   OR: [PT, MT],
@@ -77134,60 +77144,68 @@ codes("LA", [CT], "225 318 337 504 985");
 codes("GA", [ET], "229 404 470 478 678 706 762 770 912 943");
 codes("TN", [CT], "615 629 731 901");
 codes("TN", [ET, CT], "423 865 931");
-var TCPA_WINDOW = { startHour: 8, endHour: 21 };
-var STATE_WINDOWS = {
-  FL: { startHour: 8, endHour: 20 }
-  // Fla. Stat. 501.059(8)(a)
-};
-var STRICTEST_WINDOW = { startHour: 8, endHour: 20 };
-function areaCodeOf(phone) {
-  const m = phone ? /^\+1(\d{3})\d{7}$/.exec(phone) : null;
-  return m?.[1];
-}
-function localMinutes(now2, zone) {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: zone, hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(now2);
-  const get = (t) => Number(parts.find((p) => p.type === t)?.value ?? "0");
-  return get("hour") % 24 * 60 + get("minute");
+var TCPA_WINDOW = Object.freeze({ startHour: 8, endHour: 21, sundays: true });
+var PHONE_WINDOW = Object.freeze({ startHour: 8, endHour: 20, sundays: false });
+var STATE_STARTS = { TX: 9 };
+function localTime(now2, zone) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hour12: false,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).formatToParts(now2);
+  const get = (t) => parts.find((p) => p.type === t)?.value ?? "";
+  const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
+  return { day, minutes: Number(get("hour")) % 24 * 60 + Number(get("minute")) };
 }
 function withinContactWindow(now2, recipient) {
   const zones = /* @__PURE__ */ new Set();
   const states = /* @__PURE__ */ new Set();
+  let unknownLocation = false;
   const state = recipient.state?.trim().toUpperCase();
   if (state && STATE_ZONES[state]) {
     states.add(state);
     for (const z4 of STATE_ZONES[state]) zones.add(z4);
+  } else if (state) {
+    unknownLocation = true;
   }
-  const area = AREA_CODES[areaCodeOf(recipient.phone) ?? ""];
-  if (area) {
-    states.add(area.state);
-    for (const z4 of area.zones) zones.add(z4);
+  if (recipient.phone !== void 0) {
+    const code = /^\+1(\d{3})\d{7}$/.exec(recipient.phone)?.[1];
+    const area = code !== void 0 ? AREA_CODES[code] : void 0;
+    if (area) {
+      states.add(area.state);
+      for (const z4 of area.zones) zones.add(z4);
+    } else {
+      unknownLocation = true;
+    }
   }
-  const unknownLocation = zones.size === 0;
-  let window = unknownLocation ? { ...STRICTEST_WINDOW } : { ...TCPA_WINDOW };
-  for (const s of states) {
-    const w = STATE_WINDOWS[s];
-    if (w) window = { startHour: Math.max(window.startHour, w.startHour), endHour: Math.min(window.endHour, w.endHour) };
-  }
-  const candidates = unknownLocation ? [...ALL_US_ZONES] : [...zones];
+  if (zones.size === 0) unknownLocation = true;
+  const candidates = unknownLocation ? [.../* @__PURE__ */ new Set([...zones, ...ALL_US_ZONES])] : [...zones];
+  const startHour = Math.max(PHONE_WINDOW.startHour, ...[...states].map((s) => STATE_STARTS[s] ?? 0));
+  const window = { ...PHONE_WINDOW, startHour };
   const ok = candidates.every((z4) => {
-    const m = localMinutes(now2, z4);
-    return m >= window.startHour * 60 && m < window.endHour * 60;
+    const t = localTime(now2, z4);
+    if (t.day < 0) return false;
+    if (!window.sundays && t.day === 0) return false;
+    return t.minutes >= window.startHour * 60 && t.minutes < window.endHour * 60;
   });
   return { ok, zones: candidates, window, unknownLocation };
 }
 
 // pipeline_core/compliance/send.ts
+var policy = (p) => Object.freeze(p);
 var DEFAULT_CHANNEL_POLICIES = Object.freeze({
-  email: { consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false },
-  linkedin: { consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false },
-  sms: { consent: "written", landlineExempt: false, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false },
-  call_script: { consent: "written", landlineExempt: true, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false },
-  mail: { consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false }
+  email: policy({ consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false }),
+  linkedin: policy({ consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false }),
+  sms: policy({ consent: "written", landlineExempt: false, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false }),
+  call_script: policy({ consent: "written", landlineExempt: true, quietHours: true, requireDncClean: true, requireLicenseDisclosure: false }),
+  mail: policy({ consent: "none", landlineExempt: false, quietHours: false, requireDncClean: false, requireLicenseDisclosure: false })
 });
 var CONSENT_RANK = { none: 0, any: 1, written: 2 };
 function channelPolicy(channel, override) {
   const base = DEFAULT_CHANNEL_POLICIES[channel];
-  if (!override) return base;
+  if (!override) return { ...base };
   return {
     consent: override.consent && CONSENT_RANK[override.consent] > CONSENT_RANK[base.consent] ? override.consent : base.consent,
     landlineExempt: base.landlineExempt && override.landlineExempt !== false,
@@ -77205,7 +77223,7 @@ var CONTACT_KIND = {
 };
 function checkSendable(input2) {
   const { channel, contactPoint: cp, now: now2 } = input2;
-  const policy = channelPolicy(channel, input2.policy);
+  const policy2 = channelPolicy(channel, input2.policy);
   const reasons = [];
   let window;
   if (!(now2 instanceof Date) || Number.isNaN(now2.getTime())) reasons.push("clock:invalid");
@@ -77228,27 +77246,34 @@ function checkSendable(input2) {
   if (cp?.licenseTerms?.outreachRestricted === true) reasons.push("license:outreach-restricted");
   const isPhoneChannel = channel === "sms" || channel === "call_script";
   if (isPhoneChannel && cp?.kind === "phone") {
-    if (policy.requireDncClean && cp.dnc !== "clean") reasons.push(`dnc:${cp.dnc}`);
-    const landline = policy.landlineExempt && cp.lineType === "landline" && cp.dnc === "clean";
-    const requirement = landline ? "none" : policy.consent;
+    if (policy2.requireDncClean && cp.dnc !== "clean") reasons.push(`dnc:${cp.dnc}`);
+    const landline = policy2.landlineExempt && cp.lineType === "landline" && cp.dnc === "clean";
+    const requirement = landline ? "none" : policy2.consent;
     const consent = checkConsent(input2.consents ?? [], cp, channel, now2, requirement);
     if (!consent.ok) reasons.push(consent.reason);
   } else if (cp) {
-    const consent = checkConsent(input2.consents ?? [], cp, channel, now2, policy.consent);
+    const consent = checkConsent(input2.consents ?? [], cp, channel, now2, policy2.consent);
     if (!consent.ok) reasons.push(consent.reason);
+  } else if (input2.contactEmail) {
+    const consent = checkConsent(input2.consents ?? [], { kind: "email", value: input2.contactEmail }, channel, now2, policy2.consent);
+    if (!consent.ok) reasons.push(consent.reason);
+  } else if (policy2.consent !== "none") {
+    reasons.push("consent:no-contact");
   }
-  if (policy.quietHours && !reasons.includes("clock:invalid")) {
+  if (policy2.quietHours && !reasons.includes("clock:invalid")) {
     window = withinContactWindow(now2, { state: input2.recipientState, phone: cp?.kind === "phone" ? cp.value : void 0 });
     if (!window.ok) reasons.push(window.unknownLocation ? "quiet-hours:unknown-location" : "quiet-hours");
   }
-  const body = input2.message.body;
-  if (channel === "sms" && !body.includes(SMS_OPT_OUT_TEXT)) reasons.push("disclosure:sms-opt-out-missing");
-  if (policy.requireLicenseDisclosure) {
-    const licenses = input2.sender?.licenses ?? [];
-    if (licenses.length === 0) reasons.push("disclosure:license-not-configured");
-    else if (!licenseLines(input2.sender).every((line) => body.includes(line))) reasons.push("disclosure:license-missing");
+  if (input2.sender && missing.length === 0) {
+    const footer = footerFor(input2.sender, channel);
+    if (footer !== void 0 && !input2.message.body.replace(/\s+$/, "").endsWith(footer)) {
+      reasons.push("disclosure:footer-missing");
+    }
   }
-  return { sendable: reasons.length === 0, reasons, policy, ...window ? { window } : {} };
+  if (policy2.requireLicenseDisclosure && (input2.sender?.licenses ?? []).length === 0) {
+    reasons.push("disclosure:license-not-configured");
+  }
+  return { sendable: reasons.length === 0, reasons, policy: policy2, ...window ? { window } : {} };
 }
 
 // cli.ts

@@ -128,38 +128,55 @@ describe("consent ledger", () => {
   });
 });
 
-describe("recipient-local contact window", () => {
-  it("Alabama: 8:00am Central opens, 8:59pm is in, 9:00pm is out, 7:59am is out", () => {
+describe("recipient-local contact window (8am–8pm, Mon–Sat; Texas from 9am)", () => {
+  it("Alabama on a Tuesday: 8:00am opens, 7:59pm is in, 8:00pm is out, 7:59am is out", () => {
     expect(withinContactWindow(AT("08:00"), { state: "AL" }).ok).toBe(true);
-    expect(withinContactWindow(AT("20:59"), { state: "AL" }).ok).toBe(true);
-    expect(withinContactWindow(AT("21:00"), { state: "AL" }).ok).toBe(false);
+    expect(withinContactWindow(AT("19:59"), { state: "AL" }).ok).toBe(true);
+    expect(withinContactWindow(AT("20:00"), { state: "AL" }).ok).toBe(false);
     expect(withinContactWindow(AT("07:59"), { state: "AL" }).ok).toBe(false);
   });
 
-  it("Florida narrows the evening to 8pm and the 850 area code spans Central and Eastern", () => {
+  it("never on a Sunday", () => {
+    const sundayNoon = new Date("2026-10-04T12:00:00-05:00");
+    expect(withinContactWindow(sundayNoon, { state: "AL" }).ok).toBe(false);
+    expect(withinContactWindow(new Date("2026-10-03T12:00:00-05:00"), { state: "AL" }).ok).toBe(true); // Saturday
+  });
+
+  it("Texas starts at 9am", () => {
+    const w = withinContactWindow(AT("08:30"), { state: "TX" }); // 8:30 CT, 7:30 MT (El Paso)
+    expect(w.window.startHour).toBe(9);
+    expect(w.ok).toBe(false);
+    expect(withinContactWindow(AT("10:30"), { state: "TX" }).ok).toBe(true); // 10:30 CT, 9:30 MT
+  });
+
+  it("the 850 area code spans Central and Eastern", () => {
     const fl = withinContactWindow(AT("19:30"), { phone: "+18505550100" }); // 7:30pm CT = 8:30pm ET
     expect(fl.ok).toBe(false);
-    expect(fl.window).toEqual({ startHour: 8, endHour: 20 });
     expect(new Set(fl.zones)).toEqual(new Set(["America/New_York", "America/Chicago"]));
-    // 8:00am Central is 9:00am Eastern: both zones open.
     expect(withinContactWindow(AT("08:00"), { phone: "+18505550100" }).ok).toBe(true);
-    // 7:30am Central is 8:30am Eastern: Eastern is open, Central is not.
     expect(withinContactWindow(AT("07:30"), { phone: "+18505550100" }).ok).toBe(false);
   });
 
   it("an Alabama address with a Georgia number must be inside the window in both zones", () => {
-    // 8:30pm Central = 9:30pm Eastern: fine in AL, too late at the Georgia area code.
-    expect(withinContactWindow(AT("20:30"), { state: "AL", phone: "+14045550100" }).ok).toBe(false);
-    expect(withinContactWindow(AT("20:30"), { state: "AL" }).ok).toBe(true);
+    expect(withinContactWindow(AT("19:30"), { state: "AL", phone: "+14045550100" }).ok).toBe(false); // 8:30pm ET
+    expect(withinContactWindow(AT("19:30"), { state: "AL" }).ok).toBe(true);
   });
 
-  it("no usable signal → every US zone and the strictest window", () => {
-    const w = withinContactWindow(NOON, { phone: "+12125550100" }); // 212 not in the table
+  it("an unlisted area code is never ignored, even with a known state", () => {
+    const w = withinContactWindow(AT("08:30"), { state: "AL", phone: "+18085551234" }); // Hawaii number
     expect(w.unknownLocation).toBe(true);
-    expect(w.window).toEqual({ startHour: 8, endHour: 20 });
+    expect(w.zones).toContain("Pacific/Honolulu");
+    expect(w.ok).toBe(false);
+    expect(withinContactWindow(NOON, { phone: "+442071234567" }).unknownLocation).toBe(true); // non-US
+    expect(withinContactWindow(NOON, { state: "ZZ" }).unknownLocation).toBe(true);
+  });
+
+  it("no usable signal → every US zone, Adak included", () => {
+    const w = withinContactWindow(NOON, {});
+    expect(w.unknownLocation).toBe(true);
+    expect(w.zones).toEqual(expect.arrayContaining(["America/Adak", "Pacific/Honolulu", "America/Puerto_Rico"]));
     expect(w.ok).toBe(false); // noon Central is 7am in Hawaii
-    // 2pm Central = 9am Hawaii (HST, no DST), 3pm Eastern: inside everywhere.
-    expect(withinContactWindow(AT("14:00"), {}).ok).toBe(true);
+    expect(withinContactWindow(AT("14:00"), {}).ok).toBe(true); // 9am HST, 3pm ET/AST
   });
 });
 
@@ -196,11 +213,12 @@ describe("checkSendable", () => {
     ["DNC listed", { contactPoint: { ...PHONE, dnc: "listed" as const } }, "dnc:listed"],
     ["no consent", { consents: [] }, "consent:missing"],
     ["verbal consent", { consents: [{ ...WRITTEN, method: "verbal_documented" as const }] }, "consent:not-written"],
-    ["quiet hours", { now: AT("21:15") }, "quiet-hours"],
+    ["quiet hours", { now: AT("20:15") }, "quiet-hours"],
     ["unknown location at noon", { recipientState: undefined, contactPoint: { ...PHONE, value: "+12125550100" }, consents: [{ ...WRITTEN, contact: { kind: "phone" as const, value: "+12125550100" } }] }, "quiet-hours:unknown-location"],
     ["suppressed phone", { suppressions: buildSuppressionList([{ kind: "phone", value: "251-555-0100" }]) }, "suppressed:phone"],
     ["restricted data", { contactPoint: { ...PHONE, licenseTerms: { outreachRestricted: true } } }, "license:outreach-restricted"],
-    ["no STOP line", { message: { channel: "sms" as const, body: "Hi there" } }, "disclosure:sms-opt-out-missing"],
+    ["no SMS footer", { message: { channel: "sms" as const, body: "Hi there" } }, "disclosure:footer-missing"],
+    ["STOP text not at the end", { message: { channel: "sms" as const, body: `${smsBody()} PS more` } }, "disclosure:footer-missing"],
     ["wrong contact kind", { contactPoint: { ...PHONE, kind: "email" as const, value: "a@b.co" } }, "contact-point:wrong-kind:email"],
     ["channel mismatch", { channel: "call_script" as const }, "channel:mismatch"],
     ["no sender", { sender: undefined }, "sender-identity:missing:name,company"],
@@ -212,20 +230,56 @@ describe("checkSendable", () => {
   });
 
   it("reports every reason at once", () => {
-    const v = checkSendable(sms({ now: AT("22:00"), consents: [], contactPoint: { ...PHONE, dnc: "unknown" } }));
+    const v = checkSendable(sms({ now: AT("21:00"), consents: [], contactPoint: { ...PHONE, dnc: "unknown" } }));
     expect(v.reasons).toEqual(expect.arrayContaining(["dnc:unknown", "consent:missing", "quiet-hours"]));
     expect(() => assertSendable(sms({ consents: [] }))).toThrow(NotSendableError);
   });
 
-  it("a pack that requires license disclosure blocks a body without the license line", () => {
-    const bare = { channel: "sms" as const, body: `Hi. ${SMS_OPT_OUT_TEXT}` };
-    expect(checkSendable(sms({ message: bare, policy: { requireLicenseDisclosure: true } })).reasons).toContain(
-      "disclosure:license-missing",
-    );
+  it("license disclosure: the exact footer must end the body; a near-miss number fails", () => {
     expect(checkSendable(sms({ policy: { requireLicenseDisclosure: true } })).sendable).toBe(true); // footer carries it
+    const tampered = smsBody().replace("#000123", "#0001234");
+    expect(checkSendable(sms({ message: { channel: "sms", body: tampered }, policy: { requireLicenseDisclosure: true } })).reasons).toContain(
+      "disclosure:footer-missing",
+    );
     expect(
       checkSendable(sms({ sender: { ...SENDER, licenses: [] }, policy: { requireLicenseDisclosure: true } })).reasons,
     ).toContain("disclosure:license-not-configured");
+  });
+
+  it("email, mail and call_script bodies without their footer are not sendable", () => {
+    const email: ContactPoint = { ...PHONE, kind: "email", value: "owner@example.com", lineType: undefined };
+    expect(
+      checkSendable({ ...sms(), message: { channel: "email", body: "hi" }, channel: "email", contactPoint: email, consents: [] }).reasons,
+    ).toEqual(["disclosure:footer-missing"]);
+    const landline = { ...PHONE, lineType: "landline" as const };
+    expect(
+      checkSendable({ ...sms(), message: { channel: "call_script", body: "hi" }, channel: "call_script", contactPoint: landline, consents: [] })
+        .reasons,
+    ).toEqual(["disclosure:footer-missing"]);
+  });
+
+  it("linkedin: a pack consent requirement with nothing to check blocks; a revoked email blocks", () => {
+    const li = { ...sms(), message: { channel: "linkedin" as const, body: "hi" }, channel: "linkedin" as const, contactPoint: undefined, consents: [] };
+    expect(checkSendable(li).sendable).toBe(true);
+    expect(checkSendable({ ...li, policy: { consent: "written" } }).reasons).toContain("consent:no-contact");
+    const revoked: ConsentRecord = { ...WRITTEN, contact: { kind: "email", value: "pat@acme.com" }, scope: ["email"], revokedAt: "2026-10-01T00:00:00Z" };
+    expect(checkSendable({ ...li, contactEmail: "pat@acme.com", consents: [revoked] }).reasons).toContain("consent:revoked");
+  });
+
+  it("an unreadable revocation counts as revoked; an unreadable ledger blocks", () => {
+    expect(checkSendable(sms({ consents: [WRITTEN, { ...WRITTEN, id: "x", revokedAt: "garbage" }] })).reasons).toContain("consent:revoked");
+    expect(checkSendable(sms({ consents: [WRITTEN, { ...WRITTEN, id: "y", contact: { kind: "phone", value: "555-1234" } }] })).reasons).toContain(
+      "consent:ledger-unreadable",
+    );
+  });
+
+  it("mutating a verdict's policy never changes the shared defaults", () => {
+    const v = checkSendable(sms());
+    expect(() => {
+      (v.policy as { quietHours: boolean }).quietHours = false;
+    }).not.toThrow();
+    expect(DEFAULT_CHANNEL_POLICIES.sms.quietHours).toBe(true);
+    expect(Object.isFrozen(DEFAULT_CHANNEL_POLICIES.sms)).toBe(true);
   });
 
   it("call_script: a DNC-clean known landline needs no consent record, a mobile does", () => {
