@@ -22,6 +22,7 @@
     "pipeline_core/**/*.ts",
     "mcp/**/*.ts",
     "tests/**/*.ts",
+    "packages/*/src/**/*.ts",
     "cli.ts"
   ],
   "exclude": ["node_modules", "dist"]

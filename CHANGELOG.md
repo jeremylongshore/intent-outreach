@@ -8,6 +8,14 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **`@intent-outreach/deal-math`** (`packages/deal-math`, #83 phase 5): NOI, cap rate, DSCR, cash-on-cash,
+  level payments, seller financing with balloon, 1031 deadlines (informational) and the condo trade-up
+  model, in integer cents and basis points with half-even rounding and explicit assumptions. Every result
+  carries its inputs, assumptions and version. `tradeUp` matches coastal's `trade_up.py` on all 73 cases of a
+  golden fixture generated from the Python. The repo is now an npm workspace (`packages/*`); the engine
+  stays at the root, which is the plugin root.
+
+||||||| 8be0c4b1
 - **Run schema v6: the property/owner model and a typed research query** (#83 phase 2). Runs gain
   `properties` (keyed `<countyFips>:<apn>`), `parties`, `ownerships`, `entityLinks` and `contactPoints`
   (all defaulted `[]`) and an optional `queries`. Every vendor value on a property is a `Fact` with its
