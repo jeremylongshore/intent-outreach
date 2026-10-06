@@ -74,10 +74,10 @@ function normalize(text: string): string {
     .replace(/\s+/g, " ");
 }
 
-const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function compile(terms: readonly string[]) {
   return terms.map((term) => {
-    const words = normalize(term).trim().split(" ").map(escape);
+    const words = normalize(term).trim().split(" ").map(escapeRegExp);
     const last = words.pop()!;
     // The last word also matches its plural: "neighborhood(s)", "kid(s)".
     const stem = last.endsWith("s") && last.length > 3 ? last.slice(0, -1) : last;
