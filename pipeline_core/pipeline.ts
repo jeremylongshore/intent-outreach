@@ -22,7 +22,16 @@ import {
   getSkippedConnectors,
   registerBuiltinConnectors,
 } from "./connectors/index.js";
-import type { Connector, ConnectorItemFailure, ConnectorPhase } from "./connectors/types.js";
+import type { Connector, ConnectorItemFailure, ConnectorPhase, ResearchOutput } from "./connectors/types.js";
+import {
+  BudgetExceededError,
+  cacheKey,
+  capabilityForQuery,
+  CreditBudget,
+  orderByRouting,
+  type ResponseCache,
+  type Routing,
+} from "./routing.js";
 import { HttpError } from "./http.js";
 import { ContactSchema, SCHEMA_VERSION } from "./models.js";
 import type {
@@ -68,6 +77,41 @@ export interface ConnectorRunOptions {
   connectorTimeoutMs?: number;
   /** Buyer titles passed to every connector (people search/reveal targeting). */
   buyerTitles?: string[];
+  /** Fixed routing (order + policy); absent = every eligible connector, policy "all". */
+  routing?: Routing | undefined;
+  /** The run's credit ceiling, charged before each paid call. */
+  budget?: CreditBudget | undefined;
+  /** Response cache for connectors that declare `cacheTtlMs`. */
+  cache?: ResponseCache | undefined;
+  /** Clock for cache expiry (ms). Default Date.now. */
+  clock?: (() => number) | undefined;
+}
+
+/** Charge a paid call. Returns false (and records why) when the budget refuses it. */
+function chargeOrStop(
+  connector: Connector,
+  phase: ConnectorPhase,
+  budget: CreditBudget | undefined,
+  failed: FailedConnector[],
+): boolean {
+  const cost = connector.creditsPerCall ?? 0;
+  if (!budget || cost <= 0) return true;
+  try {
+    budget.charge(connector.name, cost);
+    return true;
+  } catch (err) {
+    if (!(err instanceof BudgetExceededError)) throw err;
+    failed.push({ name: connector.name, phase, status: "budget-exhausted" });
+    return false;
+  }
+}
+
+/** True when a research output carries any record (the "hit" of a first-hit route). */
+function researchHit(out: ResearchOutput): boolean {
+  return (
+    out.leads.length + out.contacts.length > 0 ||
+    [out.properties, out.parties, out.ownerships, out.entityLinks, out.contactPoints].some((a) => (a?.length ?? 0) > 0)
+  );
 }
 
 /** `{ buyerTitles }` when any usable title is set, else `{}` (connector input stays unchanged). */
@@ -92,6 +136,10 @@ export interface ResearchResult {
   /** Configured connectors that threw or timed out (sanitized status only). */
   failedConnectors: FailedConnector[];
   raw: Record<string, unknown>;
+  /** Connectors whose output came from the response cache (no request, no credits). */
+  cached: string[];
+  /** True when the credit budget refused a call and paid research stopped. */
+  budgetExhausted: boolean;
 }
 
 export interface EnrichResult {
@@ -390,7 +438,14 @@ export async function runResearchQuery(
   const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind));
+  const connectors = orderByRouting(
+    getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind)),
+    opts.routing,
+  );
+  const policy = opts.routing?.policy ?? "all";
+  const clock = opts.clock ?? Date.now;
+  const cached: string[] = [];
+  let budgetExhausted = false;
   const leads: Lead[] = [];
   const contacts: Contact[] = [];
   const properties: Property[] = [];
@@ -408,10 +463,28 @@ export async function runResearchQuery(
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
-      const out = await callWithDeadline(
-        (signal) => connector.research!({ domain: target, query: typed, icp, ...targeting, signal }),
-        timeoutMs,
-      );
+      const ttl = connector.cacheTtlMs ?? 0;
+      const key =
+        opts.cache && ttl > 0
+          ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting })
+          : undefined;
+      let out = key ? ((await opts.cache!.get(key, clock())) as ResearchOutput | undefined) : undefined;
+      if (out) {
+        cached.push(connector.name);
+      } else {
+        if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
+          budgetExhausted = true;
+          break;
+        }
+        out = await callWithDeadline(
+          (signal) => connector.research!({ domain: target, query: typed, icp, ...targeting, signal }),
+          timeoutMs,
+        );
+        if (key) {
+          const { raw: _raw, ...cacheable } = out;
+          await opts.cache!.set(key, cacheable, ttl, clock());
+        }
+      }
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       properties.push(...(out.properties ?? []));
@@ -422,12 +495,15 @@ export async function runResearchQuery(
       raw[connector.name] = out.raw;
       ran.push(connector.name);
       recordItemFailures(connector, "research", out.failures, failedConnectors);
+      if (policy === "ordered-fallback" || (policy === "first-hit" && researchHit(out))) break;
     } catch (err) {
       recordConnectorFailure(connector, "research", err, raw, failedConnectors);
     }
   }
 
   return {
+    cached,
+    budgetExhausted: budgetExhausted || (opts.budget?.exhausted ?? false),
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
     ...mergePropertyModel({ properties, parties, ownerships, entityLinks, contactPoints }),
@@ -502,7 +578,8 @@ export async function runEnrich(
   registerBuiltinConnectors();
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("enrich");
+  const connectors = orderByRouting(getConfiguredConnectors("enrich"), opts.routing);
+  const policy = opts.routing?.policy ?? "all";
   const enrichments: Enrichment[] = [];
   const raw: Record<string, unknown> = {};
   const ran: string[] = [];
@@ -512,6 +589,7 @@ export async function runEnrich(
 
   for (const connector of connectors) {
     if (!connector.enrich) continue;
+    if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) break;
     try {
       const current = working;
       const out = await callWithDeadline(
@@ -523,6 +601,7 @@ export async function runEnrich(
       ran.push(connector.name);
       recordItemFailures(connector, "enrich", out.failures, failedConnectors);
       working = foldVerifiedEmails(working, out.enrichments);
+      if (policy === "ordered-fallback" || (policy === "first-hit" && out.enrichments.length > 0)) break;
     } catch (err) {
       recordConnectorFailure(connector, "enrich", err, raw, failedConnectors);
     }

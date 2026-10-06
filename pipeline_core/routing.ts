@@ -108,11 +108,15 @@ export class CreditBudget {
     return this.exhaustedFlag;
   }
 
-  /** Charge before a call. Throws (and marks the budget exhausted) if it would cross the limit. */
+  /**
+   * Charge before a call. Throws (and marks the budget exhausted) if it would
+   * cross the limit. Once exhausted, every later paid call is refused too, so a
+   * run never spends its remainder on whichever call happens to be cheapest.
+   */
   charge(connector: string, credits: number): void {
     if (!(credits >= 0)) throw new Error(`credits must be >= 0 (got ${credits})`);
     if (credits === 0) return;
-    if (this.spentCredits + credits > this.limit) {
+    if (this.exhaustedFlag || this.spentCredits + credits > this.limit) {
       this.exhaustedFlag = true;
       throw new BudgetExceededError(connector, credits, this.limit - this.spentCredits);
     }
