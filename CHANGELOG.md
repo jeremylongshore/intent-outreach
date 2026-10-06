@@ -8,6 +8,12 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Several keys per connector, with monthly quotas** (#83 phase 4b). A key may come in labelled variants
+  (`APOLLO_API_KEY`, `APOLLO_API_KEY__TEAM`, `APOLLO_API_KEY__PERSONAL`). `useKey(name, credits)` picks the first variant
+  with room under its optional monthly quota (`~/.intent-outreach/quotas.json`), charges it before the call in a locked
+  0600 month-scoped ledger (`key-usage.json`), and throws `KeyQuotaExhaustedError` when all are spent. Crossing 80% of a
+  quota adds a run warning. `intent-outreach keys <ENV_NAME>` shows each variant's usage.
+
 - **Vendor MCP servers as fixed connectors** (#83 phase 4c). `createMcpConnector(spec)` wraps a data vendor's MCP
   server (DealMachine, BatchData, Regrid, ATTOM...) as an ordinary connector: the definitions of the tool it may call
   are pinned by sha256 (`mcpToolsDigest`) and a changed definition refuses to run (tool poisoning), only the bound tool

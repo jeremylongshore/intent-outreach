@@ -97,7 +97,9 @@ never import a cloud SDK, and forward the context `signal` to `httpJson`. Regist
 `registerConnector()` their own at runtime. A vendor that ships an MCP server is wrapped with
 `createMcpConnector` (`connectors/mcp.ts`): pin the reviewed tool definitions (`mcpToolsDigest`), bind the one tool
 it calls, build its arguments in code, and give a zod schema for its response. Never hand a vendor's MCP toolbox to
-the model. Connector landscape: `000-docs/018-DR-LAND`.
+the model. A vendor billed per call reads its key with `useKey(name, credits)` (`key-quotas.ts`, re-exported from
+`_shared.ts`) instead of `useSecret`: it rotates across `NAME` / `NAME__LABEL` variants under monthly quotas in
+`quotas.json`. Connector landscape: `000-docs/018-DR-LAND`.
 
 ### Adding a model provider
 

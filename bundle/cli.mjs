@@ -22023,11 +22023,11 @@ function isCustomReasoning(reasoning) {
 function mapReasoningToProviderEffort({
   reasoning,
   effortMap,
-  warnings
+  warnings: warnings2
 }) {
   const mapped = effortMap[reasoning];
   if (mapped == null) {
-    warnings.push({
+    warnings2.push({
       type: "unsupported",
       feature: "reasoning",
       details: `reasoning "${reasoning}" is not supported by this model.`
@@ -22035,7 +22035,7 @@ function mapReasoningToProviderEffort({
     return void 0;
   }
   if (mapped !== reasoning) {
-    warnings.push({
+    warnings2.push({
       type: "compatibility",
       feature: "reasoning",
       details: `reasoning "${reasoning}" is not directly supported by this model. mapped to effort "${mapped}".`
@@ -22049,11 +22049,11 @@ function mapReasoningToProviderBudget({
   maxReasoningBudget,
   minReasoningBudget = 1024,
   budgetPercentages = DEFAULT_REASONING_BUDGET_PERCENTAGES,
-  warnings
+  warnings: warnings2
 }) {
   const pct = budgetPercentages[reasoning];
   if (pct == null) {
-    warnings.push({
+    warnings2.push({
       type: "unsupported",
       feature: "reasoning",
       details: `reasoning "${reasoning}" is not supported by this model.`
@@ -27902,7 +27902,7 @@ function extractErrorValue(value) {
 async function convertToAnthropicPrompt({
   prompt,
   sendReasoning,
-  warnings,
+  warnings: warnings2,
   cacheControlValidator,
   toolNameMapping,
   toolsetNames = {}
@@ -27992,14 +27992,14 @@ async function convertToAnthropicPrompt({
         );
         if (i === 0 || system == null && toolChangeCount === 0 && !hasInlineSystemOptions) {
           if (toolChangeCount > 0) {
-            warnings.push({
+            warnings2.push({
               type: "other",
               message: "tool changes on the initial system message are not supported by Anthropic. Configure the initial tool set via the tools option instead. The tool changes have been ignored."
             });
           }
           for (const message of convertedMessages) {
             if (message.clearAt != null || message.effort != null) {
-              warnings.push({
+              warnings2.push({
                 type: "other",
                 message: "clearAt and effort on the initial system message are not supported by Anthropic. These options have been ignored."
               });
@@ -28279,13 +28279,13 @@ async function convertToAnthropicPrompt({
                                 }
                               };
                             }
-                            warnings.push({
+                            warnings2.push({
                               type: "other",
                               message: `unsupported tool content part type: ${contentPart.type} with media type: ${contentPart.mediaType}`
                             });
                             return void 0;
                           }
-                          warnings.push({
+                          warnings2.push({
                             type: "other",
                             message: `unsupported tool content part type: ${contentPart.type} with data type: ${contentPart.data.type}`
                           });
@@ -28299,14 +28299,14 @@ async function convertToAnthropicPrompt({
                               tool_name: anthropicOptions.toolName
                             };
                           }
-                          warnings.push({
+                          warnings2.push({
                             type: "other",
                             message: `unsupported custom tool content part`
                           });
                           return void 0;
                         }
                         default: {
-                          warnings.push({
+                          warnings2.push({
                             type: "other",
                             message: `unsupported tool content part type: ${contentPart.type}`
                           });
@@ -28433,19 +28433,19 @@ async function convertToAnthropicPrompt({
                         data: reasoningMetadata.redactedData
                       });
                     } else {
-                      warnings.push({
+                      warnings2.push({
                         type: "other",
                         message: "unsupported reasoning metadata"
                       });
                     }
                   } else {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: "unsupported reasoning metadata"
                     });
                   }
                 } else {
-                  warnings.push({
+                  warnings2.push({
                     type: "other",
                     message: "sending reasoning content is disabled for this model"
                   });
@@ -28463,7 +28463,7 @@ async function convertToAnthropicPrompt({
                     mcpToolUseIds.add(part.toolCallId);
                     const serverName = (_o = (_n = part.providerOptions) == null ? void 0 : _n.anthropic) == null ? void 0 : _o.serverName;
                     if (serverName == null || typeof serverName !== "string") {
-                      warnings.push({
+                      warnings2.push({
                         type: "other",
                         message: "mcp tool use server name is required and must be a string"
                       });
@@ -28535,7 +28535,7 @@ async function convertToAnthropicPrompt({
                         cache_control: cacheControl
                       });
                     } else {
-                      warnings.push({
+                      warnings2.push({
                         type: "other",
                         message: `provider executed tool call for tool ${part.toolName} is not supported`
                       });
@@ -28553,7 +28553,7 @@ async function convertToAnthropicPrompt({
                     part.input
                   );
                   if (typeof action !== "string") {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `toolset tool call for tool ${part.toolName} is missing the action`
                     });
@@ -28588,7 +28588,7 @@ async function convertToAnthropicPrompt({
                 if (mcpToolUseIds.has(part.toolCallId)) {
                   const output2 = part.output;
                   if (output2.type !== "json" && output2.type !== "error-json") {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `provider executed tool result output type ${output2.type} for tool ${part.toolName} is not supported`
                     });
@@ -28637,14 +28637,14 @@ async function convertToAnthropicPrompt({
                     break;
                   }
                   if (output2.type !== "json") {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `provider executed tool result output type ${output2.type} for tool ${part.toolName} is not supported`
                     });
                     break;
                   }
                   if (output2.value == null || typeof output2.value !== "object" || !("type" in output2.value) || typeof output2.value.type !== "string") {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `provider executed tool result output value is not a valid code execution result for tool ${part.toolName}`
                     });
@@ -28746,7 +28746,7 @@ async function convertToAnthropicPrompt({
                     break;
                   }
                   if (output2.type !== "json") {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `provider executed tool result output type ${output2.type} for tool ${part.toolName} is not supported`
                     });
@@ -28795,7 +28795,7 @@ async function convertToAnthropicPrompt({
                     break;
                   }
                   if (output2.type !== "json") {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `provider executed tool result output type ${output2.type} for tool ${part.toolName} is not supported`
                     });
@@ -28823,7 +28823,7 @@ async function convertToAnthropicPrompt({
                 if (providerToolName === "tool_search_tool_regex" || providerToolName === "tool_search_tool_bm25") {
                   const output2 = part.output;
                   if (output2.type !== "json") {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `provider executed tool result output type ${output2.type} for tool ${part.toolName} is not supported`
                     });
@@ -28851,7 +28851,7 @@ async function convertToAnthropicPrompt({
                 if (providerToolName === "advisor") {
                   const output2 = part.output;
                   if (output2.type !== "json" && output2.type !== "error-json") {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `provider executed tool result output type ${output2.type} for tool ${part.toolName} is not supported`
                     });
@@ -28900,7 +28900,7 @@ async function convertToAnthropicPrompt({
                   }
                   break;
                 }
-                warnings.push({
+                warnings2.push({
                   type: "other",
                   message: `provider executed tool result for tool ${part.toolName} is not supported`
                 });
@@ -29464,14 +29464,14 @@ function resolveAnthropicReasoningConfig({
   supportsXhighEffort,
   rejectsThinkingDisabled,
   maxOutputTokensForModel,
-  warnings
+  warnings: warnings2
 }) {
   if (!isCustomReasoning(reasoning)) {
     return void 0;
   }
   if (reasoning === "none") {
     if (rejectsThinkingDisabled) {
-      warnings.push({
+      warnings2.push({
         type: "compatibility",
         feature: "reasoning",
         details: `reasoning 'none' is not supported by ${modelId}; it always uses adaptive thinking. Using effort 'low' to minimize thinking instead.`
@@ -29490,7 +29490,7 @@ function resolveAnthropicReasoningConfig({
         high: "high",
         xhigh: supportsXhighEffort ? "xhigh" : "max"
       },
-      warnings
+      warnings: warnings2
     });
     return {
       thinking: { type: "adaptive", display: "summarized" },
@@ -29501,7 +29501,7 @@ function resolveAnthropicReasoningConfig({
     reasoning,
     maxOutputTokens: maxOutputTokensForModel,
     maxReasoningBudget: maxOutputTokensForModel,
-    warnings
+    warnings: warnings2
   });
   if (budgetTokens == null) {
     return void 0;
@@ -32483,25 +32483,25 @@ var init_dist5 = __esm({
         }
       }) {
         var _a30, _b29, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
-        const warnings = [];
+        const warnings2 = [];
         if (frequencyPenalty != null) {
-          warnings.push({ type: "unsupported", feature: "frequencyPenalty" });
+          warnings2.push({ type: "unsupported", feature: "frequencyPenalty" });
         }
         if (presencePenalty != null) {
-          warnings.push({ type: "unsupported", feature: "presencePenalty" });
+          warnings2.push({ type: "unsupported", feature: "presencePenalty" });
         }
         if (seed != null) {
-          warnings.push({ type: "unsupported", feature: "seed" });
+          warnings2.push({ type: "unsupported", feature: "seed" });
         }
         if (temperature != null && temperature > 1) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "temperature",
             details: `${temperature} exceeds anthropic maximum of 1.0. clamped to 1.0`
           });
           temperature = 1;
         } else if (temperature != null && temperature < 0) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "temperature",
             details: `${temperature} is below anthropic minimum of 0. clamped to 0`
@@ -32510,7 +32510,7 @@ var init_dist5 = __esm({
         }
         if ((responseFormat == null ? void 0 : responseFormat.type) === "json") {
           if (responseFormat.schema == null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "responseFormat",
               details: "JSON response format requires a schema. The response format is ignored."
@@ -32546,7 +32546,7 @@ var init_dist5 = __esm({
           isKnownModel
         } = getModelCapabilities(modelId);
         if (!isKnownModel && maxOutputTokens == null) {
-          warnings.push({
+          warnings2.push({
             type: "compatibility",
             feature: "maxOutputTokens",
             details: `The model "${modelId}" is unknown. The max output tokens have been limited to ${maxOutputTokensForModel}. Set maxOutputTokens explicitly to override this limit.`
@@ -32554,7 +32554,7 @@ var init_dist5 = __esm({
         }
         if (rejectsSamplingParameters) {
           if (temperature != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "temperature",
               details: `temperature is not supported by ${modelId} and will be ignored`
@@ -32562,7 +32562,7 @@ var init_dist5 = __esm({
             temperature = void 0;
           }
           if (topK != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "topK",
               details: `topK is not supported by ${modelId} and will be ignored`
@@ -32570,7 +32570,7 @@ var init_dist5 = __esm({
             topK = void 0;
           }
           if (topP != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "topP",
               details: `topP is not supported by ${modelId} and will be ignored`
@@ -32584,7 +32584,7 @@ var init_dist5 = __esm({
         const structureOutputMode = (_c = anthropicOptions == null ? void 0 : anthropicOptions.structuredOutputMode) != null ? _c : "auto";
         let useStructuredOutput = structureOutputMode === "outputFormat" || structureOutputMode === "auto" && supportsStructuredOutput;
         if (!useStructuredOutput && rejectsForcedToolUse && supportsStructuredOutput && (responseFormat == null ? void 0 : responseFormat.type) === "json" && responseFormat.schema != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "providerOptions.anthropic.structuredOutputMode",
             details: `structuredOutputMode 'jsonTool' is not supported by ${modelId} because it rejects forced tool use. Using 'outputFormat' instead.`
@@ -32598,7 +32598,7 @@ var init_dist5 = __esm({
           inputSchema: responseFormat.schema
         } : void 0;
         if (jsonResponseTool != null && (anthropicOptions == null ? void 0 : anthropicOptions.disableParallelToolUse) === false) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "providerOptions.anthropic.disableParallelToolUse",
             details: "`disableParallelToolUse: false` is ignored when using the JSON response tool. Parallel tool use is disabled to ensure a single coherent JSON tool call."
@@ -32645,7 +32645,7 @@ var init_dist5 = __esm({
         const { prompt: messagesPrompt, betas } = await convertToAnthropicPrompt({
           prompt,
           sendReasoning: (_d = anthropicOptions == null ? void 0 : anthropicOptions.sendReasoning) != null ? _d : true,
-          warnings,
+          warnings: warnings2,
           cacheControlValidator,
           toolNameMapping,
           toolsetNames
@@ -32658,7 +32658,7 @@ var init_dist5 = __esm({
             supportsXhighEffort,
             rejectsThinkingDisabled,
             maxOutputTokensForModel,
-            warnings
+            warnings: warnings2
           });
           if (reasoningConfig != null) {
             if (anthropicOptions.thinking == null) {
@@ -32672,14 +32672,14 @@ var init_dist5 = __esm({
         if (rejectsThinkingDisabled && (anthropicOptions == null ? void 0 : anthropicOptions.thinking) != null) {
           const thinking = anthropicOptions.thinking;
           if (thinking.type === "disabled") {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "providerOptions.anthropic.thinking",
               details: `thinking cannot be disabled for ${modelId}; it always uses adaptive thinking. The thinking setting has been removed. Lower 'effort' to reduce thinking.`
             });
             anthropicOptions.thinking = void 0;
           } else if (thinking.type === "enabled") {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "providerOptions.anthropic.thinking",
               details: `budget-based thinking is not supported by ${modelId}; it always uses adaptive thinking. Using adaptive thinking instead. Use 'effort' to control how much the model thinks.`
@@ -32688,7 +32688,7 @@ var init_dist5 = __esm({
           }
         }
         if (rejectsThinkingDisabledAboveHighEffort && ((_f = anthropicOptions == null ? void 0 : anthropicOptions.thinking) == null ? void 0 : _f.type) === "disabled" && (anthropicOptions.effort === "xhigh" || anthropicOptions.effort === "max")) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "providerOptions.anthropic.effort",
             details: `effort '${anthropicOptions.effort}' is not supported by ${modelId} when thinking is disabled. The effort has been lowered to 'high'.`
@@ -32857,7 +32857,7 @@ var init_dist5 = __esm({
                       }
                     };
                   default:
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `Unknown context management strategy: ${strategy}`
                     });
@@ -32869,7 +32869,7 @@ var init_dist5 = __esm({
         };
         if (isThinking) {
           if (thinkingType === "enabled" && thinkingBudget == null) {
-            warnings.push({
+            warnings2.push({
               type: "compatibility",
               feature: "extended thinking",
               details: "thinking budget is required when thinking is enabled. using default budget of 1024 tokens."
@@ -32882,7 +32882,7 @@ var init_dist5 = __esm({
           }
           if (baseArgs.temperature != null) {
             baseArgs.temperature = void 0;
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "temperature",
               details: "temperature is not supported when thinking is enabled"
@@ -32890,7 +32890,7 @@ var init_dist5 = __esm({
           }
           if (topK != null) {
             baseArgs.top_k = void 0;
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "topK",
               details: "topK is not supported when thinking is enabled"
@@ -32898,7 +32898,7 @@ var init_dist5 = __esm({
           }
           if (topP != null) {
             baseArgs.top_p = void 0;
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "topP",
               details: "topP is not supported when thinking is enabled"
@@ -32907,7 +32907,7 @@ var init_dist5 = __esm({
           baseArgs.max_tokens = maxTokens + (thinkingBudget != null ? thinkingBudget : 0);
         } else {
           if (isAnthropicModel && topP != null && temperature != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "topP",
               details: `topP is not supported when temperature is set. topP is ignored.`
@@ -32917,7 +32917,7 @@ var init_dist5 = __esm({
         }
         if (isKnownModel && baseArgs.max_tokens > maxOutputTokensForModel) {
           if (maxOutputTokens != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "maxOutputTokens",
               details: `${baseArgs.max_tokens} (maxOutputTokens + thinkingBudget) is greater than ${modelId} ${maxOutputTokensForModel} max output tokens. The max output tokens have been limited to ${maxOutputTokensForModel}.`
@@ -32947,7 +32947,7 @@ var init_dist5 = __esm({
           if (!(tools == null ? void 0 : tools.some(
             (tool3) => tool3.type === "provider" && (tool3.id === "anthropic.code_execution_20250825" || tool3.id === "anthropic.code_execution_20260120")
           ))) {
-            warnings.push({
+            warnings2.push({
               type: "other",
               message: "code execution tool is required when using skills"
             });
@@ -33006,7 +33006,7 @@ var init_dist5 = __esm({
             stream: stream === true ? true : void 0
             // do not send when not streaming
           },
-          warnings: [...warnings, ...toolWarnings, ...cacheWarnings],
+          warnings: [...warnings2, ...toolWarnings, ...cacheWarnings],
           betas: /* @__PURE__ */ new Set([
             ...betas,
             ...toolsBetas,
@@ -33083,7 +33083,7 @@ var init_dist5 = __esm({
         var _a30, _b29, _c, _d, _e, _f, _g, _h, _i;
         const {
           args,
-          warnings,
+          warnings: warnings2,
           betas,
           usesJsonResponseTool,
           toolNameMapping,
@@ -33572,7 +33572,7 @@ var init_dist5 = __esm({
             headers: responseHeaders,
             body: rawResponse
           },
-          warnings,
+          warnings: warnings2,
           providerMetadata: (() => {
             var _a211, _b210, _c2, _d2;
             const stopDetails = mapAnthropicStopDetails(response.stop_details);
@@ -33624,7 +33624,7 @@ var init_dist5 = __esm({
         var _a30, _b29, _c, _d;
         const {
           args: body,
-          warnings,
+          warnings: warnings2,
           betas,
           usesJsonResponseTool,
           toolNameMapping,
@@ -33679,7 +33679,7 @@ var init_dist5 = __esm({
         const transformedStream = response.pipeThrough(
           new TransformStream({
             start(controller) {
-              controller.enqueue({ type: "stream-start", warnings });
+              controller.enqueue({ type: "stream-start", warnings: warnings2 });
             },
             transform(chunk, controller) {
               var _a211, _b210, _c2, _d2, _e, _f, _g, _h, _i, _j, _k, _l, _m;
@@ -35511,7 +35511,7 @@ var init_dist5 = __esm({
       }
       async uploadSkill(params) {
         var _a30, _b29;
-        const warnings = [];
+        const warnings2 = [];
         const formData = new FormData();
         if (params.displayTitle != null) {
           formData.append("display_title", params.displayTitle);
@@ -35551,7 +35551,7 @@ var init_dist5 = __esm({
               ...response.updated_at != null ? { updatedAt: response.updated_at } : {}
             }
           },
-          warnings
+          warnings: warnings2
         };
       }
     };
@@ -35844,7 +35844,7 @@ function convertToOpenAIChatMessages({
 }) {
   var _a211, _b29;
   const messages = [];
-  const warnings = [];
+  const warnings2 = [];
   for (const { role, content, providerOptions } of prompt) {
     switch (role) {
       case "system": {
@@ -35878,7 +35878,7 @@ function convertToOpenAIChatMessages({
             break;
           }
           case "remove": {
-            warnings.push({
+            warnings2.push({
               type: "other",
               message: "system messages are removed for this model"
             });
@@ -36108,7 +36108,7 @@ function convertToOpenAIChatMessages({
       }
     }
   }
-  return { messages, warnings };
+  return { messages, warnings: warnings2 };
 }
 function getResponseMetadata({
   id,
@@ -36142,16 +36142,16 @@ function normalizeOpenAIJsonSchema(schema) {
   let removedPropertyNames = false;
   let removedLookaroundPattern = false;
   const normalizedSchema = normalizeSchema(schema);
-  const warnings = [];
+  const warnings2 = [];
   if (removedPropertyNames) {
-    warnings.push({
+    warnings2.push({
       type: "compatibility",
       feature: "JSON Schema propertyNames",
       details: "OpenAI does not support JSON Schema propertyNames. It was removed before sending the schema, so OpenAI will not enforce property-name constraints."
     });
   }
   if (removedLookaroundPattern) {
-    warnings.push({
+    warnings2.push({
       type: "compatibility",
       feature: "JSON Schema pattern with regex lookaround",
       details: "OpenAI does not support regex lookaround in JSON Schema patterns. The pattern was removed before sending the schema, so OpenAI will not enforce that constraint."
@@ -36159,7 +36159,7 @@ function normalizeOpenAIJsonSchema(schema) {
   }
   return {
     schema: normalizedSchema,
-    warnings
+    warnings: warnings2
   };
   function normalizeSchema(schema2) {
     const propertyNames = schema2.propertyNames;
@@ -36666,7 +36666,7 @@ async function convertFunctionToolResultOutput({
   outputSchemaToolNames,
   promptCacheBreakpoint,
   providerOptionsName,
-  warnings
+  warnings: warnings2
 }) {
   var _a211;
   const hasOutputSchema = outputSchemaToolNames == null ? void 0 : outputSchemaToolNames.has(toolName);
@@ -36775,14 +36775,14 @@ async function convertFunctionToolResultOutput({
                 }
               };
             }
-            warnings.push({
+            warnings2.push({
               type: "other",
               message: `unsupported tool content part type: ${item.type} with data type: ${item.data.type}`
             });
             return void 0;
           }
           default: {
-            warnings.push({
+            warnings2.push({
               type: "other",
               message: `unsupported tool content part type: ${item.type}`
             });
@@ -36890,7 +36890,7 @@ async function convertToOpenAIResponsesInput({
 }) {
   var _a211, _b29, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E2, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P;
   let input2 = [];
-  const warnings = [];
+  const warnings2 = [];
   const processedApprovalIds = /* @__PURE__ */ new Set();
   const programmaticToolCallIds = /* @__PURE__ */ new Set();
   const parallelToolResultGroups = hasConversation || hasPreviousResponseId ? collectCompleteParallelToolResultGroups({
@@ -36967,7 +36967,7 @@ async function convertToOpenAIResponsesInput({
             break;
           }
           case "remove": {
-            warnings.push({
+            warnings2.push({
               type: "other",
               message: "system messages are removed for this model"
             });
@@ -37405,7 +37405,7 @@ async function convertToOpenAIResponsesInput({
                 const itemId = (_I = (_H = (_G = part.providerOptions) == null ? void 0 : _G[providerOptionsName]) == null ? void 0 : _H.itemId) != null ? _I : part.toolCallId;
                 input2.push({ type: "item_reference", id: itemId });
               } else {
-                warnings.push({
+                warnings2.push({
                   type: "other",
                   message: `Results for OpenAI tool ${part.toolName} are not sent to the API when store is false`
                 });
@@ -37441,7 +37441,7 @@ async function convertToOpenAIResponsesInput({
                       text: part.text
                     });
                   } else if (reasoningMessage !== void 0) {
-                    warnings.push({
+                    warnings2.push({
                       type: "other",
                       message: `Cannot append empty reasoning part to existing reasoning sequence. Skipping reasoning part: ${JSON.stringify(part)}.`
                     });
@@ -37477,7 +37477,7 @@ async function convertToOpenAIResponsesInput({
                     summary: summaryParts
                   });
                 } else {
-                  warnings.push({
+                  warnings2.push({
                     type: "other",
                     message: `Non-OpenAI reasoning parts are not supported. Skipping reasoning part: ${JSON.stringify(part)}.`
                   });
@@ -37562,7 +37562,7 @@ async function convertToOpenAIResponsesInput({
                       toolName: result.toolName,
                       outputSchemaToolNames,
                       providerOptionsName,
-                      warnings
+                      warnings: warnings2
                     }),
                     promptCacheBreakpoint
                   };
@@ -37770,14 +37770,14 @@ ${text2}`,
                           }
                         };
                       }
-                      warnings.push({
+                      warnings2.push({
                         type: "other",
                         message: `unsupported custom tool content part type: ${item.type} with data type: ${item.data.type}`
                       });
                       return void 0;
                     }
                     default:
-                      warnings.push({
+                      warnings2.push({
                         type: "other",
                         message: `unsupported custom tool content part type: ${item.type}`
                       });
@@ -37811,7 +37811,7 @@ ${text2}`,
               providerOptionsName
             }),
             providerOptionsName,
-            warnings
+            warnings: warnings2
           });
           const caller = mapToolCaller(resultCaller);
           input2.push({
@@ -37832,7 +37832,7 @@ ${text2}`,
   if (!store && input2.some(
     (item) => "type" in item && item.type === "reasoning" && item.encrypted_content == null
   )) {
-    warnings.push({
+    warnings2.push({
       type: "other",
       message: "Reasoning parts without encrypted content are not supported when store is false. Skipping reasoning parts."
     });
@@ -37840,7 +37840,7 @@ ${text2}`,
       (item) => !("type" in item) || item.type !== "reasoning" || item.encrypted_content != null
     );
   }
-  return { input: input2, warnings };
+  return { input: input2, warnings: warnings2 };
 }
 async function prepareResponsesTools({
   tools,
@@ -39462,7 +39462,7 @@ function createOpenAIRealtimeTranscriptionStream({
   headers: headers9,
   sessionUpdate,
   language,
-  warnings,
+  warnings: warnings2,
   audio,
   abortSignal,
   includeRawChunks
@@ -39537,7 +39537,7 @@ function createOpenAIRealtimeTranscriptionStream({
         onAbort: finishWithError,
         onProcessingError: finishWithError,
         onOpen: (socket) => {
-          controller.enqueue({ type: "stream-start", warnings });
+          controller.enqueue({ type: "stream-start", warnings: warnings2 });
           socket.send(JSON.stringify(sessionUpdate));
           void sendAudio(socket).catch(finishWithError);
         },
@@ -39642,7 +39642,7 @@ function createOpenAIRealtimeSpeechTranslationStream({
   url: url2,
   headers: headers9,
   sessionUpdate,
-  warnings,
+  warnings: warnings2,
   audio,
   abortSignal,
   includeRawChunks
@@ -39728,7 +39728,7 @@ function createOpenAIRealtimeSpeechTranslationStream({
         onAbort: finishWithError,
         onProcessingError: finishWithError,
         onOpen: (socket) => {
-          controller.enqueue({ type: "stream-start", warnings });
+          controller.enqueue({ type: "stream-start", warnings: warnings2 });
           socket.send(JSON.stringify(sessionUpdate));
           void sendAudio(socket).catch(finishWithError);
         },
@@ -40433,7 +40433,7 @@ var init_dist6 = __esm({
         providerOptions
       }) {
         var _a211, _b29, _c, _d, _e, _f;
-        const warnings = [];
+        const warnings2 = [];
         const openaiOptions = (_a211 = await parseProviderOptions({
           provider: "openai",
           providerOptions,
@@ -40444,7 +40444,7 @@ var init_dist6 = __esm({
         if (resolvedReasoningEffort != null && modelCapabilities.supportedReasoningEfforts != null && !modelCapabilities.supportedReasoningEfforts.includes(
           resolvedReasoningEffort
         )) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "reasoningEffort",
             details: `${this.modelId} only supports the following reasoning efforts: ${modelCapabilities.supportedReasoningEfforts.join(", ")}`
@@ -40453,7 +40453,7 @@ var init_dist6 = __esm({
         }
         const isReasoningModel = (_c = openaiOptions.forceReasoning) != null ? _c : modelCapabilities.isReasoningModel;
         if (topK != null) {
-          warnings.push({ type: "unsupported", feature: "topK" });
+          warnings2.push({ type: "unsupported", feature: "topK" });
         }
         const { messages, warnings: messageWarnings } = convertToOpenAIChatMessages(
           {
@@ -40461,11 +40461,11 @@ var init_dist6 = __esm({
             systemMessageMode: (_d = openaiOptions.systemMessageMode) != null ? _d : isReasoningModel ? "developer" : modelCapabilities.systemMessageMode
           }
         );
-        warnings.push(...messageWarnings);
+        warnings2.push(...messageWarnings);
         const strictJsonSchema = (_e = openaiOptions.strictJsonSchema) != null ? _e : true;
         const normalizedResponseFormatSchema = (responseFormat == null ? void 0 : responseFormat.type) === "json" && responseFormat.schema != null ? normalizeOpenAIJsonSchema(responseFormat.schema) : void 0;
         if (normalizedResponseFormatSchema != null) {
-          warnings.push(...normalizedResponseFormatSchema.warnings);
+          warnings2.push(...normalizedResponseFormatSchema.warnings);
         }
         const baseArgs = {
           // model id:
@@ -40511,7 +40511,7 @@ var init_dist6 = __esm({
         };
         if (modelCapabilities.supportedReasoningEfforts != null && baseArgs.prompt_cache_retention != null) {
           baseArgs.prompt_cache_retention = void 0;
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "promptCacheRetention",
             details: "promptCacheRetention is not supported by GPT-6 and later models; use promptCacheOptions instead"
@@ -40521,7 +40521,7 @@ var init_dist6 = __esm({
           if (resolvedReasoningEffort !== "none" || !modelCapabilities.supportsNonReasoningParameters) {
             if (baseArgs.temperature != null) {
               baseArgs.temperature = void 0;
-              warnings.push({
+              warnings2.push({
                 type: "unsupported",
                 feature: "temperature",
                 details: "temperature is not supported for reasoning models"
@@ -40529,7 +40529,7 @@ var init_dist6 = __esm({
             }
             if (baseArgs.top_p != null) {
               baseArgs.top_p = void 0;
-              warnings.push({
+              warnings2.push({
                 type: "unsupported",
                 feature: "topP",
                 details: "topP is not supported for reasoning models"
@@ -40537,7 +40537,7 @@ var init_dist6 = __esm({
             }
             if (baseArgs.logprobs != null) {
               baseArgs.logprobs = void 0;
-              warnings.push({
+              warnings2.push({
                 type: "other",
                 message: "logprobs is not supported for reasoning models"
               });
@@ -40545,7 +40545,7 @@ var init_dist6 = __esm({
           }
           if (baseArgs.frequency_penalty != null) {
             baseArgs.frequency_penalty = void 0;
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "frequencyPenalty",
               details: "frequencyPenalty is not supported for reasoning models"
@@ -40553,7 +40553,7 @@ var init_dist6 = __esm({
           }
           if (baseArgs.presence_penalty != null) {
             baseArgs.presence_penalty = void 0;
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "presencePenalty",
               details: "presencePenalty is not supported for reasoning models"
@@ -40561,14 +40561,14 @@ var init_dist6 = __esm({
           }
           if (baseArgs.logit_bias != null) {
             baseArgs.logit_bias = void 0;
-            warnings.push({
+            warnings2.push({
               type: "other",
               message: "logitBias is not supported for reasoning models"
             });
           }
           if (baseArgs.top_logprobs != null) {
             baseArgs.top_logprobs = void 0;
-            warnings.push({
+            warnings2.push({
               type: "other",
               message: "topLogprobs is not supported for reasoning models"
             });
@@ -40582,7 +40582,7 @@ var init_dist6 = __esm({
         } else if (this.modelId.startsWith("gpt-4o-search-preview") || this.modelId.startsWith("gpt-4o-mini-search-preview")) {
           if (baseArgs.temperature != null) {
             baseArgs.temperature = void 0;
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "temperature",
               details: "temperature is not supported for the search preview models and has been removed."
@@ -40590,7 +40590,7 @@ var init_dist6 = __esm({
           }
         }
         if (openaiOptions.serviceTier === "flex" && !modelCapabilities.supportsFlexProcessing) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "serviceTier",
             details: "flex processing is only available for o3, o4-mini, and gpt-5 models"
@@ -40598,7 +40598,7 @@ var init_dist6 = __esm({
           baseArgs.service_tier = void 0;
         }
         if ((openaiOptions.serviceTier === "priority" || openaiOptions.serviceTier === "fast") && !modelCapabilities.supportsPriorityProcessing) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "serviceTier",
             details: "priority processing is only available for supported models (gpt-4, gpt-5, gpt-5-mini, o3, o4-mini) and requires Enterprise access. gpt-5-nano is not supported"
@@ -40619,12 +40619,12 @@ var init_dist6 = __esm({
             tools: openaiTools2,
             tool_choice: openaiToolChoice
           },
-          warnings: [...warnings, ...toolWarnings]
+          warnings: [...warnings2, ...toolWarnings]
         };
       }
       async doGenerate(options) {
         var _a211, _b29, _c, _d, _e, _f, _g, _h;
-        const { args: body, warnings } = await this.getArgs(options);
+        const { args: body, warnings: warnings2 } = await this.getArgs(options);
         const {
           responseHeaders,
           value: response,
@@ -40696,13 +40696,13 @@ var init_dist6 = __esm({
             headers: responseHeaders,
             body: rawResponse
           },
-          warnings,
+          warnings: warnings2,
           providerMetadata
         };
       }
       async doStream(options) {
         var _a211, _b29;
-        const { args, warnings } = await this.getArgs(options);
+        const { args, warnings: warnings2 } = await this.getArgs(options);
         const body = {
           ...args,
           stream: true,
@@ -40750,7 +40750,7 @@ var init_dist6 = __esm({
                   generateId,
                   typeValidation: "if-present"
                 });
-                controller.enqueue({ type: "stream-start", warnings });
+                controller.enqueue({ type: "stream-start", warnings: warnings2 });
               },
               transform(chunk, controller) {
                 var _a36, _b210, _c, _d, _e, _f;
@@ -40989,7 +40989,7 @@ var init_dist6 = __esm({
         seed,
         providerOptions
       }) {
-        const warnings = [];
+        const warnings2 = [];
         const openaiOptions = {
           ...await parseProviderOptions({
             provider: "openai",
@@ -41003,16 +41003,16 @@ var init_dist6 = __esm({
           })
         };
         if (topK != null) {
-          warnings.push({ type: "unsupported", feature: "topK" });
+          warnings2.push({ type: "unsupported", feature: "topK" });
         }
         if (tools == null ? void 0 : tools.length) {
-          warnings.push({ type: "unsupported", feature: "tools" });
+          warnings2.push({ type: "unsupported", feature: "tools" });
         }
         if (toolChoice != null) {
-          warnings.push({ type: "unsupported", feature: "toolChoice" });
+          warnings2.push({ type: "unsupported", feature: "toolChoice" });
         }
         if (responseFormat != null && responseFormat.type !== "text") {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "responseFormat",
             details: "JSON response format is not supported."
@@ -41042,12 +41042,12 @@ var init_dist6 = __esm({
             // stop sequences:
             stop: stop.length > 0 ? stop : void 0
           },
-          warnings
+          warnings: warnings2
         };
       }
       async doGenerate(options) {
         var _a211, _b29, _c;
-        const { args, warnings } = await this.getArgs(options);
+        const { args, warnings: warnings2 } = await this.getArgs(options);
         const {
           responseHeaders,
           value: response,
@@ -41085,12 +41085,12 @@ var init_dist6 = __esm({
             body: rawResponse
           },
           providerMetadata,
-          warnings
+          warnings: warnings2
         };
       }
       async doStream(options) {
         var _a211, _b29;
-        const { args, warnings } = await this.getArgs(options);
+        const { args, warnings: warnings2 } = await this.getArgs(options);
         const body = {
           ...args,
           stream: true,
@@ -41132,7 +41132,7 @@ var init_dist6 = __esm({
           stream: checkedResponse.pipeThrough(
             new TransformStream({
               start(controller) {
-                controller.enqueue({ type: "stream-start", warnings });
+                controller.enqueue({ type: "stream-start", warnings: warnings2 });
               },
               transform(chunk, controller) {
                 var _a36;
@@ -41677,16 +41677,16 @@ var init_dist6 = __esm({
         abortSignal
       }) {
         var _a211, _b29, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
-        const warnings = [];
+        const warnings2 = [];
         if (aspectRatio != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "aspectRatio",
             details: "This model does not support aspect ratio. Use `size` instead."
           });
         }
         if (seed != null) {
-          warnings.push({ type: "unsupported", feature: "seed" });
+          warnings2.push({ type: "unsupported", feature: "seed" });
         }
         const currentDate = (_c = (_b29 = (_a211 = this.config._internal) == null ? void 0 : _a211.currentDate) == null ? void 0 : _b29.call(_a211)) != null ? _c : /* @__PURE__ */ new Date();
         if (files != null) {
@@ -41737,7 +41737,7 @@ var init_dist6 = __esm({
           });
           return {
             images: response2.data.map((item) => item.b64_json),
-            warnings,
+            warnings: warnings2,
             usage: response2.usage != null ? {
               inputTokens: (_g = response2.usage.input_tokens) != null ? _g : void 0,
               outputTokens: (_h = response2.usage.output_tokens) != null ? _h : void 0,
@@ -41804,7 +41804,7 @@ var init_dist6 = __esm({
         });
         return {
           images: response.data.map((item) => item.b64_json),
-          warnings,
+          warnings: warnings2,
           usage: response.usage != null ? {
             inputTokens: (_m = response.usage.input_tokens) != null ? _m : void 0,
             outputTokens: (_n = response.usage.output_tokens) != null ? _n : void 0,
@@ -43985,22 +43985,22 @@ var init_dist6 = __esm({
         }
       }) {
         var _a211, _b29, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
-        const warnings = [];
+        const warnings2 = [];
         const modelCapabilities = getOpenAILanguageModelCapabilities(modelId);
         if (topK != null) {
-          warnings.push({ type: "unsupported", feature: "topK" });
+          warnings2.push({ type: "unsupported", feature: "topK" });
         }
         if (seed != null) {
-          warnings.push({ type: "unsupported", feature: "seed" });
+          warnings2.push({ type: "unsupported", feature: "seed" });
         }
         if (presencePenalty != null) {
-          warnings.push({ type: "unsupported", feature: "presencePenalty" });
+          warnings2.push({ type: "unsupported", feature: "presencePenalty" });
         }
         if (frequencyPenalty != null) {
-          warnings.push({ type: "unsupported", feature: "frequencyPenalty" });
+          warnings2.push({ type: "unsupported", feature: "frequencyPenalty" });
         }
         if (stopSequences != null) {
-          warnings.push({ type: "unsupported", feature: "stopSequences" });
+          warnings2.push({ type: "unsupported", feature: "stopSequences" });
         }
         const providerOptionsName = config2.provider.includes("azure") ? "azure" : "openai";
         let openaiOptions = await parseProviderOptions({
@@ -44019,7 +44019,7 @@ var init_dist6 = __esm({
         if (resolvedReasoningEffort != null && modelCapabilities.supportedReasoningEfforts != null && !modelCapabilities.supportedReasoningEfforts.includes(
           resolvedReasoningEffort
         )) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "reasoningEffort",
             details: `${modelId} only supports the following reasoning efforts: ${modelCapabilities.supportedReasoningEfforts.join(", ")}`
@@ -44029,7 +44029,7 @@ var init_dist6 = __esm({
         const resolvedReasoningSummary = (openaiOptions == null ? void 0 : openaiOptions.reasoningSummary) !== void 0 ? openaiOptions.reasoningSummary : resolvedReasoningEffort != null && resolvedReasoningEffort !== "none" ? "detailed" : void 0;
         const isReasoningModel = (_b29 = openaiOptions == null ? void 0 : openaiOptions.forceReasoning) != null ? _b29 : modelCapabilities.isReasoningModel;
         if ((openaiOptions == null ? void 0 : openaiOptions.conversation) && (openaiOptions == null ? void 0 : openaiOptions.previousResponseId)) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "conversation",
             details: "conversation and previousResponseId cannot be used together"
@@ -44091,10 +44091,10 @@ var init_dist6 = __esm({
           customProviderToolNames: customProviderToolNames.size > 0 ? customProviderToolNames : void 0,
           outputSchemaToolNames: outputSchemaToolNames.size > 0 ? outputSchemaToolNames : void 0
         });
-        warnings.push(...inputWarnings);
+        warnings2.push(...inputWarnings);
         const reasoningEffortUpdate = openaiOptions == null ? void 0 : openaiOptions.reasoningEffortUpdate;
         if (reasoningEffortUpdate != null && configurationUpdateUnsupportedReason != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "reasoningEffortUpdate",
             details: configurationUpdateUnsupportedReason
@@ -44121,7 +44121,7 @@ var init_dist6 = __esm({
         const strictJsonSchema = (_g = openaiOptions == null ? void 0 : openaiOptions.strictJsonSchema) != null ? _g : true;
         const normalizedResponseFormatSchema = (responseFormat == null ? void 0 : responseFormat.type) === "json" && responseFormat.schema != null ? normalizeOpenAIJsonSchema(responseFormat.schema) : void 0;
         if (normalizedResponseFormatSchema != null) {
-          warnings.push(...normalizedResponseFormatSchema.warnings);
+          warnings2.push(...normalizedResponseFormatSchema.warnings);
         }
         let include = openaiOptions == null ? void 0 : openaiOptions.include;
         function addInclude(key) {
@@ -44221,7 +44221,7 @@ var init_dist6 = __esm({
         };
         if (modelCapabilities.supportsConfigurationUpdate && baseArgs.prompt_cache_retention != null) {
           baseArgs.prompt_cache_retention = void 0;
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "promptCacheRetention",
             details: "promptCacheRetention is not supported by GPT-6 and later models; use promptCacheOptions instead"
@@ -44231,7 +44231,7 @@ var init_dist6 = __esm({
           if (!(resolvedReasoningEffort === "none" && modelCapabilities.supportsNonReasoningParameters)) {
             if (baseArgs.temperature != null) {
               baseArgs.temperature = void 0;
-              warnings.push({
+              warnings2.push({
                 type: "unsupported",
                 feature: "temperature",
                 details: "temperature is not supported for reasoning models"
@@ -44239,7 +44239,7 @@ var init_dist6 = __esm({
             }
             if (baseArgs.top_p != null) {
               baseArgs.top_p = void 0;
-              warnings.push({
+              warnings2.push({
                 type: "unsupported",
                 feature: "topP",
                 details: "topP is not supported for reasoning models"
@@ -44251,7 +44251,7 @@ var init_dist6 = __esm({
                 (value) => value !== "message.output_text.logprobs"
               );
               baseArgs.include = filteredInclude != null && filteredInclude.length > 0 ? filteredInclude : void 0;
-              warnings.push({
+              warnings2.push({
                 type: "unsupported",
                 feature: "logprobs",
                 details: "logprobs is not supported for reasoning models"
@@ -44260,28 +44260,28 @@ var init_dist6 = __esm({
           }
         } else {
           if ((openaiOptions == null ? void 0 : openaiOptions.reasoningEffort) != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "reasoningEffort",
               details: "reasoningEffort is not supported for non-reasoning models"
             });
           }
           if ((openaiOptions == null ? void 0 : openaiOptions.reasoningSummary) != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "reasoningSummary",
               details: "reasoningSummary is not supported for non-reasoning models"
             });
           }
           if ((openaiOptions == null ? void 0 : openaiOptions.reasoningMode) != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "reasoningMode",
               details: "reasoningMode is not supported for non-reasoning models"
             });
           }
           if ((openaiOptions == null ? void 0 : openaiOptions.reasoningContext) != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "reasoningContext",
               details: "reasoningContext is not supported for non-reasoning models"
@@ -44289,7 +44289,7 @@ var init_dist6 = __esm({
           }
         }
         if ((openaiOptions == null ? void 0 : openaiOptions.serviceTier) === "flex" && !modelCapabilities.supportsFlexProcessing) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "serviceTier",
             details: "flex processing is only available for o3, o4-mini, and gpt-5 models"
@@ -44297,7 +44297,7 @@ var init_dist6 = __esm({
           delete baseArgs.service_tier;
         }
         if (((openaiOptions == null ? void 0 : openaiOptions.serviceTier) === "priority" || (openaiOptions == null ? void 0 : openaiOptions.serviceTier) === "fast") && !modelCapabilities.supportsPriorityProcessing) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "serviceTier",
             details: "priority processing is only available for supported models (gpt-4, gpt-5, gpt-5-mini, o3, o4-mini) and requires Enterprise access. gpt-5-nano is not supported"
@@ -44315,7 +44315,7 @@ var init_dist6 = __esm({
             tools: openaiTools2,
             tool_choice: openaiToolChoice
           },
-          warnings: [...warnings, ...toolWarnings],
+          warnings: [...warnings2, ...toolWarnings],
           store,
           toolNameMapping,
           providerOptionsName,
@@ -44333,7 +44333,7 @@ var init_dist6 = __esm({
         var _a211, _b29, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E2, _F, _G, _H;
         const {
           args: body,
-          warnings,
+          warnings: warnings2,
           webSearchToolName,
           toolNameMapping,
           providerOptionsName,
@@ -44910,14 +44910,14 @@ var init_dist6 = __esm({
             body: rawResponse
           },
           providerMetadata,
-          warnings
+          warnings: warnings2
         };
       }
       async doStream(options) {
         var _a211, _b29, _c, _d;
         const {
           args: body,
-          warnings,
+          warnings: warnings2,
           webSearchToolName,
           toolNameMapping,
           store,
@@ -44985,7 +44985,7 @@ var init_dist6 = __esm({
           stream: checkedResponse.pipeThrough(
             new TransformStream({
               start(controller) {
-                controller.enqueue({ type: "stream-start", warnings });
+                controller.enqueue({ type: "stream-start", warnings: warnings2 });
               },
               transform(chunk, controller) {
                 var _a36, _b210, _c2, _d2, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E2, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S;
@@ -46150,7 +46150,7 @@ var init_dist6 = __esm({
         assertTextBatchRequests3(options.requests);
         validateSingleModel2(options.requests);
         const fileParts = [];
-        const warnings = options.webhookUrl == null ? [] : [
+        const warnings2 = options.webhookUrl == null ? [] : [
           {
             warning: {
               type: "unsupported",
@@ -46175,11 +46175,11 @@ var init_dist6 = __esm({
             "\n"
           );
           for (const warning of preparedRequest.warnings) {
-            warnings.push({ requestId: request.id, warning });
+            warnings2.push({ requestId: request.id, warning });
           }
           for (const tool3 of (_b29 = request.options.tools) != null ? _b29 : []) {
             if (tool3.type === "provider" && !openAIBatchConvertibleProviderToolIds.has(tool3.id)) {
-              warnings.push({
+              warnings2.push({
                 requestId: request.id,
                 warning: {
                   type: "unsupported",
@@ -46251,7 +46251,7 @@ var init_dist6 = __esm({
               ...inputFileExpiresAt != null ? { inputFileExpiresAt } : {}
             }
           },
-          warnings
+          warnings: warnings2
         };
       }
       async parseBatchProviderOptions(providerOptions) {
@@ -46433,12 +46433,12 @@ var init_dist6 = __esm({
         };
       }
       async prepareRequest(request) {
-        const { args: body, warnings } = await OpenAIResponsesLanguageModel.prepareRequest({
+        const { args: body, warnings: warnings2 } = await OpenAIResponsesLanguageModel.prepareRequest({
           modelId: request.modelId,
           config: this.options.config,
           options: request.options
         });
-        return { body, warnings };
+        return { body, warnings: warnings2 };
       }
       getUrl(path) {
         return this.options.config.url({ path, modelId: "" });
@@ -46757,7 +46757,7 @@ var init_dist6 = __esm({
         providerOptions
       }) {
         var _a211, _b29;
-        const warnings = [];
+        const warnings2 = [];
         const openAIOptions = await parseProviderOptions({
           provider: "openai",
           providerOptions,
@@ -46775,7 +46775,7 @@ var init_dist6 = __esm({
           if (["mp3", "opus", "aac", "flac", "wav", "pcm"].includes(outputFormat)) {
             requestBody.response_format = outputFormat;
           } else {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "outputFormat",
               details: `Unsupported output format: ${outputFormat}. Using mp3 instead.`
@@ -46795,7 +46795,7 @@ var init_dist6 = __esm({
           }
         }
         if (language) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "language",
             details: `OpenAI speech models do not support language selection. Language parameter "${language}" was ignored.`
@@ -46803,13 +46803,13 @@ var init_dist6 = __esm({
         }
         return {
           requestBody,
-          warnings
+          warnings: warnings2
         };
       }
       async doGenerate(options) {
         var _a211, _b29, _c, _d, _e;
         const currentDate = (_c = (_b29 = (_a211 = this.config._internal) == null ? void 0 : _a211.currentDate) == null ? void 0 : _b29.call(_a211)) != null ? _c : /* @__PURE__ */ new Date();
-        const { requestBody, warnings } = await this.getArgs(options);
+        const { requestBody, warnings: warnings2 } = await this.getArgs(options);
         const {
           value: audio,
           responseHeaders,
@@ -46828,7 +46828,7 @@ var init_dist6 = __esm({
         });
         return {
           audio,
-          warnings,
+          warnings: warnings2,
           request: {
             body: JSON.stringify(requestBody)
           },
@@ -47021,7 +47021,7 @@ var init_dist6 = __esm({
         providerOptions
       }) {
         var _a211, _b29;
-        const warnings = [];
+        const warnings2 = [];
         const openAIOptions = await parseProviderOptions({
           provider: "openai",
           providerOptions,
@@ -47091,7 +47091,7 @@ var init_dist6 = __esm({
         }
         return {
           formData,
-          warnings
+          warnings: warnings2
         };
       }
       async doGenerate(options) {
@@ -47102,7 +47102,7 @@ var init_dist6 = __esm({
           });
         }
         const currentDate = (_c = (_b29 = (_a211 = this.config._internal) == null ? void 0 : _a211.currentDate) == null ? void 0 : _b29.call(_a211)) != null ? _c : /* @__PURE__ */ new Date();
-        const { formData, warnings } = await this.getArgs(options);
+        const { formData, warnings: warnings2 } = await this.getArgs(options);
         const {
           value: response,
           responseHeaders,
@@ -47145,7 +47145,7 @@ var init_dist6 = __esm({
           }))) != null ? _j : [],
           language,
           durationInSeconds: (_k = response.duration) != null ? _k : void 0,
-          warnings,
+          warnings: warnings2,
           response: {
             timestamp: currentDate,
             modelId: this.modelId,
@@ -47174,7 +47174,7 @@ var init_dist6 = __esm({
           providerOptions: options.providerOptions,
           schema: openAITranscriptionModelOptions
         });
-        const warnings = [];
+        const warnings2 = [];
         const rawOpenAIOptions = (_e = (_d = options.providerOptions) == null ? void 0 : _d.openai) != null ? _e : {};
         for (const option of [
           "include",
@@ -47183,7 +47183,7 @@ var init_dist6 = __esm({
           "timestampGranularities"
         ]) {
           if (rawOpenAIOptions[option] != null) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: `providerOptions.openai.${option}`,
               details: `OpenAI streaming transcription does not support ${option}.`
@@ -47213,7 +47213,7 @@ var init_dist6 = __esm({
             headers: headers9,
             sessionUpdate,
             language: openAIOptions == null ? void 0 : openAIOptions.language,
-            warnings,
+            warnings: warnings2,
             audio: options.audio,
             abortSignal: options.abortSignal,
             includeRawChunks: options.includeRawChunks
@@ -47256,17 +47256,17 @@ var init_dist6 = __esm({
           providerOptions: options.providerOptions,
           schema: openAISpeechTranslationModelOptions
         });
-        const warnings = [];
+        const warnings2 = [];
         validateOpenAISpeechTranslationInputAudioFormat(options.inputAudioFormat);
         if (options.sourceLanguage != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "sourceLanguage",
             details: "The OpenAI Realtime translation API auto-detects the source language and does not accept a source language."
           });
         }
         if (options.outputAudioFormat != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "outputAudioFormat",
             details: "The OpenAI Realtime translation API always outputs 24kHz 16-bit PCM audio and does not accept an output audio format."
@@ -47292,7 +47292,7 @@ var init_dist6 = __esm({
             ),
             headers: headers9,
             sessionUpdate,
-            warnings,
+            warnings: warnings2,
             audio: options.audio,
             abortSignal: options.abortSignal,
             includeRawChunks: options.includeRawChunks
@@ -47332,9 +47332,9 @@ var init_dist6 = __esm({
         return this.config.provider;
       }
       async uploadSkill(params) {
-        const warnings = [];
+        const warnings2 = [];
         if (params.displayTitle != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "displayTitle"
           });
@@ -47366,7 +47366,7 @@ var init_dist6 = __esm({
               ...response.updated_at != null ? { updatedAt: response.updated_at } : {}
             }
           },
-          warnings
+          warnings: warnings2
         };
       }
     };
@@ -48591,11 +48591,11 @@ function isCustomReasoning2(reasoning) {
 function mapReasoningToProviderEffort2({
   reasoning,
   effortMap,
-  warnings
+  warnings: warnings2
 }) {
   const mapped = effortMap[reasoning];
   if (mapped == null) {
-    warnings.push({
+    warnings2.push({
       type: "unsupported",
       feature: "reasoning",
       details: `reasoning "${reasoning}" is not supported by this model.`
@@ -48603,7 +48603,7 @@ function mapReasoningToProviderEffort2({
     return void 0;
   }
   if (mapped !== reasoning) {
-    warnings.push({
+    warnings2.push({
       type: "compatibility",
       feature: "reasoning",
       details: `reasoning "${reasoning}" is not directly supported by this model. mapped to effort "${mapped}".`
@@ -51212,7 +51212,7 @@ __export(dist_exports3, {
 async function convertToXaiChatMessages(prompt) {
   var _a30;
   const messages = [];
-  const warnings = [];
+  const warnings2 = [];
   for (const { role, content } of prompt) {
     switch (role) {
       case "system": {
@@ -51346,7 +51346,7 @@ async function convertToXaiChatMessages(prompt) {
       }
     }
   }
-  return { messages, warnings };
+  return { messages, warnings: warnings2 };
 }
 function convertXaiChatUsage(usage) {
   var _a30, _b29, _c, _d;
@@ -52487,12 +52487,12 @@ function fileToXaiUrl(file2) {
   const base64Data = typeof file2.data === "string" ? file2.data : convertUint8ArrayToBase642(file2.data);
   return `data:${file2.mediaType};base64,${base64Data}`;
 }
-function resolveReferences(options, xaiOptions, warnings) {
+function resolveReferences(options, xaiOptions, warnings2) {
   if (options.inputReferences != null && options.inputReferences.length > 0) {
     const imageFiles = [];
     for (const reference of options.inputReferences) {
       if (!isImageReference(reference)) {
-        warnings.push({
+        warnings2.push({
           type: "unsupported",
           feature: "inputReferences",
           details: isVideoFile(reference) ? 'xAI reference-to-video accepts image references only. The video reference was ignored. Use providerOptions.xai.mode "extend-video" to continue from a video.' : "xAI reference-to-video accepts image references only. The non-image reference was ignored."
@@ -52568,7 +52568,7 @@ function createXaiStreamingTranscriptionStream({
   webSocket,
   url: url2,
   headers: headers9,
-  warnings,
+  warnings: warnings2,
   language,
   expectedDoneCount,
   audio,
@@ -52652,7 +52652,7 @@ function createXaiStreamingTranscriptionStream({
           }
           switch (raw.type) {
             case "transcript.created": {
-              controller.enqueue({ type: "stream-start", warnings });
+              controller.enqueue({ type: "stream-start", warnings: warnings2 });
               const socket = connection == null ? void 0 : connection.socket;
               if (socket == null) {
                 finishWithError(new Error("WebSocket is not connected."));
@@ -53190,26 +53190,26 @@ var init_dist9 = __esm({
         toolChoice
       }) {
         var _a30, _b29, _c;
-        const warnings = [];
+        const warnings2 = [];
         const options = (_a30 = await parseProviderOptions2({
           provider: "xai",
           providerOptions,
           schema: xaiLanguageModelChatOptions
         })) != null ? _a30 : {};
         if (topK != null) {
-          warnings.push({ type: "unsupported", feature: "topK" });
+          warnings2.push({ type: "unsupported", feature: "topK" });
         }
         if (frequencyPenalty != null) {
-          warnings.push({ type: "unsupported", feature: "frequencyPenalty" });
+          warnings2.push({ type: "unsupported", feature: "frequencyPenalty" });
         }
         if (presencePenalty != null) {
-          warnings.push({ type: "unsupported", feature: "presencePenalty" });
+          warnings2.push({ type: "unsupported", feature: "presencePenalty" });
         }
         if (stopSequences != null) {
-          warnings.push({ type: "unsupported", feature: "stopSequences" });
+          warnings2.push({ type: "unsupported", feature: "stopSequences" });
         }
         const { messages, warnings: messageWarnings } = await convertToXaiChatMessages(prompt);
-        warnings.push(...messageWarnings);
+        warnings2.push(...messageWarnings);
         const {
           tools: xaiTools2,
           toolChoice: xaiToolChoice,
@@ -53218,11 +53218,11 @@ var init_dist9 = __esm({
           tools,
           toolChoice
         });
-        warnings.push(...toolWarnings);
+        warnings2.push(...toolWarnings);
         let reasoningEffort = options.reasoningEffort;
         if (reasoningEffort == null && isCustomReasoning2(reasoning)) {
           if (!supportsReasoningEffort(this.modelId)) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "reasoning",
               details: `reasoning "${reasoning}" is not supported by this model.`
@@ -53239,7 +53239,7 @@ var init_dist9 = __esm({
                 high: "high",
                 xhigh: this.modelId === "grok-4.6" ? "xhigh" : "high"
               },
-              warnings
+              warnings: warnings2
             });
           }
         }
@@ -53309,12 +53309,12 @@ var init_dist9 = __esm({
         };
         return {
           args: baseArgs,
-          warnings
+          warnings: warnings2
         };
       }
       async doGenerate(options) {
         var _a30, _b29, _c, _d;
-        const { args: body, warnings } = await this.getArgs(options);
+        const { args: body, warnings: warnings2 } = await this.getArgs(options);
         const url2 = `${(_a30 = this.config.baseURL) != null ? _a30 : "https://api.x.ai/v1"}/chat/completions`;
         const {
           responseHeaders,
@@ -53401,12 +53401,12 @@ var init_dist9 = __esm({
             headers: responseHeaders,
             body: rawResponse
           },
-          warnings
+          warnings: warnings2
         };
       }
       async doStream(options) {
         var _a30, _b29, _c;
-        const { args, warnings } = await this.getArgs(options);
+        const { args, warnings: warnings2 } = await this.getArgs(options);
         const body = {
           ...args,
           stream: true,
@@ -53473,7 +53473,7 @@ var init_dist9 = __esm({
           stream: response.pipeThrough(
             new TransformStream({
               start(controller) {
-                controller.enqueue({ type: "stream-start", warnings });
+                controller.enqueue({ type: "stream-start", warnings: warnings2 });
               },
               transform(chunk, controller) {
                 if (options.includeRawChunks) {
@@ -53757,22 +53757,22 @@ var init_dist9 = __esm({
         mask
       }) {
         var _a30, _b29, _c, _d, _e, _f, _g;
-        const warnings = [];
+        const warnings2 = [];
         if (size != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "size",
             details: "This model does not support the `size` option. Use `aspectRatio` instead."
           });
         }
         if (seed != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "seed"
           });
         }
         if (mask != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "mask"
           });
@@ -53843,7 +53843,7 @@ var init_dist9 = __esm({
         );
         return {
           images,
-          warnings,
+          warnings: warnings2,
           response: {
             timestamp: currentDate,
             modelId: this.modelId,
@@ -54611,23 +54611,23 @@ var init_dist9 = __esm({
         }
       }) {
         var _a30, _b29, _c, _d, _e, _f, _g, _h, _i;
-        const warnings = [];
+        const warnings2 = [];
         const options = (_a30 = await parseProviderOptions2({
           provider: "xai",
           providerOptions,
           schema: xaiLanguageModelResponsesOptions
         })) != null ? _a30 : {};
         if (topK != null) {
-          warnings.push({ type: "unsupported", feature: "topK" });
+          warnings2.push({ type: "unsupported", feature: "topK" });
         }
         if (frequencyPenalty != null) {
-          warnings.push({ type: "unsupported", feature: "frequencyPenalty" });
+          warnings2.push({ type: "unsupported", feature: "frequencyPenalty" });
         }
         if (presencePenalty != null) {
-          warnings.push({ type: "unsupported", feature: "presencePenalty" });
+          warnings2.push({ type: "unsupported", feature: "presencePenalty" });
         }
         if (stopSequences != null) {
-          warnings.push({ type: "unsupported", feature: "stopSequences" });
+          warnings2.push({ type: "unsupported", feature: "stopSequences" });
         }
         const webSearchToolName = (_b29 = tools == null ? void 0 : tools.find(
           (tool3) => tool3.type === "provider" && tool3.id === "xai.web_search"
@@ -54651,7 +54651,7 @@ var init_dist9 = __esm({
           prompt,
           store: (_h = options.store) != null ? _h : true
         });
-        warnings.push(...inputWarnings);
+        warnings2.push(...inputWarnings);
         const {
           tools: xaiTools2,
           toolChoice: xaiToolChoice,
@@ -54660,7 +54660,7 @@ var init_dist9 = __esm({
           tools,
           toolChoice
         });
-        warnings.push(...toolWarnings);
+        warnings2.push(...toolWarnings);
         let include = options.include ? [...options.include] : void 0;
         if (options.store === false) {
           if (include == null) {
@@ -54672,7 +54672,7 @@ var init_dist9 = __esm({
         let resolvedReasoningEffort = options.reasoningEffort;
         if (resolvedReasoningEffort == null && isCustomReasoning2(reasoning)) {
           if (!supportsReasoningEffort(modelId)) {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "reasoning",
               details: `reasoning "${reasoning}" is not supported by this model.`
@@ -54689,7 +54689,7 @@ var init_dist9 = __esm({
                 high: "high",
                 xhigh: modelId === "grok-4.6" ? "xhigh" : "high"
               },
-              warnings
+              warnings: warnings2
             });
           }
         }
@@ -54744,7 +54744,7 @@ var init_dist9 = __esm({
         }
         return {
           args: baseArgs,
-          warnings,
+          warnings: warnings2,
           webSearchToolName,
           xSearchToolName,
           codeExecutionToolName,
@@ -54763,7 +54763,7 @@ var init_dist9 = __esm({
         var _a30, _b29, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
         const {
           args: body,
-          warnings,
+          warnings: warnings2,
           webSearchToolName,
           xSearchToolName,
           codeExecutionToolName,
@@ -54974,14 +54974,14 @@ var init_dist9 = __esm({
             headers: responseHeaders,
             body: rawResponse
           },
-          warnings
+          warnings: warnings2
         };
       }
       async doStream(options) {
         var _a30, _b29, _c;
         const {
           args,
-          warnings,
+          warnings: warnings2,
           webSearchToolName,
           xSearchToolName,
           codeExecutionToolName,
@@ -55022,7 +55022,7 @@ var init_dist9 = __esm({
           stream: response.pipeThrough(
             new TransformStream({
               start(controller) {
-                controller.enqueue({ type: "stream-start", warnings });
+                controller.enqueue({ type: "stream-start", warnings: warnings2 });
               },
               transform(chunk, controller) {
                 var _a211, _b210, _c2, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
@@ -55617,7 +55617,7 @@ var init_dist9 = __esm({
         var _a30, _b29;
         assertSupportedBatchRequests(options.requests);
         const fileParts = [];
-        const warnings = options.webhookUrl == null ? [] : [
+        const warnings2 = options.webhookUrl == null ? [] : [
           {
             warning: {
               type: "unsupported",
@@ -55643,7 +55643,7 @@ var init_dist9 = __esm({
             "\n"
           );
           for (const warning of preparedRequest.warnings) {
-            warnings.push({ requestId: request.id, warning });
+            warnings2.push({ requestId: request.id, warning });
           }
         }
         const filename = "batch.jsonl";
@@ -55699,7 +55699,7 @@ var init_dist9 = __esm({
               } : {}
             }
           },
-          warnings
+          warnings: warnings2
         };
       }
       async doGetBatchStatus(options) {
@@ -55876,23 +55876,23 @@ var init_dist9 = __esm({
       }
       async prepareRequest(request) {
         if (request.type === "text") {
-          const { args: body2, warnings: warnings2 } = await XaiResponsesLanguageModel.prepareRequest({
+          const { args: body2, warnings: warnings22 } = await XaiResponsesLanguageModel.prepareRequest({
             modelId: request.modelId,
             options: request.options
           });
-          return { endpoint: xaiBatchEndpoint, body: body2, warnings: warnings2 };
+          return { endpoint: xaiBatchEndpoint, body: body2, warnings: warnings22 };
         }
         const { prompt, n, size, aspectRatio, seed, files, mask, providerOptions } = request.options;
-        const warnings = [];
+        const warnings2 = [];
         if (size != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "size",
             details: "This model does not support the `size` option. Use `aspectRatio` instead."
           });
         }
-        if (seed != null) warnings.push({ type: "unsupported", feature: "seed" });
-        if (mask != null) warnings.push({ type: "unsupported", feature: "mask" });
+        if (seed != null) warnings2.push({ type: "unsupported", feature: "seed" });
+        if (mask != null) warnings2.push({ type: "unsupported", feature: "mask" });
         const xaiOptions = await parseProviderOptions2({
           provider: "xai",
           providerOptions,
@@ -55922,7 +55922,7 @@ var init_dist9 = __esm({
         return {
           endpoint: (files == null ? void 0 : files.length) ? "/v1/images/edits" : "/v1/images/generations",
           body,
-          warnings
+          warnings: warnings2
         };
       }
       async convertImageBatchResponse(response, abortSignal) {
@@ -56327,7 +56327,7 @@ var init_dist9 = __esm({
         return this.config.provider;
       }
       async buildRequestBody(options) {
-        const warnings = [];
+        const warnings2 = [];
         const xaiOptions = await parseProviderOptions2({
           provider: "xai",
           providerOptions: options.providerOptions,
@@ -56338,56 +56338,56 @@ var init_dist9 = __esm({
         const isExtension = effectiveMode === "extend-video";
         const hasReferenceImages = effectiveMode === "reference-to-video";
         if (options.fps != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "fps",
             details: "xAI video models do not support custom FPS."
           });
         }
         if (options.seed != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "seed",
             details: "xAI video models do not support seed."
           });
         }
         if (options.n != null && options.n > 1) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "n",
             details: "xAI video models do not support generating multiple videos per call. Only 1 video will be generated."
           });
         }
         if (isEdit && options.duration != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "duration",
             details: "xAI video editing does not support custom duration."
           });
         }
         if (isEdit && options.aspectRatio != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "aspectRatio",
             details: "xAI video editing does not support custom aspect ratio."
           });
         }
         if (isEdit && ((xaiOptions == null ? void 0 : xaiOptions.resolution) != null || options.resolution != null)) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "resolution",
             details: "xAI video editing does not support custom resolution."
           });
         }
         if (isExtension && options.aspectRatio != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "aspectRatio",
             details: "xAI video extension does not support custom aspect ratio."
           });
         }
         if (isExtension && ((xaiOptions == null ? void 0 : xaiOptions.resolution) != null || options.resolution != null)) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "resolution",
             details: "xAI video extension does not support custom resolution."
@@ -56413,7 +56413,7 @@ var init_dist9 = __esm({
           if (mapped != null) {
             body.resolution = mapped;
           } else {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "resolution",
               details: `Unrecognized resolution "${options.resolution}". Use providerOptions.xai.resolution with "480p", "720p", or "1080p" instead.`
@@ -56430,7 +56430,7 @@ var init_dist9 = __esm({
         if (startImage != null) {
           if (isVideoFile(startImage)) {
             const fromFrameImages = getFirstFrameImage(options) != null;
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: fromFrameImages ? "frameImages" : "image",
               details: 'xAI does not accept a video as a start/frame image. The video was ignored. Use providerOptions.xai.mode "extend-video" to continue from a video instead.'
@@ -56441,18 +56441,18 @@ var init_dist9 = __esm({
         }
         const lastFrameImage = getLastFrameImage(options);
         if (lastFrameImage != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "frameImages",
             details: isVideoFile(lastFrameImage) ? 'xAI does not accept a video as a start/frame image. The video last frame was ignored. Use providerOptions.xai.mode "extend-video" to continue from a video instead.' : `xAI video models do not support last_frame. Use providerOptions.xai.mode "extend-video" to continue from a video's last frame. The last frame image was ignored.`
           });
         }
         if (hasReferenceImages) {
-          const referenceImages = resolveReferences(options, xaiOptions, warnings);
+          const referenceImages = resolveReferences(options, xaiOptions, warnings2);
           if (referenceImages != null) {
             body.reference_images = referenceImages;
           } else {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "referenceImages",
               details: "xAI reference-to-video requires at least one image reference. The video will be generated without reference images."
@@ -56465,7 +56465,7 @@ var init_dist9 = __esm({
             }));
           }
           if (body.resolution === "1080p") {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "resolution",
               details: "xAI reference-to-video is limited to 720p. The request was downgraded from 1080p to 720p."
@@ -56474,21 +56474,21 @@ var init_dist9 = __esm({
           }
         }
         if (body.resolution === "1080p" && this.modelId === "grok-imagine-video") {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "resolution",
             details: 'xAI model "grok-imagine-video" does not support 1080p. Use "grok-imagine-video-1.5" for 1080p, or a lower resolution. The request was sent with 1080p.'
           });
         }
         if (options.inputReferences != null && options.inputReferences.length > 0 && !hasReferenceImages) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "inputReferences",
             details: hasImageInputReference(options) ? "xAI only supports inputReferences for reference-to-video generation. The reference images were ignored." : "xAI reference-to-video requires at least one image reference. The references were ignored."
           });
         }
         if ((xaiOptions == null ? void 0 : xaiOptions.referenceVoiceIds) != null && xaiOptions.referenceVoiceIds.length > 0 && !hasReferenceImages) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "referenceVoiceIds",
             details: "xAI only supports reference voices for reference-to-video generation. The reference voices were ignored."
@@ -56515,7 +56515,7 @@ var init_dist9 = __esm({
         }
         return {
           body,
-          warnings,
+          warnings: warnings2,
           xaiOptions,
           isEdit,
           isExtension,
@@ -56526,7 +56526,7 @@ var init_dist9 = __esm({
       async doStart(options) {
         var _a30, _b29, _c, _d;
         const currentDate = (_c = (_b29 = (_a30 = this.config._internal) == null ? void 0 : _a30.currentDate) == null ? void 0 : _b29.call(_a30)) != null ? _c : /* @__PURE__ */ new Date();
-        const { body, warnings, isEdit, isExtension } = await this.buildRequestBody(options);
+        const { body, warnings: warnings2, isEdit, isExtension } = await this.buildRequestBody(options);
         const baseURL = (_d = this.config.baseURL) != null ? _d : "https://api.x.ai/v1";
         let endpoint;
         if (isEdit) {
@@ -56556,7 +56556,7 @@ var init_dist9 = __esm({
         }
         return {
           operation: { requestId },
-          warnings,
+          warnings: warnings2,
           response: {
             timestamp: currentDate,
             modelId: this.modelId,
@@ -56777,7 +56777,7 @@ var init_dist9 = __esm({
         language = "auto",
         providerOptions
       }) {
-        const warnings = [];
+        const warnings2 = [];
         const xaiOptions = await parseProviderOptions2({
           provider: "xai",
           providerOptions,
@@ -56787,14 +56787,14 @@ var init_dist9 = __esm({
         if (["mp3", "wav", "pcm", "mulaw", "alaw"].includes(outputFormat)) {
           codec2 = outputFormat;
         } else {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "outputFormat",
             details: `Unsupported output format: ${outputFormat}. Using mp3 instead.`
           });
         }
         if (instructions != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "instructions",
             details: "xAI speech models do not support the `instructions` option. Use xAI speech tags in `text` to control delivery."
@@ -56810,7 +56810,7 @@ var init_dist9 = __esm({
           if (codec2 === "mp3") {
             output_format.bit_rate = xaiOptions.bitRate;
           } else {
-            warnings.push({
+            warnings2.push({
               type: "unsupported",
               feature: "providerOptions",
               details: "xAI `bitRate` is supported only for mp3 output. It was ignored."
@@ -56830,14 +56830,14 @@ var init_dist9 = __esm({
         };
         return {
           requestBody,
-          warnings,
+          warnings: warnings2,
           withTimestamps: (xaiOptions == null ? void 0 : xaiOptions.withTimestamps) === true
         };
       }
       async doGenerate(options) {
         var _a30, _b29, _c;
         const currentDate = (_c = (_b29 = (_a30 = this.config._internal) == null ? void 0 : _a30.currentDate) == null ? void 0 : _b29.call(_a30)) != null ? _c : /* @__PURE__ */ new Date();
-        const { requestBody, warnings, withTimestamps } = await this.getArgs(options);
+        const { requestBody, warnings: warnings2, withTimestamps } = await this.getArgs(options);
         const { value, responseHeaders, rawValue } = await postJsonToApi2({
           url: `${this.config.baseURL}/tts`,
           headers: combineHeaders2(
@@ -56861,7 +56861,7 @@ var init_dist9 = __esm({
         const traceId = responseHeaders == null ? void 0 : responseHeaders["x-trace-id"];
         return {
           audio,
-          warnings,
+          warnings: warnings2,
           request: {
             body: JSON.stringify(requestBody)
           },
@@ -56989,7 +56989,7 @@ var init_dist9 = __esm({
         mediaType,
         providerOptions
       }) {
-        const warnings = [];
+        const warnings2 = [];
         const xaiOptions = await parseProviderOptions2({
           provider: "xai",
           providerOptions,
@@ -57024,12 +57024,12 @@ var init_dist9 = __esm({
           new File([blob], "audio", { type: mediaType }),
           `audio.${fileExtension}`
         );
-        return { formData, warnings };
+        return { formData, warnings: warnings2 };
       }
       async doGenerate(options) {
         var _a30, _b29, _c, _d, _e, _f, _g, _h, _i;
         const currentDate = (_c = (_b29 = (_a30 = this.config._internal) == null ? void 0 : _a30.currentDate) == null ? void 0 : _b29.call(_a30)) != null ? _c : /* @__PURE__ */ new Date();
-        const { formData, warnings } = await this.getArgs(options);
+        const { formData, warnings: warnings2 } = await this.getArgs(options);
         const {
           value: response,
           responseHeaders,
@@ -57054,7 +57054,7 @@ var init_dist9 = __esm({
           }))) != null ? _h : [],
           language: response.language || void 0,
           durationInSeconds: (_i = response.duration) != null ? _i : void 0,
-          warnings,
+          warnings: warnings2,
           response: {
             timestamp: currentDate,
             modelId: this.modelId,
@@ -57066,7 +57066,7 @@ var init_dist9 = __esm({
       async doStream(options) {
         var _a30, _b29, _c, _d, _e, _f, _g;
         const currentDate = (_c = (_b29 = (_a30 = this.config._internal) == null ? void 0 : _a30.currentDate) == null ? void 0 : _b29.call(_a30)) != null ? _c : /* @__PURE__ */ new Date();
-        const warnings = [];
+        const warnings2 = [];
         const xaiOptions = await parseProviderOptions2({
           provider: "xai",
           providerOptions: options.providerOptions,
@@ -57079,14 +57079,14 @@ var init_dist9 = __esm({
           });
         }
         if ((xaiOptions == null ? void 0 : xaiOptions.format) != null) {
-          warnings.push({
+          warnings2.push({
             type: "unsupported",
             feature: "providerOptions.xai.format",
             details: "xAI streaming transcription does not support format."
           });
         }
         if ((xaiOptions == null ? void 0 : xaiOptions.audioFormat) == null && !isKnownInputAudioFormat(options.inputAudioFormat.type)) {
-          warnings.push({
+          warnings2.push({
             type: "other",
             message: `Unrecognized inputAudioFormat.type "${options.inputAudioFormat.type}"; falling back to raw PCM encoding. Use audio/pcm, audio/pcmu, or audio/pcma, or set providerOptions.xai.audioFormat explicitly.`
           });
@@ -57107,7 +57107,7 @@ var init_dist9 = __esm({
             webSocket: this.config.webSocket,
             url: url2,
             headers: headers9,
-            warnings,
+            warnings: warnings2,
             language: (_g = xaiOptions == null ? void 0 : xaiOptions.language) != null ? _g : void 0,
             expectedDoneCount: (xaiOptions == null ? void 0 : xaiOptions.multichannel) === true ? xaiOptions.channels : 1,
             audio: options.audio,
@@ -60057,9 +60057,9 @@ function resolveProviderOptionsKey(rawName, providerOptions) {
   if (camelName !== rawName && providerOptions?.[camelName] != null) return camelName;
   return rawName;
 }
-function warnIfDeprecatedProviderOptionsKey({ rawName, providerOptions, warnings }) {
+function warnIfDeprecatedProviderOptionsKey({ rawName, providerOptions, warnings: warnings2 }) {
   const camelName = toCamelCase(rawName);
-  if (camelName !== rawName && providerOptions?.[rawName] != null) warnings.push({
+  if (camelName !== rawName && providerOptions?.[rawName] != null) warnings2.push({
     type: "deprecated",
     setting: `providerOptions key '${rawName}'`,
     message: `Use '${camelName}' instead.`
@@ -60581,13 +60581,13 @@ var init_dist12 = __esm({
         return this.config.convertUsage?.(usage) ?? convertOpenAICompatibleChatUsage(usage);
       }
       async getArgs({ prompt, maxOutputTokens, temperature, topP, topK, frequencyPenalty, presencePenalty, reasoning, providerOptions, stopSequences, responseFormat, seed, toolChoice, tools }) {
-        const warnings = [];
+        const warnings2 = [];
         const deprecatedOptions = await parseProviderOptions3({
           provider: "openai-compatible",
           providerOptions,
           schema: openaiCompatibleLanguageModelChatOptions
         });
-        if (deprecatedOptions != null) warnings.push({
+        if (deprecatedOptions != null) warnings2.push({
           type: "deprecated",
           setting: "providerOptions key 'openai-compatible'",
           message: "Use 'openaiCompatible' instead."
@@ -60595,7 +60595,7 @@ var init_dist12 = __esm({
         warnIfDeprecatedProviderOptionsKey({
           rawName: this.providerOptionsName,
           providerOptions,
-          warnings
+          warnings: warnings2
         });
         const compatibleOptions = Object.assign(deprecatedOptions ?? {}, await parseProviderOptions3({
           provider: "openaiCompatible",
@@ -60611,11 +60611,11 @@ var init_dist12 = __esm({
           schema: openaiCompatibleLanguageModelChatOptions
         }) ?? {});
         const strictJsonSchema = compatibleOptions?.strictJsonSchema ?? true;
-        if (topK != null) warnings.push({
+        if (topK != null) warnings2.push({
           type: "unsupported",
           feature: "topK"
         });
-        if (responseFormat?.type === "json" && responseFormat.schema != null && !this.supportsStructuredOutputs) warnings.push({
+        if (responseFormat?.type === "json" && responseFormat.schema != null && !this.supportsStructuredOutputs) warnings2.push({
           type: "unsupported",
           feature: "responseFormat",
           details: "JSON response format schema is only supported with structuredOutputs"
@@ -60659,11 +60659,11 @@ var init_dist12 = __esm({
             tools: openaiTools2,
             tool_choice: openaiToolChoice
           },
-          warnings: [...warnings, ...toolWarnings]
+          warnings: [...warnings2, ...toolWarnings]
         };
       }
       async doGenerate(options) {
-        const { args, warnings, metadataKey } = await this.getArgs({ ...options });
+        const { args, warnings: warnings2, metadataKey } = await this.getArgs({ ...options });
         const transformedBody = this.transformRequestBody(args);
         const body = JSON.stringify(transformedBody);
         const { responseHeaders, value: responseBody, rawValue: rawResponse } = await postJsonToApi3({
@@ -60721,11 +60721,11 @@ var init_dist12 = __esm({
             headers: responseHeaders,
             body: rawResponse
           },
-          warnings
+          warnings: warnings2
         };
       }
       async doStream(options) {
-        const { args, warnings, metadataKey } = await this.getArgs({ ...options });
+        const { args, warnings: warnings2, metadataKey } = await this.getArgs({ ...options });
         const body = this.transformRequestBody({
           ...args,
           stream: true,
@@ -60803,7 +60803,7 @@ var init_dist12 = __esm({
               });
               controller.enqueue({
                 type: "stream-start",
-                warnings
+                warnings: warnings2
               });
             },
             transform(chunk, controller) {
@@ -61068,11 +61068,11 @@ var init_dist12 = __esm({
         return this.config.supportedUrls?.() ?? {};
       }
       async getArgs({ prompt, maxOutputTokens, temperature, topP, topK, frequencyPenalty, presencePenalty, stopSequences: userStopSequences, responseFormat, seed, providerOptions, tools, toolChoice }) {
-        const warnings = [];
+        const warnings2 = [];
         warnIfDeprecatedProviderOptionsKey({
           rawName: this.providerOptionsName,
           providerOptions,
-          warnings
+          warnings: warnings2
         });
         const completionOptions = Object.assign(await parseProviderOptions3({
           provider: this.providerOptionsName,
@@ -61083,19 +61083,19 @@ var init_dist12 = __esm({
           providerOptions,
           schema: openaiCompatibleLanguageModelCompletionOptions
         }) ?? {});
-        if (topK != null) warnings.push({
+        if (topK != null) warnings2.push({
           type: "unsupported",
           feature: "topK"
         });
-        if (tools?.length) warnings.push({
+        if (tools?.length) warnings2.push({
           type: "unsupported",
           feature: "tools"
         });
-        if (toolChoice != null) warnings.push({
+        if (toolChoice != null) warnings2.push({
           type: "unsupported",
           feature: "toolChoice"
         });
-        if (responseFormat != null && responseFormat.type !== "text") warnings.push({
+        if (responseFormat != null && responseFormat.type !== "text") warnings2.push({
           type: "unsupported",
           feature: "responseFormat",
           details: "JSON response format is not supported."
@@ -61120,11 +61120,11 @@ var init_dist12 = __esm({
             prompt: completionPrompt,
             stop: stop.length > 0 ? stop : void 0
           },
-          warnings
+          warnings: warnings2
         };
       }
       async doGenerate(options) {
-        const { args, warnings } = await this.getArgs(options);
+        const { args, warnings: warnings2 } = await this.getArgs(options);
         const { responseHeaders, value: response, rawValue: rawResponse } = await postJsonToApi3({
           url: this.config.url({
             path: "/completions",
@@ -61156,11 +61156,11 @@ var init_dist12 = __esm({
             headers: responseHeaders,
             body: rawResponse
           },
-          warnings
+          warnings: warnings2
         };
       }
       async doStream(options) {
-        const { args, warnings } = await this.getArgs(options);
+        const { args, warnings: warnings2 } = await this.getArgs(options);
         const body = {
           ...args,
           stream: true,
@@ -61189,7 +61189,7 @@ var init_dist12 = __esm({
             start(controller) {
               controller.enqueue({
                 type: "stream-start",
-                warnings
+                warnings: warnings2
               });
             },
             transform(chunk, controller) {
@@ -61326,13 +61326,13 @@ var init_dist12 = __esm({
         return this.config.provider.split(".")[0].trim();
       }
       async doEmbed({ values, headers: headers9, abortSignal, providerOptions }) {
-        const warnings = [];
+        const warnings2 = [];
         const deprecatedOptions = await parseProviderOptions3({
           provider: "openai-compatible",
           providerOptions,
           schema: openaiCompatibleEmbeddingModelOptions
         });
-        if (deprecatedOptions != null) warnings.push({
+        if (deprecatedOptions != null) warnings2.push({
           type: "deprecated",
           setting: "providerOptions key 'openai-compatible'",
           message: "Use 'openaiCompatible' instead."
@@ -61340,7 +61340,7 @@ var init_dist12 = __esm({
         warnIfDeprecatedProviderOptionsKey({
           rawName: this.providerOptionsName,
           providerOptions,
-          warnings
+          warnings: warnings2
         });
         const compatibleOptions = Object.assign(deprecatedOptions ?? {}, await parseProviderOptions3({
           provider: "openaiCompatible",
@@ -61376,7 +61376,7 @@ var init_dist12 = __esm({
           fetch: this.config.fetch
         });
         return {
-          warnings,
+          warnings: warnings2,
           embeddings: response.data.map((item) => item.embedding),
           usage: response.usage ? { tokens: response.usage.prompt_tokens } : void 0,
           providerMetadata: response.providerMetadata,
@@ -61419,11 +61419,11 @@ var init_dist12 = __esm({
         this.supportsFileInputs = void 0;
         this.supportsMaskInputs = void 0;
       }
-      getArgs(providerOptions, warnings) {
+      getArgs(providerOptions, warnings2) {
         warnIfDeprecatedProviderOptionsKey({
           rawName: this.providerOptionsKey,
           providerOptions,
-          warnings
+          warnings: warnings2
         });
         return {
           ...providerOptions[this.providerOptionsKey],
@@ -61431,18 +61431,18 @@ var init_dist12 = __esm({
         };
       }
       async doGenerate({ prompt, n, size, aspectRatio, seed, providerOptions, headers: headers9, abortSignal, files, mask }) {
-        const warnings = [];
-        if (aspectRatio != null) warnings.push({
+        const warnings2 = [];
+        if (aspectRatio != null) warnings2.push({
           type: "unsupported",
           feature: "aspectRatio",
           details: "This model does not support aspect ratio. Use `size` instead."
         });
-        if (seed != null) warnings.push({
+        if (seed != null) warnings2.push({
           type: "unsupported",
           feature: "seed"
         });
         const currentDate = this.config._internal?.currentDate?.() ?? /* @__PURE__ */ new Date();
-        const args = this.getArgs(providerOptions, warnings);
+        const args = this.getArgs(providerOptions, warnings2);
         if (files != null && files.length > 0) {
           const { value: response2, responseHeaders: responseHeaders2 } = await postFormDataToApi3({
             url: this.config.url({
@@ -61466,7 +61466,7 @@ var init_dist12 = __esm({
           });
           return {
             images: response2.data.map((item) => item.b64_json),
-            warnings,
+            warnings: warnings2,
             usage: mapImageUsage(response2.usage),
             response: {
               timestamp: currentDate,
@@ -61495,7 +61495,7 @@ var init_dist12 = __esm({
         });
         return {
           images: response.data.map((item) => item.b64_json),
-          warnings,
+          warnings: warnings2,
           usage: mapImageUsage(response.usage),
           response: {
             timestamp: currentDate,
@@ -61927,6 +61927,14 @@ function getSecret(name31) {
 function hasSecret(name31) {
   return resolve(name31) !== void 0;
 }
+function secretVariants(name31) {
+  const prefix = `${name31}__`;
+  const names = /* @__PURE__ */ new Set();
+  for (const k of [...Object.keys(process.env), ...Object.keys(loadLocalFile())]) {
+    if ((k === name31 || k.startsWith(prefix) && /^[A-Z0-9_]+$/.test(k.slice(prefix.length))) && resolve(k) !== void 0) names.add(k);
+  }
+  return [...names].map((envName) => ({ envName, label: envName === name31 ? "default" : envName.slice(prefix.length).toLowerCase() })).sort((a, b) => a.envName === name31 ? -1 : b.envName === name31 ? 1 : a.label.localeCompare(b.label));
+}
 
 // pipeline_core/connectors/_domain.ts
 function normalizeDomain(input2) {
@@ -61941,6 +61949,41 @@ function normalizeDomain(input2) {
   s = s.replace(/^www\./, "");
   if (!s || !s.includes(".") || /\s/.test(s)) return void 0;
   return s;
+}
+
+// pipeline_core/key-quotas.ts
+import { constants, mkdir, open as open2, readFile, rename, stat, unlink } from "node:fs/promises";
+import { join as join2 } from "node:path";
+var QuotasSchema = external_exports.record(external_exports.string(), external_exports.object({ monthlyCredits: external_exports.number().positive() }));
+var LedgerSchema = external_exports.object({ month: external_exports.string().regex(/^\d{4}-\d{2}$/), used: external_exports.record(external_exports.string(), external_exports.number().nonnegative()) });
+var quotasPath = () => join2(intentOutreachHome(), "quotas.json");
+var ledgerPath = () => join2(intentOutreachHome(), "key-usage.json");
+var warnings = [];
+function drainQuotaWarnings() {
+  return warnings.splice(0, warnings.length);
+}
+async function readJson(path, schema, fallback) {
+  let text2;
+  try {
+    text2 = await readFile(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return fallback;
+    throw err;
+  }
+  const r = schema.safeParse(JSON.parse(text2));
+  if (!r.success) throw new Error(`${path} is invalid; fix or remove it`);
+  return r.data;
+}
+async function keyStatus(name31, now2 = /* @__PURE__ */ new Date()) {
+  const quotas = await readJson(quotasPath(), QuotasSchema, {});
+  const stored = await readJson(ledgerPath(), LedgerSchema, { month: now2.toISOString().slice(0, 7), used: {} });
+  const sameMonth = stored.month === now2.toISOString().slice(0, 7);
+  return secretVariants(name31).map((v) => ({
+    envName: v.envName,
+    label: v.label,
+    used: sameMonth ? stored.used[v.envName] ?? 0 : 0,
+    monthlyCredits: quotas[v.envName]?.monthlyCredits
+  }));
 }
 
 // pipeline_core/connectors/_shared.ts
@@ -63794,8 +63837,8 @@ function registerBuiltinConnectors() {
 
 // pipeline_core/routing.ts
 import { createHash as createHash3, randomUUID } from "node:crypto";
-import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { join as join2 } from "node:path";
+import { chmod, mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile } from "node:fs/promises";
+import { join as join3 } from "node:path";
 function capabilityForQuery(query) {
   switch (query.kind) {
     case "domain":
@@ -63878,19 +63921,19 @@ var FileResponseCache = class {
   dir;
   async get(key, now2) {
     try {
-      const e = JSON.parse(await readFile(join2(this.dir, `${key}.json`), "utf8"));
+      const e = JSON.parse(await readFile2(join3(this.dir, `${key}.json`), "utf8"));
       return typeof e.expiresAt === "number" && e.expiresAt > now2 ? e.value : void 0;
     } catch {
       return void 0;
     }
   }
   async set(key, value, ttlMs, now2) {
-    await mkdir(this.dir, { recursive: true, mode: 448 });
-    const path = join2(this.dir, `${key}.json`);
+    await mkdir2(this.dir, { recursive: true, mode: 448 });
+    const path = join3(this.dir, `${key}.json`);
     const tmp = `${path}.${process.pid}.${randomUUID()}.tmp`;
     await writeFile(tmp, JSON.stringify({ value, expiresAt: now2 + ttlMs }), { mode: 384 });
     await chmod(tmp, 384);
-    await rename(tmp, path);
+    await rename2(tmp, path);
   }
 };
 
@@ -65247,7 +65290,7 @@ var GatewayLanguageModel = class _GatewayLanguageModel {
   }
   async doGenerate(options) {
     var _a124;
-    const { args, warnings } = await this.getArgs(options);
+    const { args, warnings: warnings2 } = await this.getArgs(options);
     const { abortSignal } = options;
     const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
@@ -65279,7 +65322,7 @@ var GatewayLanguageModel = class _GatewayLanguageModel {
         ...responseBody,
         request: { body: args },
         response: { headers: responseHeaders, body: rawResponse },
-        warnings: [...(_a124 = responseBody.warnings) != null ? _a124 : [], ...warnings]
+        warnings: [...(_a124 = responseBody.warnings) != null ? _a124 : [], ...warnings2]
       };
     } catch (error62) {
       throw await asGatewayError(
@@ -65289,7 +65332,7 @@ var GatewayLanguageModel = class _GatewayLanguageModel {
     }
   }
   async doStream(options) {
-    const { args, warnings } = await this.getArgs(options);
+    const { args, warnings: warnings2 } = await this.getArgs(options);
     const { abortSignal } = options;
     const resolvedHeaders = this.config.headers ? await resolve2(this.config.headers) : void 0;
     try {
@@ -65317,8 +65360,8 @@ var GatewayLanguageModel = class _GatewayLanguageModel {
         stream: response.pipeThrough(
           new TransformStream({
             start(controller) {
-              if (warnings.length > 0) {
-                controller.enqueue({ type: "stream-start", warnings });
+              if (warnings2.length > 0) {
+                controller.enqueue({ type: "stream-start", warnings: warnings2 });
               }
             },
             transform(chunk, controller) {
@@ -69038,7 +69081,7 @@ function convertToLanguageModelMessage({
   // TODO: remove in v8 when "file-id" and "image-file-id" types are removed
   provider
 }) {
-  const warnings = [];
+  const warnings2 = [];
   const role = message.role;
   switch (role) {
     case "system": {
@@ -69060,7 +69103,7 @@ function convertToLanguageModelMessage({
         role: "user",
         content: message.content.map((part) => {
           if (part.type === "image") {
-            warnings.push({
+            warnings2.push({
               type: "deprecated",
               setting: '"image" content part',
               message: `The "image" content part type is deprecated. Use a "file" part with mediaType: 'image' (or a more specific image/* subtype) instead.`
@@ -69070,8 +69113,8 @@ function convertToLanguageModelMessage({
         }).map((part) => convertPartToLanguageModelPart(part, downloadedAssets)).filter((part) => part.type !== "text" || part.text !== ""),
         providerOptions: message.providerOptions
       };
-      if (warnings.length > 0) {
-        logWarnings({ warnings });
+      if (warnings2.length > 0) {
+        logWarnings({ warnings: warnings2 });
       }
       return converted;
     }
@@ -69160,7 +69203,7 @@ function convertToLanguageModelMessage({
                 output: mapToolResultOutput({
                   output: part.output,
                   provider,
-                  warnings,
+                  warnings: warnings2,
                   downloadedAssets
                 }),
                 providerOptions
@@ -69170,8 +69213,8 @@ function convertToLanguageModelMessage({
         }),
         providerOptions: message.providerOptions
       };
-      if (warnings.length > 0) {
-        logWarnings({ warnings });
+      if (warnings2.length > 0) {
+        logWarnings({ warnings: warnings2 });
       }
       return converted;
     }
@@ -69191,7 +69234,7 @@ function convertToLanguageModelMessage({
                 output: mapToolResultOutput({
                   output: part.output,
                   provider,
-                  warnings,
+                  warnings: warnings2,
                   downloadedAssets
                 }),
                 providerOptions: part.providerOptions
@@ -69209,8 +69252,8 @@ function convertToLanguageModelMessage({
         }),
         providerOptions: message.providerOptions
       };
-      if (warnings.length > 0) {
-        logWarnings({ warnings });
+      if (warnings2.length > 0) {
+        logWarnings({ warnings: warnings2 });
       }
       return converted;
     }
@@ -69341,7 +69384,7 @@ function mapToolResultOutput({
   // `provider` is only needed here to convert legacy "file-id" and "image-file-id" types to provider references, in case they are using string ID values.
   // TODO: remove in v8 when "file-id" and "image-file-id" types are removed
   provider,
-  warnings = [],
+  warnings: warnings2 = [],
   downloadedAssets
 }) {
   if (output2.type !== "content") {
@@ -69365,7 +69408,7 @@ function mapToolResultOutput({
           return convertedPart;
         }
         case "file-data": {
-          warnings.push({
+          warnings2.push({
             type: "deprecated",
             setting: '"tool-result" content of type "file-data"',
             message: `The "file-data" type for tool result content is deprecated. Use the "file" type with mediaType and { type: 'data', data } instead.`
@@ -69386,7 +69429,7 @@ function mapToolResultOutput({
             const inferenceSuffix = mediaType === "application/octet-stream" ? `Unable to infer media type from URL. Defaulting to 'application/octet-stream'.` : `Inferred media type '${mediaType}' from URL.`;
             message = `The "file-url" tool result content part with URL "${item.url}" is missing a "mediaType". ${inferenceSuffix} ${message}`;
           }
-          warnings.push({
+          warnings2.push({
             type: "deprecated",
             setting: '"tool-result" content of type "file-url"',
             message
@@ -69403,7 +69446,7 @@ function mapToolResultOutput({
           };
         }
         case "file-id": {
-          warnings.push({
+          warnings2.push({
             type: "deprecated",
             setting: '"tool-result" content of type "file-id"',
             message: `The "file-id" type for tool result content is deprecated. Use the "file" type with mediaType and { type: 'reference', reference } instead.`
@@ -69422,7 +69465,7 @@ function mapToolResultOutput({
           };
         }
         case "file-reference": {
-          warnings.push({
+          warnings2.push({
             type: "deprecated",
             setting: '"tool-result" content of type "file-reference"',
             message: `The "file-reference" type for tool result content is deprecated. Use the "file" type with mediaType and { type: 'reference', reference } instead.`
@@ -69440,7 +69483,7 @@ function mapToolResultOutput({
         // The "image-*" types are legacy and deprecated.
         // TODO: remove migration in v8 in combination with the removal of these types from the provider utils.
         case "image-data": {
-          warnings.push({
+          warnings2.push({
             type: "deprecated",
             setting: '"tool-result" content of type "image-data"',
             message: `The "image-data" type for tool result content is deprecated. Use the "file" type with mediaType and { type: 'data', data } instead.`
@@ -69454,7 +69497,7 @@ function mapToolResultOutput({
         }
         case "image-url": {
           const url2 = new URL(item.url);
-          warnings.push({
+          warnings2.push({
             type: "deprecated",
             setting: '"tool-result" content of type "image-url"',
             message: `The "image-url" type for tool result content is deprecated. Use the "file" type with mediaType 'image' (or a specific image/* subtype) and { type: 'url', url } instead.`
@@ -69471,7 +69514,7 @@ function mapToolResultOutput({
           };
         }
         case "image-file-id": {
-          warnings.push({
+          warnings2.push({
             type: "deprecated",
             setting: '"tool-result" content of type "image-file-id"',
             message: `The "image-file-id" type for tool result content is deprecated. Use the "file" type with mediaType and { type: 'reference', reference } instead.`
@@ -69490,7 +69533,7 @@ function mapToolResultOutput({
           };
         }
         case "image-file-reference": {
-          warnings.push({
+          warnings2.push({
             type: "deprecated",
             setting: '"tool-result" content of type "image-file-reference"',
             message: `The "image-file-reference" type for tool result content is deprecated. Use the "file" type with mediaType and { type: 'reference', reference } instead.`
@@ -72439,7 +72482,7 @@ var DefaultStepResult = class {
     rawFinishReason,
     usage,
     performance,
-    warnings,
+    warnings: warnings2,
     request,
     response,
     providerMetadata
@@ -72454,7 +72497,7 @@ var DefaultStepResult = class {
     this.rawFinishReason = rawFinishReason;
     this.usage = usage;
     this.performance = performance;
-    this.warnings = warnings;
+    this.warnings = warnings2;
     this.request = request;
     this.response = response;
     this.providerMetadata = providerMetadata;
@@ -73960,7 +74003,7 @@ async function generateText({
       const toolResults = steps.flatMap((step) => step.toolResults);
       const staticToolResults = steps.flatMap((step) => step.staticToolResults);
       const dynamicToolResults = steps.flatMap((step) => step.dynamicToolResults);
-      const warnings = steps.flatMap((step) => {
+      const warnings2 = steps.flatMap((step) => {
         var _a272;
         return (_a272 = step.warnings) != null ? _a272 : [];
       });
@@ -73989,7 +74032,7 @@ async function generateText({
           ...initialResponseMessages,
           ...steps.flatMap((step) => step.response.messages)
         ],
-        warnings,
+        warnings: warnings2,
         request: lastStep.request,
         response: lastStep.response,
         providerMetadata: lastStep.providerMetadata,
@@ -75385,7 +75428,7 @@ function listProviderStatus() {
 // pipeline_core/prompts.ts
 import { createHash as createHash4 } from "node:crypto";
 import { readFileSync as readFileSync2 } from "node:fs";
-import { basename, dirname, join as join3 } from "node:path";
+import { basename, dirname, join as join4 } from "node:path";
 import { fileURLToPath } from "node:url";
 var cache = /* @__PURE__ */ new Map();
 function assertBareName(name31) {
@@ -75397,9 +75440,9 @@ function candidatePaths(name31) {
   const here = dirname(fileURLToPath(import.meta.url));
   const out = [];
   if (process.env.INTENT_OUTREACH_PROMPTS_DIR) {
-    out.push(join3(process.env.INTENT_OUTREACH_PROMPTS_DIR, name31));
+    out.push(join4(process.env.INTENT_OUTREACH_PROMPTS_DIR, name31));
   }
-  out.push(join3(here, "..", "prompts", name31));
+  out.push(join4(here, "..", "prompts", name31));
   return out;
 }
 function loadPrompt(name31) {
@@ -76869,10 +76912,10 @@ function composeGates(...gates) {
 }
 
 // pipeline_core/suppressions.ts
-import { constants, mkdir as mkdir2, open as open2, readFile as readFile2, rename as rename2, stat, unlink } from "node:fs/promises";
-import { dirname as dirname2, join as join4 } from "node:path";
+import { constants as constants2, mkdir as mkdir3, open as open3, readFile as readFile3, rename as rename3, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { dirname as dirname2, join as join5 } from "node:path";
 function defaultSuppressionsPath() {
-  return join4(intentOutreachHome(), "suppressions.jsonl");
+  return join5(intentOutreachHome(), "suppressions.jsonl");
 }
 function parseEntry(raw, line, path) {
   const fail = (why) => {
@@ -76902,7 +76945,7 @@ function parseEntry(raw, line, path) {
 async function readSuppressions(path = defaultSuppressionsPath()) {
   let text2;
   try {
-    text2 = await readFile2(path, "utf8");
+    text2 = await readFile3(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return [];
     throw err;
@@ -76933,12 +76976,12 @@ async function withLock(path, fn, timeoutMs = 1e4, staleMs = 3e4) {
   let delay3 = 5;
   while (!lock) {
     try {
-      lock = await open2(lockPath, "wx", 384);
+      lock = await open3(lockPath, "wx", 384);
     } catch (err) {
       if (err.code !== "EEXIST") throw err;
       try {
-        if (Date.now() - (await stat(lockPath)).mtimeMs > staleMs) {
-          await unlink(lockPath).catch(() => void 0);
+        if (Date.now() - (await stat2(lockPath)).mtimeMs > staleMs) {
+          await unlink2(lockPath).catch(() => void 0);
           continue;
         }
       } catch {
@@ -76953,13 +76996,13 @@ async function withLock(path, fn, timeoutMs = 1e4, staleMs = 3e4) {
     return await fn();
   } finally {
     await lock.close().catch(() => void 0);
-    await unlink(lockPath).catch(() => void 0);
+    await unlink2(lockPath).catch(() => void 0);
   }
 }
 async function writeAll(path, entries) {
-  await mkdir2(dirname2(path), { recursive: true, mode: 448 });
+  await mkdir3(dirname2(path), { recursive: true, mode: 448 });
   const tmp = `${path}.${process.pid}.tmp`;
-  const fh = await open2(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC, 384);
+  const fh = await open3(tmp, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_TRUNC, 384);
   try {
     await fh.chmod(384);
     await fh.write(entries.map((e) => JSON.stringify(e)).join("\n") + (entries.length ? "\n" : ""));
@@ -76967,7 +77010,7 @@ async function writeAll(path, entries) {
   } finally {
     await fh.close();
   }
-  await rename2(tmp, path);
+  await rename3(tmp, path);
 }
 async function addSuppression(input2, opts = {}) {
   const path = opts.path ?? defaultSuppressionsPath();
@@ -76998,7 +77041,7 @@ async function removeSuppression(input2, opts = {}) {
   });
 }
 async function withLockAt(path, fn) {
-  await mkdir2(dirname2(path), { recursive: true, mode: 448 });
+  await mkdir3(dirname2(path), { recursive: true, mode: 448 });
   return withLock(path, fn);
 }
 
@@ -77231,7 +77274,7 @@ function applyProfileToCampaignInput(profile, _base) {
 
 // pipeline_core/pipeline.ts
 import { existsSync } from "node:fs";
-import { dirname as dirname3, isAbsolute as isAbsolute2, join as join5, resolve as resolve4 } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute2, join as join6, resolve as resolve4 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
@@ -77715,9 +77758,9 @@ function resolveProfilePath(ref, cwd = process.cwd()) {
   }
   if (!PROFILE_NAME_RE.test(trimmed)) throw new Error(`profile: invalid name ${JSON.stringify(trimmed)}`);
   const here = dirname3(fileURLToPath2(import.meta.url));
-  const roots = [join5(cwd, "profiles"), join5(intentOutreachHome(), "profiles"), join5(here, "..", "profiles")];
+  const roots = [join6(cwd, "profiles"), join6(intentOutreachHome(), "profiles"), join6(here, "..", "profiles")];
   for (const root of roots) {
-    const candidate = join5(root, `${trimmed}.json`);
+    const candidate = join6(root, `${trimmed}.json`);
     if (existsSync(candidate)) return candidate;
   }
   throw new Error(`profile not found: ${trimmed} (looked in: ${roots.join(", ")})`);
@@ -78158,7 +78201,7 @@ async function runPropertyCampaign(input2) {
   const rejectedDrafts = [];
   const errors = [];
   const droppedAngles = [];
-  const warnings = [];
+  const warnings2 = [];
   const contacted = /* @__PURE__ */ new Map();
   let scoredCount = 0;
   let overCap = 0;
@@ -78187,7 +78230,7 @@ async function runPropertyCampaign(input2) {
       continue;
     }
     if (contacted.has(owner.key)) {
-      warnings.push(`${owner.key} also owns ${property.key}; one letter per owner per run (about ${contacted.get(owner.key)})`);
+      warnings2.push(`${owner.key} also owns ${property.key}; one letter per owner per run (about ${contacted.get(owner.key)})`);
       continue;
     }
     if (scoredCount >= maxProperties) {
@@ -78281,7 +78324,7 @@ async function runPropertyCampaign(input2) {
     if (finalized.message.needsSenderIdentity) draftsMissingSender += 1;
     messages.push(finalized.message);
   }
-  if (overCap > 0) warnings.push(`${overCap} eligible propert(ies) not scored: maxProperties=${maxProperties} reached`);
+  if (overCap > 0) warnings2.push(`${overCap} eligible propert(ies) not scored: maxProperties=${maxProperties} reached`);
   const status = deriveRunStatus({ messages: messages.length, leads: 0, researchRan, errors: errors.length });
   const run = assertCampaignRun({
     id: input2.id,
@@ -78306,7 +78349,7 @@ async function runPropertyCampaign(input2) {
     errors,
     rejectedDrafts,
     failedConnectors,
-    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input2.sender, channel), ...warnings],
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input2.sender, channel), ...warnings2, ...drainQuotaWarnings()],
     promptRefs,
     droppedAngles,
     origin: "pipeline",
@@ -78319,9 +78362,9 @@ async function runPropertyCampaign(input2) {
 }
 
 // pipeline_core/monitors.ts
-import { constants as constants2, mkdir as mkdir3, open as open3, readFile as readFile3, rename as rename3, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { constants as constants3, mkdir as mkdir4, open as open4, readFile as readFile4, rename as rename4, stat as stat3, unlink as unlink3 } from "node:fs/promises";
 import { randomUUID as randomUUID2 } from "node:crypto";
-import { dirname as dirname4, join as join6 } from "node:path";
+import { dirname as dirname4, join as join7 } from "node:path";
 var MonitorSchema = external_exports.object({
   id: external_exports.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/, "lowercase letters, digits and dashes"),
   query: ResearchQuerySchema,
@@ -78392,12 +78435,12 @@ function diffSnapshots(before, after, valueChangePct) {
   return events;
 }
 function monitorPath(id) {
-  return join6(intentOutreachHome(), "monitors", `${id}.json`);
+  return join7(intentOutreachHome(), "monitors", `${id}.json`);
 }
 async function readSnapshot(path) {
   let text2;
   try {
-    text2 = await readFile3(path, "utf8");
+    text2 = await readFile4(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return void 0;
     throw err;
@@ -78413,9 +78456,9 @@ async function readSnapshot(path) {
   return r.data;
 }
 async function writeSnapshot(path, snap) {
-  await mkdir3(dirname4(path), { recursive: true, mode: 448 });
+  await mkdir4(dirname4(path), { recursive: true, mode: 448 });
   const tmp = `${path}.${randomUUID2()}.tmp`;
-  const fh = await open3(tmp, constants2.O_WRONLY | constants2.O_CREAT | constants2.O_EXCL, 384);
+  const fh = await open4(tmp, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_EXCL, 384);
   try {
     await fh.write(JSON.stringify(snap));
     await fh.sync();
@@ -78423,9 +78466,9 @@ async function writeSnapshot(path, snap) {
     await fh.close();
   }
   try {
-    await rename3(tmp, path);
+    await rename4(tmp, path);
   } catch (err) {
-    await unlink2(tmp).catch(() => void 0);
+    await unlink3(tmp).catch(() => void 0);
     throw err;
   }
 }
@@ -78443,20 +78486,20 @@ function mergeFingerprints(previous, seen) {
 }
 var STALE_LOCK_MS = 30 * 6e4;
 async function acquireMonitorLock(path) {
-  await mkdir3(dirname4(path), { recursive: true, mode: 448 });
+  await mkdir4(dirname4(path), { recursive: true, mode: 448 });
   const lockPath = `${path}.lock`;
   try {
-    const fh = await open3(lockPath, "wx", 384);
+    const fh = await open4(lockPath, "wx", 384);
     await fh.close();
   } catch (err) {
     if (err.code !== "EEXIST") throw err;
-    const age = Date.now() - (await stat2(lockPath)).mtimeMs;
+    const age = Date.now() - (await stat3(lockPath)).mtimeMs;
     if (age < STALE_LOCK_MS) throw new Error(`monitor check already running (${lockPath}); retry later`);
-    await unlink2(lockPath).catch(() => void 0);
+    await unlink3(lockPath).catch(() => void 0);
     return acquireMonitorLock(path);
   }
   return async () => {
-    await unlink2(lockPath).catch(() => void 0);
+    await unlink3(lockPath).catch(() => void 0);
   };
 }
 async function checkMonitor(monitor, opts) {
@@ -78509,8 +78552,8 @@ async function checkMonitor(monitor, opts) {
 }
 
 // pipeline_core/store.ts
-import { constants as constants3, mkdir as mkdir4, open as open4, readFile as readFile4, stat as stat3, unlink as unlink3 } from "node:fs/promises";
-import { dirname as dirname5, join as join7 } from "node:path";
+import { constants as constants4, mkdir as mkdir5, open as open5, readFile as readFile5, stat as stat4, unlink as unlink4 } from "node:fs/promises";
+import { dirname as dirname5, join as join8 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
     super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
@@ -78528,7 +78571,7 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
-  return join7(intentOutreachHome(), "runs.jsonl");
+  return join8(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
 var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -78546,7 +78589,7 @@ var JsonlRunStore = class {
   async saveRun(run, opts = {}) {
     const checked = assertCampaignRun(run);
     const line = JSON.stringify(checked) + "\n";
-    await mkdir4(dirname5(this.path), { recursive: true, mode: 448 });
+    await mkdir5(dirname5(this.path), { recursive: true, mode: 448 });
     await this.withLock(async () => {
       if (!opts.overwrite) {
         const { runs } = await this.scan();
@@ -78579,9 +78622,9 @@ var JsonlRunStore = class {
   // ── write path ──────────────────────────────────────────────────────────────
   /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
   async append(line) {
-    const fh = await open4(
+    const fh = await open5(
       this.path,
-      constants3.O_RDWR | constants3.O_APPEND | constants3.O_CREAT,
+      constants4.O_RDWR | constants4.O_APPEND | constants4.O_CREAT,
       384
     );
     try {
@@ -78613,13 +78656,13 @@ var JsonlRunStore = class {
     let lock;
     while (!lock) {
       try {
-        lock = await open4(lockPath, "wx", 384);
+        lock = await open5(lockPath, "wx", 384);
       } catch (err) {
         if (err.code !== "EEXIST") throw err;
         try {
-          const st = await stat3(lockPath);
+          const st = await stat4(lockPath);
           if (Date.now() - st.mtimeMs > this.staleLockMs) {
-            await unlink3(lockPath).catch(() => void 0);
+            await unlink4(lockPath).catch(() => void 0);
             continue;
           }
         } catch {
@@ -78636,14 +78679,14 @@ var JsonlRunStore = class {
       return await fn();
     } finally {
       await lock.close().catch(() => void 0);
-      await unlink3(lockPath).catch(() => void 0);
+      await unlink4(lockPath).catch(() => void 0);
     }
   }
   // ── read path ───────────────────────────────────────────────────────────────
   async scan() {
     let text2;
     try {
-      text2 = await readFile4(this.path, "utf8");
+      text2 = await readFile5(this.path, "utf8");
     } catch (err) {
       if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
@@ -78946,8 +78989,8 @@ function checkSendable(input2) {
 
 // pipeline_core/approvals.ts
 import { createHash as createHash5, randomUUID as randomUUID3 } from "node:crypto";
-import { constants as constants4, mkdir as mkdir5, open as open5, readFile as readFile5, rename as rename4, stat as stat4, truncate, unlink as unlink4 } from "node:fs/promises";
-import { dirname as dirname6, join as join8 } from "node:path";
+import { constants as constants5, mkdir as mkdir6, open as open6, readFile as readFile6, rename as rename5, stat as stat5, truncate, unlink as unlink5 } from "node:fs/promises";
+import { dirname as dirname6, join as join9 } from "node:path";
 var ApprovalRecordSchema = external_exports.object({
   runId: external_exports.string().min(1),
   contactKey: external_exports.string().min(1),
@@ -78971,12 +79014,12 @@ function approvalVerdict(records, runId, contactKey2, message) {
   return state;
 }
 function defaultApprovalsPath() {
-  return join8(intentOutreachHome(), "approvals.jsonl");
+  return join9(intentOutreachHome(), "approvals.jsonl");
 }
 async function readApprovals(path = defaultApprovalsPath()) {
   let text2;
   try {
-    text2 = await readFile5(path, "utf8");
+    text2 = await readFile6(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return [];
     throw err;
@@ -79000,22 +79043,22 @@ async function readApprovals(path = defaultApprovalsPath()) {
 }
 var sleep4 = (ms) => new Promise((r) => setTimeout(r, ms));
 async function withLock2(path, fn) {
-  await mkdir5(dirname6(path), { recursive: true, mode: 448 });
+  await mkdir6(dirname6(path), { recursive: true, mode: 448 });
   const lockPath = `${path}.lock`;
   const token = randomUUID3();
   const deadline = Date.now() + 1e4;
   let lock;
   while (!lock) {
     try {
-      lock = await open5(lockPath, "wx", 384);
+      lock = await open6(lockPath, "wx", 384);
       await lock.write(token);
     } catch (err) {
       if (err.code !== "EEXIST") throw err;
       try {
-        if (Date.now() - (await stat4(lockPath)).mtimeMs > 3e4) {
+        if (Date.now() - (await stat5(lockPath)).mtimeMs > 3e4) {
           const stolen = `${lockPath}.stale.${token}`;
-          await rename4(lockPath, stolen);
-          await unlink4(stolen).catch(() => void 0);
+          await rename5(lockPath, stolen);
+          await unlink5(stolen).catch(() => void 0);
           continue;
         }
       } catch {
@@ -79028,14 +79071,14 @@ async function withLock2(path, fn) {
     return await fn();
   } finally {
     await lock.close().catch(() => void 0);
-    const holder = await readFile5(lockPath, "utf8").catch(() => void 0);
-    if (holder === token) await unlink4(lockPath).catch(() => void 0);
+    const holder = await readFile6(lockPath, "utf8").catch(() => void 0);
+    if (holder === token) await unlink5(lockPath).catch(() => void 0);
   }
 }
 async function repairTornTail(path) {
   let text2;
   try {
-    text2 = await readFile5(path, "utf8");
+    text2 = await readFile6(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return;
     throw err;
@@ -79046,7 +79089,7 @@ async function repairTornTail(path) {
 async function append(path, record2) {
   await withLock2(path, async () => {
     await repairTornTail(path);
-    const fh = await open5(path, constants4.O_WRONLY | constants4.O_CREAT | constants4.O_APPEND, 384);
+    const fh = await open6(path, constants5.O_WRONLY | constants5.O_CREAT | constants5.O_APPEND, 384);
     try {
       await fh.chmod(384);
       await fh.write(`${JSON.stringify(record2)}
@@ -79134,7 +79177,7 @@ function recipientMatches(run, contactKey2, recipient) {
 
 // cli.ts
 import { userInfo } from "node:os";
-import { join as join9 } from "node:path";
+import { join as join10 } from "node:path";
 var UsageError = class extends Error {
   constructor(message) {
     super(message);
@@ -79213,6 +79256,7 @@ function printHelp() {
       "  intent-outreach approvals pending   drafts waiting for a person to approve or reject",
       "  intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]",
       "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
+      "  intent-outreach keys <ENV_NAME>     key variants (NAME, NAME__TEAM, ...) and monthly quota usage",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
@@ -79341,7 +79385,7 @@ async function cmdRun(args) {
     ...budgetCredits !== void 0 ? { budgetCredits } : {},
     ...scoreProvider ? { scoreProvider } : {},
     // Only connectors that declare cacheTtlMs are cached; files are 0600 under the local home.
-    cache: new FileResponseCache(join9(intentOutreachHome(), "cache"))
+    cache: new FileResponseCache(join10(intentOutreachHome(), "cache"))
   });
   const store = new JsonlRunStore(values.out);
   await store.saveRun(run);
@@ -79489,7 +79533,7 @@ ${PROPERTY_RUN_USAGE}`);
     ...minScore !== void 0 ? { minScore } : {},
     ...maxProperties !== void 0 ? { maxProperties } : {},
     ...budgetCredits !== void 0 ? { budgetCredits } : {},
-    cache: new FileResponseCache(join9(intentOutreachHome(), "cache"))
+    cache: new FileResponseCache(join10(intentOutreachHome(), "cache"))
   });
   const out = typeof values.out === "string" ? values.out : void 0;
   await new JsonlRunStore(out).saveRun(run);
@@ -79567,7 +79611,7 @@ CTA: ${p.cta}
   throw new UsageError(APPROVALS_USAGE);
 }
 var MONITOR_USAGE = "usage: intent-outreach monitor add <id> (--zips <a,b> | --parcels <fips:apn>) [--value-change-pct <n>] [--replace]\n       intent-outreach monitor list\n       intent-outreach monitor check <id> [--json] [--draft --icp <text> [--profile <p>] [--pack <id>]\n                                      [--min-score <n>] [--max-properties <n>] [--budget-credits <n>]]\n  the first check records a baseline; later checks report new parcels, owner, value, listing and distress changes.\n  --draft runs a property campaign over the changed parcels only (drafts wait for approval); the snapshot is\n  saved only after that run is saved, so a failure re-reports the same changes next time.";
-var monitorDefPath = (id) => join9(intentOutreachHome(), "monitors", `${id}.monitor.json`);
+var monitorDefPath = (id) => join10(intentOutreachHome(), "monitors", `${id}.monitor.json`);
 async function cmdMonitor(args) {
   let parsed;
   try {
@@ -79596,15 +79640,15 @@ async function cmdMonitor(args) {
   const values = parsed.values;
   const [action, id, ...extra] = positionals;
   if (extra.length > 0) throw new UsageError(MONITOR_USAGE);
-  const { mkdir: mkdir6, readFile: readFile6, readdir, unlink: unlink5, writeFile: writeFile2 } = await import("node:fs/promises");
+  const { mkdir: mkdir7, readFile: readFile7, readdir, unlink: unlink6, writeFile: writeFile2 } = await import("node:fs/promises");
   if (action === "list" && id === void 0) {
-    const dir = join9(intentOutreachHome(), "monitors");
+    const dir = join10(intentOutreachHome(), "monitors");
     const names = await readdir(dir).catch(() => []);
     const defs = names.filter((n) => n.endsWith(".monitor.json"));
     if (defs.length === 0) process.stdout.write("no monitors\n");
     for (const n of defs.sort()) {
       try {
-        const m = MonitorSchema.parse(JSON.parse(await readFile6(join9(dir, n), "utf8")));
+        const m = MonitorSchema.parse(JSON.parse(await readFile7(join10(dir, n), "utf8")));
         const snap = await readSnapshot(monitorPath(m.id)).catch(() => void 0);
         process.stdout.write(`${m.id}  ${JSON.stringify(m.query)}  last check: ${snap?.checkedAt ?? "never"}
 `);
@@ -79638,12 +79682,12 @@ async function cmdMonitor(args) {
       throw new UsageError(`monitor: ${err instanceof external_exports.ZodError ? err.issues.map((i) => i.message).join("; ") : String(err)}`);
     }
     const path = monitorDefPath(id);
-    const existing = await readFile6(path, "utf8").then((t) => JSON.parse(t)).catch(() => void 0);
+    const existing = await readFile7(path, "utf8").then((t) => JSON.parse(t)).catch(() => void 0);
     if (existing && JSON.stringify(existing.query) !== JSON.stringify(monitor.query)) {
       if (!values.replace) throw new UsageError(`monitor ${id} already watches ${JSON.stringify(existing.query)}; pass --replace to change it (resets its baseline)`);
-      await unlink5(monitorPath(id)).catch(() => void 0);
+      await unlink6(monitorPath(id)).catch(() => void 0);
     }
-    await mkdir6(join9(intentOutreachHome(), "monitors"), { recursive: true, mode: 448 });
+    await mkdir7(join10(intentOutreachHome(), "monitors"), { recursive: true, mode: 448 });
     await writeFile2(path, JSON.stringify(monitor, null, 2), { mode: 384 });
     process.stdout.write(`monitor ${id} saved \u2192 ${path}
 `);
@@ -79652,7 +79696,7 @@ async function cmdMonitor(args) {
   if (action === "check") {
     let monitor;
     try {
-      monitor = MonitorSchema.parse(JSON.parse(await readFile6(monitorDefPath(id), "utf8")));
+      monitor = MonitorSchema.parse(JSON.parse(await readFile7(monitorDefPath(id), "utf8")));
     } catch (err) {
       throw new UsageError(`monitor ${id}: ${err.code === "ENOENT" ? "not found (monitor add first)" : String(err)}`);
     }
@@ -79674,7 +79718,7 @@ async function cmdMonitor(args) {
     const budgetCredits = num2("budget-credits", { min: 0, max: 1e6 });
     const result = await checkMonitor(monitor, {
       now: () => (/* @__PURE__ */ new Date()).toISOString(),
-      cache: new FileResponseCache(join9(intentOutreachHome(), "cache"))
+      cache: new FileResponseCache(join10(intentOutreachHome(), "cache"))
     });
     let draftRun;
     try {
@@ -79688,7 +79732,7 @@ async function cmdMonitor(args) {
           ...minScore !== void 0 ? { minScore } : {},
           ...maxProperties !== void 0 ? { maxProperties } : {},
           ...budgetCredits !== void 0 ? { budgetCredits } : {},
-          cache: new FileResponseCache(join9(intentOutreachHome(), "cache"))
+          cache: new FileResponseCache(join10(intentOutreachHome(), "cache"))
         });
         await new JsonlRunStore().saveRun(run);
         draftRun = `${run.id} (${run.messages.length} drafts, waiting for approval)`;
@@ -79715,6 +79759,20 @@ async function cmdMonitor(args) {
     return;
   }
   throw new UsageError(MONITOR_USAGE);
+}
+async function cmdKeys(args) {
+  const [name31, ...extra] = args;
+  if (!name31 || extra.length > 0 || !/^[A-Z][A-Z0-9_]*$/.test(name31)) {
+    throw new UsageError("usage: intent-outreach keys <ENV_NAME>   e.g. keys APOLLO_API_KEY");
+  }
+  const rows = await keyStatus(name31);
+  if (rows.length === 0) process.stdout.write(`no ${name31} or ${name31}__<LABEL> configured
+`);
+  for (const r of rows) {
+    const quota = r.monthlyCredits !== void 0 ? `${r.used}/${r.monthlyCredits} credits this month` : `${r.used} credits this month (no quota)`;
+    process.stdout.write(`${r.envName.padEnd(36)} ${r.label.padEnd(12)} ${quota}
+`);
+  }
 }
 var CHECK_SEND_USAGE = 'usage: intent-outreach check-send [--profile <name|path>] < input.json\n  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,"now"?,"consents"?,"recipientState"?,"pack"?,"runId","contactKey"}\n  the message must match an approved draft exactly (intent-outreach approvals pending / approve)';
 var CheckSendInputSchema = external_exports.object({
@@ -79807,6 +79865,8 @@ async function main(argv = process.argv.slice(2)) {
       return cmdSuppress(rest);
     case "check-send":
       return cmdCheckSend(rest);
+    case "keys":
+      return cmdKeys(rest);
     case "property-run":
       return cmdPropertyRun(rest);
     case "monitor":

@@ -64,6 +64,7 @@ import { guardDraft, type DraftRule, type VoiceRules } from "./draft-guard.js";
 import { loadProfile, type ReportProfile } from "./profiles.js";
 import { intentOutreachHome } from "./secrets.js";
 import { cleanBuyerTitles, rankContactsByTitle } from "./targeting.js";
+import { drainQuotaWarnings } from "./key-quotas.js";
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1044,7 +1045,7 @@ export async function applyMessageCompliance(input: MessageComplianceInput): Pro
     blockedContacts,
     rejectedDrafts,
     errors,
-    complianceWarnings: senderComplianceWarnings(draftsMissingSender, input.sender),
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input.sender), ...drainQuotaWarnings()],
   };
 }
 
