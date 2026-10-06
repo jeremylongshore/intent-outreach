@@ -16,6 +16,7 @@
  */
 
 import {
+  acceptsQuery,
   getConfiguredConnectors,
   getConnector,
   getSkippedConnectors,
@@ -27,10 +28,16 @@ import { ContactSchema, SCHEMA_VERSION } from "./models.js";
 import type {
   CampaignRun,
   Contact,
+  ContactPoint,
   Enrichment,
+  EntityLink,
   FailedConnector,
   Lead,
   Message,
+  Ownership,
+  Party,
+  Property,
+  ResearchQuery,
   RunError,
   RunStatus,
 } from "./models.js";
@@ -72,6 +79,12 @@ function buyerTitlesArg(opts: ConnectorRunOptions): { buyerTitles?: string[] } {
 export interface ResearchResult {
   leads: Lead[];
   contacts: Contact[];
+  /** Property/owner model (schema v6), deduped by natural key. Empty for domain queries. */
+  properties: Property[];
+  parties: Party[];
+  ownerships: Ownership[];
+  entityLinks: EntityLink[];
+  contactPoints: ContactPoint[];
   /** Connectors that ran, in call order — the determinism witness. */
   ran: string[];
   /** Connectors that are NOT configured (no key) — never a failure. */
@@ -280,6 +293,72 @@ function recordItemFailures(
   }
 }
 
+/** First record per key wins (registration order), so the result is deterministic. */
+function dedupeBy<T>(items: readonly T[], key: (t: T) => string): T[] {
+  const seen = new Map<string, T>();
+  for (const item of items) {
+    const k = key(item);
+    if (!seen.has(k)) seen.set(k, item);
+  }
+  return [...seen.values()];
+}
+
+/** The v6 property/owner model a research call returns. */
+export interface PropertyModel {
+  properties: Property[];
+  parties: Party[];
+  ownerships: Ownership[];
+  entityLinks: EntityLink[];
+  contactPoints: ContactPoint[];
+}
+
+const DNC_RANK: Record<ContactPoint["dnc"], number> = { clean: 0, unknown: 1, listed: 2 };
+
+const contactPointKey = (c: ContactPoint) =>
+  `${c.partyKey}|${c.kind}|${c.kind === "email" ? c.value.toLowerCase() : c.value}`;
+
+/**
+ * Merge two reports of the same contact point CONSERVATIVELY: the most
+ * restrictive DNC status wins (listed > unknown > clean) and a restriction from
+ * any source sticks (`outreachRestricted` is OR-ed). A later connector can add
+ * a restriction an earlier one missed; it can never lift one.
+ */
+function mergeContactPoint(a: ContactPoint, b: ContactPoint): ContactPoint {
+  const dnc = DNC_RANK[b.dnc] > DNC_RANK[a.dnc] ? b.dnc : a.dnc;
+  const restricted = Boolean(a.licenseTerms?.outreachRestricted || b.licenseTerms?.outreachRestricted);
+  const licenseTerms =
+    a.licenseTerms || b.licenseTerms
+      ? { ...b.licenseTerms, ...a.licenseTerms, ...(restricted ? { outreachRestricted: true } : {}) }
+      : undefined;
+  return {
+    ...a,
+    dnc,
+    ...(a.lineType === undefined || a.lineType === "unknown" ? (b.lineType ? { lineType: b.lineType } : {}) : {}),
+    ...(licenseTerms ? { licenseTerms } : {}),
+  };
+}
+
+/**
+ * Dedupe a property model by natural key, deterministically (first connector
+ * wins for descriptive fields). Contact points merge conservatively (see
+ * mergeContactPoint); an ownership keeps each distinct role.
+ */
+export function mergePropertyModel(model: PropertyModel): PropertyModel {
+  const points = new Map<string, ContactPoint>();
+  for (const c of model.contactPoints) {
+    const k = contactPointKey(c);
+    const prev = points.get(k);
+    points.set(k, prev ? mergeContactPoint(prev, c) : c);
+  }
+  return {
+    properties: dedupeBy(model.properties, (p) => p.key),
+    parties: dedupeBy(model.parties, (p) => p.key),
+    ownerships: dedupeBy(model.ownerships, (o) => `${o.propertyKey}|${o.partyKey}|${o.role}`),
+    entityLinks: dedupeBy(model.entityLinks, (l) => `${l.entityKey}|${l.personKey}|${l.role}`),
+    contactPoints: [...points.values()],
+  };
+}
+
 /**
  * Research one domain across every configured research connector, in order.
  * A connector that throws (or blows its deadline) is recorded in
@@ -290,27 +369,56 @@ export async function runResearch(
   icp: string,
   opts: ConnectorRunOptions = {},
 ): Promise<ResearchResult> {
+  return runResearchQuery({ kind: "domain", domain }, icp, opts);
+}
+
+/**
+ * Run one typed research query (schema v6) across every configured research
+ * connector that declares its kind, in registration order. The routing is
+ * fixed by each connector's `queryKinds`, never chosen by the model, so a
+ * B2B connector is never handed a parcel query (invariant 5). Connectors that
+ * are configured but do not answer this kind are neither run nor "skipped".
+ */
+export async function runResearchQuery(
+  query: ResearchQuery,
+  icp: string,
+  opts: ConnectorRunOptions = {},
+): Promise<ResearchResult> {
   registerBuiltinConnectors();
-  const target = normalizeDomain(domain);
+  const typed: ResearchQuery =
+    query.kind === "domain" ? { kind: "domain", domain: normalizeDomain(query.domain) } : query;
+  const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
-  const connectors = getConfiguredConnectors("research");
+  const connectors = getConfiguredConnectors("research").filter((c) => acceptsQuery(c, typed.kind));
   const leads: Lead[] = [];
   const contacts: Contact[] = [];
+  const properties: Property[] = [];
+  const parties: Party[] = [];
+  const ownerships: Ownership[] = [];
+  const entityLinks: EntityLink[] = [];
+  const contactPoints: ContactPoint[] = [];
   const raw: Record<string, unknown> = {};
   const ran: string[] = [];
-  const skipped = getSkippedConnectors("research").map((c) => c.name);
+  const skipped = getSkippedConnectors("research")
+    .filter((c) => acceptsQuery(c, typed.kind))
+    .map((c) => c.name);
   const failedConnectors: FailedConnector[] = [];
 
   for (const connector of connectors) {
     if (!connector.research) continue;
     try {
       const out = await callWithDeadline(
-        (signal) => connector.research!({ domain: target, icp, ...targeting, signal }),
+        (signal) => connector.research!({ domain: target, query: typed, icp, ...targeting, signal }),
         timeoutMs,
       );
       leads.push(...out.leads);
       contacts.push(...out.contacts);
+      properties.push(...(out.properties ?? []));
+      parties.push(...(out.parties ?? []));
+      ownerships.push(...(out.ownerships ?? []));
+      entityLinks.push(...(out.entityLinks ?? []));
+      contactPoints.push(...(out.contactPoints ?? []));
       raw[connector.name] = out.raw;
       ran.push(connector.name);
       recordItemFailures(connector, "research", out.failures, failedConnectors);
@@ -322,6 +430,7 @@ export async function runResearch(
   return {
     leads: dedupeLeads(leads),
     contacts: dedupeContacts(contacts),
+    ...mergePropertyModel({ properties, parties, ownerships, entityLinks, contactPoints }),
     ran,
     skipped,
     failedConnectors,
@@ -864,6 +973,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   const allLeads: Lead[] = [];
   const allContacts: Contact[] = [];
   const allEnrichments: Enrichment[] = [];
+  const allProperty: PropertyModel = { properties: [], parties: [], ownerships: [], entityLinks: [], contactPoints: [] };
   const messages: Message[] = [];
   const blockedContacts: { contactKey: string; reason: string }[] = [];
   const errors: RunError[] = [];
@@ -889,6 +999,12 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     const research = await runResearch(domain, icp, connectorOpts);
     research.skipped.forEach((s) => skipped.add(s));
     failedConnectors.push(...research.failedConnectors);
+    // Carried into the run as-is: property data a connector fetched is never silently discarded.
+    allProperty.properties.push(...research.properties);
+    allProperty.parties.push(...research.parties);
+    allProperty.ownerships.push(...research.ownerships);
+    allProperty.entityLinks.push(...research.entityLinks);
+    allProperty.contactPoints.push(...research.contactPoints);
     // A push-only sink (e.g. Clay) "running" is not research having happened.
     if (research.ran.some((name) => !isPushOnly(name))) anyResearchRan = true;
 
@@ -1026,6 +1142,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     leads: dedupeLeads(allLeads),
     contacts: dedupeContacts(allContacts),
     enrichments: allEnrichments,
+    ...mergePropertyModel(allProperty),
     messages,
     costUsd: meter.summary().spentUsd,
     skippedConnectors: [...skipped],

@@ -8,6 +8,7 @@
  * Users extend the system by calling registerConnector() — no core edits needed.
  */
 
+import type { ResearchQueryKind } from "../models.js";
 import type { Connector, ConnectorPhase } from "./types.js";
 
 const REGISTRY = new Map<string, Connector>();
@@ -40,6 +41,11 @@ export function getConfiguredConnectors(phase: ConnectorPhase): Connector[] {
   return getConnectors().filter(
     (c) => c.phases.includes(phase) && c.isConfigured(),
   );
+}
+
+/** True when `connector` answers research queries of `kind` (default: domain only). */
+export function acceptsQuery(connector: Connector, kind: ResearchQueryKind): boolean {
+  return (connector.queryKinds ?? ["domain"]).includes(kind);
 }
 
 /** Connectors for a phase that are NOT configured — reported as skipped. */
