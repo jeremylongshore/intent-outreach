@@ -29,7 +29,7 @@
 import { createHash } from "node:crypto";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { z } from "zod";
+import { z } from "zod";
 import type { ResearchQuery, ResearchQueryKind } from "../models.js";
 import type { RateLimit } from "../rate-limit.js";
 import type { Capability } from "../routing.js";
@@ -53,16 +53,56 @@ interface ToolDefinition {
   name: string;
   description?: string | undefined;
   inputSchema?: unknown;
+  outputSchema?: unknown;
+  execution?: unknown;
 }
 
-/** sha256 over the allowed tools' definitions (name, description, input schema), order-independent. */
+/** Largest tool response accepted, matching httpJson's body cap. */
+export const MCP_MAX_RESPONSE_CHARS = 5_000_000;
+
+/**
+ * sha256 over the allowed tools' definitions (name, description, input and
+ * output schema, execution mode), order-independent (codepoint sort, not the
+ * locale's).
+ */
 export function mcpToolsDigest(tools: readonly ToolDefinition[], allowed: readonly string[]): string {
   const picked = tools
     .filter((t) => allowed.includes(t.name))
-    .map((t) => ({ name: t.name, description: t.description ?? "", inputSchema: t.inputSchema ?? null }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .map((t) => ({
+      name: t.name,
+      description: t.description ?? "",
+      inputSchema: t.inputSchema ?? null,
+      outputSchema: t.outputSchema ?? null,
+      execution: t.execution ?? null,
+    }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   return createHash("sha256").update(stableStringify(picked)).digest("hex");
 }
+
+/** The server's self-reported identity, checked field by field before it is stamped on facts. */
+const ServerNameSchema = z.string().min(1).max(200);
+const ServerVersionSchema = z.string().min(1).max(100);
+
+function serverIdentity(info: { name?: unknown; version?: unknown } | undefined): { name: string; version: string } {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point
+  const clean = (s: string) => s.replace(/[\u0000-\u001f\u007f]/g, "").trim() || "unknown";
+  const field = (schema: z.ZodString, v: unknown) => {
+    const r = schema.safeParse(v);
+    return r.success ? clean(r.data) : "unknown";
+  };
+  return { name: field(ServerNameSchema, info?.name), version: field(ServerVersionSchema, info?.version) };
+}
+
+/**
+ * The SDK would compile the server's (unpinned) outputSchema and run it on the
+ * response synchronously; a hostile regex pattern there freezes the event loop
+ * past any deadline. The response is checked by our own zod schema instead.
+ */
+const NO_SDK_VALIDATION = {
+  jsonSchemaValidator: {
+    getValidator: () => (input: unknown) => ({ valid: true as const, data: input as never, errorMessage: undefined }),
+  },
+};
 
 export interface McpProvenance {
   server: string;
@@ -96,19 +136,33 @@ export interface McpConnectorSpec<T> {
   rateLimit?: RateLimit;
   /** sha256 from mcpToolsDigest over the bound tool(s). */
   pinnedToolsSha256: string;
-  /** Build a fresh transport (stdio or streamable HTTP); receives the key when one is configured. */
-  transport(secret: string | undefined): Transport | Promise<Transport>;
+  /**
+   * Build a fresh transport (stdio or streamable HTTP); receives the key when
+   * one is configured and the run's abort signal. Pass a stdio key through
+   * `env` (never `args`, which `ps` shows) and never pass all of process.env.
+   */
+  transport(secret: string | undefined, signal?: AbortSignal): Transport | Promise<Transport>;
   research: McpResearchBinding<T>;
 }
 
-/** The JSON a tool returned: structured content when present, else the first text block parsed as JSON. */
-function payloadOf(result: { structuredContent?: unknown; content?: unknown }): unknown {
-  if (result.structuredContent !== undefined) return result.structuredContent;
-  const blocks = Array.isArray(result.content) ? (result.content as { type?: string; text?: string }[]) : [];
-  const text = blocks.find((b) => b.type === "text" && typeof b.text === "string")?.text;
-  if (text === undefined) throw new Error("MCP tool returned no JSON content");
+/**
+ * The JSON a tool returned (structured content when present, else the first
+ * text block parsed as JSON) and the exact text that was hashed. Over the size
+ * cap is refused before parsing.
+ */
+function payloadOf(result: { structuredContent?: unknown; content?: unknown }): { payload: unknown; text: string } {
+  let text: string;
+  if (result.structuredContent !== undefined) {
+    text = JSON.stringify(result.structuredContent);
+  } else {
+    const blocks = Array.isArray(result.content) ? (result.content as { type?: string; text?: string }[]) : [];
+    const found = blocks.find((b) => b.type === "text" && typeof b.text === "string")?.text;
+    if (found === undefined) throw new Error("MCP tool returned no JSON content");
+    text = found;
+  }
+  if (text.length > MCP_MAX_RESPONSE_CHARS) throw new Error(`MCP tool response over ${MCP_MAX_RESPONSE_CHARS} characters`);
   try {
-    return JSON.parse(text);
+    return { payload: JSON.parse(text), text };
   } catch {
     throw new Error("MCP tool returned text that is not JSON");
   }
@@ -140,8 +194,9 @@ export function createMcpConnector<T>(spec: McpConnectorSpec<T>): Connector {
       if (args === undefined) return empty;
 
       const secret = spec.keyEnvVar ? useSecret(spec.keyEnvVar) : undefined;
-      const client = new Client({ name: "intent-outreach", version: "1" });
-      await client.connect(await spec.transport(secret), { signal });
+      const client = new Client({ name: "intent-outreach", version: "1" }, NO_SDK_VALIDATION);
+      signal?.throwIfAborted();
+      await client.connect(await spec.transport(secret, signal), { signal });
       try {
         const listed = await client.listTools(undefined, { signal });
         const tools = listed.tools as ToolDefinition[];
@@ -153,13 +208,14 @@ export function createMcpConnector<T>(spec: McpConnectorSpec<T>): Connector {
 
         const result = await client.callTool({ name: spec.research.tool, arguments: args }, undefined, { signal });
         if (result.isError) throw new Error(`${spec.name}: ${spec.research.tool} returned an error`);
-        const payload = payloadOf(result as { structuredContent?: unknown; content?: unknown });
+        const { payload, text } = payloadOf(result as { structuredContent?: unknown; content?: unknown });
         const data = parseVendor(spec.research.response, payload);
-        const responseHash = createHash("sha256").update(stableStringify(payload)).digest("hex");
-        const server = client.getServerVersion();
+        // Hash the exact bytes received: no recursion over unvalidated structure.
+        const responseHash = createHash("sha256").update(text).digest("hex");
+        const server = serverIdentity(client.getServerVersion());
         const provenance: McpProvenance = {
-          server: server?.name ?? "unknown",
-          version: server?.version ?? "unknown",
+          server: server.name,
+          version: server.version,
           tool: spec.research.tool,
           responseHash,
         };

@@ -159,7 +159,7 @@ describe("MCP-client connector", () => {
   it("through the pipeline: a pin mismatch is a recorded connector failure, not a crash", async () => {
     registerConnector(createMcpConnector(spec("0".repeat(64))));
     const r = await runResearchQuery(PARCEL, "x");
-    expect(r.failedConnectors).toEqual([{ name: "vendor", phase: "research", status: "error" }]);
+    expect(r.failedConnectors).toEqual([{ name: "vendor", phase: "research", status: "pin-mismatch" }]);
     expect(r.properties).toEqual([]);
     expect(calls).toEqual([]);
   });
@@ -169,5 +169,64 @@ describe("MCP-client connector", () => {
     const b = { name: "send_sms", description: "anything", inputSchema: {} };
     expect(mcpToolsDigest([a, b], ["parcel_lookup"])).toBe(mcpToolsDigest([b, a], ["parcel_lookup"]));
     expect(mcpToolsDigest([a], ["parcel_lookup"])).not.toBe(mcpToolsDigest([{ ...a, description: "e" }], ["parcel_lookup"]));
+  });
+});
+
+// ── Hostile servers, built on the low-level Server so the test controls every field. ──
+describe("MCP-client connector against a hostile server", () => {
+  async function rawTransport(opts: { version: string; outputSchema?: unknown; reply: { structuredContent?: unknown; text?: string } }) {
+    const { Server } = await import("@modelcontextprotocol/sdk/server/index.js");
+    const { ListToolsRequestSchema, CallToolRequestSchema } = await import("@modelcontextprotocol/sdk/types.js");
+    const server = new Server({ name: "evil", version: opts.version }, { capabilities: { tools: {} } });
+    const tool = {
+      name: "parcel_lookup",
+      description: "d",
+      inputSchema: { type: "object" as const },
+      ...(opts.outputSchema ? { outputSchema: opts.outputSchema } : {}),
+    };
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [tool] }));
+    server.setRequestHandler(CallToolRequestSchema, async () => ({
+      content: [{ type: "text" as const, text: opts.reply.text ?? JSON.stringify(opts.reply.structuredContent) }],
+      ...(opts.reply.structuredContent !== undefined ? { structuredContent: opts.reply.structuredContent } : {}),
+    }));
+    return { tool, make: async () => {
+      const [c, srv] = InMemoryTransport.createLinkedPair();
+      await server.connect(srv);
+      return c;
+    } };
+  }
+  const hostile = (pin: string, make: () => Promise<unknown>) =>
+    createMcpConnector({ ...spec(pin), transport: make as McpConnectorSpec<unknown>["transport"] });
+
+  it("a catastrophic-backtracking outputSchema pattern is never run (no event-loop freeze)", async () => {
+    const outputSchema = { type: "object", properties: { apn: { type: "string", pattern: "^(a+)+$" } } };
+    const evil = `${"a".repeat(32)}!`;
+    const { tool, make } = await rawTransport({ version: "1", outputSchema, reply: { structuredContent: { apn: evil, owner: "x", value: 1 } } });
+    const t0 = Date.now();
+    const out = await hostile(mcpToolsDigest([tool], ["parcel_lookup"]), make).research!({ domain: "", icp: "x", query: PARCEL });
+    expect(Date.now() - t0).toBeLessThan(2_000);
+    expect(out.properties?.[0]?.apn).toBe(evil);
+  });
+
+  it("a changed outputSchema needs a re-pin", async () => {
+    const { tool, make } = await rawTransport({ version: "1", reply: { structuredContent: { apn: "1", owner: "x", value: 1 } } });
+    const pin = mcpToolsDigest([tool], ["parcel_lookup"]);
+    expect(pin).not.toBe(mcpToolsDigest([{ ...tool, outputSchema: { type: "object" } }], ["parcel_lookup"]));
+    const changed = await rawTransport({ version: "1", outputSchema: { type: "object" }, reply: { structuredContent: { apn: "1", owner: "x", value: 1 } } });
+    await expect(hostile(pin, changed.make).research!({ domain: "", icp: "x", query: PARCEL })).rejects.toBeInstanceOf(McpPinMismatchError);
+    void make;
+  });
+
+  it("an empty server version is stamped as unknown, so the run still validates", async () => {
+    const { tool, make } = await rawTransport({ version: "", reply: { structuredContent: { apn: "1", owner: "x", value: 1 } } });
+    const out = await hostile(mcpToolsDigest([tool], ["parcel_lookup"]), make).research!({ domain: "", icp: "x", query: PARCEL });
+    expect(out.properties?.[0]?.attributes.justValueCents?.via).toEqual({ server: "evil", version: "unknown", tool: "parcel_lookup" });
+  });
+
+  it("an oversized text response is refused before parsing", async () => {
+    const { tool, make } = await rawTransport({ version: "1", reply: { text: `{"apn":"1","owner":"${"x".repeat(5_000_001)}","value":1}` } });
+    await expect(hostile(mcpToolsDigest([tool], ["parcel_lookup"]), make).research!({ domain: "", icp: "x", query: PARCEL })).rejects.toThrow(
+      /over 5000000 characters/,
+    );
   });
 });

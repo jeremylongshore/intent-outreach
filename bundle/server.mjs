@@ -41703,6 +41703,7 @@ function failureStatus(err) {
   if (err instanceof HttpError) return err.status;
   const name = err?.name;
   if (err instanceof ConnectorTimeoutError || name === "TimeoutError" || name === "AbortError") return "timeout";
+  if (name === "McpPinMismatchError") return "pin-mismatch";
   return "error";
 }
 function recordConnectorFailure(connector, phase, err, raw, failed) {
