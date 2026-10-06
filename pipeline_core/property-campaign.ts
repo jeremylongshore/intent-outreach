@@ -44,6 +44,7 @@ import { getProvider, type LLMProvider } from "./providers.js";
 import { capabilityForQuery, CreditBudget, type ResponseCache } from "./routing.js";
 import { DraftRejectedError } from "./seam.js";
 import { loadSuppressionList } from "./suppressions.js";
+import { drainQuotaWarnings } from "./key-quotas.js";
 import { assertCampaignRun, type Validated } from "./validator.js";
 
 export interface RunPropertyCampaignInput {
@@ -346,7 +347,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     errors,
     rejectedDrafts,
     failedConnectors,
-    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input.sender, channel), ...warnings],
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input.sender, channel), ...warnings, ...drainQuotaWarnings()],
     promptRefs,
     droppedAngles,
     origin: "pipeline",

@@ -35,6 +35,7 @@ import {
 } from "./pipeline_core/suppressions.js";
 import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
 import { checkSendable } from "./pipeline_core/compliance/send.js";
+import { keyStatus } from "./pipeline_core/key-quotas.js";
 import { approvalVerdict, decide, listPending, readApprovals, recipientMatches } from "./pipeline_core/approvals.js";
 import { userInfo } from "node:os";
 import { join } from "node:path";
@@ -159,6 +160,7 @@ export function printHelp(): void {
       "  intent-outreach approvals pending   drafts waiting for a person to approve or reject",
       "  intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]",
       "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
+      "  intent-outreach keys <ENV_NAME>     key variants (NAME, NAME__TEAM, ...) and monthly quota usage",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
@@ -733,6 +735,20 @@ async function cmdMonitor(args: string[]): Promise<void> {
   throw new UsageError(MONITOR_USAGE);
 }
 
+/** `keys <ENV_NAME>` — configured variants of a connector key and this month's usage against quotas. */
+async function cmdKeys(args: string[]): Promise<void> {
+  const [name, ...extra] = args;
+  if (!name || extra.length > 0 || !/^[A-Z][A-Z0-9_]*$/.test(name)) {
+    throw new UsageError("usage: intent-outreach keys <ENV_NAME>   e.g. keys APOLLO_API_KEY");
+  }
+  const rows = await keyStatus(name);
+  if (rows.length === 0) process.stdout.write(`no ${name} or ${name}__<LABEL> configured\n`);
+  for (const r of rows) {
+    const quota = r.monthlyCredits !== undefined ? `${r.used}/${r.monthlyCredits} credits this month` : `${r.used} credits this month (no quota)`;
+    process.stdout.write(`${r.envName.padEnd(36)} ${r.label.padEnd(12)} ${quota}\n`);
+  }
+}
+
 const CHECK_SEND_USAGE =
   "usage: intent-outreach check-send [--profile <name|path>] < input.json\n" +
   '  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,' +
@@ -840,6 +856,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       return cmdSuppress(rest);
     case "check-send":
       return cmdCheckSend(rest);
+    case "keys":
+      return cmdKeys(rest);
     case "property-run":
       return cmdPropertyRun(rest);
     case "monitor":

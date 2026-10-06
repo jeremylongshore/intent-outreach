@@ -36248,7 +36248,7 @@ var McpZodTypeKind;
 // node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
 var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
 function validateToolName(name) {
-  const warnings = [];
+  const warnings2 = [];
   if (name.length === 0) {
     return {
       isValid: false,
@@ -36262,34 +36262,34 @@ function validateToolName(name) {
     };
   }
   if (name.includes(" ")) {
-    warnings.push("Tool name contains spaces, which may cause parsing issues");
+    warnings2.push("Tool name contains spaces, which may cause parsing issues");
   }
   if (name.includes(",")) {
-    warnings.push("Tool name contains commas, which may cause parsing issues");
+    warnings2.push("Tool name contains commas, which may cause parsing issues");
   }
   if (name.startsWith("-") || name.endsWith("-")) {
-    warnings.push("Tool name starts or ends with a dash, which may cause parsing issues in some contexts");
+    warnings2.push("Tool name starts or ends with a dash, which may cause parsing issues in some contexts");
   }
   if (name.startsWith(".") || name.endsWith(".")) {
-    warnings.push("Tool name starts or ends with a dot, which may cause parsing issues in some contexts");
+    warnings2.push("Tool name starts or ends with a dot, which may cause parsing issues in some contexts");
   }
   if (!TOOL_NAME_REGEX.test(name)) {
     const invalidChars = name.split("").filter((char) => !/[A-Za-z0-9._-]/.test(char)).filter((char, index, arr) => arr.indexOf(char) === index);
-    warnings.push(`Tool name contains invalid characters: ${invalidChars.map((c) => `"${c}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
+    warnings2.push(`Tool name contains invalid characters: ${invalidChars.map((c) => `"${c}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
     return {
       isValid: false,
-      warnings
+      warnings: warnings2
     };
   }
   return {
     isValid: true,
-    warnings
+    warnings: warnings2
   };
 }
-function issueToolNameWarning(name, warnings) {
-  if (warnings.length > 0) {
+function issueToolNameWarning(name, warnings2) {
+  if (warnings2.length > 0) {
     console.warn(`Tool name validation warning for "${name}":`);
-    for (const warning of warnings) {
+    for (const warning of warnings2) {
       console.warn(`  - ${warning}`);
     }
     console.warn("Tool registration will proceed, but this may cause compatibility issues.");
@@ -37676,6 +37676,14 @@ function normalizeDomain(input2) {
   s = s.replace(/^www\./, "");
   if (!s || !s.includes(".") || /\s/.test(s)) return void 0;
   return s;
+}
+
+// pipeline_core/key-quotas.ts
+var QuotasSchema = external_exports.record(external_exports.string(), external_exports.object({ monthlyCredits: external_exports.number().positive() }));
+var LedgerSchema = external_exports.object({ month: external_exports.string().regex(/^\d{4}-\d{2}$/), used: external_exports.record(external_exports.string(), external_exports.number().nonnegative()) });
+var warnings = [];
+function drainQuotaWarnings() {
+  return warnings.splice(0, warnings.length);
 }
 
 // pipeline_core/connectors/_shared.ts
@@ -42033,7 +42041,7 @@ async function applyMessageCompliance(input2) {
     blockedContacts,
     rejectedDrafts,
     errors,
-    complianceWarnings: senderComplianceWarnings(draftsMissingSender, input2.sender)
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input2.sender), ...drainQuotaWarnings()]
   };
 }
 var PROFILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;

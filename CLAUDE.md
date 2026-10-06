@@ -94,7 +94,9 @@ connector: `capabilities`, `queryKinds`, `creditsPerCall` (charged against the r
 (opt into the response cache) and `rateLimit` (pass it to every `httpJson` call as `{ key: name, ...rateLimit }`). Never read `process.env` directly,
 never import a cloud SDK, and forward the context `signal` to `httpJson`. Register it in
 `connectors/index.ts` (order = call order: free → paid → legacy → enterprise). Add fixtures. Users can also
-`registerConnector()` their own at runtime. Connector landscape: `000-docs/018-DR-LAND`.
+`registerConnector()` their own at runtime. A vendor billed per call reads its key with `useKey(name, credits)`
+(`key-quotas.ts`, re-exported from `_shared.ts`) instead of `useSecret`: it rotates across `NAME` / `NAME__LABEL`
+variants under monthly quotas in `quotas.json`. Connector landscape: `000-docs/018-DR-LAND`.
 
 ### Adding a model provider
 

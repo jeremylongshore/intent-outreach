@@ -8,6 +8,12 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Several keys per connector, with monthly quotas** (#83 phase 4b). A key may come in labelled variants
+  (`APOLLO_API_KEY`, `APOLLO_API_KEY__TEAM`, `APOLLO_API_KEY__PERSONAL`). `useKey(name, credits)` picks the first variant
+  with room under its optional monthly quota (`~/.intent-outreach/quotas.json`), charges it before the call in a locked
+  0600 month-scoped ledger (`key-usage.json`), and throws `KeyQuotaExhaustedError` when all are spent. Crossing 80% of a
+  quota adds a run warning. `intent-outreach keys <ENV_NAME>` shows each variant's usage.
+
 - **A separate model per seam** (#83 phase 8). `runCampaign` and `runPropertyCampaign` take an optional
   `scoreProvider` (a cheap model that scores; `provider` drafts), and the CLI `run` and `property-run` take
   `--score-provider` / `--score-model`. Both models resolve through the eval gate like any provider; costs are
