@@ -19,8 +19,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerBuiltinConnectors } from "../pipeline_core/connectors/index.js";
 import {
+  DecideInput,
   EnrichLeadInput,
+  handleApprove,
   handleEnrichLead,
+  handleListPending,
+  handleReject,
+  ListPendingInput,
   handleListConnectors,
   handleResearchDomain,
   handleSaveRun,
@@ -90,6 +95,44 @@ server.registerTool(
     inputSchema: SaveRunInput,
   },
   async (args) => handleSaveRun(args),
+);
+
+server.registerTool(
+  "list_pending",
+  {
+    title: "List drafts waiting for approval",
+    description:
+      "List drafted messages in the LOCAL run store that no person has approved or rejected yet, with " +
+      "the full text and a digest. Nothing may be sent until a person approves the exact text. Show the " +
+      "drafts to the user; never approve on your own judgment.",
+    inputSchema: ListPendingInput,
+  },
+  async (args) => handleListPending(args),
+);
+
+server.registerTool(
+  "approve",
+  {
+    title: "Record a person's approval of one draft",
+    description:
+      "Record that the USER approved one exact draft (runId + contactKey + the digest list_pending showed). " +
+      "Call this only after the user has read that draft and explicitly said to approve it. Editing a draft " +
+      "afterwards voids the approval. Approving does not send anything.",
+    inputSchema: DecideInput,
+  },
+  async (args) => handleApprove(args),
+);
+
+server.registerTool(
+  "reject",
+  {
+    title: "Record a rejection of one draft",
+    description:
+      "Record that the user rejected one draft (runId + contactKey). It cannot pass the send-time check unless a " +
+      "person later approves that exact text again (the latest decision wins).",
+    inputSchema: DecideInput,
+  },
+  async (args) => handleReject(args),
 );
 
 async function main() {

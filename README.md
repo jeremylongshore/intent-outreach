@@ -180,6 +180,24 @@ intent-outreach suppress list
 contact is recorded in the run's `blockedContacts` and never drafted. If `suppressions.jsonl` has a corrupt
 line, the run refuses to start rather than risk emailing someone who opted out.
 
+## Approval queue
+
+Every saved draft waits for a person. Nothing passes the send-time check until someone approves that
+exact text; editing a draft afterwards voids the approval.
+
+```bash
+intent-outreach approvals pending                                  # each draft in full, with a digest
+intent-outreach approvals approve <runId> <contactKey> --digest <digest> [--note "..."]
+intent-outreach approvals reject  <runId> <contactKey> [--note "..."]
+```
+
+Decisions go to `$INTENT_OUTREACH_HOME/approvals.jsonl` (0600, append-only; a later decision on the same
+text supersedes an earlier one). In Claude Code the same queue is the `list_pending`, `approve` and
+`reject` MCP tools, which the skill calls only on your explicit word. Be clear about what that means: an
+MCP approval is agent-mediated. The server cannot prove a person read the draft; Claude Code's
+tool-permission prompt is the human checkpoint, and the ledger records such decisions as `by: "mcp"`. For
+a strictly human approval, use the CLI, which records your OS user.
+
 ## Send-time check (for whatever sends)
 
 Intent Outreach drafts and never sends. Whatever does send (a dispatcher, a person) must check each
@@ -191,7 +209,8 @@ arrive after drafting. In TypeScript call `checkSendable` / `assertSendable` fro
 intent-outreach check-send --profile ./my-profile.json < message.json   # exit 0 = sendable; anything else = do not send
 ```
 
-It checks the local suppression list, DNC status (phone channels need exactly `clean`), consent from the
+Pass `runId` and `contactKey` with the message: it must match an approved draft exactly. It also checks
+the local suppression list, DNC status (phone channels need exactly `clean`), consent from the
 ledger you pass in (SMS needs written consent; any revocation voids every channel), the recipient-local
 phone window, the channel footer (the exact block for that channel must end the body, including the
 license line when the pack requires it), and data whose license restricts outreach. It prints every

@@ -11,6 +11,7 @@
  * no shortcut past compliance just because it arrived over MCP.
  */
 
+import { decide, listPending } from "../pipeline_core/approvals.js";
 import { z } from "zod";
 import {
   applyMessageCompliance,
@@ -360,3 +361,63 @@ export async function handleSaveRun(rawArgs: SaveRunArgs, deps: SaveRunDeps = {}
     throw err;
   }
 }
+
+// ───────────────────────────── approval queue ───────────────────────────────
+
+export interface ApprovalDeps {
+  store?: RunStore;
+  approvalsPath?: string;
+  now?: () => string;
+}
+
+export const ListPendingInput = {
+  limit: z.number().int().min(1).max(200).optional().describe("Max drafts to return (default 50)."),
+};
+
+/** Drafts with no human decision yet. Each carries the digest a person must cite to approve it. */
+export async function handleListPending(args: { limit?: number | undefined }, deps: ApprovalDeps = {}): Promise<ToolResult> {
+  try {
+    const store = deps.store ?? new JsonlRunStore();
+    const pending = await listPending(store, deps.approvalsPath);
+    return asText({ total: pending.length, pending: pending.slice(0, args.limit ?? 50) });
+  } catch (err) {
+    return toolError(`could not list pending drafts: ${errMsg(err)}`);
+  }
+}
+
+export const DecideInput = {
+  runId: z.string().min(1),
+  contactKey: z.string().min(1),
+  digest: z
+    .string()
+    .min(8)
+    .optional()
+    .describe("Required to approve: the digest list_pending showed for this exact message."),
+  note: z.string().max(500).optional(),
+};
+
+async function decideVia(
+  decision: "approved" | "rejected",
+  args: { runId: string; contactKey: string; digest?: string | undefined; note?: string | undefined },
+  deps: ApprovalDeps,
+): Promise<ToolResult> {
+  try {
+    const record = await decide({
+      store: deps.store ?? new JsonlRunStore(),
+      runId: args.runId,
+      contactKey: args.contactKey,
+      decision,
+      by: "mcp",
+      note: args.note,
+      digest: args.digest,
+      now: deps.now ?? (() => new Date().toISOString()),
+      ...(deps.approvalsPath ? { path: deps.approvalsPath } : {}),
+    });
+    return asText(record);
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+}
+
+export const handleApprove = (args: Parameters<typeof decideVia>[1], deps: ApprovalDeps = {}) => decideVia("approved", args, deps);
+export const handleReject = (args: Parameters<typeof decideVia>[1], deps: ApprovalDeps = {}) => decideVia("rejected", args, deps);

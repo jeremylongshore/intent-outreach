@@ -20782,11 +20782,11 @@ var require_codegen = __commonJS({
         const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
         return `${varKind} ${this.name}${rhs};` + _n;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         if (!names[this.name.str])
           return;
         if (this.rhs)
-          this.rhs = optimizeExpr(this.rhs, names, constants3);
+          this.rhs = optimizeExpr(this.rhs, names, constants4);
         return this;
       }
       get names() {
@@ -20803,10 +20803,10 @@ var require_codegen = __commonJS({
       render({ _n }) {
         return `${this.lhs} = ${this.rhs};` + _n;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         if (this.lhs instanceof code_1.Name && !names[this.lhs.str] && !this.sideEffects)
           return;
-        this.rhs = optimizeExpr(this.rhs, names, constants3);
+        this.rhs = optimizeExpr(this.rhs, names, constants4);
         return this;
       }
       get names() {
@@ -20867,8 +20867,8 @@ var require_codegen = __commonJS({
       optimizeNodes() {
         return `${this.code}` ? this : void 0;
       }
-      optimizeNames(names, constants3) {
-        this.code = optimizeExpr(this.code, names, constants3);
+      optimizeNames(names, constants4) {
+        this.code = optimizeExpr(this.code, names, constants4);
         return this;
       }
       get names() {
@@ -20897,12 +20897,12 @@ var require_codegen = __commonJS({
         }
         return nodes.length > 0 ? this : void 0;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         const { nodes } = this;
         let i = nodes.length;
         while (i--) {
           const n = nodes[i];
-          if (n.optimizeNames(names, constants3))
+          if (n.optimizeNames(names, constants4))
             continue;
           subtractNames(names, n.names);
           nodes.splice(i, 1);
@@ -20955,12 +20955,12 @@ var require_codegen = __commonJS({
           return void 0;
         return this;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         var _a3;
-        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants3);
-        if (!(super.optimizeNames(names, constants3) || this.else))
+        this.else = (_a3 = this.else) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants4);
+        if (!(super.optimizeNames(names, constants4) || this.else))
           return;
-        this.condition = optimizeExpr(this.condition, names, constants3);
+        this.condition = optimizeExpr(this.condition, names, constants4);
         return this;
       }
       get names() {
@@ -20983,10 +20983,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.iteration})` + super.render(opts);
       }
-      optimizeNames(names, constants3) {
-        if (!super.optimizeNames(names, constants3))
+      optimizeNames(names, constants4) {
+        if (!super.optimizeNames(names, constants4))
           return;
-        this.iteration = optimizeExpr(this.iteration, names, constants3);
+        this.iteration = optimizeExpr(this.iteration, names, constants4);
         return this;
       }
       get names() {
@@ -21022,10 +21022,10 @@ var require_codegen = __commonJS({
       render(opts) {
         return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
       }
-      optimizeNames(names, constants3) {
-        if (!super.optimizeNames(names, constants3))
+      optimizeNames(names, constants4) {
+        if (!super.optimizeNames(names, constants4))
           return;
-        this.iterable = optimizeExpr(this.iterable, names, constants3);
+        this.iterable = optimizeExpr(this.iterable, names, constants4);
         return this;
       }
       get names() {
@@ -21067,11 +21067,11 @@ var require_codegen = __commonJS({
         (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
         return this;
       }
-      optimizeNames(names, constants3) {
+      optimizeNames(names, constants4) {
         var _a3, _b;
-        super.optimizeNames(names, constants3);
-        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants3);
-        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants3);
+        super.optimizeNames(names, constants4);
+        (_a3 = this.catch) === null || _a3 === void 0 ? void 0 : _a3.optimizeNames(names, constants4);
+        (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants4);
         return this;
       }
       get names() {
@@ -21372,7 +21372,7 @@ var require_codegen = __commonJS({
     function addExprNames(names, from) {
       return from instanceof code_1._CodeOrName ? addNames(names, from.names) : names;
     }
-    function optimizeExpr(expr, names, constants3) {
+    function optimizeExpr(expr, names, constants4) {
       if (expr instanceof code_1.Name)
         return replaceName(expr);
       if (!canOptimize(expr))
@@ -21387,14 +21387,14 @@ var require_codegen = __commonJS({
         return items;
       }, []));
       function replaceName(n) {
-        const c = constants3[n.str];
+        const c = constants4[n.str];
         if (c === void 0 || names[n.str] !== 1)
           return n;
         delete names[n.str];
         return c;
       }
       function canOptimize(e) {
-        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants3[c.str] !== void 0);
+        return e instanceof code_1._Code && e._items.some((c) => c instanceof code_1.Name && names[c.str] === 1 && constants4[c.str] !== void 0);
       }
     }
     function subtractNames(names, from) {
@@ -23041,18 +23041,18 @@ var require_validate = __commonJS({
         const { schemaCode } = this;
         this.fail((0, codegen_1._)`${schemaCode} !== undefined && (${(0, codegen_1.or)(this.invalid$data(), condition)})`);
       }
-      error(append, errorParams, errorPaths) {
+      error(append2, errorParams, errorPaths) {
         if (errorParams) {
           this.setParams(errorParams);
-          this._error(append, errorPaths);
+          this._error(append2, errorPaths);
           this.setParams({});
           return;
         }
-        this._error(append, errorPaths);
+        this._error(append2, errorPaths);
       }
-      _error(append, errorPaths) {
+      _error(append2, errorPaths) {
         ;
-        (append ? errors_1.reportExtraError : errors_1.reportError)(this, this.def.error, errorPaths);
+        (append2 ? errors_1.reportExtraError : errors_1.reportError)(this, this.def.error, errorPaths);
       }
       $dataError() {
         (0, errors_1.reportError)(this, this.def.$dataError || errors_1.keyword$DataError);
@@ -37237,9 +37237,9 @@ var RateLimitExceededError = class extends Error {
 var MINUTE = 6e4;
 var DAY = 24 * 60 * MINUTE;
 var RateLimiter = class {
-  constructor(clock2 = Date.now, sleep3 = defaultSleep) {
+  constructor(clock2 = Date.now, sleep4 = defaultSleep) {
     this.clock = clock2;
-    this.sleep = sleep3;
+    this.sleep = sleep4;
   }
   clock;
   sleep;
@@ -38761,43 +38761,322 @@ function registerBuiltinConnectors() {
   registered = true;
 }
 
-// pipeline_core/routing.ts
+// pipeline_core/approvals.ts
 import { createHash, randomUUID } from "node:crypto";
-function capabilityForQuery(query) {
-  switch (query.kind) {
-    case "domain":
-      return "company.research";
-    case "area":
-      return "property.search";
-    case "parcel":
-      return "parcel";
+import { constants, mkdir, open as open2, readFile, rename, stat, truncate, unlink } from "node:fs/promises";
+import { dirname, join as join2 } from "node:path";
+
+// pipeline_core/compliance/index.ts
+var ZIP5_RE = /^\d{5}$/;
+function defineServiceArea(id, zips) {
+  if (typeof id !== "string" || !id.trim()) throw new Error("service area id is empty");
+  const set2 = /* @__PURE__ */ new Set();
+  for (const z2 of zips) {
+    const zip = typeof z2 === "string" ? z2.trim() : "";
+    if (!ZIP5_RE.test(zip)) throw new Error(`service area ${id}: ${JSON.stringify(z2)} is not a 5-digit ZIP`);
+    set2.add(zip);
   }
+  if (set2.size === 0) throw new Error(`service area ${id} has no ZIPs`);
+  return Object.freeze({ id, zips: set2 });
 }
-function orderByRouting(eligible, routing) {
-  if (!routing?.connectors) return [...eligible];
-  const byName = new Map(eligible.map((c) => [c.name, c]));
-  return routing.connectors.flatMap((n) => byName.has(n) ? [byName.get(n)] : []);
-}
-var BudgetExceededError = class extends Error {
-  constructor(connector, needed, remaining) {
-    super(`credit budget exhausted: ${connector} needs ${needed}, ${remaining} left`);
-    this.connector = connector;
-    this.needed = needed;
-    this.remaining = remaining;
-    this.name = "BudgetExceededError";
+var E164_RE = /^\+[1-9]\d{9,14}$/;
+function normalizePhone(phone) {
+  if (typeof phone !== "string") {
+    throw new Error("phone must be a string");
   }
-  connector;
-  needed;
-  remaining;
+  const stripped = phone.replace(/[\s\-.()]/g, "");
+  if (!stripped) {
+    throw new Error("phone is empty after normalization");
+  }
+  let candidate;
+  if (stripped.startsWith("+")) {
+    candidate = stripped;
+  } else if (stripped.length === 10 && /^\d+$/.test(stripped)) {
+    candidate = "+1" + stripped;
+  } else if (stripped.length === 11 && /^\d+$/.test(stripped) && stripped.startsWith("1")) {
+    candidate = "+" + stripped;
+  } else {
+    throw new Error(`phone ${JSON.stringify(phone)} is not in a recognized US format`);
+  }
+  if (!E164_RE.test(candidate)) {
+    throw new Error(`phone ${JSON.stringify(phone)} is not valid E.164`);
+  }
+  return candidate;
+}
+function inServiceArea(zipCode, area) {
+  if (typeof zipCode !== "string" || !area || !(area.zips instanceof Set)) {
+    return false;
+  }
+  const cleaned = zipCode.trim();
+  if (!ZIP5_RE.test(cleaned)) {
+    return false;
+  }
+  return area.zips.has(cleaned);
+}
+
+// pipeline_core/compliance/suppression.ts
+var SUPPRESSION_KINDS = ["email", "domain", "phone", "address"];
+var EMPTY_SUPPRESSION_LIST = Object.freeze({
+  emails: /* @__PURE__ */ new Set(),
+  domains: /* @__PURE__ */ new Set(),
+  phones: /* @__PURE__ */ new Set(),
+  addresses: /* @__PURE__ */ new Set()
+});
+var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
+function normalizeSuppressionDomain(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) throw new Error("domain is empty");
+  let host = input2.trim().toLowerCase();
+  host = host.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
+  host = host.replace(/^[^@/]*@/, "");
+  host = host.split(/[/?#]/)[0] ?? "";
+  host = host.replace(/:\d+$/, "").replace(/\.$/, "");
+  const labels = host.split(".");
+  if (labels[0] === "www" && labels.length > 2) labels.shift();
+  const tld = labels[labels.length - 1] ?? "";
+  if (labels.length < 2 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
+    throw new Error(`${JSON.stringify(input2)} is not a valid domain`);
+  }
+  return labels.join(".");
+}
+function normalizeSuppressionEmail(input2) {
+  if (typeof input2 !== "string") throw new Error("email must be a string");
+  const e = input2.trim().toLowerCase();
+  if (!EMAIL_RE.test(e)) throw new Error(`${JSON.stringify(input2)} is not a valid email`);
+  const at = e.lastIndexOf("@");
+  return `${e.slice(0, at)}@${normalizeSuppressionDomain(e.slice(at + 1))}`;
+}
+function normalizeSuppressionPhone(input2) {
+  return normalizePhone(input2);
+}
+var ADDRESS_ABBREVIATIONS = {
+  STREET: "ST",
+  AVENUE: "AVE",
+  ROAD: "RD",
+  DRIVE: "DR",
+  BOULEVARD: "BLVD",
+  LANE: "LN",
+  COURT: "CT",
+  CIRCLE: "CIR",
+  PLACE: "PL",
+  PARKWAY: "PKWY",
+  HIGHWAY: "HWY",
+  TERRACE: "TER",
+  TRAIL: "TRL",
+  WAY: "WAY",
+  SQUARE: "SQ",
+  POINT: "PT",
+  COVE: "CV",
+  LOOP: "LOOP",
+  NORTH: "N",
+  SOUTH: "S",
+  EAST: "E",
+  WEST: "W",
+  NORTHEAST: "NE",
+  NORTHWEST: "NW",
+  SOUTHEAST: "SE",
+  SOUTHWEST: "SW",
+  BUILDING: "BLDG",
+  FLOOR: "FL"
 };
-function stableStringify(value) {
-  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
-  const o = value;
-  return `{${Object.keys(o).filter((k) => o[k] !== void 0).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(",")}}`;
+var UNIT_DESIGNATORS = /* @__PURE__ */ new Set(["#", "APT", "APARTMENT", "UNIT", "STE", "SUITE"]);
+var STATE_CODES = {
+  ALABAMA: "AL",
+  ALASKA: "AK",
+  ARIZONA: "AZ",
+  ARKANSAS: "AR",
+  CALIFORNIA: "CA",
+  COLORADO: "CO",
+  CONNECTICUT: "CT",
+  DELAWARE: "DE",
+  "DISTRICT OF COLUMBIA": "DC",
+  FLORIDA: "FL",
+  GEORGIA: "GA",
+  HAWAII: "HI",
+  IDAHO: "ID",
+  ILLINOIS: "IL",
+  INDIANA: "IN",
+  IOWA: "IA",
+  KANSAS: "KS",
+  KENTUCKY: "KY",
+  LOUISIANA: "LA",
+  MAINE: "ME",
+  MARYLAND: "MD",
+  MASSACHUSETTS: "MA",
+  MICHIGAN: "MI",
+  MINNESOTA: "MN",
+  MISSISSIPPI: "MS",
+  MISSOURI: "MO",
+  MONTANA: "MT",
+  NEBRASKA: "NE",
+  NEVADA: "NV",
+  "NEW HAMPSHIRE": "NH",
+  "NEW JERSEY": "NJ",
+  "NEW MEXICO": "NM",
+  "NEW YORK": "NY",
+  "NORTH CAROLINA": "NC",
+  "NORTH DAKOTA": "ND",
+  OHIO: "OH",
+  OKLAHOMA: "OK",
+  OREGON: "OR",
+  PENNSYLVANIA: "PA",
+  "RHODE ISLAND": "RI",
+  "SOUTH CAROLINA": "SC",
+  "SOUTH DAKOTA": "SD",
+  TENNESSEE: "TN",
+  TEXAS: "TX",
+  UTAH: "UT",
+  VERMONT: "VT",
+  VIRGINIA: "VA",
+  WASHINGTON: "WA",
+  "WEST VIRGINIA": "WV",
+  WISCONSIN: "WI",
+  WYOMING: "WY",
+  "PUERTO RICO": "PR"
+};
+var STATE_NAMES = Object.keys(STATE_CODES).sort((a, b) => b.length - a.length);
+var ZIP_TAIL_RE = /\b(\d{5})(?:-\d{4})?$/;
+function normalizeMailingAddress(input2) {
+  if (typeof input2 !== "string" || !input2.trim()) throw new Error("address is empty");
+  let a = input2.toUpperCase().replace(/#/g, " # ");
+  a = a.replace(/\bP\.?\s*O\.?\s*BOX\b/g, "PO BOX").replace(/\bPOST\s+OFFICE\s+BOX\b/g, "PO BOX");
+  a = a.replace(/[.,;]/g, " ").replace(/\s+/g, " ").trim();
+  const zip = ZIP_TAIL_RE.exec(a);
+  if (!zip) throw new Error(`${JSON.stringify(input2)} has no trailing 5-digit ZIP`);
+  let head = a.slice(0, zip.index).trim();
+  let state;
+  for (const name of STATE_NAMES) {
+    if (head === name || head.endsWith(` ${name}`)) {
+      state = STATE_CODES[name];
+      head = head.slice(0, head.length - name.length).trim();
+      break;
+    }
+  }
+  const tokens = [];
+  for (const raw of head.split(" ")) {
+    if (!raw) continue;
+    const prev = tokens[tokens.length - 1];
+    if (UNIT_DESIGNATORS.has(raw)) {
+      if (prev !== "UNIT" && prev !== "BOX") tokens.push("UNIT");
+      continue;
+    }
+    tokens.push(ADDRESS_ABBREVIATIONS[raw] ?? raw);
+  }
+  if (state) tokens.push(state);
+  if (tokens.length < 3 || !/\d/.test(tokens.join(" "))) {
+    throw new Error(`${JSON.stringify(input2)} is not a full mailing address (street, city, state, ZIP)`);
+  }
+  return `${tokens.join(" ")} ${zip[1]}`;
 }
-function cacheKey(connector, capability, subject) {
-  return createHash("sha256").update(`${connector}|${capability}|${stableStringify(subject)}`).digest("hex");
+function normalizeByKind(kind, value) {
+  switch (kind) {
+    case "email":
+      return normalizeSuppressionEmail(value);
+    case "domain":
+      return normalizeSuppressionDomain(value);
+    case "phone":
+      return normalizeSuppressionPhone(value);
+    case "address":
+      return normalizeMailingAddress(value);
+    default:
+      throw new Error(`unknown suppression kind ${JSON.stringify(kind)}`);
+  }
+}
+function normalizeSuppression(kind, value) {
+  return normalizeByKind(kind, value);
+}
+function buildSuppressionList(entries) {
+  const sets = {
+    email: /* @__PURE__ */ new Set(),
+    domain: /* @__PURE__ */ new Set(),
+    phone: /* @__PURE__ */ new Set(),
+    address: /* @__PURE__ */ new Set()
+  };
+  for (const e of entries) {
+    const set2 = sets[e.kind];
+    if (!set2) throw new Error(`unknown suppression kind ${JSON.stringify(e.kind)}`);
+    set2.add(normalizeByKind(e.kind, e.value));
+  }
+  return { emails: sets.email, domains: sets.domain, phones: sets.phone, addresses: sets.address };
+}
+function isEmptyList(list) {
+  return list.emails.size + list.domains.size + list.phones.size + list.addresses.size === 0;
+}
+function domainSuppressed(list, domain2) {
+  const labels = domain2.split(".");
+  for (let i = 0; i <= labels.length - 2; i++) {
+    if (list.domains.has(labels.slice(i).join("."))) return true;
+  }
+  return false;
+}
+function checkSuppression(list, subject) {
+  if (isEmptyList(list)) return { status: "clean" };
+  const checkEmailDomain = list.emails.size + list.domains.size > 0;
+  if (checkEmailDomain && subject.email !== void 0) {
+    let email3;
+    try {
+      email3 = normalizeSuppressionEmail(subject.email);
+    } catch {
+      return { status: "blocked", reason: "suppression:malformed-email" };
+    }
+    if (list.emails.has(email3)) return { status: "blocked", reason: "suppressed:email" };
+    if (domainSuppressed(list, email3.slice(email3.lastIndexOf("@") + 1))) {
+      return { status: "blocked", reason: "suppressed:domain" };
+    }
+  }
+  for (const d of checkEmailDomain ? subject.domains : []) {
+    let domain2;
+    try {
+      domain2 = normalizeSuppressionDomain(d);
+    } catch {
+      return { status: "blocked", reason: "suppression:malformed-domain" };
+    }
+    if (domainSuppressed(list, domain2)) return { status: "blocked", reason: "suppressed:domain" };
+  }
+  if (list.phones.size > 0) {
+    for (const p of subject.phones ?? []) {
+      let phone;
+      try {
+        phone = normalizeSuppressionPhone(p);
+      } catch {
+        return { status: "blocked", reason: "suppression:malformed-phone" };
+      }
+      if (list.phones.has(phone)) return { status: "blocked", reason: "suppressed:phone" };
+    }
+  }
+  if (list.addresses.size > 0) {
+    for (const a of subject.addresses ?? []) {
+      let address;
+      try {
+        address = normalizeMailingAddress(a);
+      } catch {
+        return { status: "blocked", reason: "suppression:malformed-address" };
+      }
+      if (list.addresses.has(address)) return { status: "blocked", reason: "suppressed:address" };
+    }
+  }
+  return { status: "clean" };
+}
+function suppressionGate(list) {
+  return {
+    check: (ctx) => checkSuppression(list, {
+      ...ctx.contact.email !== void 0 ? { email: ctx.contact.email } : {},
+      domains: [ctx.lead.domain, ctx.contact.leadDomain],
+      phones: ctx.enrichments.flatMap((e) => e.phone !== void 0 ? [e.phone] : [])
+    })
+  };
+}
+function composeGates(...gates) {
+  return {
+    check(ctx) {
+      for (const gate2 of gates) {
+        const verdict = gate2.check(ctx);
+        if (!verdict || verdict.status !== "clean") return verdict;
+      }
+      return { status: "clean" };
+    }
+  };
 }
 
 // pipeline_core/models.ts
@@ -39139,76 +39418,190 @@ var CampaignRunSchema = external_exports.object({
   finishedAt: external_exports.string().datetime().optional()
 });
 
-// pipeline_core/validator.ts
-function deepFreeze(value, seen = /* @__PURE__ */ new WeakSet()) {
-  if (value === null || typeof value !== "object" || seen.has(value)) return value;
-  seen.add(value);
-  for (const key of Reflect.ownKeys(value)) {
-    deepFreeze(value[key], seen);
-  }
-  return Object.freeze(value);
+// pipeline_core/compliance/fair-housing.ts
+var FAIR_HOUSING_HARD = [
+  // familial status
+  "no children",
+  "no kids",
+  "adults only",
+  "adult building",
+  "couples only",
+  "singles only",
+  "perfect for families",
+  "ideal for families",
+  "perfect for a family",
+  "ideal for young families",
+  "empty nesters only",
+  // steering / exclusion proxies
+  "exclusive neighborhood",
+  "exclusive community",
+  "integrated neighborhood",
+  "traditional neighborhood values",
+  "safe neighborhood",
+  "low crime",
+  "crime-free",
+  "desirable neighbors",
+  "right kind of people",
+  // religion / national origin / race
+  "christian community",
+  "ethnic neighborhood",
+  "hispanic neighborhood",
+  "white neighborhood",
+  "black neighborhood",
+  // disability
+  "no wheelchairs",
+  "able-bodied"
+];
+var OUTREACH_AGE_FAMILIAL_HARD = [
+  "retire",
+  "retired",
+  "retiree",
+  "retirees",
+  "retiring",
+  "retirement",
+  "seniors",
+  "senior citizen",
+  "senior citizens",
+  "elderly",
+  "your age",
+  "at your stage of life",
+  "golden years",
+  "empty nest",
+  "empty nester",
+  "empty nesters",
+  "kids",
+  "children",
+  "grandkids",
+  "grandchildren",
+  "growing family",
+  "starting a family",
+  "new baby",
+  "pregnant",
+  "widow",
+  "widowed",
+  "widower",
+  "divorce",
+  "divorced",
+  "divorcing",
+  "perfect for your family",
+  "ideal for your family",
+  "your family",
+  "your spouse",
+  "your husband",
+  "your wife"
+];
+var FAIR_HOUSING_WARN = [
+  "family-friendly",
+  "family oriented",
+  "family-oriented",
+  "great schools",
+  "good schools",
+  "top schools",
+  "school district",
+  "walking distance to church",
+  "near churches",
+  "close to church",
+  "quiet neighborhood",
+  "safest",
+  "bachelor",
+  "mother-in-law suite",
+  "master bedroom",
+  "master suite",
+  "exclusive",
+  "private community"
+];
+function normalize(text) {
+  return text.toLowerCase().replace(/[\u2010-\u2015\u2212-]/g, " ").replace(/neighbour/g, "neighbor").replace(/\s+/g, " ");
 }
-var ValidationError = class extends Error {
-  constructor(kind, issues) {
-    super(
-      `validation failed for ${kind}: ${issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`
-    );
-    this.kind = kind;
-    this.issues = issues;
-    this.name = "ValidationError";
-  }
-  kind;
-  issues;
+var escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function compile2(terms) {
+  return terms.map((term) => {
+    const words = normalize(term).trim().split(" ").map(escapeRegExp);
+    const last = words.pop();
+    const stem = last.endsWith("s") && last.length > 3 ? last.slice(0, -1) : last;
+    const body = [...words, `${stem}(?:s|es)?`].join(" ");
+    return { term, re: new RegExp(`(?<![a-z0-9])${body}(?![a-z0-9])`) };
+  });
+}
+var HARD_RES = compile2([...FAIR_HOUSING_HARD, ...OUTREACH_AGE_FAMILIAL_HARD]);
+var WARN_RES = compile2(FAIR_HOUSING_WARN);
+function lintFairHousing(text) {
+  const t = normalize(text);
+  return {
+    hard: HARD_RES.filter((h) => h.re.test(t)).map((h) => h.term),
+    warn: WARN_RES.filter((w) => w.re.test(t)).map((w) => w.term)
+  };
+}
+var fairHousingDraftRule = (draft) => {
+  const fields = [
+    ["subject", draft.subject ?? ""],
+    ["body", draft.body],
+    ["cta", draft.cta]
+  ];
+  return fields.flatMap(
+    ([field, text]) => lintFairHousing(text).hard.map((term) => `fair-housing: "${term}" in ${field}`)
+  );
 };
-function gate(kind, schema, raw) {
-  const parsed = schema.safeParse(raw);
-  if (parsed.success) {
-    return { ok: true, value: deepFreeze(parsed.data) };
+
+// pipeline_core/compliance/risk.ts
+var MANUAL_REVIEW_PATTERNS = [
+  ["probate", /\bprobat/],
+  ["probate", /\bdeceased\b/],
+  ["probate", /^estate$/],
+  ["probate", /\bestate sale\b/],
+  ["probate", /\bestate of\b/],
+  ["probate", /\bheirs?\b/],
+  ["probate", /\blife estate\b/],
+  ["divorce", /\bdivorc/],
+  ["divorce", /\bdissolution of marriage\b/],
+  ["pre-foreclosure", /\bforeclos/],
+  ["pre-foreclosure", /\blis pendens\b/],
+  ["pre-foreclosure", /\bnotice of (?:default|trustee sale|sale)\b/],
+  ["pre-foreclosure", /^nod$/],
+  ["pre-foreclosure", /\btax (?:sale|lien sale|deed)\b/]
+];
+var normalizeTag = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function manualReviewVerdict(signals) {
+  const categories = /* @__PURE__ */ new Set();
+  for (const raw of signals) {
+    const tag = normalizeTag(raw);
+    for (const [category, pattern] of MANUAL_REVIEW_PATTERNS) if (pattern.test(tag)) categories.add(category);
   }
-  return { ok: false, error: new ValidationError(kind, parsed.error.issues) };
+  if (categories.size === 0) return { status: "clean" };
+  return { status: "blocked", reason: `manual-review:${[...categories].sort().join(",")}` };
 }
-function gateOrThrow(kind, schema, raw) {
-  const r = gate(kind, schema, raw);
-  if (!r.ok) throw r.error;
-  return r.value;
+var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+var ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+function agreementEnd(value) {
+  if (ISO_DATE.test(value)) {
+    const day = Date.parse(`${value}T00:00:00Z`);
+    return Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== value ? Number.NaN : day + 36 * 36e5;
+  }
+  return ISO_DATETIME.test(value) ? Date.parse(value) : Number.NaN;
 }
-var validateMessage = (raw) => gate("Message", MessageSchema, raw);
-var validateCampaignRun = (raw) => gate("CampaignRun", CampaignRunSchema, raw);
-var assertCampaignRun = (raw) => gateOrThrow("CampaignRun", CampaignRunSchema, raw);
-
-// evals/supported.ts
-var APPROVED_MODELS = (
-  // BEGIN APPROVED_MODELS (generated by evals/promote.ts — JSON only)
-  [
-    {
-      "provider": "anthropic",
-      "model": "claude-sonnet-4-6",
-      "resultFile": null,
-      "verified": false,
-      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
-    },
-    {
-      "provider": "openai",
-      "model": "gpt-4o",
-      "resultFile": null,
-      "verified": false,
-      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
-    },
-    {
-      "provider": "minimax",
-      "model": "MiniMax-M3",
-      "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
-      "verified": true,
-      "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
-    }
-  ]
-);
-function supportedProviderNames(entries = APPROVED_MODELS) {
-  return [...new Set(entries.map((e) => e.provider))];
+function listingContactVerdict(listing, now) {
+  const ends = listing.agreementEndsAt !== void 0 ? agreementEnd(listing.agreementEndsAt) : void 0;
+  if (ends !== void 0 && Number.isNaN(ends)) return { status: "blocked", reason: "listing:agreement-date-invalid" };
+  const stillRuns = ends !== void 0 && ends > now.getTime();
+  const status = normalizeTag(String(listing.status ?? "")).replace(/ /g, "-");
+  switch (status) {
+    case "active":
+    case "pending":
+    case "coming-soon":
+      return { status: "blocked", reason: `listing:${status}` };
+    case "withdrawn":
+      return ends !== void 0 && !stillRuns ? { status: "clean" } : { status: "blocked", reason: "listing:withdrawn-under-agreement" };
+    case "expired":
+    case "cancelled":
+    case "canceled":
+      return stillRuns ? { status: "blocked", reason: "listing:agreement-still-in-effect" } : { status: "clean" };
+    case "sold":
+    case "off-market":
+      return { status: "clean" };
+    default:
+      return { status: "blocked", reason: "listing:status-unknown" };
+  }
 }
-
-// pipeline_core/providers.ts
-var SUPPORTED_PROVIDERS = new Set(supportedProviderNames());
 
 // pipeline_core/draft-guard.ts
 var MAX_BODY_WORDS = 120;
@@ -39223,7 +39616,7 @@ var BANNED_PHRASES = [
   "i hope you're doing well",
   "i hope you are doing well"
 ];
-var EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)*\.[A-Z]{2,}/gi;
+var EMAIL_RE2 = /[A-Z0-9._%+-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)*\.[A-Z]{2,}/gi;
 var URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"'`)\]]+/gi;
 var BARE_HOST_RE = /\b(?:[a-z0-9-]+\.)+(?:com|io|ai|co|net|org|app|dev|xyz|me|so|gg|ly|link|info|biz|us|uk|tech|site|online|page|to|sh|cc)\b(?:\/[^\s<>"'`)\]]*)?/gi;
 var PHONE_RE = /(?:\+?\d[\d\s().-]{7,}\d)/g;
@@ -39234,10 +39627,10 @@ function trimTrailingPunct(s) {
   return s.replace(/[.,;:!?]+$/, "");
 }
 function extractEmails(text) {
-  return (text.match(EMAIL_RE) ?? []).map((e) => e.toLowerCase());
+  return (text.match(EMAIL_RE2) ?? []).map((e) => e.toLowerCase());
 }
 function extractUrls(text) {
-  const withoutEmails = text.replace(EMAIL_RE, " ");
+  const withoutEmails = text.replace(EMAIL_RE2, " ");
   const found = /* @__PURE__ */ new Set();
   for (const m of withoutEmails.match(URL_RE) ?? []) found.add(normalizeUrl(m));
   const withoutUrls = withoutEmails.replace(URL_RE, " ");
@@ -39349,13 +39742,13 @@ var DASH_RULES = [
   // The ASCII em dash: "word--word".
   { label: "double hyphen used as a dash", re: /(?<=[\p{L}\p{N}])--(?=[\p{L}\p{N}])/u }
 ];
-function escapeRegExp(s) {
+function escapeRegExp2(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function phraseMatcher(phrase) {
   const norm = normApostrophes(phrase).trim().replace(/\s+/g, " ");
   if (!norm) return void 0;
-  const body = norm.split(" ").map(escapeRegExp).join("\\s+");
+  const body = norm.split(" ").map(escapeRegExp2).join("\\s+");
   return new RegExp(`(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])`, "iu");
 }
 function checkVoice(draft, voice) {
@@ -39685,6 +40078,284 @@ function factsOf(p) {
   return nonEmpty(out);
 }
 
+// pipeline_core/property-seam.ts
+var PropertyScoreOutputSchema = external_exports.object({
+  score: external_exports.number().int().min(0).max(100),
+  band: external_exports.enum(["hot", "warm", "cold"]),
+  reasons: external_exports.array(external_exports.string()).max(3)
+});
+
+// pipeline_core/approvals.ts
+var ApprovalRecordSchema = external_exports.object({
+  runId: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1),
+  channel: ChannelSchema,
+  messageSha256: external_exports.string().regex(/^[0-9a-f]{64}$/),
+  decision: external_exports.enum(["approved", "rejected"]),
+  /** Who decided: an OS user for the CLI, "mcp:<client>" for the MCP tools. */
+  by: external_exports.string().min(1),
+  at: external_exports.string().datetime(),
+  note: external_exports.string().min(1).optional()
+});
+function messageDigest(m) {
+  return createHash("sha256").update(JSON.stringify([m.channel, m.subject ?? null, m.body, m.cta ?? null])).digest("hex");
+}
+function approvalVerdict(records, runId, contactKey, message) {
+  const digest = messageDigest(message);
+  let state = "missing";
+  for (const r of records) {
+    if (r.runId === runId && r.contactKey === contactKey && r.messageSha256 === digest) state = r.decision;
+  }
+  return state;
+}
+function defaultApprovalsPath() {
+  return join2(intentOutreachHome(), "approvals.jsonl");
+}
+async function readApprovals(path = defaultApprovalsPath()) {
+  let text;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+  const out = [];
+  const lines = text.split("\n");
+  const tornTail = !text.endsWith("\n") ? lines.length - 1 : -1;
+  lines.forEach((line, i) => {
+    if (!line.trim() || i === tornTail) return;
+    let parsed;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      throw new Error(`approvals: line ${i + 1} of ${path} is not valid JSON; fix or remove it`);
+    }
+    const r = ApprovalRecordSchema.safeParse(parsed);
+    if (!r.success) throw new Error(`approvals: line ${i + 1} of ${path} is invalid; fix or remove it`);
+    out.push(r.data);
+  });
+  return out;
+}
+var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+async function withLock(path, fn) {
+  await mkdir(dirname(path), { recursive: true, mode: 448 });
+  const lockPath = `${path}.lock`;
+  const token = randomUUID();
+  const deadline = Date.now() + 1e4;
+  let lock;
+  while (!lock) {
+    try {
+      lock = await open2(lockPath, "wx", 384);
+      await lock.write(token);
+    } catch (err) {
+      if (err.code !== "EEXIST") throw err;
+      try {
+        if (Date.now() - (await stat(lockPath)).mtimeMs > 3e4) {
+          const stolen = `${lockPath}.stale.${token}`;
+          await rename(lockPath, stolen);
+          await unlink(stolen).catch(() => void 0);
+          continue;
+        }
+      } catch {
+      }
+      if (Date.now() >= deadline) throw new Error(`approvals: timed out waiting for lock ${lockPath}`);
+      await sleep2(20);
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await lock.close().catch(() => void 0);
+    const holder = await readFile(lockPath, "utf8").catch(() => void 0);
+    if (holder === token) await unlink(lockPath).catch(() => void 0);
+  }
+}
+async function repairTornTail(path) {
+  let text;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return;
+    throw err;
+  }
+  if (text.length === 0 || text.endsWith("\n")) return;
+  await truncate(path, Buffer.byteLength(text.slice(0, text.lastIndexOf("\n") + 1)));
+}
+async function append(path, record2) {
+  await withLock(path, async () => {
+    await repairTornTail(path);
+    const fh = await open2(path, constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND, 384);
+    try {
+      await fh.chmod(384);
+      await fh.write(`${JSON.stringify(record2)}
+`);
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
+  });
+}
+async function listPending(store, path = defaultApprovalsPath()) {
+  const records = await readApprovals(path);
+  const out = [];
+  for (const run of await store.listRuns()) {
+    for (const m of run.messages) {
+      if (approvalVerdict(records, run.id, m.contactKey, m) !== "missing") continue;
+      out.push({
+        runId: run.id,
+        contactKey: m.contactKey,
+        channel: m.channel,
+        ...m.subject ? { subject: m.subject } : {},
+        body: m.body,
+        cta: m.cta,
+        ...m.fitScore !== void 0 ? { fitScore: m.fitScore } : {},
+        createdAt: m.createdAt,
+        digest: messageDigest(m).slice(0, 12),
+        needsSenderIdentity: m.needsSenderIdentity
+      });
+    }
+  }
+  return out;
+}
+async function decide(input2) {
+  const run = await input2.store.getRun(input2.runId);
+  if (!run) throw new Error(`approvals: no run ${JSON.stringify(input2.runId)}`);
+  const matches = run.messages.filter((m2) => m2.contactKey === input2.contactKey);
+  if (matches.length === 0) throw new Error(`approvals: run ${input2.runId} has no message for ${input2.contactKey}`);
+  if (matches.length > 1) throw new Error(`approvals: run ${input2.runId} has ${matches.length} messages for ${input2.contactKey}`);
+  const m = matches[0];
+  const digest = messageDigest(m);
+  if (input2.decision === "approved") {
+    const prefix = (input2.digest ?? "").trim().toLowerCase();
+    if (prefix.length < 8 || !digest.startsWith(prefix)) {
+      throw new Error("approvals: approving needs the message digest shown by `approvals pending` (at least 8 characters)");
+    }
+    if (m.needsSenderIdentity) throw new Error("approvals: this draft has no sender-identity footer and cannot be approved");
+  }
+  const record2 = ApprovalRecordSchema.parse({
+    runId: run.id,
+    contactKey: m.contactKey,
+    channel: m.channel,
+    messageSha256: digest,
+    decision: input2.decision,
+    by: input2.by,
+    at: input2.now(),
+    ...input2.note?.trim() ? { note: input2.note.trim() } : {}
+  });
+  await append(input2.path ?? defaultApprovalsPath(), record2);
+  return record2;
+}
+
+// pipeline_core/routing.ts
+import { createHash as createHash2, randomUUID as randomUUID2 } from "node:crypto";
+function capabilityForQuery(query) {
+  switch (query.kind) {
+    case "domain":
+      return "company.research";
+    case "area":
+      return "property.search";
+    case "parcel":
+      return "parcel";
+  }
+}
+function orderByRouting(eligible, routing) {
+  if (!routing?.connectors) return [...eligible];
+  const byName = new Map(eligible.map((c) => [c.name, c]));
+  return routing.connectors.flatMap((n) => byName.has(n) ? [byName.get(n)] : []);
+}
+var BudgetExceededError = class extends Error {
+  constructor(connector, needed, remaining) {
+    super(`credit budget exhausted: ${connector} needs ${needed}, ${remaining} left`);
+    this.connector = connector;
+    this.needed = needed;
+    this.remaining = remaining;
+    this.name = "BudgetExceededError";
+  }
+  connector;
+  needed;
+  remaining;
+};
+function stableStringify(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const o = value;
+  return `{${Object.keys(o).filter((k) => o[k] !== void 0).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(o[k])}`).join(",")}}`;
+}
+function cacheKey(connector, capability, subject) {
+  return createHash2("sha256").update(`${connector}|${capability}|${stableStringify(subject)}`).digest("hex");
+}
+
+// pipeline_core/validator.ts
+function deepFreeze(value, seen = /* @__PURE__ */ new WeakSet()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const key of Reflect.ownKeys(value)) {
+    deepFreeze(value[key], seen);
+  }
+  return Object.freeze(value);
+}
+var ValidationError = class extends Error {
+  constructor(kind, issues) {
+    super(
+      `validation failed for ${kind}: ${issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`
+    );
+    this.kind = kind;
+    this.issues = issues;
+    this.name = "ValidationError";
+  }
+  kind;
+  issues;
+};
+function gate(kind, schema, raw) {
+  const parsed = schema.safeParse(raw);
+  if (parsed.success) {
+    return { ok: true, value: deepFreeze(parsed.data) };
+  }
+  return { ok: false, error: new ValidationError(kind, parsed.error.issues) };
+}
+function gateOrThrow(kind, schema, raw) {
+  const r = gate(kind, schema, raw);
+  if (!r.ok) throw r.error;
+  return r.value;
+}
+var validateMessage = (raw) => gate("Message", MessageSchema, raw);
+var validateCampaignRun = (raw) => gate("CampaignRun", CampaignRunSchema, raw);
+var assertCampaignRun = (raw) => gateOrThrow("CampaignRun", CampaignRunSchema, raw);
+
+// evals/supported.ts
+var APPROVED_MODELS = (
+  // BEGIN APPROVED_MODELS (generated by evals/promote.ts — JSON only)
+  [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-6",
+      "resultFile": null,
+      "verified": false,
+      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "resultFile": null,
+      "verified": false,
+      "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M3",
+      "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
+      "verified": true,
+      "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
+    }
+  ]
+);
+function supportedProviderNames(entries = APPROVED_MODELS) {
+  return [...new Set(entries.map((e) => e.provider))];
+}
+
+// pipeline_core/providers.ts
+var SUPPORTED_PROVIDERS = new Set(supportedProviderNames());
+
 // pipeline_core/packs/types.ts
 var DEFAULT_PACK_ID = "b2b-sdr";
 var noopCompliance = {
@@ -39722,239 +40393,6 @@ var b2bSdrPack = {
     draft: "outreach.v3.md"
   }
 };
-
-// pipeline_core/compliance/index.ts
-var ZIP5_RE = /^\d{5}$/;
-function defineServiceArea(id, zips) {
-  if (typeof id !== "string" || !id.trim()) throw new Error("service area id is empty");
-  const set2 = /* @__PURE__ */ new Set();
-  for (const z2 of zips) {
-    const zip = typeof z2 === "string" ? z2.trim() : "";
-    if (!ZIP5_RE.test(zip)) throw new Error(`service area ${id}: ${JSON.stringify(z2)} is not a 5-digit ZIP`);
-    set2.add(zip);
-  }
-  if (set2.size === 0) throw new Error(`service area ${id} has no ZIPs`);
-  return Object.freeze({ id, zips: set2 });
-}
-var E164_RE = /^\+[1-9]\d{9,14}$/;
-function normalizePhone(phone) {
-  if (typeof phone !== "string") {
-    throw new Error("phone must be a string");
-  }
-  const stripped = phone.replace(/[\s\-.()]/g, "");
-  if (!stripped) {
-    throw new Error("phone is empty after normalization");
-  }
-  let candidate;
-  if (stripped.startsWith("+")) {
-    candidate = stripped;
-  } else if (stripped.length === 10 && /^\d+$/.test(stripped)) {
-    candidate = "+1" + stripped;
-  } else if (stripped.length === 11 && /^\d+$/.test(stripped) && stripped.startsWith("1")) {
-    candidate = "+" + stripped;
-  } else {
-    throw new Error(`phone ${JSON.stringify(phone)} is not in a recognized US format`);
-  }
-  if (!E164_RE.test(candidate)) {
-    throw new Error(`phone ${JSON.stringify(phone)} is not valid E.164`);
-  }
-  return candidate;
-}
-function inServiceArea(zipCode, area) {
-  if (typeof zipCode !== "string" || !area || !(area.zips instanceof Set)) {
-    return false;
-  }
-  const cleaned = zipCode.trim();
-  if (!ZIP5_RE.test(cleaned)) {
-    return false;
-  }
-  return area.zips.has(cleaned);
-}
-
-// pipeline_core/compliance/fair-housing.ts
-var FAIR_HOUSING_HARD = [
-  // familial status
-  "no children",
-  "no kids",
-  "adults only",
-  "adult building",
-  "couples only",
-  "singles only",
-  "perfect for families",
-  "ideal for families",
-  "perfect for a family",
-  "ideal for young families",
-  "empty nesters only",
-  // steering / exclusion proxies
-  "exclusive neighborhood",
-  "exclusive community",
-  "integrated neighborhood",
-  "traditional neighborhood values",
-  "safe neighborhood",
-  "low crime",
-  "crime-free",
-  "desirable neighbors",
-  "right kind of people",
-  // religion / national origin / race
-  "christian community",
-  "ethnic neighborhood",
-  "hispanic neighborhood",
-  "white neighborhood",
-  "black neighborhood",
-  // disability
-  "no wheelchairs",
-  "able-bodied"
-];
-var OUTREACH_AGE_FAMILIAL_HARD = [
-  "retire",
-  "retired",
-  "retiree",
-  "retirees",
-  "retiring",
-  "retirement",
-  "seniors",
-  "senior citizen",
-  "senior citizens",
-  "elderly",
-  "your age",
-  "at your stage of life",
-  "golden years",
-  "empty nest",
-  "empty nester",
-  "empty nesters",
-  "kids",
-  "children",
-  "grandkids",
-  "grandchildren",
-  "growing family",
-  "starting a family",
-  "new baby",
-  "pregnant",
-  "widow",
-  "widowed",
-  "widower",
-  "divorce",
-  "divorced",
-  "divorcing",
-  "perfect for your family",
-  "ideal for your family",
-  "your family",
-  "your spouse",
-  "your husband",
-  "your wife"
-];
-var FAIR_HOUSING_WARN = [
-  "family-friendly",
-  "family oriented",
-  "family-oriented",
-  "great schools",
-  "good schools",
-  "top schools",
-  "school district",
-  "walking distance to church",
-  "near churches",
-  "close to church",
-  "quiet neighborhood",
-  "safest",
-  "bachelor",
-  "mother-in-law suite",
-  "master bedroom",
-  "master suite",
-  "exclusive",
-  "private community"
-];
-function normalize(text) {
-  return text.toLowerCase().replace(/[\u2010-\u2015\u2212-]/g, " ").replace(/neighbour/g, "neighbor").replace(/\s+/g, " ");
-}
-var escapeRegExp2 = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-function compile2(terms) {
-  return terms.map((term) => {
-    const words = normalize(term).trim().split(" ").map(escapeRegExp2);
-    const last = words.pop();
-    const stem = last.endsWith("s") && last.length > 3 ? last.slice(0, -1) : last;
-    const body = [...words, `${stem}(?:s|es)?`].join(" ");
-    return { term, re: new RegExp(`(?<![a-z0-9])${body}(?![a-z0-9])`) };
-  });
-}
-var HARD_RES = compile2([...FAIR_HOUSING_HARD, ...OUTREACH_AGE_FAMILIAL_HARD]);
-var WARN_RES = compile2(FAIR_HOUSING_WARN);
-function lintFairHousing(text) {
-  const t = normalize(text);
-  return {
-    hard: HARD_RES.filter((h) => h.re.test(t)).map((h) => h.term),
-    warn: WARN_RES.filter((w) => w.re.test(t)).map((w) => w.term)
-  };
-}
-var fairHousingDraftRule = (draft) => {
-  const fields = [
-    ["subject", draft.subject ?? ""],
-    ["body", draft.body],
-    ["cta", draft.cta]
-  ];
-  return fields.flatMap(
-    ([field, text]) => lintFairHousing(text).hard.map((term) => `fair-housing: "${term}" in ${field}`)
-  );
-};
-
-// pipeline_core/compliance/risk.ts
-var MANUAL_REVIEW_PATTERNS = [
-  ["probate", /\bprobat/],
-  ["probate", /\bdeceased\b/],
-  ["probate", /^estate$/],
-  ["probate", /\bestate sale\b/],
-  ["probate", /\bestate of\b/],
-  ["probate", /\bheirs?\b/],
-  ["probate", /\blife estate\b/],
-  ["divorce", /\bdivorc/],
-  ["divorce", /\bdissolution of marriage\b/],
-  ["pre-foreclosure", /\bforeclos/],
-  ["pre-foreclosure", /\blis pendens\b/],
-  ["pre-foreclosure", /\bnotice of (?:default|trustee sale|sale)\b/],
-  ["pre-foreclosure", /^nod$/],
-  ["pre-foreclosure", /\btax (?:sale|lien sale|deed)\b/]
-];
-var normalizeTag = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-function manualReviewVerdict(signals) {
-  const categories = /* @__PURE__ */ new Set();
-  for (const raw of signals) {
-    const tag = normalizeTag(raw);
-    for (const [category, pattern] of MANUAL_REVIEW_PATTERNS) if (pattern.test(tag)) categories.add(category);
-  }
-  if (categories.size === 0) return { status: "clean" };
-  return { status: "blocked", reason: `manual-review:${[...categories].sort().join(",")}` };
-}
-var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-var ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
-function agreementEnd(value) {
-  if (ISO_DATE.test(value)) {
-    const day = Date.parse(`${value}T00:00:00Z`);
-    return Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== value ? Number.NaN : day + 36 * 36e5;
-  }
-  return ISO_DATETIME.test(value) ? Date.parse(value) : Number.NaN;
-}
-function listingContactVerdict(listing, now) {
-  const ends = listing.agreementEndsAt !== void 0 ? agreementEnd(listing.agreementEndsAt) : void 0;
-  if (ends !== void 0 && Number.isNaN(ends)) return { status: "blocked", reason: "listing:agreement-date-invalid" };
-  const stillRuns = ends !== void 0 && ends > now.getTime();
-  const status = normalizeTag(String(listing.status ?? "")).replace(/ /g, "-");
-  switch (status) {
-    case "active":
-    case "pending":
-    case "coming-soon":
-      return { status: "blocked", reason: `listing:${status}` };
-    case "withdrawn":
-      return ends !== void 0 && !stillRuns ? { status: "clean" } : { status: "blocked", reason: "listing:withdrawn-under-agreement" };
-    case "expired":
-    case "cancelled":
-    case "canceled":
-      return stillRuns ? { status: "blocked", reason: "listing:agreement-still-in-effect" } : { status: "clean" };
-    case "sold":
-    case "off-market":
-      return { status: "clean" };
-    default:
-      return { status: "blocked", reason: "listing:status-unknown" };
-  }
-}
 
 // pipeline_core/packs/service-areas.ts
 var GULF_COAST_AL_FL = defineServiceArea("gulf-coast-al-fl", [
@@ -40045,276 +40483,11 @@ function registerBuiltinPacks() {
   registered2 = true;
 }
 
-// pipeline_core/compliance/suppression.ts
-var SUPPRESSION_KINDS = ["email", "domain", "phone", "address"];
-var EMPTY_SUPPRESSION_LIST = Object.freeze({
-  emails: /* @__PURE__ */ new Set(),
-  domains: /* @__PURE__ */ new Set(),
-  phones: /* @__PURE__ */ new Set(),
-  addresses: /* @__PURE__ */ new Set()
-});
-var EMAIL_RE2 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-var LABEL_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
-var TLD_RE = /^(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/;
-function normalizeSuppressionDomain(input2) {
-  if (typeof input2 !== "string" || !input2.trim()) throw new Error("domain is empty");
-  let host = input2.trim().toLowerCase();
-  host = host.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
-  host = host.replace(/^[^@/]*@/, "");
-  host = host.split(/[/?#]/)[0] ?? "";
-  host = host.replace(/:\d+$/, "").replace(/\.$/, "");
-  const labels = host.split(".");
-  if (labels[0] === "www" && labels.length > 2) labels.shift();
-  const tld = labels[labels.length - 1] ?? "";
-  if (labels.length < 2 || !labels.every((l) => LABEL_RE.test(l)) || !TLD_RE.test(tld)) {
-    throw new Error(`${JSON.stringify(input2)} is not a valid domain`);
-  }
-  return labels.join(".");
-}
-function normalizeSuppressionEmail(input2) {
-  if (typeof input2 !== "string") throw new Error("email must be a string");
-  const e = input2.trim().toLowerCase();
-  if (!EMAIL_RE2.test(e)) throw new Error(`${JSON.stringify(input2)} is not a valid email`);
-  const at = e.lastIndexOf("@");
-  return `${e.slice(0, at)}@${normalizeSuppressionDomain(e.slice(at + 1))}`;
-}
-function normalizeSuppressionPhone(input2) {
-  return normalizePhone(input2);
-}
-var ADDRESS_ABBREVIATIONS = {
-  STREET: "ST",
-  AVENUE: "AVE",
-  ROAD: "RD",
-  DRIVE: "DR",
-  BOULEVARD: "BLVD",
-  LANE: "LN",
-  COURT: "CT",
-  CIRCLE: "CIR",
-  PLACE: "PL",
-  PARKWAY: "PKWY",
-  HIGHWAY: "HWY",
-  TERRACE: "TER",
-  TRAIL: "TRL",
-  WAY: "WAY",
-  SQUARE: "SQ",
-  POINT: "PT",
-  COVE: "CV",
-  LOOP: "LOOP",
-  NORTH: "N",
-  SOUTH: "S",
-  EAST: "E",
-  WEST: "W",
-  NORTHEAST: "NE",
-  NORTHWEST: "NW",
-  SOUTHEAST: "SE",
-  SOUTHWEST: "SW",
-  BUILDING: "BLDG",
-  FLOOR: "FL"
-};
-var UNIT_DESIGNATORS = /* @__PURE__ */ new Set(["#", "APT", "APARTMENT", "UNIT", "STE", "SUITE"]);
-var STATE_CODES = {
-  ALABAMA: "AL",
-  ALASKA: "AK",
-  ARIZONA: "AZ",
-  ARKANSAS: "AR",
-  CALIFORNIA: "CA",
-  COLORADO: "CO",
-  CONNECTICUT: "CT",
-  DELAWARE: "DE",
-  "DISTRICT OF COLUMBIA": "DC",
-  FLORIDA: "FL",
-  GEORGIA: "GA",
-  HAWAII: "HI",
-  IDAHO: "ID",
-  ILLINOIS: "IL",
-  INDIANA: "IN",
-  IOWA: "IA",
-  KANSAS: "KS",
-  KENTUCKY: "KY",
-  LOUISIANA: "LA",
-  MAINE: "ME",
-  MARYLAND: "MD",
-  MASSACHUSETTS: "MA",
-  MICHIGAN: "MI",
-  MINNESOTA: "MN",
-  MISSISSIPPI: "MS",
-  MISSOURI: "MO",
-  MONTANA: "MT",
-  NEBRASKA: "NE",
-  NEVADA: "NV",
-  "NEW HAMPSHIRE": "NH",
-  "NEW JERSEY": "NJ",
-  "NEW MEXICO": "NM",
-  "NEW YORK": "NY",
-  "NORTH CAROLINA": "NC",
-  "NORTH DAKOTA": "ND",
-  OHIO: "OH",
-  OKLAHOMA: "OK",
-  OREGON: "OR",
-  PENNSYLVANIA: "PA",
-  "RHODE ISLAND": "RI",
-  "SOUTH CAROLINA": "SC",
-  "SOUTH DAKOTA": "SD",
-  TENNESSEE: "TN",
-  TEXAS: "TX",
-  UTAH: "UT",
-  VERMONT: "VT",
-  VIRGINIA: "VA",
-  WASHINGTON: "WA",
-  "WEST VIRGINIA": "WV",
-  WISCONSIN: "WI",
-  WYOMING: "WY",
-  "PUERTO RICO": "PR"
-};
-var STATE_NAMES = Object.keys(STATE_CODES).sort((a, b) => b.length - a.length);
-var ZIP_TAIL_RE = /\b(\d{5})(?:-\d{4})?$/;
-function normalizeMailingAddress(input2) {
-  if (typeof input2 !== "string" || !input2.trim()) throw new Error("address is empty");
-  let a = input2.toUpperCase().replace(/#/g, " # ");
-  a = a.replace(/\bP\.?\s*O\.?\s*BOX\b/g, "PO BOX").replace(/\bPOST\s+OFFICE\s+BOX\b/g, "PO BOX");
-  a = a.replace(/[.,;]/g, " ").replace(/\s+/g, " ").trim();
-  const zip = ZIP_TAIL_RE.exec(a);
-  if (!zip) throw new Error(`${JSON.stringify(input2)} has no trailing 5-digit ZIP`);
-  let head = a.slice(0, zip.index).trim();
-  let state;
-  for (const name of STATE_NAMES) {
-    if (head === name || head.endsWith(` ${name}`)) {
-      state = STATE_CODES[name];
-      head = head.slice(0, head.length - name.length).trim();
-      break;
-    }
-  }
-  const tokens = [];
-  for (const raw of head.split(" ")) {
-    if (!raw) continue;
-    const prev = tokens[tokens.length - 1];
-    if (UNIT_DESIGNATORS.has(raw)) {
-      if (prev !== "UNIT" && prev !== "BOX") tokens.push("UNIT");
-      continue;
-    }
-    tokens.push(ADDRESS_ABBREVIATIONS[raw] ?? raw);
-  }
-  if (state) tokens.push(state);
-  if (tokens.length < 3 || !/\d/.test(tokens.join(" "))) {
-    throw new Error(`${JSON.stringify(input2)} is not a full mailing address (street, city, state, ZIP)`);
-  }
-  return `${tokens.join(" ")} ${zip[1]}`;
-}
-function normalizeByKind(kind, value) {
-  switch (kind) {
-    case "email":
-      return normalizeSuppressionEmail(value);
-    case "domain":
-      return normalizeSuppressionDomain(value);
-    case "phone":
-      return normalizeSuppressionPhone(value);
-    case "address":
-      return normalizeMailingAddress(value);
-    default:
-      throw new Error(`unknown suppression kind ${JSON.stringify(kind)}`);
-  }
-}
-function normalizeSuppression(kind, value) {
-  return normalizeByKind(kind, value);
-}
-function buildSuppressionList(entries) {
-  const sets = {
-    email: /* @__PURE__ */ new Set(),
-    domain: /* @__PURE__ */ new Set(),
-    phone: /* @__PURE__ */ new Set(),
-    address: /* @__PURE__ */ new Set()
-  };
-  for (const e of entries) {
-    const set2 = sets[e.kind];
-    if (!set2) throw new Error(`unknown suppression kind ${JSON.stringify(e.kind)}`);
-    set2.add(normalizeByKind(e.kind, e.value));
-  }
-  return { emails: sets.email, domains: sets.domain, phones: sets.phone, addresses: sets.address };
-}
-function isEmptyList(list) {
-  return list.emails.size + list.domains.size + list.phones.size + list.addresses.size === 0;
-}
-function domainSuppressed(list, domain2) {
-  const labels = domain2.split(".");
-  for (let i = 0; i <= labels.length - 2; i++) {
-    if (list.domains.has(labels.slice(i).join("."))) return true;
-  }
-  return false;
-}
-function checkSuppression(list, subject) {
-  if (isEmptyList(list)) return { status: "clean" };
-  const checkEmailDomain = list.emails.size + list.domains.size > 0;
-  if (checkEmailDomain && subject.email !== void 0) {
-    let email3;
-    try {
-      email3 = normalizeSuppressionEmail(subject.email);
-    } catch {
-      return { status: "blocked", reason: "suppression:malformed-email" };
-    }
-    if (list.emails.has(email3)) return { status: "blocked", reason: "suppressed:email" };
-    if (domainSuppressed(list, email3.slice(email3.lastIndexOf("@") + 1))) {
-      return { status: "blocked", reason: "suppressed:domain" };
-    }
-  }
-  for (const d of checkEmailDomain ? subject.domains : []) {
-    let domain2;
-    try {
-      domain2 = normalizeSuppressionDomain(d);
-    } catch {
-      return { status: "blocked", reason: "suppression:malformed-domain" };
-    }
-    if (domainSuppressed(list, domain2)) return { status: "blocked", reason: "suppressed:domain" };
-  }
-  if (list.phones.size > 0) {
-    for (const p of subject.phones ?? []) {
-      let phone;
-      try {
-        phone = normalizeSuppressionPhone(p);
-      } catch {
-        return { status: "blocked", reason: "suppression:malformed-phone" };
-      }
-      if (list.phones.has(phone)) return { status: "blocked", reason: "suppressed:phone" };
-    }
-  }
-  if (list.addresses.size > 0) {
-    for (const a of subject.addresses ?? []) {
-      let address;
-      try {
-        address = normalizeMailingAddress(a);
-      } catch {
-        return { status: "blocked", reason: "suppression:malformed-address" };
-      }
-      if (list.addresses.has(address)) return { status: "blocked", reason: "suppressed:address" };
-    }
-  }
-  return { status: "clean" };
-}
-function suppressionGate(list) {
-  return {
-    check: (ctx) => checkSuppression(list, {
-      ...ctx.contact.email !== void 0 ? { email: ctx.contact.email } : {},
-      domains: [ctx.lead.domain, ctx.contact.leadDomain],
-      phones: ctx.enrichments.flatMap((e) => e.phone !== void 0 ? [e.phone] : [])
-    })
-  };
-}
-function composeGates(...gates) {
-  return {
-    check(ctx) {
-      for (const gate2 of gates) {
-        const verdict = gate2.check(ctx);
-        if (!verdict || verdict.status !== "clean") return verdict;
-      }
-      return { status: "clean" };
-    }
-  };
-}
-
 // pipeline_core/suppressions.ts
-import { constants, mkdir, open as open2, readFile, rename, stat, unlink } from "node:fs/promises";
-import { dirname, join as join2 } from "node:path";
+import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, rename as rename2, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { dirname as dirname2, join as join3 } from "node:path";
 function defaultSuppressionsPath() {
-  return join2(intentOutreachHome(), "suppressions.jsonl");
+  return join3(intentOutreachHome(), "suppressions.jsonl");
 }
 function parseEntry(raw, line, path) {
   const fail = (why) => {
@@ -40344,7 +40517,7 @@ function parseEntry(raw, line, path) {
 async function readSuppressions(path = defaultSuppressionsPath()) {
   let text;
   try {
-    text = await readFile(path, "utf8");
+    text = await readFile2(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return [];
     throw err;
@@ -40597,7 +40770,7 @@ function applyProfileToCampaignInput(profile, _base) {
 
 // pipeline_core/pipeline.ts
 import { existsSync } from "node:fs";
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join3, resolve as resolve2 } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute2, join as join4, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
 var DEFAULT_MAX_DOMAINS = 25;
 var DEFAULT_CONNECTOR_TIMEOUT_MS = 9e4;
@@ -41093,10 +41266,10 @@ function resolveProfilePath(ref, cwd = process.cwd()) {
     return isAbsolute2(trimmed) ? trimmed : resolve2(cwd, trimmed);
   }
   if (!PROFILE_NAME_RE.test(trimmed)) throw new Error(`profile: invalid name ${JSON.stringify(trimmed)}`);
-  const here = dirname2(fileURLToPath(import.meta.url));
-  const roots = [join3(cwd, "profiles"), join3(intentOutreachHome(), "profiles"), join3(here, "..", "profiles")];
+  const here = dirname3(fileURLToPath(import.meta.url));
+  const roots = [join4(cwd, "profiles"), join4(intentOutreachHome(), "profiles"), join4(here, "..", "profiles")];
   for (const root of roots) {
-    const candidate = join3(root, `${trimmed}.json`);
+    const candidate = join4(root, `${trimmed}.json`);
     if (existsSync(candidate)) return candidate;
   }
   throw new Error(`profile not found: ${trimmed} (looked in: ${roots.join(", ")})`);
@@ -41106,8 +41279,8 @@ function loadProfileRef(ref, cwd) {
 }
 
 // pipeline_core/store.ts
-import { constants as constants2, mkdir as mkdir2, open as open3, readFile as readFile2, stat as stat2, unlink as unlink2 } from "node:fs/promises";
-import { dirname as dirname3, join as join4 } from "node:path";
+import { constants as constants3, mkdir as mkdir3, open as open4, readFile as readFile3, stat as stat3, unlink as unlink3 } from "node:fs/promises";
+import { dirname as dirname4, join as join5 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
     super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
@@ -41125,10 +41298,10 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
-  return join4(intentOutreachHome(), "runs.jsonl");
+  return join5(intentOutreachHome(), "runs.jsonl");
 }
 var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
-var sleep2 = (ms) => new Promise((r) => setTimeout(r, ms));
+var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
 var JsonlRunStore = class {
   constructor(path = defaultStorePath(), opts = {}) {
     this.path = path;
@@ -41143,7 +41316,7 @@ var JsonlRunStore = class {
   async saveRun(run, opts = {}) {
     const checked = assertCampaignRun(run);
     const line = JSON.stringify(checked) + "\n";
-    await mkdir2(dirname3(this.path), { recursive: true, mode: 448 });
+    await mkdir3(dirname4(this.path), { recursive: true, mode: 448 });
     await this.withLock(async () => {
       if (!opts.overwrite) {
         const { runs } = await this.scan();
@@ -41164,15 +41337,21 @@ var JsonlRunStore = class {
     const { runs } = await this.scan();
     return [...new Set(runs.map((r) => r.run.id))];
   }
+  async listRuns() {
+    const { runs } = await this.scan();
+    const latest = /* @__PURE__ */ new Map();
+    for (const r of runs) latest.set(r.run.id, r.run);
+    return [...latest.values()];
+  }
   async corruptLines() {
     return (await this.scan()).corrupt;
   }
   // ── write path ──────────────────────────────────────────────────────────────
   /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
   async append(line) {
-    const fh = await open3(
+    const fh = await open4(
       this.path,
-      constants2.O_RDWR | constants2.O_APPEND | constants2.O_CREAT,
+      constants3.O_RDWR | constants3.O_APPEND | constants3.O_CREAT,
       384
     );
     try {
@@ -41204,20 +41383,20 @@ var JsonlRunStore = class {
     let lock;
     while (!lock) {
       try {
-        lock = await open3(lockPath, "wx", 384);
+        lock = await open4(lockPath, "wx", 384);
       } catch (err) {
         if (err.code !== "EEXIST") throw err;
         try {
-          const st = await stat2(lockPath);
+          const st = await stat3(lockPath);
           if (Date.now() - st.mtimeMs > this.staleLockMs) {
-            await unlink2(lockPath).catch(() => void 0);
+            await unlink3(lockPath).catch(() => void 0);
             continue;
           }
         } catch {
           continue;
         }
         if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
-        await sleep2(delay + Math.floor(Math.random() * delay));
+        await sleep3(delay + Math.floor(Math.random() * delay));
         delay = Math.min(delay * 2, 200);
       }
     }
@@ -41227,14 +41406,14 @@ var JsonlRunStore = class {
       return await fn();
     } finally {
       await lock.close().catch(() => void 0);
-      await unlink2(lockPath).catch(() => void 0);
+      await unlink3(lockPath).catch(() => void 0);
     }
   }
   // ── read path ───────────────────────────────────────────────────────────────
   async scan() {
     let text;
     try {
-      text = await readFile2(this.path, "utf8");
+      text = await readFile3(this.path, "utf8");
     } catch (err) {
       if (err.code === "ENOENT") return { runs: [], corrupt: [] };
       throw err;
@@ -41512,6 +41691,44 @@ async function handleSaveRun(rawArgs, deps = {}) {
     throw err;
   }
 }
+var ListPendingInput = {
+  limit: external_exports.number().int().min(1).max(200).optional().describe("Max drafts to return (default 50).")
+};
+async function handleListPending(args, deps = {}) {
+  try {
+    const store = deps.store ?? new JsonlRunStore();
+    const pending = await listPending(store, deps.approvalsPath);
+    return asText({ total: pending.length, pending: pending.slice(0, args.limit ?? 50) });
+  } catch (err) {
+    return toolError(`could not list pending drafts: ${errMsg(err)}`);
+  }
+}
+var DecideInput = {
+  runId: external_exports.string().min(1),
+  contactKey: external_exports.string().min(1),
+  digest: external_exports.string().min(8).optional().describe("Required to approve: the digest list_pending showed for this exact message."),
+  note: external_exports.string().max(500).optional()
+};
+async function decideVia(decision, args, deps) {
+  try {
+    const record2 = await decide({
+      store: deps.store ?? new JsonlRunStore(),
+      runId: args.runId,
+      contactKey: args.contactKey,
+      decision,
+      by: "mcp",
+      note: args.note,
+      digest: args.digest,
+      now: deps.now ?? (() => (/* @__PURE__ */ new Date()).toISOString()),
+      ...deps.approvalsPath ? { path: deps.approvalsPath } : {}
+    });
+    return asText(record2);
+  } catch (err) {
+    return toolError(errMsg(err));
+  }
+}
+var handleApprove = (args, deps = {}) => decideVia("approved", args, deps);
+var handleReject = (args, deps = {}) => decideVia("rejected", args, deps);
 
 // mcp/server.ts
 registerBuiltinConnectors();
@@ -41552,6 +41769,33 @@ server.registerTool(
     inputSchema: SaveRunInput
   },
   async (args) => handleSaveRun(args)
+);
+server.registerTool(
+  "list_pending",
+  {
+    title: "List drafts waiting for approval",
+    description: "List drafted messages in the LOCAL run store that no person has approved or rejected yet, with the full text and a digest. Nothing may be sent until a person approves the exact text. Show the drafts to the user; never approve on your own judgment.",
+    inputSchema: ListPendingInput
+  },
+  async (args) => handleListPending(args)
+);
+server.registerTool(
+  "approve",
+  {
+    title: "Record a person's approval of one draft",
+    description: "Record that the USER approved one exact draft (runId + contactKey + the digest list_pending showed). Call this only after the user has read that draft and explicitly said to approve it. Editing a draft afterwards voids the approval. Approving does not send anything.",
+    inputSchema: DecideInput
+  },
+  async (args) => handleApprove(args)
+);
+server.registerTool(
+  "reject",
+  {
+    title: "Record a rejection of one draft",
+    description: "Record that the user rejected one draft (runId + contactKey). It cannot pass the send-time check unless a person later approves that exact text again (the latest decision wins).",
+    inputSchema: DecideInput
+  },
+  async (args) => handleReject(args)
 );
 async function main() {
   const transport = new StdioServerTransport();
