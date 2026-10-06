@@ -16,6 +16,7 @@ import type { ServiceArea } from "../compliance/index.js";
 import type { ChannelPolicy } from "../compliance/send.js";
 import type { Channel } from "../models.js";
 import type { Capability, Routing } from "../routing.js";
+import type { DraftRule } from "../draft-guard.js";
 import type { Contact, Enrichment, Lead } from "../models.js";
 
 /** A compliance verdict for a single contact. Fail-closed: ambiguity → blocked. */
@@ -96,6 +97,12 @@ export interface Pack {
     research?: Partial<Record<Capability, Routing>>;
     enrich?: Routing;
   };
+  /**
+   * Pack v2: deterministic draft rules run by the guard on EVERY drafting
+   * path (the seam and MCP save_run). A failing draft lands in
+   * `run.rejectedDrafts`, never in `messages`. Example: `fairHousingDraftRule`.
+   */
+  draftRules?: readonly DraftRule[];
 }
 
 /** The pack resolved when a caller names none. */

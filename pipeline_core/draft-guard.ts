@@ -39,6 +39,13 @@ export interface DraftLike {
   cta: string;
 }
 
+/**
+ * A pack's deterministic draft rule (Pack v2 `draftRules`): returns the issues
+ * it finds, [] when the draft passes. A rule that THROWS fails the draft
+ * (fail closed) with a "draft-rule-error" issue.
+ */
+export type DraftRule = (draft: Readonly<DraftLike>) => readonly string[];
+
 export interface GuardInputs {
   /**
    * Strings whose urls / email addresses / phone numbers a draft may repeat.
@@ -62,6 +69,8 @@ export interface GuardInputs {
    * compatible qualifier (checkQuantities). Absent ⇒ the check is skipped.
    */
   facts?: readonly string[] | undefined;
+  /** Pack draft rules, run after the built-in checks. Absent ⇒ none. */
+  rules?: readonly DraftRule[] | undefined;
 }
 
 export type GuardResult = { ok: true } | { ok: false; issues: string[] };
@@ -215,6 +224,14 @@ export function guardDraft(draft: DraftLike, inputs: GuardInputs): GuardResult {
   if (inputs.facts) issues.push(...checkQuantities([draft.subject ?? "", draft.body, draft.cta], inputs.facts));
 
   issues.push(...checkVoice(draft, inputs.voice));
+
+  for (const rule of inputs.rules ?? []) {
+    try {
+      issues.push(...rule(draft));
+    } catch (err) {
+      issues.push(`draft-rule-error: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
