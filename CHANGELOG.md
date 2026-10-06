@@ -8,6 +8,13 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **`@intent-outreach/deal-math`** (`packages/deal-math`, #83 phase 5): NOI, cap rate, DSCR, cash-on-cash,
+  level payments, seller financing with balloon, 1031 deadlines (informational) and the condo trade-up
+  model, in integer cents and basis points with half-even rounding and explicit assumptions. Every result
+  carries its inputs, assumptions and version. `tradeUp` matches coastal's `trade_up.py` on all 73 cases of a
+  golden fixture generated from the Python. The repo is now an npm workspace (`packages/*`); the engine
+  stays at the root, which is the plugin root.
+
 - **The drafter declines leads that clearly sit outside the ICP.** Draft output gains `decline` and
   `declineReason`. A decline is never sent: it is recorded in `run.rejectedDrafts` as
   `"declined: <reason>"` and metered. Prompt `outreach.v3.md` adds the rule (thin data is not a reason

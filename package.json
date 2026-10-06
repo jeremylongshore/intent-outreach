@@ -7,6 +7,9 @@
   "license": "SEE LICENSE IN LICENSE",
   "author": "Jeremy Longshore <jeremy@intentsolutions.io> (https://intentsolutions.io)",
   "homepage": "https://github.com/jeremylongshore/intent-outreach",
+  "workspaces": [
+    "packages/*"
+  ],
   "bin": {
     "intent-outreach": "bundle/cli.mjs"
   },

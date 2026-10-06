@@ -48,6 +48,10 @@ standalone CLI ────┘   handlers mcp/tools.ts) └─ save_run ──�
 | `profiles.ts`, `render/` | Report Profiles (including `sender`) and the escaped renderers (CSV formula, `.eml` header, HTML, Slack). |
 | `cost.ts`, `prompts.ts` | `CostMeter` (real AI SDK v7 usage, cache-aware). `loadPrompt` returns `{text, sha256}`; `promptRef()` = `"<file>@<sha8>"`. |
 
+Standalone libraries live under `packages/` (npm workspaces; the engine itself stays at the repo root,
+which is the plugin root): `packages/deal-math` is pure deal math (integer cents, basis points, half-even,
+explicit assumptions, zod only, CI-guarded in `tests/architecture.test.ts`).
+
 Outside the spine: `mcp/tools.ts` holds every MCP handler (`server.ts` is a thin stdio entrypoint);
 `evals/supported.ts` holds the approved `{provider, model}` records and `evals/promote.ts` the promote flow.
 

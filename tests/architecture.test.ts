@@ -124,9 +124,9 @@ describe("invariant: storage is separated from the model layer", () => {
   });
 });
 
-describe("invariant: zero Google dependency in pipeline_core/ and mcp/", () => {
+describe("invariant: zero Google dependency in pipeline_core/, mcp/ and packages/", () => {
   const GOOGLE = /google|firebase|firestore|vertex|@google-cloud|secretmanager|aiplatform/i;
-  const files = [...listTs(abs("pipeline_core")), ...listTs(abs("mcp"))];
+  const files = [...listTs(abs("pipeline_core")), ...listTs(abs("mcp")), ...listTs(abs("packages"))];
 
   it("no import specifier mentions google/firebase/firestore/vertex/@google-cloud/secretmanager/aiplatform", () => {
     const offenders = files.flatMap((f) =>
@@ -154,6 +154,26 @@ describe("invariant: zero Google dependency in pipeline_core/ and mcp/", () => {
         .filter((n) => /\.ya?ml$/.test(n));
       expect(yaml).toEqual([]);
     }
+  });
+});
+
+describe("invariant: deal-math stays pure (zod only, no I/O, no clock, no model)", () => {
+  const files = listTs(abs("packages/deal-math/src"));
+
+  it("imports nothing but zod and its own files", () => {
+    expect(files.length).toBeGreaterThan(0);
+    const offenders = files.flatMap((f) =>
+      importsOf(f)
+        .filter((e) => !e.specifier.startsWith(".") && e.specifier !== "zod")
+        .map((e) => `${relative(ROOT, f)} -> ${e.specifier}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("never reads the clock, randomness or the environment", () => {
+    const re = /Date\.now|new Date\(\)|Math\.random|process\.env/;
+    const offenders = files.filter((f) => re.test(stripComments(readFileSync(f, "utf8")))).map((f) => relative(ROOT, f));
+    expect(offenders).toEqual([]);
   });
 });
 
