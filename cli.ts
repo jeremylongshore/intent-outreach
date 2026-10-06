@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { loadProfileRef, normalizeDomain, runCampaign } from "./pipeline_core/pipeline.js";
 import { runPropertyCampaign } from "./pipeline_core/property-campaign.js";
+import { checkMonitor, MonitorSchema, monitorPath, readSnapshot } from "./pipeline_core/monitors.js";
 import type { ResearchQuery } from "./pipeline_core/models.js";
 import { applyProfileToCampaignInput, type ReportProfile } from "./pipeline_core/profiles.js";
 import { cleanBuyerTitles } from "./pipeline_core/targeting.js";
@@ -153,6 +154,8 @@ export function printHelp(): void {
       "  intent-outreach suppress list       opt-outs honored by every run",
       "  intent-outreach property-run --icp <text> (--zips <list> | --parcels <fips:apn,...>) [options]",
       "                                      draft letters to owners of record (residential-re pack)",
+      "  intent-outreach monitor add|list|check   watch ZIPs or parcels for new parcels, sales, value,",
+      "                                      listing and distress changes (check --draft drafts the changes)",
       "  intent-outreach approvals pending   drafts waiting for a person to approve or reject",
       "  intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]",
       "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
@@ -561,6 +564,175 @@ async function cmdApprovals(args: string[]): Promise<void> {
   throw new UsageError(APPROVALS_USAGE);
 }
 
+const MONITOR_USAGE =
+  "usage: intent-outreach monitor add <id> (--zips <a,b> | --parcels <fips:apn>) [--value-change-pct <n>] [--replace]\n" +
+  "       intent-outreach monitor list\n" +
+  "       intent-outreach monitor check <id> [--json] [--draft --icp <text> [--profile <p>] [--pack <id>]\n" +
+  "                                      [--min-score <n>] [--max-properties <n>] [--budget-credits <n>]]\n" +
+  "  the first check records a baseline; later checks report new parcels, owner, value, listing and distress changes.\n" +
+  "  --draft runs a property campaign over the changed parcels only (drafts wait for approval); the snapshot is\n" +
+  "  saved only after that run is saved, so a failure re-reports the same changes next time.";
+
+const monitorDefPath = (id: string) => join(intentOutreachHome(), "monitors", `${id}.monitor.json`);
+
+/** `monitor add|list|check` — event monitors over property snapshots (pipeline_core/monitors.ts). */
+async function cmdMonitor(args: string[]): Promise<void> {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args,
+      options: {
+        zips: { type: "string" },
+        parcels: { type: "string" },
+        "value-change-pct": { type: "string" },
+        replace: { type: "boolean" },
+        json: { type: "boolean" },
+        draft: { type: "boolean" },
+        icp: { type: "string" },
+        profile: { type: "string" },
+        pack: { type: "string" },
+        "min-score": { type: "string" },
+        "max-properties": { type: "string" },
+        "budget-credits": { type: "string" },
+      },
+      allowPositionals: true,
+    });
+  } catch {
+    throw new UsageError(MONITOR_USAGE);
+  }
+  const { positionals } = parsed;
+  const values = parsed.values as Record<string, string | boolean | undefined>;
+  const [action, id, ...extra] = positionals;
+  if (extra.length > 0) throw new UsageError(MONITOR_USAGE);
+  const { mkdir, readFile, readdir, unlink, writeFile } = await import("node:fs/promises");
+
+  if (action === "list" && id === undefined) {
+    const dir = join(intentOutreachHome(), "monitors");
+    const names = await readdir(dir).catch(() => [] as string[]);
+    const defs = names.filter((n) => n.endsWith(".monitor.json"));
+    if (defs.length === 0) process.stdout.write("no monitors\n");
+    for (const n of defs.sort()) {
+      try {
+        const m = MonitorSchema.parse(JSON.parse(await readFile(join(dir, n), "utf8")));
+        const snap = await readSnapshot(monitorPath(m.id)).catch(() => undefined);
+        process.stdout.write(`${m.id}  ${JSON.stringify(m.query)}  last check: ${snap?.checkedAt ?? "never"}\n`);
+      } catch {
+        process.stdout.write(`${n}  UNREADABLE definition (fix or delete it)\n`);
+      }
+    }
+    return;
+  }
+  if (!id || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) throw new UsageError(MONITOR_USAGE);
+
+  if (action === "add") {
+    let query: ResearchQuery | undefined;
+    if (typeof values.zips === "string") {
+      const zips = values.zips.split(",").map((z) => z.trim()).filter(Boolean);
+      if (zips.length === 0 || !zips.every((z) => /^\d{5}$/.test(z))) throw new UsageError("--zips must be 5-digit ZIPs, comma-separated");
+      query = { kind: "area", geography: { zips }, filters: {} };
+    } else if (typeof values.parcels === "string") {
+      const refs = values.parcels.split(",").map((p) => p.trim()).filter(Boolean);
+      if (refs.length !== 1) throw new UsageError("--parcels: a monitor watches one parcel or one ZIP list");
+      const m = /^(\d{5}):(.+)$/.exec(refs[0]!);
+      if (!m) throw new UsageError(`--parcels: ${JSON.stringify(refs[0])} is not <countyFips>:<apn>`);
+      query = { kind: "parcel", countyFips: m[1]!, apn: m[2]! };
+    }
+    if (!query) throw new UsageError(MONITOR_USAGE);
+    const pct =
+      values["value-change-pct"] !== undefined
+        ? parseNumberFlag("--value-change-pct", String(values["value-change-pct"]), { min: 0.1, max: 100 })
+        : undefined;
+    let monitor;
+    try {
+      monitor = MonitorSchema.parse({ id, query, ...(pct !== undefined ? { valueChangePct: pct } : {}) });
+    } catch (err) {
+      throw new UsageError(`monitor: ${err instanceof z.ZodError ? err.issues.map((i) => i.message).join("; ") : String(err)}`);
+    }
+    const path = monitorDefPath(id);
+    const existing = await readFile(path, "utf8").then((t) => JSON.parse(t) as { query?: unknown }).catch(() => undefined);
+    if (existing && JSON.stringify(existing.query) !== JSON.stringify(monitor.query)) {
+      // A new query against the old snapshot would report every parcel as new (and --draft would mail them).
+      if (!values.replace) throw new UsageError(`monitor ${id} already watches ${JSON.stringify(existing.query)}; pass --replace to change it (resets its baseline)`);
+      await unlink(monitorPath(id)).catch(() => undefined);
+    }
+    await mkdir(join(intentOutreachHome(), "monitors"), { recursive: true, mode: 0o700 });
+    await writeFile(path, JSON.stringify(monitor, null, 2), { mode: 0o600 });
+    process.stdout.write(`monitor ${id} saved → ${path}\n`);
+    return;
+  }
+
+  if (action === "check") {
+    let monitor;
+    try {
+      monitor = MonitorSchema.parse(JSON.parse(await readFile(monitorDefPath(id), "utf8")));
+    } catch (err) {
+      throw new UsageError(`monitor ${id}: ${(err as NodeJS.ErrnoException).code === "ENOENT" ? "not found (monitor add first)" : String(err)}`);
+    }
+    // Validate every draft option BEFORE research, so a typo never costs a check (or its events).
+    const draftOnly = ["icp", "profile", "pack", "min-score", "max-properties", "budget-credits"].filter((k) => values[k] !== undefined);
+    if (!values.draft && draftOnly.length > 0) throw new UsageError(`--${draftOnly[0]} only applies with --draft`);
+    const icp = typeof values.icp === "string" ? values.icp.trim() : "";
+    if (values.draft && !icp) throw new UsageError("--draft needs --icp");
+    let sender;
+    if (typeof values.profile === "string") {
+      try {
+        sender = loadProfileRef(values.profile).sender;
+      } catch (err) {
+        throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    const num = (flag: string, o: { min: number; max: number; integer?: boolean }) =>
+      typeof values[flag] === "string" ? parseNumberFlag(`--${flag}`, values[flag] as string, o) : undefined;
+    const minScore = num("min-score", { min: 0, max: 100 });
+    const maxProperties = num("max-properties", { min: 1, max: 500, integer: true });
+    const budgetCredits = num("budget-credits", { min: 0, max: 1_000_000 });
+
+    const result = await checkMonitor(monitor, {
+      now: () => new Date().toISOString(),
+      cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
+    });
+    let draftRun: string | undefined;
+    try {
+      if (values.draft && result.changedQueries.length > 0) {
+        const { run } = await runPropertyCampaign({
+          id: makeRunId(),
+          icp,
+          queries: result.changedQueries,
+          ...(typeof values.pack === "string" ? { pack: values.pack } : {}),
+          ...(sender ? { sender } : {}),
+          ...(minScore !== undefined ? { minScore } : {}),
+          ...(maxProperties !== undefined ? { maxProperties } : {}),
+          ...(budgetCredits !== undefined ? { budgetCredits } : {}),
+          cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
+        });
+        await new JsonlRunStore().saveRun(run);
+        draftRun = `${run.id} (${run.messages.length} drafts, waiting for approval)`;
+      }
+      await result.commit(); // only now: a failure above re-reports these events next time
+    } catch (err) {
+      await result.abandon();
+      throw err;
+    }
+    if (values.json) {
+      const { commit: _c, abandon: _a, ...plain } = result;
+      process.stdout.write(`${JSON.stringify({ ...plain, ...(draftRun ? { draftRun } : {}) }, null, 2)}\n`);
+      return;
+    }
+    process.stdout.write(
+      [
+        `monitor ${id}: ${result.baseline ? "baseline recorded" : `${result.events.length} event(s)`} over ${result.parcels} parcel(s)`,
+        ...result.events.map((e) => `  ${e.kind}  ${e.propertyKey}${e.before !== undefined ? `  ${JSON.stringify(e.before)} → ${JSON.stringify(e.after)}` : ""}`),
+        ...result.failedConnectors.map((f) => `  WARNING: ${f.name} failed (${f.status}); parcels it missed keep their last snapshot`),
+        draftRun ? `drafted: ${draftRun}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n") + "\n",
+    );
+    return;
+  }
+  throw new UsageError(MONITOR_USAGE);
+}
+
 const CHECK_SEND_USAGE =
   "usage: intent-outreach check-send [--profile <name|path>] < input.json\n" +
   '  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,' +
@@ -670,6 +842,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       return cmdCheckSend(rest);
     case "property-run":
       return cmdPropertyRun(rest);
+    case "monitor":
+      return cmdMonitor(rest);
     case "approvals":
       return cmdApprovals(rest);
     case "help":
