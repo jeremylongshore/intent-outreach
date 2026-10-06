@@ -36,6 +36,7 @@ import {
 import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
 import { checkSendable } from "./pipeline_core/compliance/send.js";
 import { keyStatus } from "./pipeline_core/key-quotas.js";
+import { InboundInquirySchema, runInbound } from "./pipeline_core/inbound.js";
 import { approvalVerdict, decide, listPending, readApprovals, recipientMatches } from "./pipeline_core/approvals.js";
 import { userInfo } from "node:os";
 import { join } from "node:path";
@@ -160,6 +161,7 @@ export function printHelp(): void {
       "  intent-outreach approvals pending   drafts waiting for a person to approve or reject",
       "  intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]",
       "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
+      "  intent-outreach inbound --offer <text> < inquiry.json   draft the first reply to a website inquiry",
       "  intent-outreach keys <ENV_NAME>     key variants (NAME, NAME__TEAM, ...) and monthly quota usage",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
@@ -749,6 +751,91 @@ async function cmdKeys(args: string[]): Promise<void> {
   }
 }
 
+const INBOUND_USAGE =
+  "usage: intent-outreach inbound --offer <text> [--channel email|sms] [--profile <p>] [--pack <id>]\n" +
+  "         [--provider <p>] [--model <m>] [--out <runs.jsonl>] [--json] < inquiry.json\n" +
+  '  inquiry.json: {"inquiry": {"firstName"?,"email"?,"phone"?,"message","propertyAddress"?,"source","receivedAt"},\n' +
+  '                 "consents"?: [ConsentRecord...]}\n' +
+  "  Drafts the first reply to a website inquiry (never sends). The reply waits for approval like any draft.";
+
+const InboundStdinSchema = z.object({ inquiry: InboundInquirySchema, consents: z.array(ConsentRecordSchema).default([]) });
+
+/** `inbound` — draft the first reply to a website inquiry and record speed-to-lead. */
+async function cmdInbound(args: string[]): Promise<void> {
+  let values: Record<string, string | boolean | undefined>;
+  try {
+    ({ values } = parseArgs({
+      args,
+      options: {
+        offer: { type: "string" },
+        channel: { type: "string" },
+        profile: { type: "string" },
+        pack: { type: "string" },
+        provider: { type: "string" },
+        model: { type: "string" },
+        out: { type: "string" },
+        json: { type: "boolean" },
+      },
+      allowPositionals: false,
+    }));
+  } catch (err) {
+    throw new UsageError(`${err instanceof Error ? err.message : String(err)}\n${INBOUND_USAGE}`);
+  }
+  const offer = typeof values.offer === "string" ? values.offer.trim() : "";
+  if (!offer) throw new UsageError(INBOUND_USAGE);
+  const channel = values.channel;
+  if (channel !== undefined && channel !== "email" && channel !== "sms") throw new UsageError("--channel must be email or sms");
+  let parsed: z.infer<typeof InboundStdinSchema>;
+  try {
+    parsed = InboundStdinSchema.parse(JSON.parse(await readStdin()));
+  } catch (err) {
+    throw new UsageError(`inquiry JSON on stdin is invalid: ${err instanceof Error ? err.message : String(err)}\n${INBOUND_USAGE}`);
+  }
+  let sender;
+  if (typeof values.profile === "string") {
+    try {
+      sender = loadProfileRef(values.profile).sender;
+    } catch (err) {
+      throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  const provider =
+    values.provider || values.model
+      ? await getProvider({
+          ...(typeof values.provider === "string" ? { provider: values.provider as ProviderName } : {}),
+          ...(typeof values.model === "string" ? { model: values.model } : {}),
+        })
+      : undefined;
+  const { run, speedToLeadMs } = await runInbound({
+    id: makeRunId(),
+    inquiry: parsed.inquiry,
+    consents: parsed.consents,
+    offer,
+    ...(channel ? { channel } : {}),
+    ...(typeof values.pack === "string" ? { pack: values.pack } : {}),
+    ...(provider ? { provider } : {}),
+    ...(sender ? { sender } : {}),
+  });
+  await new JsonlRunStore(typeof values.out === "string" ? values.out : undefined).saveRun(run);
+  if (values.json) {
+    process.stdout.write(`${JSON.stringify(run, null, 2)}\n`);
+    return;
+  }
+  const m = run.messages[0];
+  process.stdout.write(
+    [
+      `inbound run ${run.id} — ${run.status} (${run.vertical})`,
+      speedToLeadMs !== undefined ? `speed-to-lead: ${(speedToLeadMs / 1000).toFixed(1)}s` : "",
+      run.blockedContacts.length ? `blocked: ${run.blockedContacts.map((b) => b.reason).join(", ")}` : "",
+      run.rejectedDrafts.length ? `rejected: ${run.rejectedDrafts.flatMap((r) => r.issues).join("; ")}` : "",
+      m ? `\n${m.subject ? `Subject: ${m.subject}\n` : ""}${m.body}\n\nCTA: ${m.cta}` : "",
+      m ? "\nNext: intent-outreach approvals pending  (nothing is sent until a person approves it)" : "",
+    ]
+      .filter(Boolean)
+      .join("\n") + "\n",
+  );
+}
+
 const CHECK_SEND_USAGE =
   "usage: intent-outreach check-send [--profile <name|path>] < input.json\n" +
   '  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,' +
@@ -858,6 +945,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       return cmdCheckSend(rest);
     case "keys":
       return cmdKeys(rest);
+    case "inbound":
+      return cmdInbound(rest);
     case "property-run":
       return cmdPropertyRun(rest);
     case "monitor":

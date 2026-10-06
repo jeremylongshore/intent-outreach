@@ -8,6 +8,20 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Inbound first replies with speed-to-lead** (#83 phase 7). `runInbound()` (`pipeline_core/inbound.ts`) and
+  `intent-outreach inbound --offer <text> < inquiry.json` draft the first reply to a website inquiry: suppression on
+  every email, phone and address the person gave, then consent for the reply channel (SMS needs written consent;
+  a revocation always blocks), then one draft call with the inquiry fenced as untrusted text (`inbound-reply.v1.md`),
+  `guardDraft` (no link, email or phone the inquiry did not give) plus the pack's draft rules, then the code-applied
+  footer. The run records `inbound.speedToLeadMs` (submission to drafted reply). It never sends: the reply waits for
+  approval like any draft. A run error may now carry just a `contactKey`, and packs may name an `inbound` prompt.
+
+### Fixed
+
+- **Fair-housing lint caught "perfect for families" but not "a great area for young families".** The outreach HARD list
+  now covers familial-status steering phrases: young families, young family, for families, family neighborhood, young
+  couples, newlyweds and young professionals.
+
 - **Several keys per connector, with monthly quotas** (#83 phase 4b). A key may come in labelled variants
   (`APOLLO_API_KEY`, `APOLLO_API_KEY__TEAM`, `APOLLO_API_KEY__PERSONAL`). `useKey(name, credits)` picks the first variant
   with room under its optional monthly quota (`~/.intent-outreach/quotas.json`), charges it before the call in a locked
