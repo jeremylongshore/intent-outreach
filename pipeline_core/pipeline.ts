@@ -64,6 +64,7 @@ import { guardDraft, type DraftRule, type VoiceRules } from "./draft-guard.js";
 import { loadProfile, type ReportProfile } from "./profiles.js";
 import { intentOutreachHome } from "./secrets.js";
 import { cleanBuyerTitles, rankContactsByTitle } from "./targeting.js";
+import { drainQuotaWarnings } from "./key-quotas.js";
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -344,6 +345,8 @@ function failureStatus(err: unknown): number | string {
   if (err instanceof HttpError) return err.status;
   const name = (err as { name?: unknown } | null)?.name;
   if (err instanceof ConnectorTimeoutError || name === "TimeoutError" || name === "AbortError") return "timeout";
+  // A vendor MCP server changed its tool definitions: the operator must review and re-pin.
+  if (name === "McpPinMismatchError") return "pin-mismatch";
   return "error";
 }
 
@@ -729,7 +732,7 @@ export async function runPropertyEnrich(properties: Property[], opts: ConnectorR
 const MAX_ERROR_MESSAGE = 500;
 
 /** Error text for the audit trail: secrets redacted, length-capped. */
-function sanitizeErrorMessage(err: unknown): string {
+export function sanitizeErrorMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : typeof err === "string" ? err : "unknown error";
   const redacted = msg
     .replace(/([?&](?:api[_-]?key|key|token|access_token|secret|password)=)[^&\s"']+/gi, "$1[redacted]")
@@ -1042,7 +1045,7 @@ export async function applyMessageCompliance(input: MessageComplianceInput): Pro
     blockedContacts,
     rejectedDrafts,
     errors,
-    complianceWarnings: senderComplianceWarnings(draftsMissingSender, input.sender),
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input.sender), ...drainQuotaWarnings()],
   };
 }
 
@@ -1137,6 +1140,11 @@ export interface RunCampaignInput {
   budgetCredits?: number;
   /** Response cache for connectors that declare `cacheTtlMs`. */
   cache?: ResponseCache;
+  /**
+   * A separate (usually cheaper) model for the SCORE seam. `provider` drafts.
+   * Both are resolved through the eval gate like any provider.
+   */
+  scoreProvider?: LLMProvider;
 }
 
 export interface RunCampaignResult {
@@ -1202,11 +1210,13 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   let draftsMissingSender = 0;
 
   // Cache-aware: the run total uses the same costFor split as the per-call Usage.
-  const recordUsage = (u: Usage) => meter.record(provider.model, u.inputTokens, u.outputTokens, cacheOf(u));
+  const scoreProvider = input.scoreProvider ?? provider;
+  const recordUsage = (u: Usage, model = provider.model) => meter.record(model, u.inputTokens, u.outputTokens, cacheOf(u));
 
   const recordError = (err: unknown, where: Omit<RunError, "message" | "finishReason">) => {
     const usage = usageFromError(err);
-    if (usage) meter.record(provider.model, usage.inputTokens, usage.outputTokens, usage.cache);
+    const model = where.stage === "score" ? scoreProvider.model : provider.model;
+    if (usage) meter.record(model, usage.inputTokens, usage.outputTokens, usage.cache);
     const finishReason = finishReasonFromError(err);
     errors.push({ ...where, message: sanitizeErrorMessage(err), ...(finishReason ? { finishReason } : {}) });
   };
@@ -1239,7 +1249,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
       // Isolated: a provider error here costs THIS lead, not the run.
       let scored: Awaited<ReturnType<typeof scoreLead>>;
       try {
-        scored = await scoreLead(provider, {
+        scored = await scoreLead(scoreProvider, {
           icp,
           lead,
           contacts,
@@ -1250,7 +1260,7 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
         recordError(err, { domain: lead.domain, stage: "score" });
         continue;
       }
-      recordUsage(scored.usage);
+      recordUsage(scored.usage, scoreProvider.model);
       promptRefs.score ??= scored.promptRefs;
       for (const d of scored.droppedAngles ?? []) droppedAngles.push({ domain: lead.domain, ...d });
       if (scored.object.fitScore < minScore) continue;
@@ -1355,6 +1365,14 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
     domains,
     provider: provider.name,
     model: provider.model,
+    ...(scoreProvider.name !== provider.name || scoreProvider.model !== provider.model
+      ? {
+          seamModels: {
+            score: { provider: scoreProvider.name, model: scoreProvider.model },
+            draft: { provider: provider.name, model: provider.model },
+          },
+        }
+      : {}),
     status,
     leads: dedupeLeads(allLeads),
     contacts: dedupeContacts(allContacts),

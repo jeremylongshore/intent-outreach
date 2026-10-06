@@ -8,6 +8,39 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ### Added
 
+- **Inbound first replies with speed-to-lead** (#83 phase 7). `runInbound()` (`pipeline_core/inbound.ts`) and
+  `intent-outreach inbound --offer <text> < inquiry.json` draft the first reply to a website inquiry: suppression on
+  every email, phone and address the person gave, then consent for the reply channel (SMS needs written consent;
+  a revocation always blocks), then one draft call with the inquiry fenced as untrusted text (`inbound-reply.v1.md`),
+  `guardDraft` (no link, email or phone the inquiry did not give) plus the pack's draft rules, then the code-applied
+  footer. The run records `inbound.speedToLeadMs` (submission to drafted reply). It never sends: the reply waits for
+  approval like any draft. A run error may now carry just a `contactKey`, and packs may name an `inbound` prompt.
+
+- **Several keys per connector, with monthly quotas** (#83 phase 4b). A key may come in labelled variants
+  (`APOLLO_API_KEY`, `APOLLO_API_KEY__TEAM`, `APOLLO_API_KEY__PERSONAL`). `useKey(name, credits)` picks the first variant
+  with room under its optional monthly quota (`~/.intent-outreach/quotas.json`), charges it before the call in a locked
+  0600 month-scoped ledger (`key-usage.json`), and throws `KeyQuotaExhaustedError` when all are spent. Crossing 80% of a
+  quota adds a run warning. `intent-outreach keys <ENV_NAME>` shows each variant's usage.
+
+- **Vendor MCP servers as fixed connectors** (#83 phase 4c). `createMcpConnector(spec)` wraps a data vendor's MCP
+  server (DealMachine, BatchData, Regrid, ATTOM...) as an ordinary connector: the definitions of the tool it may call
+  are pinned by sha256 (`mcpToolsDigest`) and a changed definition refuses to run (tool poisoning), only the bound tool
+  is ever called with arguments built in code from the typed query, every response is schema-checked, and the server,
+  version, tool and response hash are recorded on every fact (`Fact.via`). The model never sees the vendor's toolbox.
+
+- **A separate model per seam** (#83 phase 8). `runCampaign` and `runPropertyCampaign` take an optional
+  `scoreProvider` (a cheap model that scores; `provider` drafts), and the CLI `run` and `property-run` take
+  `--score-provider` / `--score-model`. Both models resolve through the eval gate like any provider; costs are
+  metered per model; the run records `seamModels` (score and draft provider + model) when they differ.
+
+- **Event monitors** (#83 phase 8). `intent-outreach monitor add <id> --zips ... | --parcels fips:apn`, `monitor list`
+  and `monitor check <id> [--draft --icp ...]`. A check re-runs the query through the normal research path,
+  fingerprints each parcel (owner, value, listing status, distress signals) and diffs it against the last snapshot
+  (`$INTENT_OUTREACH_HOME/monitors/<id>.json`, 0600): `new-parcel`, `owner-change`, `value-change` (threshold,
+  default 10%), `listing-change`, `distress-change`. The first check records a baseline; a check whose research
+  failed keeps the old snapshot so an outage never reads as every parcel being new. `--draft` runs a property
+  campaign over only the changed parcels; drafts wait in the approval queue.
+
 - **MCP tools `list_runs`, `suppress` and `underwrite`** (#83 phase 8). `list_runs` summarizes the newest
   runs in the local store (status, pack, drafts, blocks, credits, cost; corrupt lines are counted). `suppress`
   adds or lists opt-outs of any kind from inside Claude Code; removing an opt-out is deliberately CLI-only
@@ -112,6 +145,18 @@ All notable changes to Intent Outreach are documented here. Format follows
   `evals/results/2026-10-04-minimax-MiniMax-M3-outreach.v2@79323f78.json`). Auto-detect order is
   now anthropic, openai, minimax, xai, and Anthropic stays the default. Costs are metered at
   MiniMax's published $0.30/$1.20 per MTok (#67).
+
+### Fixed
+
+- **Fair-housing lint caught "perfect for families" but not "a great area for young families".** The outreach HARD list
+  now covers familial-status steering phrases: young families, young family, for families, family neighborhood, young
+  couples, newlyweds and young professionals.
+- **The quantity guard read a street address's house number as a statistic** (#103). "412 Lagoon Ave since 2004" was
+  rejected as an invented time period; a bare integer followed by capitalized words ending in a street suffix is now a
+  label. "412 homes sold since 2019" is still caught.
+- **The residential eval scorer flagged "Alabama" when the record said "AL"** (#105). State codes on record now ground
+  the spelled-out state name; a state the record does not name still fails. Two keyed MiniMax-M3 residential runs are
+  kept as evidence (not promoted: 93% of fixtures, 98% of runs).
 
 ## [0.3.0] - 2026-10-04
 

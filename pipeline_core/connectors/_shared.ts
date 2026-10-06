@@ -11,6 +11,13 @@ import type { z } from "zod";
 import { registerSecretForRedaction } from "../http.js";
 import { getSecret, hasSecret } from "../secrets.js";
 
+/**
+ * Several keys per connector with monthly quotas (key-quotas.ts): use this
+ * instead of useSecret when a vendor bills per call. Charges `credits` to the
+ * chosen key before the call; throws when every key is out of quota.
+ */
+export { useKey, KeyQuotaExhaustedError } from "../key-quotas.js";
+
 /** Read a secret and register it so it can never appear in an HttpError message. */
 export function useSecret(name: string): string {
   const v = getSecret(name);

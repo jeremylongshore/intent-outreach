@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { loadProfileRef, normalizeDomain, runCampaign } from "./pipeline_core/pipeline.js";
 import { runPropertyCampaign } from "./pipeline_core/property-campaign.js";
+import { checkMonitor, MonitorSchema, monitorPath, readSnapshot } from "./pipeline_core/monitors.js";
 import type { ResearchQuery } from "./pipeline_core/models.js";
 import { applyProfileToCampaignInput, type ReportProfile } from "./pipeline_core/profiles.js";
 import { cleanBuyerTitles } from "./pipeline_core/targeting.js";
@@ -34,6 +35,8 @@ import {
 } from "./pipeline_core/suppressions.js";
 import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
 import { checkSendable } from "./pipeline_core/compliance/send.js";
+import { keyStatus } from "./pipeline_core/key-quotas.js";
+import { InboundInquirySchema, runInbound } from "./pipeline_core/inbound.js";
 import { approvalVerdict, decide, listPending, readApprovals, recipientMatches } from "./pipeline_core/approvals.js";
 import { userInfo } from "node:os";
 import { join } from "node:path";
@@ -153,9 +156,13 @@ export function printHelp(): void {
       "  intent-outreach suppress list       opt-outs honored by every run",
       "  intent-outreach property-run --icp <text> (--zips <list> | --parcels <fips:apn,...>) [options]",
       "                                      draft letters to owners of record (residential-re pack)",
+      "  intent-outreach monitor add|list|check   watch ZIPs or parcels for new parcels, sales, value,",
+      "                                      listing and distress changes (check --draft drafts the changes)",
       "  intent-outreach approvals pending   drafts waiting for a person to approve or reject",
       "  intent-outreach approvals approve <runId> <contactKey> --digest <hex> [--note <text>]",
       "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
+      "  intent-outreach inbound --offer <text> < inquiry.json   draft the first reply to a website inquiry",
+      "  intent-outreach keys <ENV_NAME>     key variants (NAME, NAME__TEAM, ...) and monthly quota usage",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
@@ -168,6 +175,7 @@ export function printHelp(): void {
       "                          $INTENT_OUTREACH_HOME/profiles, then the bundled profiles",
       "  --provider <name>       anthropic | openai | minimax | xai (default: auto-detect)",
       "  --model <id>            override the model id",
+      "  --score-provider <name> / --score-model <id>   a separate (cheaper) model for scoring; --provider drafts",
       "  --channel <email|linkedin>   default: email (or the profile's)",
       "  --min-score <0-100>     skip drafting below this fit score (default: 0)",
       `  --max-contacts <1-${MAX_CONTACTS_LIMIT}>   contacts to draft per lead (default: 1)`,
@@ -210,6 +218,18 @@ function cmdProviders(): void {
   process.stdout.write(`\nauto-detected provider: ${detected}\n`);
 }
 
+/** Resolve the optional score-seam provider (cheap scorer); undefined ⇒ the main provider scores too. */
+async function scoreProviderFrom(values: Record<string, unknown>) {
+  const m = values["score-model"];
+  // --score-model alone keeps the run's --provider (never silently auto-detects a different vendor).
+  const p = values["score-provider"] ?? values.provider;
+  if (typeof values["score-provider"] !== "string" && typeof m !== "string") return undefined;
+  return getProvider({
+    ...(typeof p === "string" ? { provider: p as ProviderName } : {}),
+    ...(typeof m === "string" ? { model: m } : {}),
+  });
+}
+
 async function cmdRun(args: string[]): Promise<void> {
   let values;
   try {
@@ -221,6 +241,8 @@ async function cmdRun(args: string[]): Promise<void> {
         profile: { type: "string" },
         provider: { type: "string" },
         model: { type: "string" },
+        "score-provider": { type: "string" },
+        "score-model": { type: "string" },
         channel: { type: "string" },
         "min-score": { type: "string" },
         "max-contacts": { type: "string" },
@@ -274,6 +296,7 @@ async function cmdRun(args: string[]): Promise<void> {
   const buyerTitles = resolveBuyerTitles(flagBuyerTitles, profile);
 
   // Resolve an explicit provider only when overridden; else core auto-detects from env.
+  const scoreProvider = await scoreProviderFrom(values);
   const provider =
     values.provider || values.model
       ? await getProvider({
@@ -293,6 +316,7 @@ async function cmdRun(args: string[]): Promise<void> {
     ...(maxContacts !== undefined ? { maxContactsPerLead: maxContacts } : {}),
     ...(buyerTitles ? { buyerTitles } : {}),
     ...(budgetCredits !== undefined ? { budgetCredits } : {}),
+    ...(scoreProvider ? { scoreProvider } : {}),
     // Only connectors that declare cacheTtlMs are cached; files are 0600 under the local home.
     cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
   });
@@ -397,6 +421,8 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
         profile: { type: "string" },
         provider: { type: "string" },
         model: { type: "string" },
+        "score-provider": { type: "string" },
+        "score-model": { type: "string" },
         pack: { type: "string" },
         "min-score": { type: "string" },
         "max-properties": { type: "string" },
@@ -447,12 +473,14 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
         })
       : undefined;
 
+  const propScoreProvider = await scoreProviderFrom(values);
   const { run, cost } = await runPropertyCampaign({
     id: makeRunId(),
     icp,
     queries,
     ...(typeof values.pack === "string" ? { pack: values.pack } : {}),
     ...(provider ? { provider } : {}),
+    ...(propScoreProvider ? { scoreProvider: propScoreProvider } : {}),
     ...(sender ? { sender } : {}),
     ...(minScore !== undefined ? { minScore } : {}),
     ...(maxProperties !== undefined ? { maxProperties } : {}),
@@ -538,6 +566,274 @@ async function cmdApprovals(args: string[]): Promise<void> {
     return;
   }
   throw new UsageError(APPROVALS_USAGE);
+}
+
+const MONITOR_USAGE =
+  "usage: intent-outreach monitor add <id> (--zips <a,b> | --parcels <fips:apn>) [--value-change-pct <n>] [--replace]\n" +
+  "       intent-outreach monitor list\n" +
+  "       intent-outreach monitor check <id> [--json] [--draft --icp <text> [--profile <p>] [--pack <id>]\n" +
+  "                                      [--min-score <n>] [--max-properties <n>] [--budget-credits <n>]]\n" +
+  "  the first check records a baseline; later checks report new parcels, owner, value, listing and distress changes.\n" +
+  "  --draft runs a property campaign over the changed parcels only (drafts wait for approval); the snapshot is\n" +
+  "  saved only after that run is saved, so a failure re-reports the same changes next time.";
+
+const monitorDefPath = (id: string) => join(intentOutreachHome(), "monitors", `${id}.monitor.json`);
+
+/** `monitor add|list|check` — event monitors over property snapshots (pipeline_core/monitors.ts). */
+async function cmdMonitor(args: string[]): Promise<void> {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args,
+      options: {
+        zips: { type: "string" },
+        parcels: { type: "string" },
+        "value-change-pct": { type: "string" },
+        replace: { type: "boolean" },
+        json: { type: "boolean" },
+        draft: { type: "boolean" },
+        icp: { type: "string" },
+        profile: { type: "string" },
+        pack: { type: "string" },
+        "min-score": { type: "string" },
+        "max-properties": { type: "string" },
+        "budget-credits": { type: "string" },
+      },
+      allowPositionals: true,
+    });
+  } catch {
+    throw new UsageError(MONITOR_USAGE);
+  }
+  const { positionals } = parsed;
+  const values = parsed.values as Record<string, string | boolean | undefined>;
+  const [action, id, ...extra] = positionals;
+  if (extra.length > 0) throw new UsageError(MONITOR_USAGE);
+  const { mkdir, readFile, readdir, unlink, writeFile } = await import("node:fs/promises");
+
+  if (action === "list" && id === undefined) {
+    const dir = join(intentOutreachHome(), "monitors");
+    const names = await readdir(dir).catch(() => [] as string[]);
+    const defs = names.filter((n) => n.endsWith(".monitor.json"));
+    if (defs.length === 0) process.stdout.write("no monitors\n");
+    for (const n of defs.sort()) {
+      try {
+        const m = MonitorSchema.parse(JSON.parse(await readFile(join(dir, n), "utf8")));
+        const snap = await readSnapshot(monitorPath(m.id)).catch(() => undefined);
+        process.stdout.write(`${m.id}  ${JSON.stringify(m.query)}  last check: ${snap?.checkedAt ?? "never"}\n`);
+      } catch {
+        process.stdout.write(`${n}  UNREADABLE definition (fix or delete it)\n`);
+      }
+    }
+    return;
+  }
+  if (!id || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) throw new UsageError(MONITOR_USAGE);
+
+  if (action === "add") {
+    let query: ResearchQuery | undefined;
+    if (typeof values.zips === "string") {
+      const zips = values.zips.split(",").map((z) => z.trim()).filter(Boolean);
+      if (zips.length === 0 || !zips.every((z) => /^\d{5}$/.test(z))) throw new UsageError("--zips must be 5-digit ZIPs, comma-separated");
+      query = { kind: "area", geography: { zips }, filters: {} };
+    } else if (typeof values.parcels === "string") {
+      const refs = values.parcels.split(",").map((p) => p.trim()).filter(Boolean);
+      if (refs.length !== 1) throw new UsageError("--parcels: a monitor watches one parcel or one ZIP list");
+      const m = /^(\d{5}):(.+)$/.exec(refs[0]!);
+      if (!m) throw new UsageError(`--parcels: ${JSON.stringify(refs[0])} is not <countyFips>:<apn>`);
+      query = { kind: "parcel", countyFips: m[1]!, apn: m[2]! };
+    }
+    if (!query) throw new UsageError(MONITOR_USAGE);
+    const pct =
+      values["value-change-pct"] !== undefined
+        ? parseNumberFlag("--value-change-pct", String(values["value-change-pct"]), { min: 0.1, max: 100 })
+        : undefined;
+    let monitor;
+    try {
+      monitor = MonitorSchema.parse({ id, query, ...(pct !== undefined ? { valueChangePct: pct } : {}) });
+    } catch (err) {
+      throw new UsageError(`monitor: ${err instanceof z.ZodError ? err.issues.map((i) => i.message).join("; ") : String(err)}`);
+    }
+    const path = monitorDefPath(id);
+    const existing = await readFile(path, "utf8").then((t) => JSON.parse(t) as { query?: unknown }).catch(() => undefined);
+    if (existing && JSON.stringify(existing.query) !== JSON.stringify(monitor.query)) {
+      // A new query against the old snapshot would report every parcel as new (and --draft would mail them).
+      if (!values.replace) throw new UsageError(`monitor ${id} already watches ${JSON.stringify(existing.query)}; pass --replace to change it (resets its baseline)`);
+      await unlink(monitorPath(id)).catch(() => undefined);
+    }
+    await mkdir(join(intentOutreachHome(), "monitors"), { recursive: true, mode: 0o700 });
+    await writeFile(path, JSON.stringify(monitor, null, 2), { mode: 0o600 });
+    process.stdout.write(`monitor ${id} saved → ${path}\n`);
+    return;
+  }
+
+  if (action === "check") {
+    let monitor;
+    try {
+      monitor = MonitorSchema.parse(JSON.parse(await readFile(monitorDefPath(id), "utf8")));
+    } catch (err) {
+      throw new UsageError(`monitor ${id}: ${(err as NodeJS.ErrnoException).code === "ENOENT" ? "not found (monitor add first)" : String(err)}`);
+    }
+    // Validate every draft option BEFORE research, so a typo never costs a check (or its events).
+    const draftOnly = ["icp", "profile", "pack", "min-score", "max-properties", "budget-credits"].filter((k) => values[k] !== undefined);
+    if (!values.draft && draftOnly.length > 0) throw new UsageError(`--${draftOnly[0]} only applies with --draft`);
+    const icp = typeof values.icp === "string" ? values.icp.trim() : "";
+    if (values.draft && !icp) throw new UsageError("--draft needs --icp");
+    let sender;
+    if (typeof values.profile === "string") {
+      try {
+        sender = loadProfileRef(values.profile).sender;
+      } catch (err) {
+        throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    const num = (flag: string, o: { min: number; max: number; integer?: boolean }) =>
+      typeof values[flag] === "string" ? parseNumberFlag(`--${flag}`, values[flag] as string, o) : undefined;
+    const minScore = num("min-score", { min: 0, max: 100 });
+    const maxProperties = num("max-properties", { min: 1, max: 500, integer: true });
+    const budgetCredits = num("budget-credits", { min: 0, max: 1_000_000 });
+
+    const result = await checkMonitor(monitor, {
+      now: () => new Date().toISOString(),
+      cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
+    });
+    let draftRun: string | undefined;
+    try {
+      if (values.draft && result.changedQueries.length > 0) {
+        const { run } = await runPropertyCampaign({
+          id: makeRunId(),
+          icp,
+          queries: result.changedQueries,
+          ...(typeof values.pack === "string" ? { pack: values.pack } : {}),
+          ...(sender ? { sender } : {}),
+          ...(minScore !== undefined ? { minScore } : {}),
+          ...(maxProperties !== undefined ? { maxProperties } : {}),
+          ...(budgetCredits !== undefined ? { budgetCredits } : {}),
+          cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
+        });
+        await new JsonlRunStore().saveRun(run);
+        draftRun = `${run.id} (${run.messages.length} drafts, waiting for approval)`;
+      }
+      await result.commit(); // only now: a failure above re-reports these events next time
+    } catch (err) {
+      await result.abandon();
+      throw err;
+    }
+    if (values.json) {
+      const { commit: _c, abandon: _a, ...plain } = result;
+      process.stdout.write(`${JSON.stringify({ ...plain, ...(draftRun ? { draftRun } : {}) }, null, 2)}\n`);
+      return;
+    }
+    process.stdout.write(
+      [
+        `monitor ${id}: ${result.baseline ? "baseline recorded" : `${result.events.length} event(s)`} over ${result.parcels} parcel(s)`,
+        ...result.events.map((e) => `  ${e.kind}  ${e.propertyKey}${e.before !== undefined ? `  ${JSON.stringify(e.before)} → ${JSON.stringify(e.after)}` : ""}`),
+        ...result.failedConnectors.map((f) => `  WARNING: ${f.name} failed (${f.status}); parcels it missed keep their last snapshot`),
+        draftRun ? `drafted: ${draftRun}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n") + "\n",
+    );
+    return;
+  }
+  throw new UsageError(MONITOR_USAGE);
+}
+
+/** `keys <ENV_NAME>` — configured variants of a connector key and this month's usage against quotas. */
+async function cmdKeys(args: string[]): Promise<void> {
+  const [name, ...extra] = args;
+  if (!name || extra.length > 0 || !/^[A-Z][A-Z0-9_]*$/.test(name)) {
+    throw new UsageError("usage: intent-outreach keys <ENV_NAME>   e.g. keys APOLLO_API_KEY");
+  }
+  const rows = await keyStatus(name);
+  if (rows.length === 0) process.stdout.write(`no ${name} or ${name}__<LABEL> configured\n`);
+  for (const r of rows) {
+    const quota = r.monthlyCredits !== undefined ? `${r.used}/${r.monthlyCredits} credits this month` : `${r.used} credits this month (no quota)`;
+    process.stdout.write(`${r.envName.padEnd(36)} ${r.label.padEnd(12)} ${quota}\n`);
+  }
+}
+
+const INBOUND_USAGE =
+  "usage: intent-outreach inbound --offer <text> [--channel email|sms] [--profile <p>] [--pack <id>]\n" +
+  "         [--provider <p>] [--model <m>] [--out <runs.jsonl>] [--json] < inquiry.json\n" +
+  '  inquiry.json: {"inquiry": {"firstName"?,"email"?,"phone"?,"message","propertyAddress"?,"source","receivedAt"},\n' +
+  '                 "consents"?: [ConsentRecord...]}\n' +
+  "  Drafts the first reply to a website inquiry (never sends). The reply waits for approval like any draft.";
+
+const InboundStdinSchema = z.object({ inquiry: InboundInquirySchema, consents: z.array(ConsentRecordSchema).default([]) });
+
+/** `inbound` — draft the first reply to a website inquiry and record speed-to-lead. */
+async function cmdInbound(args: string[]): Promise<void> {
+  let values: Record<string, string | boolean | undefined>;
+  try {
+    ({ values } = parseArgs({
+      args,
+      options: {
+        offer: { type: "string" },
+        channel: { type: "string" },
+        profile: { type: "string" },
+        pack: { type: "string" },
+        provider: { type: "string" },
+        model: { type: "string" },
+        out: { type: "string" },
+        json: { type: "boolean" },
+      },
+      allowPositionals: false,
+    }));
+  } catch (err) {
+    throw new UsageError(`${err instanceof Error ? err.message : String(err)}\n${INBOUND_USAGE}`);
+  }
+  const offer = typeof values.offer === "string" ? values.offer.trim() : "";
+  if (!offer) throw new UsageError(INBOUND_USAGE);
+  const channel = values.channel;
+  if (channel !== undefined && channel !== "email" && channel !== "sms") throw new UsageError("--channel must be email or sms");
+  let parsed: z.infer<typeof InboundStdinSchema>;
+  try {
+    parsed = InboundStdinSchema.parse(JSON.parse(await readStdin()));
+  } catch (err) {
+    throw new UsageError(`inquiry JSON on stdin is invalid: ${err instanceof Error ? err.message : String(err)}\n${INBOUND_USAGE}`);
+  }
+  let sender;
+  if (typeof values.profile === "string") {
+    try {
+      sender = loadProfileRef(values.profile).sender;
+    } catch (err) {
+      throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  const provider =
+    values.provider || values.model
+      ? await getProvider({
+          ...(typeof values.provider === "string" ? { provider: values.provider as ProviderName } : {}),
+          ...(typeof values.model === "string" ? { model: values.model } : {}),
+        })
+      : undefined;
+  const { run, speedToLeadMs } = await runInbound({
+    id: makeRunId(),
+    inquiry: parsed.inquiry,
+    consents: parsed.consents,
+    offer,
+    ...(channel ? { channel } : {}),
+    ...(typeof values.pack === "string" ? { pack: values.pack } : {}),
+    ...(provider ? { provider } : {}),
+    ...(sender ? { sender } : {}),
+  });
+  await new JsonlRunStore(typeof values.out === "string" ? values.out : undefined).saveRun(run);
+  if (values.json) {
+    process.stdout.write(`${JSON.stringify(run, null, 2)}\n`);
+    return;
+  }
+  const m = run.messages[0];
+  process.stdout.write(
+    [
+      `inbound run ${run.id} — ${run.status} (${run.vertical})`,
+      speedToLeadMs !== undefined ? `speed-to-lead: ${(speedToLeadMs / 1000).toFixed(1)}s` : "",
+      run.blockedContacts.length ? `blocked: ${run.blockedContacts.map((b) => b.reason).join(", ")}` : "",
+      run.rejectedDrafts.length ? `rejected: ${run.rejectedDrafts.flatMap((r) => r.issues).join("; ")}` : "",
+      m ? `\n${m.subject ? `Subject: ${m.subject}\n` : ""}${m.body}\n\nCTA: ${m.cta}` : "",
+      m ? "\nNext: intent-outreach approvals pending  (nothing is sent until a person approves it)" : "",
+    ]
+      .filter(Boolean)
+      .join("\n") + "\n",
+  );
 }
 
 const CHECK_SEND_USAGE =
@@ -647,8 +943,14 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       return cmdSuppress(rest);
     case "check-send":
       return cmdCheckSend(rest);
+    case "keys":
+      return cmdKeys(rest);
+    case "inbound":
+      return cmdInbound(rest);
     case "property-run":
       return cmdPropertyRun(rest);
+    case "monitor":
+      return cmdMonitor(rest);
     case "approvals":
       return cmdApprovals(rest);
     case "help":

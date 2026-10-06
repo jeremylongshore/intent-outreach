@@ -1,0 +1,88 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "absentee-out-of-state",
+  "kind": "model",
+  "note": "Absentee owner mailing from another state, 22 years on record: hot or warm, and drafted.",
+  "property": {
+    "key": "01003:05-09-27-0-000-014.000",
+    "apn": "05-09-27-0-000-014.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "412 Lagoon Ave",
+      "city": "Gulf Shores",
+      "state": "AL",
+      "zip": "36542"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "yearBuilt": {
+        "value": 1996,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "bedrooms": {
+        "value": 3,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "livingAreaSqFt": {
+        "value": 1640,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "floodZone": {
+        "value": "AE",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:carter",
+      "kind": "person",
+      "name": "Daniel Carter",
+      "source": "fixture-county-gis",
+      "mailingAddress": {
+        "line1": "2210 Belmont Blvd",
+        "city": "Nashville",
+        "state": "TN",
+        "zip": "37212"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-09-27-0-000-014.000",
+      "partyKey": "person:carter",
+      "role": "owner",
+      "asOf": "2004-06-15",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expect": {
+    "bands": [
+      "hot",
+      "warm"
+    ]
+  },
+  "draft": {
+    "reasons": [
+      "The owner's mailing address is in Nashville, TN, not at the property.",
+      "Ownership recorded in 2004."
+    ],
+    "judgeMin": 4
+  }
+}

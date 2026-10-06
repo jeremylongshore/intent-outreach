@@ -190,6 +190,8 @@ export function factSchema<T extends z.ZodType>(value: T) {
     fetchedAt: z.string().datetime(),
     responseHash: Sha256HexSchema.optional(),
     licenseTerms: LicenseTermsSchema.optional(),
+    /** When the value came through a vendor MCP server: which server, version and tool. */
+    via: z.object({ server: z.string().min(1), version: z.string().min(1), tool: z.string().min(1) }).optional(),
   });
 }
 export const FactSchema = factSchema(z.unknown());
@@ -199,6 +201,7 @@ export type Fact<T = unknown> = {
   fetchedAt: string;
   responseHash?: string;
   licenseTerms?: LicenseTerms;
+  via?: { server: string; version: string; tool: string };
 };
 
 const UsStateSchema = z.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code");
@@ -442,8 +445,9 @@ export const RunErrorSchema = z
     /** AI SDK finish reason when the error carried one (e.g. "length"). */
     finishReason: z.string().optional(),
   })
-  .refine((e) => e.domain !== undefined || e.propertyKey !== undefined, {
-    message: "a run error needs a domain or a propertyKey",
+  // contactKey alone (v6): an inbound reply has no company domain and no parcel.
+  .refine((e) => e.domain !== undefined || e.propertyKey !== undefined || e.contactKey !== undefined, {
+    message: "a run error needs a domain, a propertyKey or a contactKey",
   });
 export type RunError = z.infer<typeof RunErrorSchema>;
 
@@ -563,6 +567,28 @@ export const CampaignRunSchema = z.object({
   origin: z.enum(["pipeline", "agent"]).optional(),
   /** The typed research queries this run executed (v6, optional). */
   queries: z.array(ResearchQuerySchema).optional(),
+  /**
+   * Which provider + model ran each LLM seam when they differ (v6, optional):
+   * a cheap model scores, a stronger one drafts. Absent ⇒ `provider`/`model` ran both.
+   */
+  seamModels: z
+    .object({
+      score: z.object({ provider: z.string().min(1), model: z.string().min(1) }),
+      draft: z.object({ provider: z.string().min(1), model: z.string().min(1) }),
+    })
+    .optional(),
+  /**
+   * An inbound reply (v6, optional): where the inquiry came from, when it
+   * arrived, when the reply was drafted, and the speed-to-lead in between.
+   */
+  inbound: z
+    .object({
+      source: z.string().min(1),
+      receivedAt: z.string().datetime({ offset: true }),
+      draftedAt: z.string().datetime(),
+      speedToLeadMs: z.number().int().nonnegative(),
+    })
+    .optional(),
   /** Vendor-credit accounting when the run had a budget (v6, optional). */
   credits: z
     .object({

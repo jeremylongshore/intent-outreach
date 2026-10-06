@@ -1,0 +1,61 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "phone-only-owner",
+  "kind": "gate",
+  "note": "Only a phone on file (DNC-scrubbed clean): a phone does not make a mail letter possible.",
+  "property": {
+    "key": "01003:05-09-27-0-000-102.000",
+    "apn": "05-09-27-0-000-102.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "13 Dune Dr",
+      "city": "Gulf Shores",
+      "state": "AL",
+      "zip": "36542"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:phoneonly",
+      "kind": "person",
+      "name": "Grant Ellison",
+      "source": "fixture-county-gis",
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-09-27-0-000-102.000",
+      "partyKey": "person:phoneonly",
+      "role": "owner",
+      "asOf": "2009-07-22",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "contactPoints": [
+    {
+      "partyKey": "person:phoneonly",
+      "kind": "phone",
+      "value": "+12515550188",
+      "lineType": "mobile",
+      "dnc": "clean",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expectBlocked": "mail:no-address"
+}

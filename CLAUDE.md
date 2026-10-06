@@ -44,10 +44,12 @@ standalone CLI ────┘   handlers mcp/tools.ts) └─ save_run ──�
 | `providers.ts` | Vercel AI SDK wrapper (`generateText` + `Output.object`). Providers: anthropic, openai, minimax (OpenAI-compatible, JSON mode + `minimax.ts` middleware), xai. `SUPPORTED_PROVIDERS` is **derived** from `evals/supported.ts`. |
 | `seam.ts` | `scoreLead()` + `draftMessage()`, the ONLY LLM calls. Builds prompts from allowlisted fields, fences connector data as escaped JSON in `<lead_data>`-style tags, grounds score angles, bounds tokens and time. The drafter may **decline** an out-of-ICP lead; a decline is a `DraftRejectedError` (`"declined: …"`) recorded in `run.rejectedDrafts`, never sent. |
 | `property-campaign.ts`, `property-seam.ts` | The PROPERTY campaign loop (`runPropertyCampaign`): typed queries → research (pack routing, budget, cache) → suppression on the owner's mailing address + contact points, then the pack's `propertyGate` → `scoreProperty` (signals computed in code, FCRA-stripped attributes, grounded reasons) → the pack's `underwriting` (deal math in code, quotable facts) → `draftPropertyMessage` (guard + pack draft rules) → code-applied footer → one validated v6 run. Drafts go to the owner of record; default channel `mail`. |
+| `inbound.ts` | `runInbound()`: the first reply to a website inquiry (suppression → consent for the reply channel → one fenced draft call → `guardDraft` + pack rules → footer → one v6 run with `inbound.speedToLeadMs`). Never sends; CLI `inbound`. |
 | `draft-guard.ts` | Pure `guardDraft()` (rejects urls/emails/phones absent from the inputs, over-long body or subject, CR/LF or fake `Re:` subjects, stock openers) and `groundAngles()`. A failing draft lands in `run.rejectedDrafts`. |
 | `footer.ts` | Pure `applyComplianceFooter()`: the CAN-SPAM footer, appended **in code** from the profile `sender`. |
 | `profiles.ts`, `render/` | Report Profiles (including `sender`) and the escaped renderers (CSV formula, `.eml` header, HTML, Slack). |
 | `routing.ts`, `rate-limit.ts` | The provider layer's runtime controls, all fixed configuration (never the LLM): capability routing (`first-hit` waterfall / `ordered-fallback` / `all`, from a pack's `dataSources`), a per-run `CreditBudget` charged before each paid call (exhausted ⇒ no further paid calls; recorded in `run.credits`), a response cache (`MemoryResponseCache`, `FileResponseCache` 0600) for connectors that declare `cacheTtlMs`, and per-connector token-bucket limits enforced in `httpJson` (`rateLimit`). |
+| `monitors.ts` | Event monitors: a saved property query re-run through the normal research path, parcels reduced to fingerprints (owner, value, listing, distress) and diffed against the last 0600 snapshot into events; a failed check keeps the old snapshot. CLI `monitor add|list|check [--draft]`. |
 | `approvals.ts` | The human approval queue: an append-only `approvals.jsonl` (0600) binding a person's decision to run id + contact key + sha256(channel, subject, body, CTA). `checkSendable` requires `approval: "approved"` on every channel (a pack cannot turn it off); an edited draft needs a new approval. CLI `approvals pending|approve|reject`, MCP `list_pending`/`approve`/`reject`. |
 | `cost.ts`, `prompts.ts` | `CostMeter` (real AI SDK v7 usage, cache-aware). `loadPrompt` returns `{text, sha256}`; `promptRef()` = `"<file>@<sha8>"`. |
 
@@ -93,15 +95,21 @@ connector: `capabilities`, `queryKinds`, `creditsPerCall` (charged against the r
 (opt into the response cache) and `rateLimit` (pass it to every `httpJson` call as `{ key: name, ...rateLimit }`). Never read `process.env` directly,
 never import a cloud SDK, and forward the context `signal` to `httpJson`. Register it in
 `connectors/index.ts` (order = call order: free → paid → legacy → enterprise). Add fixtures. Users can also
-`registerConnector()` their own at runtime. Connector landscape: `000-docs/018-DR-LAND`.
+`registerConnector()` their own at runtime. A vendor that ships an MCP server is wrapped with
+`createMcpConnector` (`connectors/mcp.ts`): pin the reviewed tool definitions (`mcpToolsDigest`), bind the one tool
+it calls, build its arguments in code, and give a zod schema for its response. Never hand a vendor's MCP toolbox to
+the model. A vendor billed per call reads its key with `useKey(name, credits)` (`key-quotas.ts`, re-exported from
+`_shared.ts`) instead of `useSecret`: it rotates across `NAME` / `NAME__LABEL` variants under monthly quotas in
+`quotas.json`. Connector landscape: `000-docs/018-DR-LAND`.
 
 ### Adding a model provider
 
 Approval is **per model**, recorded in `evals/supported.ts`. `SUPPORTED_PROVIDERS` is derived from it, so
 never hand-edit that list. A new provider needs an adapter in `providers.ts` (`ProviderName`,
 `DEFAULT_MODEL`, a dynamically imported optional `@ai-sdk/*` dependency). To approve a model, run with a
-real key: `npm run evals:promote -- --provider <name> --model <id>` (keyed harness, repeat ≥3, every
-fixture must pass every run). On a pass it writes `evals/results/<record>.json` and upserts a
+real key: `npm run evals:promote -- --provider <name> --model <id> [--pack residential-re]` (keyed
+harness, repeat ≥3, every fixture must pass every run). Approval is per `{provider, model, pack}`;
+`SUPPORTED_PROVIDERS` comes from the `b2b-sdr` entries only. On a pass it writes `evals/results/<record>.json` and upserts a
 `verified: true` entry in `supported.ts`; commit both. It never changes `DEFAULT_MODEL`: that is a separate
 reviewed edit, and the script prints the line. `INTENT_OUTREACH_ALLOW_UNGATED=1` overrides the gate for
 local testing. See `evals/README.md`.
@@ -151,8 +159,9 @@ committed. Stack: TypeScript/Node (ESM), zod, Vercel AI SDK (`ai` + `@ai-sdk/*`)
 
 ## Docs & conventions
 
-Docs live in `000-docs/` under `NNN-CC-ABCD-description.md`; start at `000-docs/000-INDEX.md`. Current docs
-are `017`–`022`. `001`–`016` and `023`–`030` (pre-rebuild files renumbered to fix number collisions) describe
+Docs live in `000-docs/` under `NNN-CC-ABCD-description.md`; start at `000-docs/000-INDEX.md`. **Picking this repo
+up cold? Read `036-AA-AUDT-appaudit-devops-playbook.md` first** (current state, PR ledger, owner decisions, resume
+procedure). Current docs are `017`–`022` and `031`–`036`. `001`–`016` and `023`–`030` (pre-rebuild files renumbered to fix number collisions) describe
 the retired Gemini-on-Vertex system and are historical; loose pre-rebuild files live in `000-docs/archive/`.
 Key current docs: `017-AT-DECR` (rebuild decision record), `018-DR-LAND` (connector landscape),
 `021-AT-PLAN` (hardening plan), `022-AA-AACR` (hardening after-action review and open follow-ups).

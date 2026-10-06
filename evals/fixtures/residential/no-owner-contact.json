@@ -1,0 +1,50 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "no-owner-contact",
+  "kind": "gate",
+  "note": "The owner of record has no mailing address and no contact point: nothing to write to, so no draft.",
+  "property": {
+    "key": "01003:05-09-27-0-000-101.000",
+    "apn": "05-09-27-0-000-101.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "11 Dune Dr",
+      "city": "Gulf Shores",
+      "state": "AL",
+      "zip": "36542"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:nocontact",
+      "kind": "person",
+      "name": "Ruth Alvarez",
+      "source": "fixture-county-gis",
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-09-27-0-000-101.000",
+      "partyKey": "person:nocontact",
+      "role": "owner",
+      "asOf": "2010-01-04",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expectBlocked": "mail:no-address"
+}

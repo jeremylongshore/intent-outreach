@@ -44,6 +44,7 @@ import { getProvider, type LLMProvider } from "./providers.js";
 import { capabilityForQuery, CreditBudget, type ResponseCache } from "./routing.js";
 import { DraftRejectedError } from "./seam.js";
 import { loadSuppressionList } from "./suppressions.js";
+import { drainQuotaWarnings } from "./key-quotas.js";
 import { assertCampaignRun, type Validated } from "./validator.js";
 
 export interface RunPropertyCampaignInput {
@@ -59,6 +60,8 @@ export interface RunPropertyCampaignInput {
   /** Ceiling on properties scored per run (cost control). Default 25. */
   maxProperties?: number;
   provider?: LLMProvider;
+  /** A separate (usually cheaper) model for the SCORE seam; `provider` drafts. */
+  scoreProvider?: LLMProvider;
   now?: () => string;
   sender?: SenderIdentity;
   suppressions?: SuppressionList;
@@ -105,7 +108,31 @@ function propertySuppression(ctx: PropertyGateContext, suppressions: Suppression
   return { status: "clean" };
 }
 
-function gateVerdict(
+/**
+ * The gate context for one parcel and its owner: every party, ownership and
+ * contact point recorded on it. Exported so the eval harness gates fixtures
+ * through exactly the code a campaign runs.
+ */
+export function propertyGateContext(property: Property, owner: Party, model: PropertyModel, now: Date): PropertyGateContext {
+  const ownerships = model.ownerships.filter((o: Ownership) => o.propertyKey === property.key);
+  const partyKeys = new Set(ownerships.map((o) => o.partyKey));
+  return {
+    property,
+    owner,
+    parties: model.parties.filter((p) => partyKeys.has(p.key)),
+    ownerships,
+    contactPoints: model.contactPoints.filter((c) => partyKeys.has(c.partyKey)),
+    now,
+  };
+}
+
+/**
+ * The full pre-model gate for one parcel, in order: the engine's suppression
+ * check, the mail-address requirement, then the pack's `propertyGate`. Only
+ * exactly {status:"clean"} passes; a throw blocks. Exported for the eval
+ * harness (evals/residential.ts), which must not re-implement it.
+ */
+export function gateVerdict(
   pack: Pack,
   ctx: PropertyGateContext,
   suppressions: SuppressionList,
@@ -178,7 +205,8 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   let overCap = 0;
   const promptRefs: { score?: string[]; draft?: string } = {};
   let draftsMissingSender = 0;
-  const record = (u: Usage) => meter.record(provider.model, u.inputTokens, u.outputTokens);
+  const scoreProvider = input.scoreProvider ?? provider;
+  const record = (u: Usage, model = provider.model) => meter.record(model, u.inputTokens, u.outputTokens);
   const fail = (err: unknown, property: Property, stage: RunError["stage"], contactKey?: string) => {
     if (err instanceof DraftRejectedError) record(err.usage);
     const message = (err instanceof Error ? err.message : String(err)).slice(0, 500);
@@ -194,16 +222,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
       continue;
     }
     const nowDate = new Date(now());
-    const ownerships = merged.ownerships.filter((o: Ownership) => o.propertyKey === property.key);
-    const partyKeys = new Set(ownerships.map((o) => o.partyKey));
-    const ctx: PropertyGateContext = {
-      property,
-      owner,
-      parties: merged.parties.filter((p) => partyKeys.has(p.key)),
-      ownerships,
-      contactPoints: merged.contactPoints.filter((c) => partyKeys.has(c.partyKey)),
-      now: nowDate,
-    };
+    const ctx = propertyGateContext(property, owner, merged, nowDate);
     const gate = gateVerdict(pack, ctx, suppressions, channel);
     if (!gate.ok) {
       blockedContacts.push({ contactKey: owner.key, reason: gate.reason, propertyKey: property.key });
@@ -249,8 +268,8 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     const signals = propertySignals(property, owner, ctx.ownerships, nowDate);
     let scored: Awaited<ReturnType<typeof scoreProperty>>;
     try {
-      scored = await scoreProperty(provider, { icp: input.icp, property, owner, signals, scorePrompts: pack.prompts.score });
-      record(scored.usage);
+      scored = await scoreProperty(scoreProvider, { icp: input.icp, property, owner, signals, scorePrompts: pack.prompts.score });
+      record(scored.usage, scoreProvider.model);
       promptRefs.score = scored.promptRefs;
       for (const d of scored.droppedReasons) droppedAngles.push({ propertyKey: property.key, angle: d.angle, reason: d.reason });
     } catch (err) {
@@ -327,6 +346,14 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     queries: input.queries,
     provider: provider.name,
     model: provider.model,
+    ...(scoreProvider.name !== provider.name || scoreProvider.model !== provider.model
+      ? {
+          seamModels: {
+            score: { provider: scoreProvider.name, model: scoreProvider.model },
+            draft: { provider: provider.name, model: provider.model },
+          },
+        }
+      : {}),
     status,
     messages,
     costUsd: meter.summary().spentUsd,
@@ -335,7 +362,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     errors,
     rejectedDrafts,
     failedConnectors,
-    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input.sender, channel), ...warnings],
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input.sender, channel), ...warnings, ...drainQuotaWarnings()],
     promptRefs,
     droppedAngles,
     origin: "pipeline",

@@ -36248,7 +36248,7 @@ var McpZodTypeKind;
 // node_modules/@modelcontextprotocol/sdk/dist/esm/shared/toolNameValidation.js
 var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
 function validateToolName(name) {
-  const warnings = [];
+  const warnings2 = [];
   if (name.length === 0) {
     return {
       isValid: false,
@@ -36262,34 +36262,34 @@ function validateToolName(name) {
     };
   }
   if (name.includes(" ")) {
-    warnings.push("Tool name contains spaces, which may cause parsing issues");
+    warnings2.push("Tool name contains spaces, which may cause parsing issues");
   }
   if (name.includes(",")) {
-    warnings.push("Tool name contains commas, which may cause parsing issues");
+    warnings2.push("Tool name contains commas, which may cause parsing issues");
   }
   if (name.startsWith("-") || name.endsWith("-")) {
-    warnings.push("Tool name starts or ends with a dash, which may cause parsing issues in some contexts");
+    warnings2.push("Tool name starts or ends with a dash, which may cause parsing issues in some contexts");
   }
   if (name.startsWith(".") || name.endsWith(".")) {
-    warnings.push("Tool name starts or ends with a dot, which may cause parsing issues in some contexts");
+    warnings2.push("Tool name starts or ends with a dot, which may cause parsing issues in some contexts");
   }
   if (!TOOL_NAME_REGEX.test(name)) {
     const invalidChars = name.split("").filter((char) => !/[A-Za-z0-9._-]/.test(char)).filter((char, index, arr) => arr.indexOf(char) === index);
-    warnings.push(`Tool name contains invalid characters: ${invalidChars.map((c) => `"${c}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
+    warnings2.push(`Tool name contains invalid characters: ${invalidChars.map((c) => `"${c}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
     return {
       isValid: false,
-      warnings
+      warnings: warnings2
     };
   }
   return {
     isValid: true,
-    warnings
+    warnings: warnings2
   };
 }
-function issueToolNameWarning(name, warnings) {
-  if (warnings.length > 0) {
+function issueToolNameWarning(name, warnings2) {
+  if (warnings2.length > 0) {
     console.warn(`Tool name validation warning for "${name}":`);
-    for (const warning of warnings) {
+    for (const warning of warnings2) {
       console.warn(`  - ${warning}`);
     }
     console.warn("Tool registration will proceed, but this may cause compatibility issues.");
@@ -37678,6 +37678,14 @@ function normalizeDomain(input2) {
   return s;
 }
 
+// pipeline_core/key-quotas.ts
+var QuotasSchema = external_exports.record(external_exports.string(), external_exports.object({ monthlyCredits: external_exports.number().positive() }));
+var LedgerSchema = external_exports.object({ month: external_exports.string().regex(/^\d{4}-\d{2}$/), used: external_exports.record(external_exports.string(), external_exports.number().nonnegative()) });
+var warnings = [];
+function drainQuotaWarnings() {
+  return warnings.splice(0, warnings.length);
+}
+
 // pipeline_core/connectors/_shared.ts
 function useSecret(name) {
   const v = getSecret(name);
@@ -38537,7 +38545,9 @@ function factSchema(value) {
     source: SourceSchema,
     fetchedAt: external_exports.string().datetime(),
     responseHash: Sha256HexSchema.optional(),
-    licenseTerms: LicenseTermsSchema.optional()
+    licenseTerms: LicenseTermsSchema.optional(),
+    /** When the value came through a vendor MCP server: which server, version and tool. */
+    via: external_exports.object({ server: external_exports.string().min(1), version: external_exports.string().min(1), tool: external_exports.string().min(1) }).optional()
   });
 }
 var FactSchema = factSchema(external_exports.unknown());
@@ -38688,8 +38698,8 @@ var RunErrorSchema = external_exports.object({
   message: external_exports.string(),
   /** AI SDK finish reason when the error carried one (e.g. "length"). */
   finishReason: external_exports.string().optional()
-}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0, {
-  message: "a run error needs a domain or a propertyKey"
+}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0 || e.contactKey !== void 0, {
+  message: "a run error needs a domain, a propertyKey or a contactKey"
 });
 var FailedConnectorSchema = external_exports.object({
   name: external_exports.string().min(1),
@@ -38791,6 +38801,24 @@ var CampaignRunSchema = external_exports.object({
   origin: external_exports.enum(["pipeline", "agent"]).optional(),
   /** The typed research queries this run executed (v6, optional). */
   queries: external_exports.array(ResearchQuerySchema).optional(),
+  /**
+   * Which provider + model ran each LLM seam when they differ (v6, optional):
+   * a cheap model scores, a stronger one drafts. Absent ⇒ `provider`/`model` ran both.
+   */
+  seamModels: external_exports.object({
+    score: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) }),
+    draft: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) })
+  }).optional(),
+  /**
+   * An inbound reply (v6, optional): where the inquiry came from, when it
+   * arrived, when the reply was drafted, and the speed-to-lead in between.
+   */
+  inbound: external_exports.object({
+    source: external_exports.string().min(1),
+    receivedAt: external_exports.string().datetime({ offset: true }),
+    draftedAt: external_exports.string().datetime(),
+    speedToLeadMs: external_exports.number().int().nonnegative()
+  }).optional(),
   /** Vendor-credit accounting when the run had a budget (v6, optional). */
   credits: external_exports.object({
     limit: external_exports.number().nonnegative(),
@@ -39914,7 +39942,16 @@ var OUTREACH_AGE_FAMILIAL_HARD = [
   "your family",
   "your spouse",
   "your husband",
-  "your wife"
+  "your wife",
+  // Describing who an area or home is "for" by family or age (familial status steering).
+  "young families",
+  "young family",
+  "for families",
+  "family neighborhood",
+  "young couples",
+  "young couple",
+  "newlyweds",
+  "young professionals"
 ];
 var FAIR_HOUSING_WARN = [
   "family-friendly",
@@ -40406,11 +40443,24 @@ function quantityFactSet(facts) {
   return set2;
 }
 var QUANTITY_QUALIFIER_WINDOW = 4;
+var STREET_SUFFIXES = new Set(
+  "st street ave avenue rd road dr drive blvd boulevard ln lane way ct court cir circle hwy highway pkwy parkway pl place trl trail loop ter terrace sq square pt point".split(" ")
+);
+function isHouseNumber(text, toks, q) {
+  if (q.first !== q.last || !/^\d{1,6}$/.test(toks[q.first].lower)) return false;
+  for (let k = q.last + 1; k <= q.last + 3 && k < toks.length; k++) {
+    const t = toks[k];
+    if (t.kind !== "word" || !/^[A-Z]/.test(text.slice(t.start, t.end))) return false;
+    if (k > q.last + 1 && STREET_SUFFIXES.has(t.lower.replace(/\.$/, ""))) return true;
+  }
+  return false;
+}
 function quantityIssuesIn(text, factSet) {
   const issues = [];
   const { toks, quantities, qualifiers } = scanQuantities(text, false);
   const quantityStarts = new Set(quantities.map((q) => q.first));
   for (const q of quantities) {
+    if (isHouseNumber(text, toks, q)) continue;
     const ql = qualifiers.find((x) => x.first > q.last);
     if (!ql || ql.first - q.last - 1 > QUANTITY_QUALIFIER_WINDOW) continue;
     let attached = true;
@@ -41153,6 +41203,7 @@ var APPROVED_MODELS = (
     {
       "provider": "anthropic",
       "model": "claude-sonnet-4-6",
+      "pack": "b2b-sdr",
       "resultFile": null,
       "verified": false,
       "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
@@ -41160,6 +41211,7 @@ var APPROVED_MODELS = (
     {
       "provider": "openai",
       "model": "gpt-4o",
+      "pack": "b2b-sdr",
       "resultFile": null,
       "verified": false,
       "evidence": "legacy-claim (commit 74579676 / openai 2026-08-20), re-run required"
@@ -41167,14 +41219,16 @@ var APPROVED_MODELS = (
     {
       "provider": "minimax",
       "model": "MiniMax-M3",
+      "pack": "b2b-sdr",
       "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
       "verified": true,
       "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
     }
   ]
 );
-function supportedProviderNames(entries = APPROVED_MODELS) {
-  return [...new Set(entries.map((e) => e.provider))];
+var DEFAULT_EVAL_PACK = "b2b-sdr";
+function supportedProviderNames(entries = APPROVED_MODELS, pack = DEFAULT_EVAL_PACK) {
+  return [...new Set(entries.filter((e) => e.pack === pack).map((e) => e.provider))];
 }
 
 // pipeline_core/providers.ts
@@ -41693,6 +41747,7 @@ function failureStatus(err) {
   if (err instanceof HttpError) return err.status;
   const name = err?.name;
   if (err instanceof ConnectorTimeoutError || name === "TimeoutError" || name === "AbortError") return "timeout";
+  if (name === "McpPinMismatchError") return "pin-mismatch";
   return "error";
 }
 function recordConnectorFailure(connector, phase, err, raw, failed) {
@@ -42025,7 +42080,7 @@ async function applyMessageCompliance(input2) {
     blockedContacts,
     rejectedDrafts,
     errors,
-    complianceWarnings: senderComplianceWarnings(draftsMissingSender, input2.sender)
+    complianceWarnings: [...senderComplianceWarnings(draftsMissingSender, input2.sender), ...drainQuotaWarnings()]
   };
 }
 var PROFILE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;

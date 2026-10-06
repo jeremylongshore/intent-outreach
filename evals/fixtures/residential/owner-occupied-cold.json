@@ -1,0 +1,81 @@
+{
+  "icp": "Licensed listing agent for single-family homes in coastal Baldwin County, AL and west Pensacola, FL; offering owners a free, no-obligation estimate of what their home would sell for.",
+  "now": "2026-10-06T15:00:00.000Z",
+  "channel": "mail",
+  "name": "owner-occupied-cold",
+  "kind": "model",
+  "note": "Owner lives at the property and bought three years ago: nothing notable, cold. Scored only.",
+  "property": {
+    "key": "01003:05-54-09-33-0-001-022.000",
+    "apn": "05-54-09-33-0-001-022.000",
+    "countyFips": "01003",
+    "address": {
+      "line1": "318 W Laurel Ave",
+      "city": "Foley",
+      "state": "AL",
+      "zip": "36535"
+    },
+    "attributes": {
+      "landUse": {
+        "value": "Single Family Residential",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "yearBuilt": {
+        "value": 2019,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "bedrooms": {
+        "value": 3,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "livingAreaSqFt": {
+        "value": 1510,
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      },
+      "floodZone": {
+        "value": "X",
+        "source": "fixture-county-gis",
+        "fetchedAt": "2026-10-06T14:00:00.000Z"
+      }
+    },
+    "source": "fixture-county-gis"
+  },
+  "parties": [
+    {
+      "key": "person:brooks",
+      "kind": "person",
+      "name": "Linda Brooks",
+      "source": "fixture-county-gis",
+      "mailingAddress": {
+        "line1": "318 W Laurel Ave",
+        "city": "Foley",
+        "state": "AL",
+        "zip": "36535"
+      },
+      "licenseTerms": {
+        "id": "public-record",
+        "outreachRestricted": false
+      }
+    }
+  ],
+  "ownerships": [
+    {
+      "propertyKey": "01003:05-54-09-33-0-001-022.000",
+      "partyKey": "person:brooks",
+      "role": "owner",
+      "asOf": "2023-08-11",
+      "source": "fixture-county-gis",
+      "fetchedAt": "2026-10-06T14:00:00.000Z"
+    }
+  ],
+  "expect": {
+    "bands": [
+      "cold"
+    ]
+  },
+  "draft": null
+}
