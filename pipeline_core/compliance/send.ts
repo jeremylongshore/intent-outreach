@@ -20,6 +20,9 @@
  *   call_script  suppression, DNC "clean", consent (written, unless a known
  *                DNC-clean landline), the phone window, the disclosure block
  *   mail         suppression on the mailing address, the postal footer
+ * APPROVAL on every channel: a person must have approved this exact message
+ * (approvals.ts binds the decision to a digest of the text). Missing or
+ * rejected blocks; a pack cannot turn this off.
  * FOOTERS are checked as the EXACT block the footer module produces for this
  * sender, at the END of the body, so an edited, truncated or hand-written body
  * cannot pass on a substring. Every channel: a contact point whose license
@@ -103,6 +106,11 @@ export interface SendableInput {
   sender?: SenderIdentity | undefined;
   /** The pack's override for this channel (tighten-only). */
   policy?: Partial<ChannelPolicy> | undefined;
+  /**
+   * The human decision on THIS exact message (approvalVerdict over the
+   * approvals ledger). Anything but "approved" blocks.
+   */
+  approval?: "approved" | "rejected" | "missing" | undefined;
 }
 
 export interface SendVerdict {
@@ -121,6 +129,7 @@ export function checkSendable(input: SendableInput): SendVerdict {
   let window: WindowCheck | undefined;
 
   if (!(now instanceof Date) || Number.isNaN(now.getTime())) reasons.push("clock:invalid");
+  if (input.approval !== "approved") reasons.push(input.approval === "rejected" ? "approval:rejected" : "approval:missing");
   if (input.message.channel !== channel) reasons.push("channel:mismatch");
 
   const kind = CONTACT_KIND[channel];

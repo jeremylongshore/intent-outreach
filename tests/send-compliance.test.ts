@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkConsent, type ConsentRecord } from "../pipeline_core/compliance/consent.js";
+import { messageDigest } from "../pipeline_core/approvals.js";
 import { withinContactWindow } from "../pipeline_core/compliance/timezones.js";
 import {
   assertSendable,
@@ -79,6 +80,7 @@ function sms(patch: Partial<SendableInput> = {}): SendableInput {
     suppressions: EMPTY_SUPPRESSION_LIST,
     recipientState: "AL",
     sender: SENDER,
+    approval: "approved",
     ...patch,
   };
 }
@@ -223,6 +225,9 @@ describe("checkSendable", () => {
     ["channel mismatch", { channel: "call_script" as const }, "channel:mismatch"],
     ["no sender", { sender: undefined }, "sender-identity:missing:name,company"],
     ["invalid clock", { now: new Date("nope") }, "clock:invalid"],
+    ["no approval", { approval: undefined }, "approval:missing"],
+    ["approval missing", { approval: "missing" as const }, "approval:missing"],
+    ["rejected by a person", { approval: "rejected" as const }, "approval:rejected"],
   ] as const)("%s blocks", (_why, patch, reason) => {
     const v = checkSendable(sms(patch as Partial<SendableInput>));
     expect(v.sendable).toBe(false);
@@ -367,7 +372,21 @@ describe("CLI: check-send", () => {
     now: NOON.toISOString(),
     consents: [WRITTEN],
     recipientState: "AL",
+    runId: "run-1",
+    contactKey: "person:1",
   };
+  writeFileSync(
+    join(home, "approvals.jsonl"),
+    `${JSON.stringify({
+      runId: "run-1",
+      contactKey: "person:1",
+      channel: "sms",
+      messageSha256: messageDigest({ channel: "sms", body: smsBody() }),
+      decision: "approved",
+      by: "test",
+      at: "2026-10-06T10:00:00.000Z",
+    })}\n`,
+  );
 
   it("exit 0 + JSON verdict when sendable, 3 when not, 2 on bad input", { timeout: 60_000 }, () => {
     const ok = run(input, "--profile", profile);
@@ -378,6 +397,12 @@ describe("CLI: check-send", () => {
     const blocked = run({ ...input, consents: [] }, "--profile", profile);
     expect(blocked.status).toBe(3);
     expect(JSON.parse(blocked.stdout).reasons).toContain("consent:missing");
+
+    // An edited message no longer matches the approved digest; no run id means no approval.
+    const edited = run({ ...input, message: { channel: "sms", body: `${smsBody()} ` + "x" } }, "--profile", profile);
+    expect(JSON.parse(edited.stdout).reasons).toContain("approval:missing");
+    const anonymous = run({ ...input, runId: undefined }, "--profile", profile);
+    expect(JSON.parse(anonymous.stdout).reasons).toContain("approval:missing");
 
     expect(run("{not json", "--profile", profile).status).toBe(2);
     expect(run({ ...input, channel: "fax" }, "--profile", profile).status).toBe(2);

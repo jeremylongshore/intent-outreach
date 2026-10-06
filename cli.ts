@@ -32,6 +32,7 @@ import {
 } from "./pipeline_core/suppressions.js";
 import { SUPPRESSION_KINDS, type SuppressionKind } from "./pipeline_core/compliance/suppression.js";
 import { checkSendable } from "./pipeline_core/compliance/send.js";
+import { approvalVerdict, readApprovals } from "./pipeline_core/approvals.js";
 import { join } from "node:path";
 import { FileResponseCache } from "./pipeline_core/routing.js";
 import { intentOutreachHome } from "./pipeline_core/secrets.js";
@@ -373,10 +374,20 @@ async function cmdSuppress(args: string[]): Promise<void> {
 const CHECK_SEND_USAGE =
   "usage: intent-outreach check-send [--profile <name|path>] < input.json\n" +
   '  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,' +
-  '"now"?,"consents"?,"recipientState"?,"pack"?}';
+  '"now"?,"consents"?,"recipientState"?,"pack"?,"runId","contactKey"}\n' +
+  "  the message must match an approved draft exactly (intent-outreach approvals pending / approve)";
 
 const CheckSendInputSchema = z.object({
-  message: z.object({ channel: ChannelSchema, body: z.string().min(1), needsSenderIdentity: z.boolean().optional() }),
+  message: z.object({
+    channel: ChannelSchema,
+    subject: z.string().nullable().optional(),
+    body: z.string().min(1),
+    cta: z.string().nullable().optional(),
+    needsSenderIdentity: z.boolean().optional(),
+  }),
+  /** The stored run and contact the message came from, to look up its approval. */
+  runId: z.string().min(1).optional(),
+  contactKey: z.string().min(1).optional(),
   channel: ChannelSchema,
   contactPoint: ContactPointSchema.optional(),
   contactEmail: z.string().email().optional(),
@@ -435,6 +446,10 @@ async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readS
     recipientState: parsed.recipientState,
     sender,
     policy: pack.channels?.[parsed.channel],
+    approval:
+      parsed.runId && parsed.contactKey
+        ? approvalVerdict(await readApprovals(), parsed.runId, parsed.contactKey, parsed.message)
+        : "missing",
   });
   process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
   if (!verdict.sendable) process.exitCode = 3;
