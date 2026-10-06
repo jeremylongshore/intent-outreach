@@ -250,3 +250,25 @@ describe("end to end: an Escambia campaign on public records", () => {
     expect(prompts[0]).toContain('"absenteeOwner":true');
   });
 });
+
+describe("CLI: property-run validates before spending anything", () => {
+  it("missing --icp or a target, bad ZIPs and bad parcel refs are usage errors (exit 2)", { timeout: 60_000 }, async () => {
+    const { spawnSync } = await import("node:child_process");
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const home = mkdtempSync(join(tmpdir(), "io-proprun-"));
+    const cli = (...args: string[]) =>
+      spawnSync(resolve("node_modules/.bin/tsx"), [resolve("cli.ts"), "property-run", ...args], {
+        env: { PATH: process.env.PATH ?? "", HOME: home, INTENT_OUTREACH_HOME: home },
+        encoding: "utf8",
+      });
+    expect(cli("--zips", "32507").status).toBe(2);
+    expect(cli("--icp", "x").status).toBe(2);
+    expect(cli("--icp", "x", "--zips", "3250").status).toBe(2);
+    expect(cli("--icp", "x", "--parcels", "12033-082S").status).toBe(2);
+    const noKey = cli("--icp", "x", "--zips", "32507");
+    expect(noKey.status).toBe(1); // valid flags, but no model key: fails before any data call
+    expect(noKey.stderr).toMatch(/environment variable|API key|provider/i);
+  });
+});
