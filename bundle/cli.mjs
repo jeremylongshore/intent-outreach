@@ -62802,7 +62802,9 @@ function factSchema(value) {
     source: SourceSchema,
     fetchedAt: external_exports.string().datetime(),
     responseHash: Sha256HexSchema.optional(),
-    licenseTerms: LicenseTermsSchema.optional()
+    licenseTerms: LicenseTermsSchema.optional(),
+    /** When the value came through a vendor MCP server: which server, version and tool. */
+    via: external_exports.object({ server: external_exports.string().min(1), version: external_exports.string().min(1), tool: external_exports.string().min(1) }).optional()
   });
 }
 var FactSchema = factSchema(external_exports.unknown());
