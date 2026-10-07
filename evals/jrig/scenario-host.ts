@@ -152,8 +152,9 @@ export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
         return output;
       } catch {
         await flushPhase();
-        await record("call_failed", { callId, name, aborted: signal.aborted });
-        return { isError: true, ...result({ error: "scenario tool failed; inspect private trace" }) };
+        const output = { isError: true, ...result({ error: "scenario tool failed; inspect private trace" }) };
+        await record("call_failed", { callId, name, aborted: signal.aborted, result: output });
+        return output;
       }
     };
     server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {

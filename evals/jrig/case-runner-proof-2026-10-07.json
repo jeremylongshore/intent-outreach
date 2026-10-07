@@ -1,7 +1,7 @@
 {
   "schema": "intent-outreach-case-runner-proof/v1",
   "scope": "scripted_actual_cli_case_runner_only",
-  "observedAt": "2026-10-07T23:38:10.305Z",
+  "observedAt": "2026-10-07T23:43:48.418Z",
   "behavioralVerdict": null,
   "tier3bPassed": false,
   "paidModelCalls": 0,
@@ -27,7 +27,7 @@
     {
       "caseResult": "pass",
       "processResult": {
-        "pid": 839101,
+        "pid": 865707,
         "code": 0,
         "signal": null,
         "timedOut": false,
@@ -38,18 +38,18 @@
     {
       "caseResult": "pass",
       "processResult": {
-        "pid": 840267,
+        "pid": 866081,
         "code": 0,
         "signal": null,
         "timedOut": false,
         "cancelled": false
       },
-      "priorReceiptSha256": "d62158017fa61750c5f963770162e4ab7fd805d60f98fb0b1f3677ab83aa1736"
+      "priorReceiptSha256": "d4254b057b8ca4c94d9c4707cb128dcd229ae3a05891df6bb62f6960d20eeda0"
     },
     {
       "caseResult": "incomplete",
       "processResult": {
-        "pid": 840723,
+        "pid": 866440,
         "code": 2,
         "signal": null,
         "timedOut": false,
@@ -60,7 +60,7 @@
     {
       "caseResult": "incomplete",
       "processResult": {
-        "pid": 841158,
+        "pid": 866900,
         "code": null,
         "signal": "SIGTERM",
         "timedOut": false,

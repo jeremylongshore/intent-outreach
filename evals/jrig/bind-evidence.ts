@@ -102,7 +102,9 @@ export async function bindScenarioEvidence(input: {
       assert(call);
       assert.equal(tool.tool, input.serverName + "__" + z.string().parse(call.data.name), "host tool order mismatch");
       if (tool.status === "completed") {
-        const completed: z.infer<typeof eventSchema>[] = trace.events.filter((event) => event.kind === "call_completed" && event.data.callId === call.data.callId);
+        // J-Rig completion means an MCP response arrived, including isError.
+        // The independent audit still marks a host failure incomplete.
+        const completed: z.infer<typeof eventSchema>[] = trace.events.filter((event) => ["call_completed", "call_failed"].includes(event.kind) && event.data.callId === call.data.callId);
         assert.equal(completed.length, 1, "completed tool lacks host receipt");
         const ended = completed[0];
         assert(ended);

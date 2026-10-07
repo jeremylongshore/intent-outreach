@@ -26,7 +26,7 @@ async function fixture() {
     phase: index ? "baseline" : "skill", configuration_sha256: hash("{}"),
     cases: [{ test_case_id: "unrelated-weather", status: "completed", output: { text: "I cannot check current weather here.", tool_calls: 0, artifacts: artifacts(id) } }],
   }));
-  const traces = sessions.map((id, index) => [
+  const traces: { sequence: number; kind: string; data: Record<string, unknown> }[][] = sessions.map((id, index) => [
     { sequence: 1, kind: "started", data: { caseId: "unrelated-weather", home: join(hostsDir, String(index)),
       provider: "fixture", model: "fixture-model", executionSessionId: id, fixtureOnly: true, checkpoints: [], sha256: { resources: {} } } },
     { sequence: 2, kind: "closed", data: { bundleStopped: true, calls: 0, checkpointsUsed: 0, agentUsage: { inputTokens: 0, outputTokens: 0 } } },
@@ -88,6 +88,27 @@ describe("private execution evidence binding", () => {
       await f.save();
       const result = await bindScenarioEvidence(f.input);
       expect(result.bindings[0]).toMatchObject({ status: "failed", passed: false, audit: { passed: true } });
+    } finally { await f.close(); }
+  });
+  it("correlates an MCP error response as a host failure rather than losing the association", async () => {
+    const f = await fixture();
+    try {
+      const result = { isError: true, content: [{ type: "text", text: '{"error":"scenario tool failed; inspect private trace"}' }] };
+      f.traces[0]!.splice(1, 0,
+        { sequence: 2, kind: "call_started", data: { callId: 1, name: "Agent", arguments: {} } },
+        { sequence: 3, kind: "call_failed", data: { callId: 1, name: "Agent", result } });
+      f.traces[0]![3]!.sequence = 4;
+      f.traces[0]![3]!.data.calls = 1;
+      const output = f.receipts[0]!.cases[0]!.output;
+      output.tool_calls = 1;
+      const events = JSON.stringify([{ tool: "outreach__Agent", status: "completed", result_bytes: Buffer.byteLength(JSON.stringify(result)) }]);
+      output.artifacts[0]!.content = events;
+      output.artifacts[0]!.size_bytes = Buffer.byteLength(events);
+      await f.save();
+      const bound = await bindScenarioEvidence(f.input);
+      expect(bound.bindings[0]?.passed).toBe(false);
+      expect(bound.bindings[0]?.audit.incomplete).toContain("host_call_failed");
+      expect(bound.bindings[0]?.audit.incomplete).toContain("bundled_tool_error");
     } finally { await f.close(); }
   });
 });
