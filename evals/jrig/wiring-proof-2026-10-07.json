@@ -1,0 +1,65 @@
+{
+  "schema": "intent-outreach-jrig-wiring/v1",
+  "observed_at": "2026-10-07T22:15:49.105Z",
+  "scope": "scripted_loopback_model_and_fixture_vendor_transport",
+  "behavioral_verdict": null,
+  "tier3b_passed": false,
+  "production_changed": false,
+  "paid_model_calls": 0,
+  "vendor_network_calls": 0,
+  "messages_sent": 0,
+  "observed_mcp_calls": [
+    "list_connectors",
+    "research_domain",
+    "enrich_lead",
+    "save_run",
+    "list_pending"
+  ],
+  "fixture_http_paths": [
+    "/v2/domain-search",
+    "/v2/email-finder"
+  ],
+  "tool_events": [
+    {
+      "tool": "outreach__list_connectors",
+      "status": "completed",
+      "result_bytes": 4102
+    },
+    {
+      "tool": "outreach__research_domain",
+      "status": "completed",
+      "result_bytes": 716
+    },
+    {
+      "tool": "outreach__enrich_lead",
+      "status": "completed",
+      "result_bytes": 879
+    },
+    {
+      "tool": "outreach__save_run",
+      "status": "completed",
+      "result_bytes": 500
+    },
+    {
+      "tool": "outreach__list_pending",
+      "status": "completed",
+      "result_bytes": 523
+    }
+  ],
+  "verified": {
+    "actual_bundle": true,
+    "research_and_enrichment": true,
+    "validated_encrypted_save": true,
+    "jrig_receipt_matches": true,
+    "pending_exact_draft": true,
+    "missing_sender_flagged": true,
+    "child_stopped": true
+  },
+  "sha256": {
+    "bundle": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+    "skill": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+    "jrig_cli": "7da6876040750f2a890a6542b0b2cdfebb9959a91811f5ddfc00b7df71e71f2e",
+    "fixture": "8e74028b1109d9ba3a006c49770dfcc2f122f231fd77cfebe1cec18d12b81cf1",
+    "harness": "fb03f3067bfab4c467337966c58ff00147ffac9b4be06436772671eb2168e5e4"
+  }
+}
