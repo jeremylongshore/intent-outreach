@@ -192,6 +192,43 @@ intent-outreach property-run --icp "Listing agent for Perdido Key homes" --zips 
 intent-outreach property-run --icp "..." --parcels 12033:082S305005000002 --budget-credits 50
 ```
 
+External CRM adapters can run `intent-outreach validate-run < run.json` to use the same
+schema and defaults as storage. It emits normalized JSON on success, exits 2 on invalid
+input, and opens no store or provider. Input is limited to 16 MiB. This validates structure;
+it does not approve drafts, establish consent, or authorize a send.
+
+An ERPNext adapter can supply `--crm-context ./crm-context.json` to `property-run` and
+`check-send`. Validate the snapshot with `intent-outreach validate-crm-context < crm-context.json`.
+The strict version-1 shape is:
+
+```json
+{
+  "version": 1,
+  "source": "erpnext",
+  "generatedAt": "2026-10-06T12:00:00Z",
+  "expiresAt": "2026-10-06T12:15:00Z",
+  "suppressions": [{"kind": "phone", "value": "+12515550100"}],
+  "doNotResearch": [{"kind": "parcel", "value": "01003:EXAMPLE-APN"}]
+}
+```
+
+Generate fresh timestamps on each successful **complete** CRM pull; the maximum lifetime is
+15 minutes. Missing files, malformed identifiers, future timestamps and expired snapshots
+abort commands that supply the flag. Omission preserves standalone behavior. The adapter
+must require a fresh pull for each research/send operation; this flag does not automatically
+connect to ERPNext or cover monitor/inbound commands. Identifiers may be `parcel` (FIPS:APN),
+`party` (engine party key), `email`, `phone`, `address` (full mailing address), or `domain`.
+CRM suppressions add to local opt-outs and never clear them; research exclusions are separate.
+
+Named excluded parcels are skipped before discovery. Area queries must discover records
+before matching known owner/contact identities: excluded parcels and their unneeded owner
+records are then removed before enrichment, model calls and run storage. Research caching
+is disabled when a do-not-research list is present; existing cache files are not erased by
+this option. Co-owners and linked entities are considered. Unresolved identities cannot be
+matched by name. A stale snapshot during discovery or scoring stops further model work.
+Refresh CRM context for the final `check-send` too; an earlier draft is not proof of permission.
+The snapshot contains identifiers: keep temporary files private (0600) and delete after use.
+
 Both scoring and drafting models need a verified `residential-re` approval in
 `evals/supported.ts`. B2B approval does not qualify a model for this pack. The same
 requirement applies to monitor drafts and residential inbound replies. An unapproved

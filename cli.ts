@@ -10,6 +10,9 @@
  * Exit codes: 0 ok · 1 runtime failure · 2 usage error (bad/missing flags).
  */
 
+import { assertCampaignRun } from "./pipeline_core/validator.js";
+import { parseCrmContext, mergeCrmSuppressions, crmExcludedProperties } from "./pipeline_core/crm-context.js";
+import { readFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -167,6 +170,8 @@ export function printHelp(): void {
       "  intent-outreach store migrate|purge|audit [--out <runs.sqlite>]",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
+      "  intent-outreach validate-run < run.json   validate and normalize a run for external adapters",
+      "  intent-outreach validate-crm-context < crm.json   validate a fresh ERPNext exclusion snapshot",
       "  intent-outreach help",
       "",
       "run options:",
@@ -409,7 +414,7 @@ async function cmdSuppress(args: string[]): Promise<void> {
 const PROPERTY_RUN_USAGE =
   "usage: intent-outreach property-run --icp <text> (--zips <a,b> | --parcels <fips:apn,...>) [options]\n" +
   "  --profile <p>  --provider <name>  --model <id>  --min-score <0-100>  --max-properties <n>\n" +
-  "  --budget-credits <n>  --pack <id> (default residential-re)  --out <path>  --json";
+  "  --budget-credits <n>  --pack <id> (default residential-re)  --crm-context <file>  --out <path>  --json";
 
 /** `property-run` — a property campaign (owners of record) over ZIPs or specific parcels. */
 async function cmdPropertyRun(args: string[]): Promise<void> {
@@ -419,6 +424,7 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
       args,
       options: {
         icp: { type: "string" },
+        "crm-context": { type: "string" },
         zips: { type: "string" },
         parcels: { type: "string" },
         profile: { type: "string" },
@@ -468,6 +474,11 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
       throw new UsageError(`--profile: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+  let crmContext;
+  if (typeof values["crm-context"] === "string") {
+    try { crmContext = parseCrmContext(JSON.parse(await readFile(values["crm-context"], "utf8")), Date.now()); }
+    catch { throw new UsageError("--crm-context must name a valid, fresh ERPNext snapshot"); }
+  }
   const provider =
     values.provider || values.model
       ? await getProvider({
@@ -482,6 +493,7 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
     id: makeRunId(),
     icp,
     queries,
+    ...(crmContext ? { crmContext } : {}),
     ...(typeof values.pack === "string" ? { pack: values.pack } : {}),
     ...(provider ? { provider } : {}),
     ...(propScoreProvider ? { scoreProvider: propScoreProvider } : {}),
@@ -842,7 +854,7 @@ async function cmdInbound(args: string[]): Promise<void> {
 }
 
 const CHECK_SEND_USAGE =
-  "usage: intent-outreach check-send [--profile <name|path>] < input.json\n" +
+  "usage: intent-outreach check-send [--profile <name|path>] [--crm-context <file>] < input.json\n" +
   '  input: {"message":{"channel","body","needsSenderIdentity"?},"channel","contactPoint"?,"contactEmail"?,' +
   '"now"?,"consents"?,"recipientState"?,"pack"?,"runId","contactKey"}\n' +
   "  the message must match an approved draft exactly (intent-outreach approvals pending / approve)";
@@ -869,9 +881,15 @@ const CheckSendInputSchema = z.object({
   pack: z.string().min(1).optional(),
 });
 
-async function readStdin(): Promise<string> {
+async function readStdin(maxBytes = Number.POSITIVE_INFINITY): Promise<string> {
   const chunks: Buffer[] = [];
-  for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+  let size = 0;
+  for await (const chunk of process.stdin) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += buffer.length;
+    if (size > maxBytes) throw new UsageError("JSON input exceeds 16 MiB");
+    chunks.push(buffer);
+  }
   return Buffer.concat(chunks).toString("utf8");
 }
 
@@ -882,9 +900,9 @@ async function readStdin(): Promise<string> {
  * the verdict as JSON, and exits 0 when sendable, 3 when not, 2 on bad input.
  */
 async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readStdin): Promise<void> {
-  let values: { profile?: string | undefined; out?: string | undefined };
+  let values: { profile?: string | undefined; out?: string | undefined; "crm-context"?: string | undefined };
   try {
-    ({ values } = parseArgs({ args, options: { profile: { type: "string" }, out: { type: "string" } }, allowPositionals: false }));
+    ({ values } = parseArgs({ args, options: { profile: { type: "string" }, out: { type: "string" }, "crm-context": { type: "string" } }, allowPositionals: false }));
   } catch {
     throw new UsageError(CHECK_SEND_USAGE);
   }
@@ -895,6 +913,12 @@ async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readS
     const why = err instanceof z.ZodError ? err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") : "not valid JSON";
     throw new UsageError(`check-send: invalid input (${why})\n${CHECK_SEND_USAGE}`);
   }
+  let crm;
+  if (values["crm-context"]) {
+    try { crm = parseCrmContext(JSON.parse(await readFile(values["crm-context"], "utf8")), Date.now()); }
+    catch { throw new UsageError("--crm-context must name a valid, fresh ERPNext snapshot"); }
+  }
+  const localSuppressions = await loadSuppressionList();
   let sender;
   if (values.profile) {
     try {
@@ -912,7 +936,7 @@ async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readS
     contactEmail: parsed.contactEmail,
     now: parsed.now ? new Date(parsed.now) : new Date(),
     consents: parsed.consents,
-    suppressions: await loadSuppressionList(),
+    suppressions: crm ? mergeCrmSuppressions(localSuppressions, crm) : localSuppressions,
     recipientState: parsed.recipientState,
     sender,
     policy: pack.channels?.[parsed.channel],
@@ -928,6 +952,11 @@ async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readS
       verdict.reasons.push("run:message-not-found");
     } else if (!recipientMatches(run, parsed.contactKey, { contactPoint: parsed.contactPoint, contactEmail: parsed.contactEmail })) {
       verdict.reasons.push("recipient:mismatch");
+    }
+    if (crm && run) {
+      const excluded = crmExcludedProperties({ properties: [...run.properties], parties: [...run.parties], ownerships: [...run.ownerships], contactPoints: [...run.contactPoints], entityLinks: [...run.entityLinks] }, crm.suppressions);
+      if (run.messages.some((m) => m.contactKey === parsed.contactKey && m.propertyKey && excluded.has(m.propertyKey)) ||
+        crm.suppressions.some((e) => e.kind === "party" && e.value === parsed.contactKey)) verdict.reasons.push("suppressed:crm");
     }
     verdict.sendable = verdict.reasons.length === 0;
   }
@@ -956,9 +985,28 @@ async function cmdStore(args: string[]): Promise<void> {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
+/** External adapters use the same schema gate as storage, without opening a store or provider. */
+async function cmdValidate(args: string[], kind: "run" | "crm-context"): Promise<void> {
+  if (args.length) throw new UsageError(`usage: intent-outreach validate-${kind} < input.json`);
+  const raw = await readStdin(16 * 1024 * 1024);
+  let checked;
+  try {
+    const input: unknown = JSON.parse(raw);
+    checked = kind === "run" ? assertCampaignRun(input) : parseCrmContext(input, Date.now());
+  } catch {
+    // Schema paths/messages may include untrusted values; do not echo owner data to logs.
+    throw new UsageError(`validate-${kind}: invalid JSON, schema, or freshness window`);
+  }
+  process.stdout.write(`${JSON.stringify(checked)}\n`);
+}
+
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
+    case "validate-run":
+      return cmdValidate(rest, "run");
+    case "validate-crm-context":
+      return cmdValidate(rest, "crm-context");
     case "store":
       return cmdStore(rest);
     case "run":
