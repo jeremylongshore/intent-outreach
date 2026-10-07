@@ -108,7 +108,7 @@ phase agents, actual connector normalization, reviewed drafting resources,
 checkpoint replies and encrypted save. A second launch verifies store isolation;
 a separate negative case proves that the independent auditor rejects actual
 unapproved persistence. These are component checks. Still required are the
-single-case J-Rig runner, actual non-Anthropic model runs and all behavioral layers.
+actual non-Anthropic model runs and all behavioral layers.
 
 ## Receipt-to-host association
 
@@ -136,6 +136,55 @@ usage, exact receipt association and child cleanup before removing its fixtures.
 The output retains source hashes and explicitly marks behavioral acceptance false.
 The tiny deterministic spec in this proof is only a component test; a behavioral
 runner must retain the draft spec's reviewed criteria and case policies.
+
+## Single-case runner
+
+`run-case.ts` selects one case from the repository's actual YAML spec using the
+YAML parser in the explicitly selected J-Rig installation. It retains every
+criterion, case field, policy and draft/review tag, replacing only the case list
+and execution model. It refuses missing scenario coverage or weakened sampling.
+
+Supply a JSON config containing normalized absolute `jrigCli` and fresh
+`outputDir` paths, the built CLI's `jrigSha256`, reviewed `caseId`, explicit
+`provider`, `model`, `judgeModel`, `baseUrl`, and `evidenceKind` (`component-test`
+or `behavioral-evaluation`). The execution and judge models use the same selected
+OpenAI-compatible provider/endpoint and credential. Nested agents inherit the
+execution model. The only key input is the environment variable
+`JRIG_EVAL_API_KEY`; the config rejects an embedded key. The command makes model
+requests, so use the authorized provider/account for the evaluation.
+
+```sh
+pnpm exec tsx evals/jrig/run-case.ts /absolute/case-config.json
+```
+
+Each invocation uses three judge samples, trigger evaluation, and a fresh naked
+baseline with identical host capabilities. `priorReceipt` may point to a prior
+passing case receipt with the same source spec, case and evidence kind; its
+recorded votes become the actual regression baseline and its bytes are hashed.
+Without it, regression remains unrun. A component receipt cannot seed a real
+behavioral run. No fallback model, provider, credential or implicit rerun is used.
+
+The private output directory retains config/spec snapshots, CLI output and errors,
+the J-Rig database/bundle, both host traces and stores, and `receipt.json`. Source
+hashes must remain stable during execution. Each expected judgment must be present
+with its actual sample votes, and the bundle must reference the matched private
+receipts. Partial failure evidence remains available, while infrastructure errors,
+missing associations and cancellation stay `incomplete` (exit 2). A failed case
+exits 1; a passed case exits 0. Interrupting the runner or reaching its 30-minute
+deadline stops its owned process group, including nested children.
+
+`caseResult` reports the selected case's skill-side structural assertions and
+applicable judgments. J-Rig's separate promotion, regression, baseline and package
+results remain in `jrigResult`; a case can pass those assertions while J-Rig still
+reports advisory promotion evidence. The runner always leaves `tier3bPassed`
+false: repeated runs, the other cases/models, seven-layer evidence and review are
+still required. Nested-agent usage in each binding is additional to J-Rig's meter.
+
+`case-runner-proof.ts` exercises the actual runner and J-Rig CLI against scripted
+loopback responses. It checks distinct execution/judge identities, 36 recorded
+judge calls across the initial and regression runs, fresh skill/baseline sessions,
+retained failed receipts and a real cancellation that leaves no owned process
+group. Its checked-in receipt is component evidence only.
 
 ## Behavioral acceptance contract
 

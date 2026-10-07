@@ -1,0 +1,78 @@
+{
+  "schema": "intent-outreach-case-runner-proof/v1",
+  "scope": "scripted_actual_cli_case_runner_only",
+  "observedAt": "2026-10-07T23:38:10.305Z",
+  "behavioralVerdict": null,
+  "tier3bPassed": false,
+  "paidModelCalls": 0,
+  "vendorNetworkCalls": 0,
+  "messagesSent": 0,
+  "verified": {
+    "originalCriteriaRetained": true,
+    "explicitJudgeModel": true,
+    "threeSamples": true,
+    "distinctSkillBaselineAndRepeat": true,
+    "realRegressionEnabled": true,
+    "malformedExecutionHasNoVerdict": true,
+    "partialReceiptsRetained": true,
+    "cancellationStopsOwnedGroup": true,
+    "temporaryFixturesRemoved": true
+  },
+  "counts": {
+    "trigger": 4,
+    "execution": 7,
+    "judge": 36
+  },
+  "results": [
+    {
+      "caseResult": "pass",
+      "processResult": {
+        "pid": 839101,
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": null
+    },
+    {
+      "caseResult": "pass",
+      "processResult": {
+        "pid": 840267,
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": "d62158017fa61750c5f963770162e4ab7fd805d60f98fb0b1f3677ab83aa1736"
+    },
+    {
+      "caseResult": "incomplete",
+      "processResult": {
+        "pid": 840723,
+        "code": 2,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": null
+    },
+    {
+      "caseResult": "incomplete",
+      "processResult": {
+        "pid": 841158,
+        "code": null,
+        "signal": "SIGTERM",
+        "timedOut": false,
+        "cancelled": true
+      },
+      "priorReceiptSha256": null
+    }
+  ],
+  "sha256": {
+    "run-case.ts": "f312960c398f22829a4741d466564be26d89ab06ac93e52d3c45a7a31a1235a1",
+    "case-runner-proof.ts": "5391b8cf3015d624864fcd12157f5581feb85bab6162c61a46f3773661bb5f96",
+    "inputSpec": "6ebf988e2a894549add4b4ce3e3e745c0e6b1aef7b9dcf0f4e8ff7e6d3895d67",
+    "jrigCli": "be03a8731c35ce04037c62e006c0935ba0be261f705321ee7fc24383ab9f80fc"
+  }
+}
