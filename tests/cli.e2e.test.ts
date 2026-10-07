@@ -94,3 +94,29 @@ describe("shipped storage migration", () => {
     expect(JSON.parse(cli("store", "purge").out)).toEqual({ expired: 0, cacheEntries: 0, monitorSnapshots: 0 });
   });
 });
+
+
+describe("shipped adapter validation commands", () => {
+  const validate = (command: string, input: string) => spawnSync(process.execPath, [CLI, command], {
+    encoding: "utf8", input, timeout: 20_000,
+    env: { PATH: process.env.PATH ?? "", HOME: home, INTENT_OUTREACH_HOME: join(home, "validation-only") },
+  });
+  it("normalizes a run through the shipped canonical schema without creating a store", () => {
+    const r = validate("validate-run", JSON.stringify({ id: "adapter", schemaVersion: 6, icp: "x", domains: [], provider: "fixture", model: "fixture", status: "researched", createdAt: new Date().toISOString() }));
+    expect(r.status).toBe(0);
+    expect(JSON.parse(r.stdout)).toMatchObject({ id: "adapter", properties: [], contactPoints: [] });
+    expect(r.stderr).toBe("");
+    expect(existsSync(join(home, "validation-only"))).toBe(false);
+  });
+  it("rejects invalid run data without echoing it and validates fresh CRM exclusions", () => {
+    const bad = validate("validate-run", '{"id":"PRIVATE OWNER"}');
+    expect(bad.status).toBe(2);
+    expect(bad.stdout).toBe("");
+    expect(bad.stderr).not.toContain("PRIVATE OWNER");
+    const now = Date.now();
+    const r = validate("validate-crm-context", JSON.stringify({ version: 1, source: "erpnext", generatedAt: new Date(now).toISOString(), expiresAt: new Date(now + 900_000).toISOString(), suppressions: [], doNotResearch: [{ kind: "parcel", value: "01003:abc" }] }));
+    expect(r.status).toBe(0);
+    expect(JSON.parse(r.stdout).doNotResearch).toEqual([{ kind: "parcel", value: "01003:ABC" }]);
+    expect(validate("validate-crm-context", "{}").status).toBe(2);
+  });
+});

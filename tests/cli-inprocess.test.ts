@@ -70,6 +70,8 @@ describe("approvals + check-send", () => {
         messages: [
           { contactKey: "jane@acme.com", channel: "linkedin", body, cta: "Call?", model: "stub", promptVersion: "p", createdAt: T },
         ],
+        parties: [{ key: "jane@acme.com", kind: "person", name: "Jane", source: "inbound" }],
+        contactPoints: [{ partyKey: "jane@acme.com", kind: "phone", value: "+12515550100", source: "inbound", fetchedAt: T }, { partyKey: "jane@acme.com", kind: "email", value: "jane@acme.com", source: "inbound", fetchedAt: T }],
         createdAt: T,
       }),
     );
@@ -85,13 +87,31 @@ describe("approvals + check-send", () => {
     await main(["approvals", "pending"]);
     expect(out).toContain("nothing waiting for approval");
 
-    const input = { message: { channel: "linkedin", body, cta: "Call?" }, channel: "linkedin", contactEmail: "jane@acme.com", runId: "r1", contactKey: "jane@acme.com", now: T };
+    const input = { message: { channel: "linkedin", body, cta: "Call?" }, channel: "linkedin", contactEmail: "jane@acme.com", contactPoint: { partyKey: "jane@acme.com", kind: "email", value: "jane@acme.com", source: "inbound", fetchedAt: T }, runId: "r1", contactKey: "jane@acme.com", now: T };
     expect(messageDigest(input.message as never)).toBe(messageDigest({ channel: "linkedin", body, cta: "Call?" }));
     withStdin(JSON.stringify(input));
     out = "";
     await main(["check-send"]);
     expect(JSON.parse(out)).toMatchObject({ sendable: true, reasons: [] });
     expect(process.exitCode).toBeUndefined();
+
+    const crmPath = join(process.env.INTENT_OUTREACH_HOME!, "crm-send.json");
+    writeFileSync(crmPath, JSON.stringify({ version: 1, source: "erpnext", generatedAt: T, expiresAt: new Date(Date.parse(T) + 900_000).toISOString(), suppressions: [{ kind: "email", value: "jane@acme.com" }, { kind: "party", value: "jane@acme.com" }], doNotResearch: [] }));
+    withStdin(JSON.stringify(input));
+    out = "";
+    await main(["check-send", "--crm-context", crmPath]);
+    expect(JSON.parse(out).sendable).toBe(false);
+    expect(JSON.parse(out).reasons).toContain("suppressed:crm");
+    expect(JSON.parse(out).reasons).toContain("suppressed:email");
+    expect(process.exitCode).toBe(3);
+
+    // A phone opt-out also covers an email/LinkedIn reply to the same stored inbound party.
+    writeFileSync(crmPath, JSON.stringify({ version: 1, source: "erpnext", generatedAt: T, expiresAt: new Date(Date.parse(T) + 900_000).toISOString(), suppressions: [{ kind: "phone", value: "+12515550100" }], doNotResearch: [] }));
+    withStdin(JSON.stringify(input));
+    out = "";
+    await main(["check-send", "--crm-context", crmPath]);
+    expect(JSON.parse(out).reasons).toContain("suppressed:crm");
+    expect(JSON.parse(out).sendable).toBe(false);
 
     await main(["approvals", "reject", "r1", "jane@acme.com", "--note", "changed my mind"]);
     withStdin(JSON.stringify(input));
@@ -204,5 +224,37 @@ describe("store operations", () => {
     for (const args of [[], ["wrong"], ["purge", "extra"], ["audit", "--from", "unused"], ["purge", "--bogus"], ["migrate", "--from"]]) {
       await expect(main(["store", ...args])).rejects.toBeInstanceOf(UsageError);
     }
+  });
+});
+
+
+describe("external adapter validation", () => {
+  it("normalizes a legacy run using the storage schema without a provider or store", async () => {
+    withStdin(JSON.stringify({ id: "bridge", schemaVersion: 1, icp: "x", domains: [], provider: "fixture", model: "fixture", status: "complete", createdAt: T, unexpected: "stripped" }));
+    await main(["validate-run"]);
+    expect(JSON.parse(out)).toMatchObject({ id: "bridge", vertical: "b2b-sdr", properties: [], parties: [], messages: [] });
+    expect(out).not.toContain("unexpected");
+  });
+  it.each(["not-json PRIVATE", '{"id":"PRIVATE"}', '{"schemaVersion":999}'])("rejects invalid input without echoing owner data: %s", async (input) => {
+    withStdin(input);
+    await expect(main(["validate-run"])).rejects.toThrow("validate-run: invalid JSON, schema, or freshness window");
+    expect(out).toBe("");
+  });
+  it("rejects flags and oversized input", async () => {
+    await expect(main(["validate-run", "--unknown"])).rejects.toBeInstanceOf(UsageError);
+    withStdin("x".repeat(16 * 1024 * 1024 + 1));
+    await expect(main(["validate-run"])).rejects.toThrow("exceeds 16 MiB");
+  });
+  it("validates CRM snapshots using the wall clock", async () => {
+    withStdin(JSON.stringify({ version: 1, source: "erpnext", generatedAt: T, expiresAt: new Date(Date.parse(T) + 900_000).toISOString(), suppressions: [{ kind: "phone", value: "2515550100" }], doNotResearch: [] }));
+    await main(["validate-crm-context"]);
+    expect(JSON.parse(out).suppressions).toEqual([{ kind: "phone", value: "+12515550100" }]);
+    withStdin("{}");
+    await expect(main(["validate-crm-context"])).rejects.toBeInstanceOf(UsageError);
+  });
+  it("refuses unreadable or stale CRM context before selecting any property provider", async () => {
+    await expect(main(["property-run", "--icp", "x", "--zips", "36542", "--crm-context", "/missing/context.json"])).rejects.toThrow("valid, fresh ERPNext snapshot");
+    withStdin(JSON.stringify({ message: { channel: "email", body: "Hi" }, channel: "email" }));
+    await expect(main(["check-send", "--crm-context", "/missing/context.json"])).rejects.toThrow("valid, fresh ERPNext snapshot");
   });
 });
