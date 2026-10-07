@@ -63479,8 +63479,7 @@ function crmQueryExcluded(query, context) {
   const address = formatAddress(query.address);
   return !!address && checkSuppression(contacts(entries), { domains: [], addresses: [address] }).status !== "clean";
 }
-function crmExcludedProperties(model, entries) {
-  const excluded = new Set(entries.filter((e) => e.kind === "parcel").map((e) => e.value));
+function crmExcludedParties(model, entries) {
   const parties = new Set(entries.filter((e) => e.kind === "party").map((e) => e.value));
   const list = contacts(entries);
   for (const party of model.parties) {
@@ -63506,6 +63505,12 @@ function crmExcludedProperties(model, entries) {
       }
     }
   }
+  return parties;
+}
+function crmExcludedProperties(model, entries) {
+  const excluded = new Set(entries.filter((e) => e.kind === "parcel").map((e) => e.value));
+  const parties = crmExcludedParties(model, entries);
+  const list = contacts(entries);
   for (const own2 of model.ownerships) if (parties.has(own2.partyKey)) excluded.add(own2.propertyKey);
   for (const property of model.properties) {
     const address = formatAddress(property.address);
@@ -78603,6 +78608,7 @@ async function runPropertyCampaign(input2) {
     contacted.set(owner.key, property.key);
     selected.push({ property, owner, ctx, nowDate });
   }
+  if (crm) assertFreshCrmContext(crm, Date.parse(now2()));
   const enriched = await runPropertyEnrich(
     selected.map((x) => x.property),
     {
@@ -80640,11 +80646,13 @@ ${CHECK_SEND_USAGE}`);
       verdict.reasons.push("recipient:mismatch");
     }
     if (crm && run) {
-      const excluded = crmExcludedProperties({ properties: [...run.properties], parties: [...run.parties], ownerships: [...run.ownerships], contactPoints: [...run.contactPoints], entityLinks: [...run.entityLinks] }, crm.suppressions);
-      if (run.messages.some((m) => m.contactKey === parsed.contactKey && m.propertyKey && excluded.has(m.propertyKey)) || crm.suppressions.some((e) => e.kind === "party" && e.value === parsed.contactKey)) verdict.reasons.push("suppressed:crm");
+      const model = { properties: [...run.properties], parties: [...run.parties], ownerships: [...run.ownerships], contactPoints: [...run.contactPoints], entityLinks: [...run.entityLinks] };
+      const excluded = crmExcludedProperties(model, crm.suppressions);
+      if (run.messages.some((m) => m.contactKey === parsed.contactKey && m.propertyKey && excluded.has(m.propertyKey)) || crmExcludedParties(model, crm.suppressions).has(parsed.contactKey)) verdict.reasons.push("suppressed:crm");
     }
     verdict.sendable = verdict.reasons.length === 0;
   }
+  if (crm) assertFreshCrmContext(crm, Date.now());
   process.stdout.write(`${JSON.stringify(verdict, null, 2)}
 `);
   if (!verdict.sendable) process.exitCode = 3;

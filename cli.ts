@@ -11,7 +11,7 @@
  */
 
 import { assertCampaignRun } from "./pipeline_core/validator.js";
-import { parseCrmContext, mergeCrmSuppressions, crmExcludedProperties } from "./pipeline_core/crm-context.js";
+import { assertFreshCrmContext, parseCrmContext, mergeCrmSuppressions, crmExcludedProperties, crmExcludedParties } from "./pipeline_core/crm-context.js";
 import { readFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -954,12 +954,14 @@ async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readS
       verdict.reasons.push("recipient:mismatch");
     }
     if (crm && run) {
-      const excluded = crmExcludedProperties({ properties: [...run.properties], parties: [...run.parties], ownerships: [...run.ownerships], contactPoints: [...run.contactPoints], entityLinks: [...run.entityLinks] }, crm.suppressions);
+      const model = { properties: [...run.properties], parties: [...run.parties], ownerships: [...run.ownerships], contactPoints: [...run.contactPoints], entityLinks: [...run.entityLinks] };
+      const excluded = crmExcludedProperties(model, crm.suppressions);
       if (run.messages.some((m) => m.contactKey === parsed.contactKey && m.propertyKey && excluded.has(m.propertyKey)) ||
-        crm.suppressions.some((e) => e.kind === "party" && e.value === parsed.contactKey)) verdict.reasons.push("suppressed:crm");
+        crmExcludedParties(model, crm.suppressions).has(parsed.contactKey)) verdict.reasons.push("suppressed:crm");
     }
     verdict.sendable = verdict.reasons.length === 0;
   }
+  if (crm) assertFreshCrmContext(crm, Date.now());
   process.stdout.write(`${JSON.stringify(verdict, null, 2)}\n`);
   if (!verdict.sendable) process.exitCode = 3;
 }

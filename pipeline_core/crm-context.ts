@@ -70,8 +70,7 @@ export function crmQueryExcluded(query: ResearchQuery, context: CrmContext): boo
 }
 
 /** Match every co-owner and contact point; malformed contact data fails closed. */
-export function crmExcludedProperties(model: PropertyModel, entries: readonly Identity[]): Set<string> {
-  const excluded = new Set(entries.filter((e) => e.kind === "parcel").map((e) => e.value));
+export function crmExcludedParties(model: PropertyModel, entries: readonly Identity[]): Set<string> {
   const parties = new Set(entries.filter((e) => e.kind === "party").map((e) => e.value));
   const list = contacts(entries);
   for (const party of model.parties) {
@@ -95,6 +94,12 @@ export function crmExcludedProperties(model: PropertyModel, entries: readonly Id
       }
     }
   }
+  return parties;
+}
+export function crmExcludedProperties(model: PropertyModel, entries: readonly Identity[]): Set<string> {
+  const excluded = new Set(entries.filter((e) => e.kind === "parcel").map((e) => e.value));
+  const parties = crmExcludedParties(model, entries);
+  const list = contacts(entries);
   for (const own of model.ownerships) if (parties.has(own.partyKey)) excluded.add(own.propertyKey);
   for (const property of model.properties) {
     const address = formatAddress(property.address);

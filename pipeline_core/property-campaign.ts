@@ -271,6 +271,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     selected.push({ property, owner, ctx, nowDate });
   }
 
+  if (crm) assertFreshCrmContext(crm, Date.parse(now()));
   // Property enrichment (flood zones, ...) on the selected parcels only: adds facts, never overwrites.
   const enriched = await runPropertyEnrich(
     selected.map((x) => x.property),
