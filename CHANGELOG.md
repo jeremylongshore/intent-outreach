@@ -6,6 +6,8 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ## [Unreleased]
 
+- Default CLI/MCP run storage now uses local SQLite with AES-256-GCM payload encryption, keyed identifiers, transactional audit and pack/vendor retention. Add `store migrate|purge|audit`; legacy JSONL migration is explicit and preserves the source. Node.js >=22.16 is now required. Keys, backup limits and separate plaintext stores are documented in the README.
+
 - Enforce verified per-model, per-pack approvals when selecting residential scoring and
   drafting models in property campaigns, monitor drafts and inbound replies. B2B approval
   does not qualify a model for residential work; the explicit local-testing override remains.

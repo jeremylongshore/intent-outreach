@@ -7,6 +7,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { EncryptedSqliteRunStore } from "../pipeline_core/encrypted-store.js";
+
 const SERVER = resolve(import.meta.dirname, "..", "bundle", "server.mjs");
 const validRun = {
   id: "e2e-run-1",
@@ -18,7 +20,7 @@ const validRun = {
 
 let home: string;
 let client: Client;
-const runsFile = () => join(home, "runs.jsonl");
+const runsFile = () => join(home, "runs.sqlite");
 const text = (r: unknown) => ((r as { content: { text: string }[] }).content[0]?.text ?? "");
 
 beforeAll(async () => {
@@ -78,16 +80,16 @@ describe("shipped MCP server", () => {
     const out = JSON.parse(text(r)) as { messages: number; rejectedDrafts: { contactKey: string }[] };
     expect(out.messages).toBe(0);
     expect(out.rejectedDrafts.map((d) => d.contactKey)).toEqual(["nobody@nowhere.example"]);
-    const saved = readFileSync(runsFile(), "utf8").trim().split("\n").map((l) => JSON.parse(l) as { id: string; messages: unknown[] });
+    const saved = await new EncryptedSqliteRunStore(runsFile()).listRuns();
     expect(saved.find((x) => x.id === "orphan-draft")?.messages).toEqual([]);
   });
 
-  it("save_run accepts a valid run and it is readable from the JSONL store", async () => {
+  it("save_run accepts a valid run and it is readable from the encrypted store", async () => {
     const r = await client.callTool({ name: "save_run", arguments: validRun });
     expect(r.isError).toBeFalsy();
     expect(JSON.parse(text(r))).toMatchObject({ saved: "e2e-run-1" });
-    const lines = readFileSync(runsFile(), "utf8").trim().split("\n");
-    const stored = lines.map((l) => JSON.parse(l) as { id: string });
+    const stored = await new EncryptedSqliteRunStore(runsFile()).listRuns();
+    expect(readFileSync(runsFile(), "utf8")).not.toContain("Series A fintechs");
     expect(stored.filter((x) => x.id === "e2e-run-1")).toHaveLength(1);
     expect(stored.find((x) => x.id === "e2e-run-1")).toMatchObject({ id: "e2e-run-1", icp: "Series A fintechs", provider: "anthropic" });
   });

@@ -4,7 +4,7 @@
  *
  * The non-Claude-Code path: run a campaign from the terminal with your own keys.
  * Same pipeline_core as the plugin/MCP surface — this is just a thin entrypoint.
- * Local-only: writes runs to your own JSONL store; no network beyond the
+ * Local-only: writes runs to your own encrypted SQLite store; no network beyond the
  * provider/connector APIs you opted into with your keys.
  *
  * Exit codes: 0 ok · 1 runtime failure · 2 usage error (bad/missing flags).
@@ -19,7 +19,8 @@ import { checkMonitor, MonitorSchema, monitorPath, readSnapshot } from "./pipeli
 import type { ResearchQuery } from "./pipeline_core/models.js";
 import { applyProfileToCampaignInput, type ReportProfile } from "./pipeline_core/profiles.js";
 import { cleanBuyerTitles } from "./pipeline_core/targeting.js";
-import { JsonlRunStore, defaultStorePath } from "./pipeline_core/store.js";
+import { defaultStorePath, legacyStorePath } from "./pipeline_core/store.js";
+import { EncryptedSqliteRunStore } from "./pipeline_core/encrypted-store.js";
 import { getConnectors, registerBuiltinConnectors } from "./pipeline_core/connectors/index.js";
 import {
   detectProvider,
@@ -163,6 +164,7 @@ export function printHelp(): void {
       "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
       "  intent-outreach inbound --offer <text> < inquiry.json   draft the first reply to a website inquiry",
       "  intent-outreach keys <ENV_NAME>     key variants (NAME, NAME__TEAM, ...) and monthly quota usage",
+      "  intent-outreach store migrate|purge|audit [--out <runs.sqlite>]",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
@@ -183,7 +185,7 @@ export function printHelp(): void {
       "                          contacts are ranked buyers-first before drafting and Apollo",
       "                          reveals are aimed at them; overrides profile filtering.contactTitles",
       "  --budget-credits <n>    vendor-credit ceiling for the run: paid calls stop before crossing it",
-      "  --out <path>            JSONL store path (default: " + defaultStorePath() + ")",
+      "  --out <path>            Encrypted SQLite store path (default: " + defaultStorePath() + ")",
       "  --json                  print the full run as JSON",
       "",
       "Keys are read from your environment or a local secrets file — never the cloud.",
@@ -322,7 +324,7 @@ async function cmdRun(args: string[]): Promise<void> {
     cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
   });
 
-  const store = new JsonlRunStore(values.out);
+  const store = new EncryptedSqliteRunStore(values.out);
   await store.saveRun(run);
 
   if (values.json) {
@@ -490,7 +492,7 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
     cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
   });
   const out = typeof values.out === "string" ? values.out : undefined;
-  await new JsonlRunStore(out).saveRun(run);
+  await new EncryptedSqliteRunStore(out).saveRun(run);
   if (values.json) {
     process.stdout.write(`${JSON.stringify(run, null, 2)}\n`);
     return;
@@ -535,7 +537,7 @@ async function cmdApprovals(args: string[]): Promise<void> {
   }
   const { values, positionals } = parsed;
   const [action, runId, contactKey, ...extra] = positionals;
-  const store = new JsonlRunStore(values.out);
+  const store = new EncryptedSqliteRunStore(values.out);
   if (action === "pending" && runId === undefined) {
     const pending = await listPending(store);
     if (values.json) {
@@ -711,7 +713,7 @@ async function cmdMonitor(args: string[]): Promise<void> {
           ...(budgetCredits !== undefined ? { budgetCredits } : {}),
           cache: new FileResponseCache(join(intentOutreachHome(), "cache")),
         });
-        await new JsonlRunStore().saveRun(run);
+        await new EncryptedSqliteRunStore().saveRun(run);
         draftRun = `${run.id} (${run.messages.length} drafts, waiting for approval)`;
       }
       await result.commit(); // only now: a failure above re-reports these events next time
@@ -755,7 +757,7 @@ async function cmdKeys(args: string[]): Promise<void> {
 
 const INBOUND_USAGE =
   "usage: intent-outreach inbound --offer <text> [--channel email|sms] [--profile <p>] [--pack <id>]\n" +
-  "         [--provider <p>] [--model <m>] [--out <runs.jsonl>] [--json] < inquiry.json\n" +
+  "         [--provider <p>] [--model <m>] [--out <runs.sqlite>] [--json] < inquiry.json\n" +
   '  inquiry.json: {"inquiry": {"firstName"?,"email"?,"phone"?,"message","propertyAddress"?,"source","receivedAt"},\n' +
   '                 "consents"?: [ConsentRecord...]}\n' +
   "  Drafts the first reply to a website inquiry (never sends). The reply waits for approval like any draft.";
@@ -819,7 +821,7 @@ async function cmdInbound(args: string[]): Promise<void> {
     ...(provider ? { provider } : {}),
     ...(sender ? { sender } : {}),
   });
-  await new JsonlRunStore(typeof values.out === "string" ? values.out : undefined).saveRun(run);
+  await new EncryptedSqliteRunStore(typeof values.out === "string" ? values.out : undefined).saveRun(run);
   if (values.json) {
     process.stdout.write(`${JSON.stringify(run, null, 2)}\n`);
     return;
@@ -921,7 +923,7 @@ async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readS
   });
   // An approval covers a text TO a contact: the recipient must be the one the stored run drafted for.
   if (parsed.runId && parsed.contactKey) {
-    const run = await new JsonlRunStore(values.out).getRun(parsed.runId);
+    const run = await new EncryptedSqliteRunStore(values.out).getRun(parsed.runId);
     if (!run || !run.messages.some((m) => m.contactKey === parsed.contactKey)) {
       verdict.reasons.push("run:message-not-found");
     } else if (!recipientMatches(run, parsed.contactKey, { contactPoint: parsed.contactPoint, contactEmail: parsed.contactEmail })) {
@@ -933,9 +935,28 @@ async function cmdCheckSend(args: string[], stdin: () => Promise<string> = readS
   if (!verdict.sendable) process.exitCode = 3;
 }
 
+async function cmdStore(args: string[]): Promise<void> {
+  const [action, ...rest] = args;
+  const parse = () => {
+    try { return parseArgs({ args: rest, options: { from: { type: "string" }, out: { type: "string" } }, allowPositionals: true }); }
+    catch (error) { throw new UsageError(error instanceof Error ? error.message : String(error)); }
+  };
+  const { values, positionals } = parse();
+  if (positionals.length || !["migrate", "purge", "audit"].includes(action ?? "") || (action !== "migrate" && values.from)) {
+    throw new UsageError("usage: intent-outreach store migrate [--from runs.jsonl] [--out runs.sqlite] | store purge|audit [--out runs.sqlite]");
+  }
+  const store = new EncryptedSqliteRunStore(values.out);
+  const result = action === "migrate"
+    ? { ...(await store.migrateJsonl(values.from ?? legacyStorePath())), sourcePreserved: true }
+    : action === "purge" ? { expired: await store.purgeExpired() } : await store.audit();
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+}
+
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
+    case "store":
+      return cmdStore(rest);
     case "run":
       return cmdRun(rest);
     case "connectors":

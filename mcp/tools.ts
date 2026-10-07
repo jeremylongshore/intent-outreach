@@ -38,10 +38,10 @@ import {
   type Lead,
 } from "../pipeline_core/models.js";
 import { assertCampaignRun, ValidationError } from "../pipeline_core/validator.js";
+import { EncryptedSqliteRunStore } from "../pipeline_core/encrypted-store.js";
 import {
   defaultStorePath,
   DuplicateRunError,
-  JsonlRunStore,
   StoreLockTimeoutError,
   type RunStore,
 } from "../pipeline_core/store.js";
@@ -215,7 +215,7 @@ export const SaveRunInput = {
   overwrite: z
     .boolean()
     .default(false)
-    .describe("Replace an existing run with the same id (the old snapshot stays in the append-only log)"),
+    .describe("Replace an existing run with the same id (a minimal audit event is retained; old message content is replaced)"),
 };
 
 const SaveRunArgsSchema = z.object(SaveRunInput);
@@ -223,7 +223,7 @@ export type SaveRunArgs = z.input<typeof SaveRunArgsSchema>;
 
 export interface SaveRunDeps {
   store?: RunStore;
-  /** Display path for the result (defaults to the store's JSONL path). */
+  /** Display path for the result (defaults to the encrypted store path). */
   storePath?: string;
   now?: () => string;
   suppressions?: SuppressionList;
@@ -339,7 +339,7 @@ export async function handleSaveRun(rawArgs: SaveRunArgs, deps: SaveRunDeps = {}
       createdAt: stamped,
       finishedAt: stamped,
     });
-    const store = deps.store ?? new JsonlRunStore(deps.storePath);
+    const store = deps.store ?? new EncryptedSqliteRunStore(deps.storePath);
     await store.saveRun(run, { overwrite: args.overwrite });
     return asText({
       saved: run.id,
@@ -380,7 +380,7 @@ export const ListPendingInput = {
 /** Drafts with no human decision yet. Each carries the digest a person must cite to approve it. */
 export async function handleListPending(args: { limit?: number | undefined }, deps: ApprovalDeps = {}): Promise<ToolResult> {
   try {
-    const store = deps.store ?? new JsonlRunStore();
+    const store = deps.store ?? new EncryptedSqliteRunStore();
     const pending = await listPending(store, deps.approvalsPath);
     return asText({ total: pending.length, pending: pending.slice(0, args.limit ?? 50) });
   } catch (err) {
@@ -406,7 +406,7 @@ async function decideVia(
 ): Promise<ToolResult> {
   try {
     const record = await decide({
-      store: deps.store ?? new JsonlRunStore(),
+      store: deps.store ?? new EncryptedSqliteRunStore(),
       runId: args.runId,
       contactKey: args.contactKey,
       decision,
@@ -434,7 +434,7 @@ export const ListRunsInput = {
 /** Summaries of the most recent runs in the LOCAL store (newest first). */
 export async function handleListRuns(args: { limit?: number | undefined }, deps: { store?: RunStore } = {}): Promise<ToolResult> {
   try {
-    const store = deps.store ?? new JsonlRunStore();
+    const store = deps.store ?? new EncryptedSqliteRunStore();
     const runs = await store.listRuns();
     const corrupt = (await store.corruptLines()).length;
     // Compare instants, not strings: "…:00Z" vs "…:00.500Z" sort wrong as text.

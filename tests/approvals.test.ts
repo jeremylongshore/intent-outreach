@@ -25,6 +25,7 @@ import {
   type ApprovalRecord,
 } from "../pipeline_core/approvals.js";
 import { SCHEMA_VERSION, type CampaignRun } from "../pipeline_core/models.js";
+import { EncryptedSqliteRunStore } from "../pipeline_core/encrypted-store.js";
 import { JsonlRunStore, MemoryRunStore } from "../pipeline_core/store.js";
 import { assertCampaignRun } from "../pipeline_core/validator.js";
 import { handleApprove, handleListPending, handleReject } from "../mcp/tools.js";
@@ -155,8 +156,8 @@ describe("MCP approval tools", () => {
 describe("CLI: intent-outreach approvals", () => {
   it("pending → approve → pending is empty; approve without --digest is a usage error", { timeout: 60_000 }, async () => {
     const home = mkdtempSync(join(tmpdir(), "io-approvals-cli-"));
-    const runs = join(home, "runs.jsonl");
-    await new JsonlRunStore(runs).saveRun(run("c1"));
+    const runs = join(home, "runs.sqlite");
+    await new EncryptedSqliteRunStore(runs).saveRun(assertCampaignRun({ ...run("c1"), createdAt: new Date().toISOString() }));
     const cli = (...args: string[]) =>
       spawnSync(resolve("node_modules/.bin/tsx"), [resolve("cli.ts"), "approvals", ...args], {
         env: { ...process.env, INTENT_OUTREACH_HOME: home },

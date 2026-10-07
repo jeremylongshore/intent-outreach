@@ -14,7 +14,7 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   handleEnrichLead,
   handleListConnectors,
@@ -25,7 +25,7 @@ import {
   type ToolResult,
 } from "../mcp/tools.js";
 import { addSuppression } from "../pipeline_core/suppressions.js";
-import { JsonlRunStore } from "../pipeline_core/store.js";
+import { EncryptedSqliteRunStore } from "../pipeline_core/encrypted-store.js";
 import { _resetSecretCache } from "../pipeline_core/secrets.js";
 import { _resetBuiltins, registerConnector } from "../pipeline_core/connectors/index.js";
 import type { Connector } from "../pipeline_core/connectors/types.js";
@@ -45,6 +45,7 @@ let home: string;
 const saved = { ...process.env };
 
 beforeEach(() => {
+  vi.useFakeTimers({ now: Date.parse(FIXED), toFake: ["Date"] });
   home = mkdtempSync(join(tmpdir(), "io-mcp-home-"));
   process.env.INTENT_OUTREACH_HOME = home;
   delete process.env.INTENT_OUTREACH_PROFILE;
@@ -56,6 +57,7 @@ beforeEach(() => {
   _resetPacks();
 });
 afterEach(() => {
+  vi.useRealTimers();
   process.env = { ...saved };
 });
 
@@ -104,7 +106,7 @@ function baseArgs(over: Partial<SaveRunArgs> = {}): SaveRunArgs {
   } as SaveRunArgs;
 }
 
-const store = () => new JsonlRunStore(join(home, "runs.jsonl"));
+const store = () => new EncryptedSqliteRunStore(join(home, "runs.sqlite"));
 
 describe("save_run applies runCampaign's compliance", () => {
   it("blocks a suppressed contact: recorded in blockedContacts, never saved as a message", async () => {

@@ -24,7 +24,7 @@ import { _resetBuiltins } from "../pipeline_core/connectors/index.js";
 import { _resetPacks } from "../pipeline_core/packs/index.js";
 import { EMPTY_SUPPRESSION_LIST } from "../pipeline_core/compliance/suppression.js";
 import { handleSaveRun, type SaveRunArgs } from "../mcp/tools.js";
-import { JsonlRunStore } from "../pipeline_core/store.js";
+import { EncryptedSqliteRunStore } from "../pipeline_core/encrypted-store.js";
 import { groundingHeuristic } from "../evals/scorers.js";
 
 const LIVE_INPUT = "Building the capital structure behind 40 acquisitions";
@@ -263,7 +263,7 @@ describe("MCP save_run quantity rule", () => {
       suppressions: EMPTY_SUPPRESSION_LIST,
     });
     expect(res.isError).toBeUndefined();
-    const run = await new JsonlRunStore(join(home, "runs.jsonl")).getRun("qty-mcp");
+    const run = await new EncryptedSqliteRunStore(join(home, "runs.sqlite")).getRun("qty-mcp");
     expect(run!.messages).toEqual([]);
     expect(run!.rejectedDrafts).toEqual([
       {
@@ -278,7 +278,7 @@ describe("MCP save_run quantity rule", () => {
       now: () => "2026-10-05T12:00:00.000Z",
       suppressions: EMPTY_SUPPRESSION_LIST,
     });
-    const run = await new JsonlRunStore(join(home, "runs.jsonl")).getRun("qty-mcp");
+    const run = await new EncryptedSqliteRunStore(join(home, "runs.sqlite")).getRun("qty-mcp");
     expect(run!.rejectedDrafts).toEqual([]);
     expect(run!.messages).toHaveLength(1);
   });

@@ -18,6 +18,7 @@ for (const k of Object.keys(process.env)) {
   if (SECRET_NAME.test(k)) delete process.env[k];
 }
 delete process.env.INTENT_OUTREACH_SECRETS_FILE;
+delete process.env.INTENT_OUTREACH_STORE_KEY_FILE;
 delete process.env.ANTHROPIC_BASE_URL;
 delete process.env.INTENT_OUTREACH_MODEL;
 delete process.env.INTENT_OUTREACH_PROMPTS_DIR;

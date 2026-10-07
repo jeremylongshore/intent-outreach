@@ -106,7 +106,7 @@ describe("importer sanity (the parser sees every import form)", () => {
 });
 
 describe("invariant: storage is separated from the model layer", () => {
-  for (const entry of ["pipeline_core/store.ts", "pipeline_core/validator.ts"]) {
+  for (const entry of ["pipeline_core/store.ts", "pipeline_core/encrypted-store.ts", "pipeline_core/validator.ts"]) {
     it(`${entry} transitively imports neither providers.ts, seam.ts, ai nor @ai-sdk/*`, () => {
       const { files, packages } = closure(abs(entry));
       const localFiles = rel(files);

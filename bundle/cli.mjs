@@ -4544,7 +4544,7 @@ function isRef(value) {
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
-function isRecursive(inst, stack, resolve5) {
+function isRecursive(inst, stack, resolve6) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -4554,7 +4554,7 @@ function isRecursive(inst, stack, resolve5) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve5);
+      const answer = isRecursive(child, stack, resolve6);
       if (answer > result)
         result = answer;
     }
@@ -4565,7 +4565,7 @@ function isRecursive(inst, stack, resolve5) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve5) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve6) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -4629,7 +4629,7 @@ function isRecursive(inst, stack, resolve5) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve5 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve6 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -35705,8 +35705,8 @@ async function raceWithTimeout(promise2, timeoutMs) {
   try {
     const raced = await Promise.race([
       wrapped,
-      new Promise((resolve5) => {
-        timer = setTimeout(() => resolve5({ timedOut: true }), timeoutMs);
+      new Promise((resolve6) => {
+        timer = setTimeout(() => resolve6({ timedOut: true }), timeoutMs);
       })
     ]);
     if (raced.timedOut) {
@@ -61565,9 +61565,9 @@ var RateLimitExceededError = class extends Error {
 var MINUTE = 6e4;
 var DAY = 24 * 60 * MINUTE;
 var RateLimiter = class {
-  constructor(clock2 = Date.now, sleep5 = defaultSleep) {
+  constructor(clock2 = Date.now, sleep4 = defaultSleep) {
     this.clock = clock2;
-    this.sleep = sleep5;
+    this.sleep = sleep4;
   }
   clock;
   sleep;
@@ -61604,9 +61604,9 @@ function positive(n) {
   return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : void 0;
 }
 function defaultSleep(ms, signal) {
-  return new Promise((resolve5, reject) => {
+  return new Promise((resolve6, reject) => {
     if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
-    const t = setTimeout(resolve5, ms);
+    const t = setTimeout(resolve6, ms);
     signal?.addEventListener(
       "abort",
       () => {
@@ -61715,11 +61715,11 @@ function backoffMs(attempt) {
   return Math.min(MAX_RETRY_WAIT_MS, Math.round(ceiling * (0.5 + Math.random() * 0.5)));
 }
 function sleep(ms, signal) {
-  return new Promise((resolve5, reject) => {
+  return new Promise((resolve6, reject) => {
     if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
     const t = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
-      resolve5();
+      resolve6();
     }, ms);
     const onAbort = () => {
       clearTimeout(t);
@@ -63981,7 +63981,6 @@ function gateOrThrow(kind, schema, raw) {
   return r.value;
 }
 var validateMessage = (raw) => gate("Message", MessageSchema, raw);
-var validateCampaignRun = (raw) => gate("CampaignRun", CampaignRunSchema, raw);
 var assertCampaignRun = (raw) => gateOrThrow("CampaignRun", CampaignRunSchema, raw);
 
 // node_modules/.pnpm/@ai-sdk+gateway@4.0.92_zod@4.6.5/node_modules/@ai-sdk/gateway/dist/index.js
@@ -78588,184 +78587,317 @@ async function checkMonitor(monitor, opts) {
 }
 
 // pipeline_core/store.ts
-import { constants as constants4, mkdir as mkdir5, open as open5, readFile as readFile5, stat as stat4, unlink as unlink4 } from "node:fs/promises";
 import { dirname as dirname5, join as join8 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
-    super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
+    super(`run "${runId}" already exists in the store; pass { overwrite: true } to replace the saved snapshot`);
     this.runId = runId;
     this.name = "DuplicateRunError";
   }
   runId;
 };
-var StoreLockTimeoutError = class extends Error {
-  constructor(lockPath) {
-    super(`timed out waiting for run-store lock ${lockPath} (another intent-outreach process is writing)`);
-    this.lockPath = lockPath;
-    this.name = "StoreLockTimeoutError";
-  }
-  lockPath;
-};
 function defaultStorePath() {
+  return join8(intentOutreachHome(), "runs.sqlite");
+}
+function legacyStorePath() {
   return join8(intentOutreachHome(), "runs.jsonl");
 }
-var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
-var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
-var JsonlRunStore = class {
-  constructor(path = defaultStorePath(), opts = {}) {
-    this.path = path;
-    this.lockTimeoutMs = opts.lockTimeoutMs ?? 1e4;
-    this.staleLockMs = opts.staleLockMs ?? 3e4;
+
+// pipeline_core/encrypted-store.ts
+import { createCipheriv, createDecipheriv, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { closeSync, constants as constants4, existsSync as existsSync2, fchmodSync, fstatSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync as readFileSync4, unlinkSync, writeFileSync } from "node:fs";
+import { dirname as dirname6, isAbsolute as isAbsolute3, resolve as resolve5 } from "node:path";
+
+// pipeline_core/run-retention.ts
+var RUN_RETENTION_DAYS = Object.freeze({
+  "b2b-sdr": 365,
+  "residential-re": 30,
+  "commercial-re": 30
+});
+function runExpiresAt(run, now2) {
+  const created = Math.min(Date.parse(run.createdAt), now2);
+  const days = Object.hasOwn(RUN_RETENTION_DAYS, run.vertical) ? RUN_RETENTION_DAYS[run.vertical] : 30;
+  let expires = created + days * 864e5;
+  function visit6(value) {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      for (const item of value) visit6(item);
+      return;
+    }
+    const obj = value;
+    const terms = obj.licenseTerms;
+    if (terms && typeof terms.retentionDays === "number") {
+      const days2 = terms.retentionDays;
+      if (!Number.isSafeInteger(days2) || days2 <= 0) throw new Error("Invalid vendor retention period");
+      const fetched = typeof obj.fetchedAt === "string" ? Date.parse(obj.fetchedAt) : created;
+      if (!Number.isFinite(fetched)) throw new Error("Invalid retention timestamp");
+      expires = Math.min(expires, Math.min(fetched, created) + days2 * 864e5);
+    }
+    for (const item of Object.values(obj)) visit6(item);
   }
-  path;
-  lockTimeoutMs;
-  staleLockMs;
-  permsChecked = false;
-  warnedKey = "";
-  async saveRun(run, opts = {}) {
-    const checked = assertCampaignRun(run);
-    const line = JSON.stringify(checked) + "\n";
-    await mkdir5(dirname5(this.path), { recursive: true, mode: 448 });
-    await this.withLock(async () => {
-      if (!opts.overwrite) {
-        const { runs } = await this.scan();
-        if (runs.some((r) => r.run.id === checked.id)) throw new DuplicateRunError(checked.id);
+  visit6(run);
+  return expires;
+}
+
+// pipeline_core/encrypted-store.ts
+var StoreIntegrityError = class extends Error {
+  constructor(message = "Encrypted run store integrity check failed; restore a verified database/key backup") {
+    super(message);
+    this.name = "StoreIntegrityError";
+  }
+};
+function mac3(key, value) {
+  return createHmac("sha256", key).update(value).digest("hex");
+}
+function equal(a, b) {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+function privateFile(path, create) {
+  const fd = openSync(path, constants4.O_RDWR | constants4.O_NOFOLLOW | (create ? constants4.O_CREAT : 0), 384);
+  try {
+    const st = fstatSync(fd);
+    if (!st.isFile() || st.nlink !== 1) throw new StoreIntegrityError("Run-store files must be regular, unlinked files");
+    if ((st.mode & 63) !== 0) fchmodSync(fd, 384);
+    return fd;
+  } catch (error62) {
+    closeSync(fd);
+    throw error62;
+  }
+}
+async function readKey(path, dbExists) {
+  if (!existsSync2(path)) {
+    if (dbExists) throw new StoreIntegrityError("Run-store key is missing; restore the original key, never generate a replacement");
+    mkdirSync(dirname6(path), { recursive: true, mode: 448 });
+    const temporary = `${path}.${randomBytes(12).toString("hex")}.tmp`;
+    const fd2 = openSync(temporary, "wx", 384);
+    try {
+      writeFileSync(fd2, randomBytes(32));
+      fsyncSync(fd2);
+      try {
+        linkSync(temporary, path);
+      } catch (error62) {
+        if (error62.code !== "EEXIST") throw error62;
       }
-      await this.append(line);
+    } finally {
+      closeSync(fd2);
+      unlinkSync(temporary);
+    }
+    const directory = openSync(dirname6(path), "r");
+    try {
+      fsyncSync(directory);
+    } finally {
+      closeSync(directory);
+    }
+  }
+  for (let attempt = 0; attempt < 5 && lstatSync(path).nlink > 1; attempt++) {
+    await new Promise((done) => setTimeout(done, 10));
+  }
+  const fd = privateFile(path, false);
+  try {
+    const key = readFileSync4(fd);
+    if (key.length !== 32) throw new StoreIntegrityError("Run-store key must contain exactly 32 random bytes");
+    return key;
+  } finally {
+    closeSync(fd);
+  }
+}
+var EncryptedSqliteRunStore = class {
+  path;
+  keyPath;
+  clock;
+  constructor(path = defaultStorePath(), options = {}) {
+    this.path = resolve5(path);
+    const configuredKey = options.keyPath ?? process.env.INTENT_OUTREACH_STORE_KEY_FILE;
+    if (configuredKey !== void 0 && (!configuredKey.trim() || !isAbsolute3(configuredKey))) {
+      throw new Error("INTENT_OUTREACH_STORE_KEY_FILE must be an absolute path");
+    }
+    this.keyPath = configuredKey ?? `${this.path}.key`;
+    if (resolve5(this.keyPath) === this.path) throw new Error("Run-store database and key paths must differ");
+    this.clock = options.now ?? (() => /* @__PURE__ */ new Date());
+  }
+  async saveRun(run, options = {}) {
+    const checked = assertCampaignRun(run);
+    const now2 = this.clock().getTime();
+    const expires = runExpiresAt(checked, now2);
+    if (expires <= now2) throw new Error("Run is past its retention deadline and cannot be saved");
+    await this.transact((db, key) => {
+      this.purge(db, key, now2);
+      const token = this.token(key, checked.id);
+      const old = db.prepare("SELECT expires FROM runs WHERE token = ?").get(token);
+      if (old && !options.overwrite) throw new DuplicateRunError(checked.id);
+      this.write(db, key, checked, Math.min(expires, old ? Number(old.expires) : expires), old ? "overwrite" : "save", now2);
     });
   }
   async getRun(id) {
-    const { runs } = await this.scan();
-    for (let i = runs.length - 1; i >= 0; i--) {
-      const r = runs[i];
-      if (r && r.run.id === id) return r.run;
-    }
-    return null;
+    return this.transact((db, key) => {
+      this.purge(db, key, this.clock().getTime());
+      const row = db.prepare("SELECT * FROM runs WHERE token = ?").get(this.token(key, id));
+      return row ? this.decrypt(key, row) : null;
+    });
   }
   async listRunIds() {
-    const { runs } = await this.scan();
-    return [...new Set(runs.map((r) => r.run.id))];
+    return (await this.listRuns()).map((run) => run.id);
   }
   async listRuns() {
-    const { runs } = await this.scan();
-    const latest = /* @__PURE__ */ new Map();
-    for (const r of runs) latest.set(r.run.id, r.run);
-    return [...latest.values()];
+    return this.transact((db, key) => {
+      this.purge(db, key, this.clock().getTime());
+      return db.prepare("SELECT * FROM runs ORDER BY rowid").all().map((row) => this.decrypt(key, row));
+    });
   }
+  /** SQLite corruption fails the entire operation; never return a partial clean list. */
   async corruptLines() {
-    return (await this.scan()).corrupt;
+    await this.listRuns();
+    return [];
   }
-  // ── write path ──────────────────────────────────────────────────────────────
-  /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
-  async append(line) {
-    const fh = await open5(
-      this.path,
-      constants4.O_RDWR | constants4.O_APPEND | constants4.O_CREAT,
-      384
-    );
-    try {
-      const st = await fh.stat();
-      if (!this.permsChecked) {
-        if ((st.mode & 63) !== 0) await fh.chmod(384);
-        this.permsChecked = true;
-      }
-      let payload = line;
-      if (st.size > 0) {
-        const last = Buffer.alloc(1);
-        await fh.read(last, 0, 1, st.size - 1);
-        if (last[0] !== 10) payload = "\n" + line;
-      }
-      await fh.write(payload);
-      await fh.sync();
-    } finally {
-      await fh.close();
-    }
+  async purgeExpired() {
+    return this.transact((db, key) => this.purge(db, key, this.clock().getTime()));
   }
-  /**
-   * Cross-process mutual exclusion via an exclusive-create lockfile. A lock older
-   * than `staleLockMs` (writer crashed mid-save) is broken. Backoff is bounded.
-   */
-  async withLock(fn) {
-    const lockPath = `${this.path}.lock`;
-    const deadline = Date.now() + this.lockTimeoutMs;
-    let delay3 = 5;
-    let lock;
-    while (!lock) {
+  async audit() {
+    return this.transact((db) => db.prepare("SELECT * FROM audit ORDER BY sequence").all());
+  }
+  /** All-or-nothing import of latest snapshots. Source is never edited or removed. */
+  async migrateJsonl(source) {
+    if (resolve5(source) === this.path || resolve5(source) === resolve5(this.keyPath)) throw new Error("Migration source must differ from database and key");
+    const bytes = readFileSync4(source);
+    const runs = /* @__PURE__ */ new Map();
+    const now2 = this.clock().getTime();
+    for (const [index, line] of bytes.toString("utf8").split("\n").entries()) {
+      if (!line.trim()) continue;
       try {
-        lock = await open5(lockPath, "wx", 384);
-      } catch (err) {
-        if (err.code !== "EEXIST") throw err;
-        try {
-          const st = await stat4(lockPath);
-          if (Date.now() - st.mtimeMs > this.staleLockMs) {
-            await unlink4(lockPath).catch(() => void 0);
-            continue;
-          }
-        } catch {
-          continue;
-        }
-        if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
-        await sleep3(delay3 + Math.floor(Math.random() * delay3));
-        delay3 = Math.min(delay3 * 2, 200);
-      }
-    }
-    try {
-      await lock.write(`${process.pid} ${(/* @__PURE__ */ new Date()).toISOString()}
-`);
-      return await fn();
-    } finally {
-      await lock.close().catch(() => void 0);
-      await unlink4(lockPath).catch(() => void 0);
-    }
-  }
-  // ── read path ───────────────────────────────────────────────────────────────
-  async scan() {
-    let text2;
-    try {
-      text2 = await readFile5(this.path, "utf8");
-    } catch (err) {
-      if (err.code === "ENOENT") return { runs: [], corrupt: [] };
-      throw err;
-    }
-    const runs = [];
-    const corrupt = [];
-    const lines = text2.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i];
-      if (raw === void 0 || raw.trim().length === 0) continue;
-      const lineNo = i + 1;
-      let parsed;
-      try {
-        parsed = JSON.parse(raw);
+        const run = assertCampaignRun(JSON.parse(line));
+        const expires = Math.min(runExpiresAt(run, now2), runs.get(run.id)?.expires ?? Infinity);
+        runs.set(run.id, { run, expires });
       } catch {
-        corrupt.push({ line: lineNo, reason: "invalid-json" });
-        continue;
+        throw new StoreIntegrityError(`Legacy JSONL line ${index + 1} is invalid; no records imported`);
       }
-      const r = validateCampaignRun(parsed);
-      if (r.ok) {
-        runs.push({ line: lineNo, run: r.value });
-        continue;
-      }
-      const version2 = parsed && typeof parsed === "object" ? parsed.schemaVersion : void 0;
-      corrupt.push({
-        line: lineNo,
-        reason: SUPPORTED_VERSIONS.includes(version2) ? "schema-invalid" : "unknown-schema-version"
-      });
     }
-    this.warnCorrupt(corrupt);
-    return { runs, corrupt };
+    return this.transact((db, key) => {
+      const digest = mac3(key, bytes);
+      const prior = db.prepare("SELECT value FROM metadata WHERE name = 'legacy_digest'").get();
+      if (prior?.value === digest) return { imported: 0, expired: 0, alreadyMigrated: true };
+      if (prior || Number(db.prepare("SELECT count(*) AS n FROM audit").get()?.n) > 0) {
+        throw new Error("Migration requires an empty encrypted store; use a new --out path");
+      }
+      let imported = 0;
+      let expired = 0;
+      for (const { run, expires } of runs.values()) {
+        if (expires <= now2) {
+          this.appendAudit(db, key, this.token(key, run.id), "expire", now2, "");
+          expired++;
+        } else {
+          this.write(db, key, run, expires, "import", now2);
+          imported++;
+        }
+      }
+      db.prepare("INSERT INTO metadata VALUES ('legacy_digest', ?)").run(digest);
+      return { imported, expired, alreadyMigrated: false };
+    }, true);
   }
-  /** One stderr warning per distinct set of bad lines (not one per read). */
-  warnCorrupt(corrupt) {
-    if (corrupt.length === 0) return;
-    const key = corrupt.map((c) => `${c.line}:${c.reason}`).join(",");
-    if (key === this.warnedKey) return;
-    this.warnedKey = key;
-    const detail = corrupt.map((c) => `${c.line} (${c.reason})`).join(", ");
-    process.stderr.write(
-      `intent-outreach: warning: ${corrupt.length} unreadable line(s) in ${this.path} were skipped: line ${detail}
-`
-    );
+  token(key, id) {
+    return mac3(key, `run-id:${id}`);
+  }
+  write(db, key, run, expires, action, now2) {
+    const token = this.token(key, run.id);
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", Buffer.from(mac3(key, "payload-key:v1"), "hex"), iv);
+    cipher.setAAD(Buffer.from(JSON.stringify([1, token, expires])));
+    const ciphertext = Buffer.concat([cipher.update(JSON.stringify(run), "utf8"), cipher.final()]);
+    const payload = Buffer.concat([iv, cipher.getAuthTag(), ciphertext]);
+    db.prepare("INSERT INTO runs(token, expires, payload) VALUES (?, ?, ?) ON CONFLICT(token) DO UPDATE SET expires=excluded.expires, payload=excluded.payload").run(token, expires, payload);
+    this.appendAudit(db, key, token, action, now2, this.rowDigest(key, { token, expires, payload }));
+  }
+  decrypt(key, row) {
+    try {
+      const payload = Buffer.from(row.payload);
+      const decipher = createDecipheriv("aes-256-gcm", Buffer.from(mac3(key, "payload-key:v1"), "hex"), payload.subarray(0, 12));
+      decipher.setAuthTag(payload.subarray(12, 28));
+      decipher.setAAD(Buffer.from(JSON.stringify([1, row.token, row.expires])));
+      const clear = Buffer.concat([decipher.update(payload.subarray(28)), decipher.final()]);
+      const run = assertCampaignRun(JSON.parse(clear.toString("utf8")));
+      if (this.token(key, run.id) !== row.token) throw new StoreIntegrityError();
+      return run;
+    } catch {
+      throw new StoreIntegrityError();
+    }
+  }
+  rowDigest(key, row) {
+    return mac3(key, JSON.stringify([row.token, row.expires, Buffer.from(row.payload).toString("base64")]));
+  }
+  appendAudit(db, key, token, action, at, digest) {
+    const last = db.prepare("SELECT sequence, chain FROM audit ORDER BY sequence DESC LIMIT 1").get();
+    const sequence = Number(last?.sequence ?? 0) + 1;
+    const chain = mac3(key, JSON.stringify([last?.chain ?? "", sequence, token, action, at, digest]));
+    db.prepare("INSERT INTO audit VALUES (?, ?, ?, ?, ?, ?)").run(sequence, token, action, at, digest, chain);
+  }
+  verify(db, key) {
+    const check2 = db.prepare("SELECT value FROM metadata WHERE name = 'key_check'").get();
+    if (!equal(String(check2?.value ?? ""), mac3(key, "store-key-check:v1"))) throw new StoreIntegrityError("Wrong run-store key or damaged store metadata");
+    let previous = "";
+    let sequence = 0;
+    const expected = /* @__PURE__ */ new Map();
+    for (const event of db.prepare("SELECT * FROM audit ORDER BY sequence").all()) {
+      const chain = mac3(key, JSON.stringify([previous, ++sequence, event.token, event.action, event.at, event.digest]));
+      if (event.sequence !== sequence || !equal(event.chain, chain)) throw new StoreIntegrityError();
+      if (event.action === "expire") expected.delete(event.token);
+      else expected.set(event.token, event.digest);
+      previous = chain;
+    }
+    for (const row of db.prepare("SELECT * FROM runs").all()) {
+      if (!equal(expected.get(row.token) ?? "", this.rowDigest(key, row))) throw new StoreIntegrityError();
+      expected.delete(row.token);
+    }
+    if (expected.size) throw new StoreIntegrityError();
+  }
+  purge(db, key, now2) {
+    const expired = db.prepare("SELECT token FROM runs WHERE expires <= ?").all(now2);
+    for (const row of expired) this.appendAudit(db, key, String(row.token), "expire", now2, "");
+    db.prepare("DELETE FROM runs WHERE expires <= ?").run(now2);
+    return expired.length;
+  }
+  async transact(fn, migrating = false) {
+    const { DatabaseSync } = await import("node:sqlite");
+    const legacy = this.path === resolve5(defaultStorePath()) && existsSync2(legacyStorePath()) ? readFileSync4(legacyStorePath()) : void 0;
+    if (!migrating && legacy && !existsSync2(this.path)) throw new Error("Legacy runs.jsonl exists; run intent-outreach store migrate before using encrypted storage");
+    mkdirSync(dirname6(this.path), { recursive: true, mode: 448 });
+    const key = await readKey(this.keyPath, existsSync2(this.path));
+    const fd = privateFile(this.path, true);
+    closeSync(fd);
+    const db = new DatabaseSync(this.path);
+    let transaction = false;
+    try {
+      db.exec("PRAGMA busy_timeout=10000; PRAGMA synchronous=FULL; PRAGMA secure_delete=ON; BEGIN IMMEDIATE");
+      transaction = true;
+      const version2 = Number(db.prepare("PRAGMA user_version").get()?.user_version);
+      if (version2 === 0) {
+        if (Number(db.prepare("SELECT count(*) AS n FROM sqlite_master").get()?.n) !== 0) throw new StoreIntegrityError("Not an Intent Outreach encrypted database");
+        db.exec(`
+          CREATE TABLE metadata(name TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT;
+          CREATE TABLE runs(token TEXT PRIMARY KEY, expires INTEGER NOT NULL, payload BLOB NOT NULL) STRICT;
+          CREATE TABLE audit(sequence INTEGER PRIMARY KEY, token TEXT NOT NULL, action TEXT NOT NULL CHECK(action IN ('save','overwrite','import','expire')), at INTEGER NOT NULL, digest TEXT NOT NULL, chain TEXT NOT NULL) STRICT;
+          CREATE TRIGGER audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT, 'audit is append-only'); END;
+          CREATE TRIGGER audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT, 'audit is append-only'); END;
+          PRAGMA user_version=1;
+        `);
+        db.prepare("INSERT INTO metadata VALUES ('key_check', ?)").run(mac3(key, "store-key-check:v1"));
+      } else if (version2 !== 1) throw new StoreIntegrityError("Unsupported encrypted store version");
+      this.verify(db, key);
+      if (!migrating && legacy) {
+        const imported = db.prepare("SELECT value FROM metadata WHERE name = 'legacy_digest'").get();
+        if (imported?.value !== mac3(key, legacy)) throw new Error("Legacy runs.jsonl is unimported or changed; run intent-outreach store migrate into an empty store");
+      }
+      const result = fn(db, key);
+      db.exec("COMMIT");
+      transaction = false;
+      return result;
+    } catch (error62) {
+      if (transaction) db.exec("ROLLBACK");
+      throw error62;
+    } finally {
+      db.close();
+      key.fill(0);
+    }
   }
 };
 
@@ -79198,8 +79330,8 @@ async function runInbound(input2) {
 
 // pipeline_core/approvals.ts
 import { createHash as createHash5, randomUUID as randomUUID3 } from "node:crypto";
-import { constants as constants5, mkdir as mkdir6, open as open6, readFile as readFile6, rename as rename5, stat as stat5, truncate, unlink as unlink5 } from "node:fs/promises";
-import { dirname as dirname6, join as join9 } from "node:path";
+import { constants as constants5, mkdir as mkdir5, open as open5, readFile as readFile5, rename as rename5, stat as stat4, truncate, unlink as unlink4 } from "node:fs/promises";
+import { dirname as dirname7, join as join9 } from "node:path";
 var ApprovalRecordSchema = external_exports.object({
   runId: external_exports.string().min(1),
   contactKey: external_exports.string().min(1),
@@ -79228,7 +79360,7 @@ function defaultApprovalsPath() {
 async function readApprovals(path = defaultApprovalsPath()) {
   let text2;
   try {
-    text2 = await readFile6(path, "utf8");
+    text2 = await readFile5(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return [];
     throw err;
@@ -79250,44 +79382,44 @@ async function readApprovals(path = defaultApprovalsPath()) {
   });
   return out;
 }
-var sleep4 = (ms) => new Promise((r) => setTimeout(r, ms));
+var sleep3 = (ms) => new Promise((r) => setTimeout(r, ms));
 async function withLock2(path, fn) {
-  await mkdir6(dirname6(path), { recursive: true, mode: 448 });
+  await mkdir5(dirname7(path), { recursive: true, mode: 448 });
   const lockPath = `${path}.lock`;
   const token = randomUUID3();
   const deadline = Date.now() + 1e4;
   let lock;
   while (!lock) {
     try {
-      lock = await open6(lockPath, "wx", 384);
+      lock = await open5(lockPath, "wx", 384);
       await lock.write(token);
     } catch (err) {
       if (err.code !== "EEXIST") throw err;
       try {
-        if (Date.now() - (await stat5(lockPath)).mtimeMs > 3e4) {
+        if (Date.now() - (await stat4(lockPath)).mtimeMs > 3e4) {
           const stolen = `${lockPath}.stale.${token}`;
           await rename5(lockPath, stolen);
-          await unlink5(stolen).catch(() => void 0);
+          await unlink4(stolen).catch(() => void 0);
           continue;
         }
       } catch {
       }
       if (Date.now() >= deadline) throw new Error(`approvals: timed out waiting for lock ${lockPath}`);
-      await sleep4(20);
+      await sleep3(20);
     }
   }
   try {
     return await fn();
   } finally {
     await lock.close().catch(() => void 0);
-    const holder = await readFile6(lockPath, "utf8").catch(() => void 0);
-    if (holder === token) await unlink5(lockPath).catch(() => void 0);
+    const holder = await readFile5(lockPath, "utf8").catch(() => void 0);
+    if (holder === token) await unlink4(lockPath).catch(() => void 0);
   }
 }
 async function repairTornTail(path) {
   let text2;
   try {
-    text2 = await readFile6(path, "utf8");
+    text2 = await readFile5(path, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return;
     throw err;
@@ -79298,7 +79430,7 @@ async function repairTornTail(path) {
 async function append(path, record2) {
   await withLock2(path, async () => {
     await repairTornTail(path);
-    const fh = await open6(path, constants5.O_WRONLY | constants5.O_CREAT | constants5.O_APPEND, 384);
+    const fh = await open5(path, constants5.O_WRONLY | constants5.O_CREAT | constants5.O_APPEND, 384);
     try {
       await fh.chmod(384);
       await fh.write(`${JSON.stringify(record2)}
@@ -79467,6 +79599,7 @@ function printHelp() {
       "  intent-outreach approvals reject <runId> <contactKey> [--note <text>]",
       "  intent-outreach inbound --offer <text> < inquiry.json   draft the first reply to a website inquiry",
       "  intent-outreach keys <ENV_NAME>     key variants (NAME, NAME__TEAM, ...) and monthly quota usage",
+      "  intent-outreach store migrate|purge|audit [--out <runs.sqlite>]",
       "  intent-outreach check-send [--profile <p>] < message.json",
       "                                      send-time compliance verdict (JSON); exit 0 sendable, 3 not",
       "  intent-outreach help",
@@ -79487,7 +79620,7 @@ function printHelp() {
       "                          contacts are ranked buyers-first before drafting and Apollo",
       "                          reveals are aimed at them; overrides profile filtering.contactTitles",
       "  --budget-credits <n>    vendor-credit ceiling for the run: paid calls stop before crossing it",
-      "  --out <path>            JSONL store path (default: " + defaultStorePath() + ")",
+      "  --out <path>            Encrypted SQLite store path (default: " + defaultStorePath() + ")",
       "  --json                  print the full run as JSON",
       "",
       "Keys are read from your environment or a local secrets file \u2014 never the cloud."
@@ -79598,7 +79731,7 @@ async function cmdRun(args) {
     // Only connectors that declare cacheTtlMs are cached; files are 0600 under the local home.
     cache: new FileResponseCache(join10(intentOutreachHome(), "cache"))
   });
-  const store = new JsonlRunStore(values.out);
+  const store = new EncryptedSqliteRunStore(values.out);
   await store.saveRun(run);
   if (values.json) {
     process.stdout.write(JSON.stringify(run, null, 2) + "\n");
@@ -79748,7 +79881,7 @@ ${PROPERTY_RUN_USAGE}`);
     cache: new FileResponseCache(join10(intentOutreachHome(), "cache"))
   });
   const out = typeof values.out === "string" ? values.out : void 0;
-  await new JsonlRunStore(out).saveRun(run);
+  await new EncryptedSqliteRunStore(out).saveRun(run);
   if (values.json) {
     process.stdout.write(`${JSON.stringify(run, null, 2)}
 `);
@@ -79783,7 +79916,7 @@ async function cmdApprovals(args) {
   }
   const { values, positionals } = parsed;
   const [action, runId, contactKey2, ...extra] = positionals;
-  const store = new JsonlRunStore(values.out);
+  const store = new EncryptedSqliteRunStore(values.out);
   if (action === "pending" && runId === void 0) {
     const pending = await listPending(store);
     if (values.json) {
@@ -79852,7 +79985,7 @@ async function cmdMonitor(args) {
   const values = parsed.values;
   const [action, id, ...extra] = positionals;
   if (extra.length > 0) throw new UsageError(MONITOR_USAGE);
-  const { mkdir: mkdir7, readFile: readFile7, readdir, unlink: unlink6, writeFile: writeFile2 } = await import("node:fs/promises");
+  const { mkdir: mkdir6, readFile: readFile6, readdir, unlink: unlink5, writeFile: writeFile2 } = await import("node:fs/promises");
   if (action === "list" && id === void 0) {
     const dir = join10(intentOutreachHome(), "monitors");
     const names = await readdir(dir).catch(() => []);
@@ -79860,7 +79993,7 @@ async function cmdMonitor(args) {
     if (defs.length === 0) process.stdout.write("no monitors\n");
     for (const n of defs.sort()) {
       try {
-        const m = MonitorSchema.parse(JSON.parse(await readFile7(join10(dir, n), "utf8")));
+        const m = MonitorSchema.parse(JSON.parse(await readFile6(join10(dir, n), "utf8")));
         const snap = await readSnapshot(monitorPath(m.id)).catch(() => void 0);
         process.stdout.write(`${m.id}  ${JSON.stringify(m.query)}  last check: ${snap?.checkedAt ?? "never"}
 `);
@@ -79894,12 +80027,12 @@ async function cmdMonitor(args) {
       throw new UsageError(`monitor: ${err instanceof external_exports.ZodError ? err.issues.map((i) => i.message).join("; ") : String(err)}`);
     }
     const path = monitorDefPath(id);
-    const existing = await readFile7(path, "utf8").then((t) => JSON.parse(t)).catch(() => void 0);
+    const existing = await readFile6(path, "utf8").then((t) => JSON.parse(t)).catch(() => void 0);
     if (existing && JSON.stringify(existing.query) !== JSON.stringify(monitor.query)) {
       if (!values.replace) throw new UsageError(`monitor ${id} already watches ${JSON.stringify(existing.query)}; pass --replace to change it (resets its baseline)`);
-      await unlink6(monitorPath(id)).catch(() => void 0);
+      await unlink5(monitorPath(id)).catch(() => void 0);
     }
-    await mkdir7(join10(intentOutreachHome(), "monitors"), { recursive: true, mode: 448 });
+    await mkdir6(join10(intentOutreachHome(), "monitors"), { recursive: true, mode: 448 });
     await writeFile2(path, JSON.stringify(monitor, null, 2), { mode: 384 });
     process.stdout.write(`monitor ${id} saved \u2192 ${path}
 `);
@@ -79908,7 +80041,7 @@ async function cmdMonitor(args) {
   if (action === "check") {
     let monitor;
     try {
-      monitor = MonitorSchema.parse(JSON.parse(await readFile7(monitorDefPath(id), "utf8")));
+      monitor = MonitorSchema.parse(JSON.parse(await readFile6(monitorDefPath(id), "utf8")));
     } catch (err) {
       throw new UsageError(`monitor ${id}: ${err.code === "ENOENT" ? "not found (monitor add first)" : String(err)}`);
     }
@@ -79946,7 +80079,7 @@ async function cmdMonitor(args) {
           ...budgetCredits !== void 0 ? { budgetCredits } : {},
           cache: new FileResponseCache(join10(intentOutreachHome(), "cache"))
         });
-        await new JsonlRunStore().saveRun(run);
+        await new EncryptedSqliteRunStore().saveRun(run);
         draftRun = `${run.id} (${run.messages.length} drafts, waiting for approval)`;
       }
       await result.commit();
@@ -79986,7 +80119,7 @@ async function cmdKeys(args) {
 `);
   }
 }
-var INBOUND_USAGE = 'usage: intent-outreach inbound --offer <text> [--channel email|sms] [--profile <p>] [--pack <id>]\n         [--provider <p>] [--model <m>] [--out <runs.jsonl>] [--json] < inquiry.json\n  inquiry.json: {"inquiry": {"firstName"?,"email"?,"phone"?,"message","propertyAddress"?,"source","receivedAt"},\n                 "consents"?: [ConsentRecord...]}\n  Drafts the first reply to a website inquiry (never sends). The reply waits for approval like any draft.';
+var INBOUND_USAGE = 'usage: intent-outreach inbound --offer <text> [--channel email|sms] [--profile <p>] [--pack <id>]\n         [--provider <p>] [--model <m>] [--out <runs.sqlite>] [--json] < inquiry.json\n  inquiry.json: {"inquiry": {"firstName"?,"email"?,"phone"?,"message","propertyAddress"?,"source","receivedAt"},\n                 "consents"?: [ConsentRecord...]}\n  Drafts the first reply to a website inquiry (never sends). The reply waits for approval like any draft.';
 var InboundStdinSchema = external_exports.object({ inquiry: InboundInquirySchema, consents: external_exports.array(ConsentRecordSchema).default([]) });
 async function cmdInbound(args) {
   let values;
@@ -80043,7 +80176,7 @@ ${INBOUND_USAGE}`);
     ...provider ? { provider } : {},
     ...sender ? { sender } : {}
   });
-  await new JsonlRunStore(typeof values.out === "string" ? values.out : void 0).saveRun(run);
+  await new EncryptedSqliteRunStore(typeof values.out === "string" ? values.out : void 0).saveRun(run);
   if (values.json) {
     process.stdout.write(`${JSON.stringify(run, null, 2)}
 `);
@@ -80131,7 +80264,7 @@ ${CHECK_SEND_USAGE}`);
     approval: parsed.runId && parsed.contactKey ? approvalVerdict(await readApprovals(), parsed.runId, parsed.contactKey, parsed.message) : "missing"
   });
   if (parsed.runId && parsed.contactKey) {
-    const run = await new JsonlRunStore(values.out).getRun(parsed.runId);
+    const run = await new EncryptedSqliteRunStore(values.out).getRun(parsed.runId);
     if (!run || !run.messages.some((m) => m.contactKey === parsed.contactKey)) {
       verdict.reasons.push("run:message-not-found");
     } else if (!recipientMatches(run, parsed.contactKey, { contactPoint: parsed.contactPoint, contactEmail: parsed.contactEmail })) {
@@ -80143,9 +80276,29 @@ ${CHECK_SEND_USAGE}`);
 `);
   if (!verdict.sendable) process.exitCode = 3;
 }
+async function cmdStore(args) {
+  const [action, ...rest] = args;
+  const parse3 = () => {
+    try {
+      return parseArgs({ args: rest, options: { from: { type: "string" }, out: { type: "string" } }, allowPositionals: true });
+    } catch (error62) {
+      throw new UsageError(error62 instanceof Error ? error62.message : String(error62));
+    }
+  };
+  const { values, positionals } = parse3();
+  if (positionals.length || !["migrate", "purge", "audit"].includes(action ?? "") || action !== "migrate" && values.from) {
+    throw new UsageError("usage: intent-outreach store migrate [--from runs.jsonl] [--out runs.sqlite] | store purge|audit [--out runs.sqlite]");
+  }
+  const store = new EncryptedSqliteRunStore(values.out);
+  const result = action === "migrate" ? { ...await store.migrateJsonl(values.from ?? legacyStorePath()), sourcePreserved: true } : action === "purge" ? { expired: await store.purgeExpired() } : await store.audit();
+  process.stdout.write(`${JSON.stringify(result, null, 2)}
+`);
+}
 async function main(argv = process.argv.slice(2)) {
   const [cmd, ...rest] = argv;
   switch (cmd) {
+    case "store":
+      return cmdStore(rest);
     case "run":
       return cmdRun(rest);
     case "connectors":

@@ -43,6 +43,8 @@ each phase in its own context while the orchestrator checkpoints with you betwee
   suppression list first, then the pack's own checks (DNC, TCPA quiet hours, service area). Email drafts
   get a CAN-SPAM footer appended by code from your sender identity. `b2b-sdr` ships as the default pack.
 
+Requires **Node.js 22.16 or newer** (Node 22 LTS is used in CI).
+
 ## Two ways to run it
 
 ### 1. Claude Code plugin (primary)
@@ -283,13 +285,14 @@ Other settings:
 |---|---|
 | `INTENT_OUTREACH_HOME` | Data directory (default `~/.intent-outreach`). Must be an absolute path. |
 | `INTENT_OUTREACH_SECRETS_FILE` | Local secrets JSON (default `$INTENT_OUTREACH_HOME/secrets.json`). Absolute path. |
+| `INTENT_OUTREACH_STORE_KEY_FILE` | Absolute path to the 32-byte run-store encryption key. Defaults to `<database>.key`; store and back it up separately from the database. |
 | `INTENT_OUTREACH_MODEL` | Override the model id for the chosen provider. |
 | `INTENT_OUTREACH_PROFILE` | Report Profile used by MCP `save_run` when the call doesn't pass one. |
 | `INTENT_OUTREACH_KEEP_RAW=1` | Keep full vendor payloads in run records. Off by default: personal emails, mobile/personal phones, home addresses and birth data are dropped and only a B2B field allowlist is kept. |
 | `INTENT_OUTREACH_PROMPTS_DIR` | Load prompt files from another directory. |
 | `INTENT_OUTREACH_ALLOW_UNGATED=1` | Let a provider with no approved model run (local testing only). |
 
-Empty values and literal `${...}` placeholders count as unset.
+Provider/configuration empty values and literal `${...}` placeholders count as unset. The store key path must be a real absolute path; empty values are rejected.
 
 To drive a non-Anthropic model from inside Claude Code, point `ANTHROPIC_BASE_URL` at an LLM gateway
 (LiteLLM/Bifrost). See `000-docs/017-AT-DECR`.
@@ -300,15 +303,55 @@ Everything is local, under `INTENT_OUTREACH_HOME` (default `~/.intent-outreach`)
 
 | File | Contents |
 |---|---|
-| `runs.jsonl` | Every validated campaign run, one per line, append-only. |
+| `runs.sqlite` | Encrypted validated runs, retention deadlines and an append-only audit of operations. |
+| `runs.sqlite.key` | Automatically created 32-byte master key (unless `INTENT_OUTREACH_STORE_KEY_FILE` is set). |
+| `runs.jsonl` | Legacy plaintext records, preserved during explicit migration. |
 | `suppressions.jsonl` | Your opt-out list. |
 | `secrets.json` | Optional local keys (a warning is printed if group/other can read it). |
 | `profiles/` | Optional Report Profiles you can name with `--profile`. |
 
-New directories are created with mode **0700** and files with **0600**; an existing run store with broader
-permissions is tightened to 0600 on the next write. Writes happen under a lockfile, so concurrent runs and a
-crash mid-write can't corrupt the store; a torn last line is repaired and any unreadable line is reported
-with its line number instead of being dropped silently.
+Run-store directories are created with mode **0700** and database/key files with **0600**.
+Existing database/key permissions are tightened on access. Runs are encrypted with AES-256-GCM
+before SQLite sees them; run IDs use keyed hashes. Each save and its audit event commit in one
+transaction. Reads authenticate and revalidate records, returning frozen values. Wrong keys,
+corruption and unsupported database versions fail closed.
+
+The key is generated automatically on first use. Set `INTENT_OUTREACH_STORE_KEY_FILE` **before
+first use** to keep it elsewhere. Back it up separately: losing it makes runs unrecoverable;
+changing the path does not rotate the key. An existing database with a missing key refuses to open.
+This protects a database disclosed without its key. It does not protect against someone who can
+read both, or a compromised running account. SQLite page metadata, counts, timestamps and encrypted
+payload lengths remain visible. This is application-level encryption, not SQLCipher.
+
+Residential, commercial and unknown packs retain runs for **30 days**, B2B for **365 days**, measured
+from run creation. An earlier vendor `retentionDays` deadline expires the entire run; timestamps in
+the future cannot extend it. Overwrites cannot extend a stored deadline. Successful run reads/writes
+purge expired records; schedule `store purge` daily on machines that otherwise sit idle. These local
+minimization defaults do not grant permission to retain vendor data. Old payloads are replaced, while
+an audit keeps opaque identifiers, times, operation types and keyed integrity digests. Audit updates
+and deletes are blocked by SQLite triggers and an authenticated chain detects changes. An external
+trusted checkpoint would be needed to detect restoration of an entire older database backup.
+
+```bash
+# Required once if the default runs.jsonl already exists. Source stays untouched.
+node bundle/cli.mjs store migrate
+# Custom source/destination; --out now means an encrypted SQLite database.
+node bundle/cli.mjs store migrate --from /path/old.jsonl --out /path/runs.sqlite
+node bundle/cli.mjs store purge
+node bundle/cli.mjs store audit
+```
+
+Migration validates every input line, imports the latest snapshot per ID into an empty database,
+and records expired runs without retaining their contents. Any invalid line aborts the import.
+Repeating an unchanged import is safe. The default store refuses to hide an unimported or changed
+legacy file. Review the import counts and inspect runs with `approvals pending` or MCP `list_runs`
+before removing the plaintext source according to your retention policy. Migration never removes
+it for you; old backups and exports need their own retention process. Restoring an older application
+requires its preserved JSONL records; older releases cannot read this encrypted database.
+
+Encryption applies to the run store. Suppression/consent/approval ledgers, provider caches, monitor
+snapshots, explicit exports and delivery outputs have separate storage paths and are **not encrypted
+by this adapter**. See [SECURITY.md](SECURITY.md) for that boundary.
 
 ## Architecture (one screen)
 
@@ -322,7 +365,7 @@ standalone CLI ──────┘                     └─ save_run ──�
   research() → enrich()  : deterministic, fixed connector order      ├─ providers.ts (Vercel AI SDK; eval-gated)
   score() → draft()      : the ONLY LLM calls (structured output)    ├─ draft-guard.ts + compliance/ + footer.ts
   gate → guard → footer  : suppression + pack gate, fail-closed      ├─ validator.ts (the gate: Validated<T> brand)
-  validate → save        : un-validated output can't be stored       └─ store.ts (local JSONL; never hosted)
+  validate → save        : un-validated output can't be stored       └─ encrypted-store.ts (local SQLite; never hosted)
 ```
 
 - **`pipeline_core/`** — the framework-free spine (CI-guarded against any Google/cloud import).
