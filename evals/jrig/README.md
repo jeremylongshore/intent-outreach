@@ -37,6 +37,33 @@ The fixture preload is confined to this command and its tests. Do not preload it
 for real campaigns. The explicit J-Rig config is generated in temporary storage;
 it is not installed as an ambient `.mcp.json` configuration.
 
+## Phase-agent host component
+
+`agent-host.ts` loads the unchanged three agent bodies, verifies their declared
+permissions against the reviewed mapping, and snapshots the canonical prompt and
+two skill references. Each dispatch receives a fresh context containing only its
+role instructions and explicit input. Its injected model adapter must supply an
+explicit provider/model identity, actual usage, and honor cancellation. No model
+or credential is selected by this component.
+
+Nested calls use the actual bundled tool schemas and results. The host validates
+all calls in a turn before execution, confines each role to its declared tools,
+limits invocations, turns, calls and transcript bytes, and retains correlated
+partial evidence on failure. Shared call capacity is reserved before concurrent
+invocations. Read is restricted to the reviewed resource snapshot. Events include
+agent-definition hashes, model usage, dispatch inputs, tool arguments/results and
+final output; retain these only in private fixture evidence storage.
+
+`tests/jrig-agent-host.test.ts` exercises isolated contexts, role/schema refusal,
+resource boundaries, cancellation, failure receipts and budgets. Its integration
+case runs research and enrichment through the unchanged shipped bundle with the
+synthetic transport, verifies actual returned company/email data, checks that no
+store was created, and verifies child cleanup. These tests use scripted model
+turns and establish host mechanics only. The component still needs the scenario
+MCP entrypoint, model transport, authored human checkpoints and independent
+case/store assertions before it can establish behavioral acceptance. A reviewed
+Report Profile must be added explicitly if a later case requires one.
+
 ## Behavioral acceptance contract
 
 `skills/intent-outreach/eval-spec.yaml` follows the current skill and preserves

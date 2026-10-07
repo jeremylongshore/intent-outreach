@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["offline-wiring.ts"],
+  "include": ["*.ts"],
   "exclude": ["../../node_modules", "../../dist"]
 }
