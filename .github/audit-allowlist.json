@@ -1,4 +1,4 @@
 {
-  "_comment": "Advisories (GHSA ids) the audit gate tolerates. Every entry needs a reason that explains why it is UNREACHABLE in Intent Outreach (stdio-only MCP transport: no HTTP server, no browser, no untrusted URL input). Entries expire: the gate fails once expires is in the past, forcing a re-check. Prefer npm audit fix over an entry here.",
+  "_comment": "Advisories (GHSA ids) the audit gate tolerates. Every entry needs a reason that explains why it is UNREACHABLE in Intent Outreach (stdio-only MCP transport: no HTTP server, no browser, no untrusted URL input). Entries expire: the gate fails once expires is in the past, forcing a re-check. Prefer pnpm update over an entry here.",
   "allow": []
 }

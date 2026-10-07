@@ -1,0 +1,6 @@
+packages:
+  - packages/*
+
+# esbuild is the only dependency whose install script is required.
+onlyBuiltDependencies:
+  - esbuild

@@ -506,7 +506,7 @@ describe("getProvider warns on an unapproved model under a supported provider", 
     await providers.getProvider({ provider: "anthropic", model: "claude-unlisted-9" });
     const msgs = write.mock.calls.map((c) => String(c[0])).filter((m) => m.includes("no approved eval record"));
     expect(msgs).toHaveLength(1);
-    expect(msgs[0]).toMatch(/evals:promote -- --provider anthropic --model claude-unlisted-9/);
+    expect(msgs[0]).toMatch(/pnpm run evals:promote --provider anthropic --model claude-unlisted-9/);
   });
 });
 

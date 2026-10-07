@@ -27,7 +27,7 @@
  * forward as `verified: false` legacy claims so neither provider is switched
  * off, and must be re-run with a key (see evals/README.md).
  *
- * Do not hand-edit the block between the markers casually: `npm run
+ * Do not hand-edit the block between the markers casually: `pnpm run
  * evals:promote` rewrites it (as JSON) after a passing keyed run.
  */
 

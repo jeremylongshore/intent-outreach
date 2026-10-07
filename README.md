@@ -87,7 +87,7 @@ from the `profile` argument, or from the profile named by `INTENT_OUTREACH_PROFI
 ### 2. Standalone CLI
 
 ```bash
-npm install                    # only needed to develop/regenerate; the bundle is committed
+pnpm install --frozen-lockfile                    # only needed to develop/regenerate; the bundle is committed
 node bundle/cli.mjs run --icp "B2B SaaS founders doing their own outbound" \
                         --domains acme.com,globex.com --channel email --profile my-profile
 node bundle/cli.mjs connectors   # which connectors are configured
@@ -96,7 +96,7 @@ node bundle/cli.mjs suppress list
 ```
 
 `bundle/cli.mjs` and `bundle/server.mjs` are committed, dependency-inlined builds (so the plugin runs
-on a fresh clone with no `node_modules`); regenerate them with `npm run bundle`.
+on a fresh clone with no `node_modules`); regenerate them with `pnpm run bundle`.
 
 `run` options: `--icp` and `--domains` (required), `--profile <path|name>`, `--provider
 anthropic|openai|minimax|xai`, `--model`, `--channel email|linkedin`, `--min-score 0-100`, `--max-contacts 1-50`,
@@ -333,14 +333,16 @@ standalone CLI ──────┘                     └─ save_run ──�
 
 ## Develop
 
+Use pnpm 10.8.1 (pinned in `package.json`) and the [workspace conventions](packages/README.md).
+
 ```bash
-npm install
-npm run typecheck      # tsc --noEmit
-npm test               # vitest
-npm run bundle         # rebuild bundle/ (what ships); commit the result
-npm run mcp            # run the MCP server on stdio (tsx)
-npx tsx evals/run.ts --offline   # free wiring check (CI); not a model-quality gate
-npm run evals          # keyed eval harness (needs ANTHROPIC_API_KEY, costs money)
+pnpm install --frozen-lockfile
+pnpm run typecheck      # tsc --noEmit
+pnpm test               # vitest
+pnpm run bundle         # rebuild bundle/ (what ships); commit the result
+pnpm run mcp            # run the MCP server on stdio (tsx)
+pnpm exec tsx evals/run.ts --offline   # free wiring check (CI); not a model-quality gate
+pnpm run evals          # keyed eval harness (needs ANTHROPIC_API_KEY, costs money)
 ```
 
 ### Approving a model (the eval promote flow)
@@ -350,7 +352,7 @@ bands, angle grounding and the product draft guard all checked.
 
 ```bash
 export ANTHROPIC_API_KEY=...
-npm run evals:promote -- --provider anthropic --model claude-sonnet-5-5   # add --judge for an LLM judge
+pnpm run evals:promote --provider anthropic --model claude-sonnet-5-5   # add --judge for an LLM judge
 ```
 
 On a pass it writes `evals/results/<date>-<provider>-<model>-<promptRef>.json` and marks the pair
