@@ -258,3 +258,11 @@ describe("external adapter validation", () => {
     await expect(main(["check-send", "--crm-context", "/missing/context.json"])).rejects.toThrow("valid, fresh ERPNext snapshot");
   });
 });
+
+
+it("exposes the canonical vendor-limited retention deadline to CRM adapters", async () => {
+  withStdin(JSON.stringify({ id: "retention", schemaVersion: 6, vertical: "residential-re", icp: "x", domains: [], provider: "fixture", model: "fixture", status: "complete", createdAt: T, parties: [{ key: "p", name: "Owner", kind: "person", source: "fixture", licenseTerms: { retentionDays: 2 } }] }));
+  await main(["validate-run", "--with-retention"]);
+  expect(JSON.parse(out)).toMatchObject({ version: 1, run: { id: "retention" }, expiresAt: new Date(Date.parse(T) + 2 * 86_400_000).toISOString() });
+  await expect(main(["validate-crm-context", "--with-retention"])).rejects.toBeInstanceOf(UsageError);
+});

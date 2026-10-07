@@ -10,6 +10,7 @@
  * Exit codes: 0 ok · 1 runtime failure · 2 usage error (bad/missing flags).
  */
 
+import { runExpiresAt } from "./pipeline_core/run-retention.js";
 import { assertCampaignRun } from "./pipeline_core/validator.js";
 import { assertFreshCrmContext, parseCrmContext, mergeCrmSuppressions, crmExcludedProperties, crmExcludedParties } from "./pipeline_core/crm-context.js";
 import { readFile } from "node:fs/promises";
@@ -989,12 +990,18 @@ async function cmdStore(args: string[]): Promise<void> {
 
 /** External adapters use the same schema gate as storage, without opening a store or provider. */
 async function cmdValidate(args: string[], kind: "run" | "crm-context"): Promise<void> {
-  if (args.length) throw new UsageError(`usage: intent-outreach validate-${kind} < input.json`);
+  const withRetention = kind === "run" && args.length === 1 && args[0] === "--with-retention";
+  if (args.length && !withRetention) throw new UsageError(`usage: intent-outreach validate-${kind}${kind === "run" ? " [--with-retention]" : ""} < input.json`);
   const raw = await readStdin(16 * 1024 * 1024);
   let checked;
   try {
     const input: unknown = JSON.parse(raw);
-    checked = kind === "run" ? assertCampaignRun(input) : parseCrmContext(input, Date.now());
+    if (kind === "run") {
+      const run = assertCampaignRun(input);
+      checked = withRetention ? { version: 1, run, expiresAt: new Date(runExpiresAt(run, Date.now())).toISOString() } : run;
+    } else {
+      checked = parseCrmContext(input, Date.now());
+    }
   } catch {
     // Schema paths/messages may include untrusted values; do not echo owner data to logs.
     throw new UsageError(`validate-${kind}: invalid JSON, schema, or freshness window`);

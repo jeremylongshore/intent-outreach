@@ -6,6 +6,8 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ## [Unreleased]
 
+- `validate-run --with-retention` exports the canonical pack/vendor expiry alongside the validated run so external adapters do not duplicate retention rules.
+
 - Add offline `validate-run` and `validate-crm-context` adapter commands. Property runs accept a fresh ERPNext exclusion snapshot, skip known parcels before research, remove discovered do-not-research owners before enrichment/drafting/storage, and combine CRM suppressions with local opt-outs. `check-send --crm-context` rechecks current CRM suppressions without granting consent or approval.
 
 - Enforce per-pack normalized-data policies before model/caching paths. B2B raw debug opt-in no longer bypasses enrichment minimization; residential preserves typed owner/contact/compliance data and approved property facts. Cache identity includes policy and expiry honors vendor terms. `store purge` now also removes expired caches and monitor snapshots; expired monitors re-baseline without false new-parcel events.

@@ -61517,6 +61517,43 @@ var init_dist12 = __esm({
   }
 });
 
+// pipeline_core/run-retention.ts
+var RUN_RETENTION_DAYS = Object.freeze({
+  "b2b-sdr": 365,
+  "residential-re": 30,
+  "commercial-re": 30
+});
+function retentionDaysForPack(id) {
+  return Object.hasOwn(RUN_RETENTION_DAYS, id) ? RUN_RETENTION_DAYS[id] : 30;
+}
+function runExpiresAt(run, now2) {
+  const created = Math.min(Date.parse(run.createdAt), now2);
+  const days = retentionDaysForPack(run.vertical);
+  return dataExpiresAt(run, created, days);
+}
+function dataExpiresAt(value, created, days) {
+  let expires = created + days * 864e5;
+  function visit6(value2) {
+    if (!value2 || typeof value2 !== "object") return;
+    if (Array.isArray(value2)) {
+      for (const item of value2) visit6(item);
+      return;
+    }
+    const obj = value2;
+    const terms = obj.licenseTerms;
+    if (terms && typeof terms.retentionDays === "number") {
+      const days2 = terms.retentionDays;
+      if (!Number.isSafeInteger(days2) || days2 <= 0) throw new Error("Invalid vendor retention period");
+      const fetched = typeof obj.fetchedAt === "string" ? Date.parse(obj.fetchedAt) : created;
+      if (!Number.isFinite(fetched)) throw new Error("Invalid retention timestamp");
+      expires = Math.min(expires, Math.min(fetched, created) + days2 * 864e5);
+    }
+    for (const item of Object.values(obj)) visit6(item);
+  }
+  visit6(value);
+  return expires;
+}
+
 // node_modules/.pnpm/zod@4.6.5/node_modules/zod/index.js
 init_external();
 init_external();
@@ -63623,43 +63660,6 @@ function minimizeResearch(out, policy2) {
 }
 function minimizeEnrichment(e) {
   return { ...e, data: minimizeBusinessData(e.data) };
-}
-
-// pipeline_core/run-retention.ts
-var RUN_RETENTION_DAYS = Object.freeze({
-  "b2b-sdr": 365,
-  "residential-re": 30,
-  "commercial-re": 30
-});
-function retentionDaysForPack(id) {
-  return Object.hasOwn(RUN_RETENTION_DAYS, id) ? RUN_RETENTION_DAYS[id] : 30;
-}
-function runExpiresAt(run, now2) {
-  const created = Math.min(Date.parse(run.createdAt), now2);
-  const days = retentionDaysForPack(run.vertical);
-  return dataExpiresAt(run, created, days);
-}
-function dataExpiresAt(value, created, days) {
-  let expires = created + days * 864e5;
-  function visit6(value2) {
-    if (!value2 || typeof value2 !== "object") return;
-    if (Array.isArray(value2)) {
-      for (const item of value2) visit6(item);
-      return;
-    }
-    const obj = value2;
-    const terms = obj.licenseTerms;
-    if (terms && typeof terms.retentionDays === "number") {
-      const days2 = terms.retentionDays;
-      if (!Number.isSafeInteger(days2) || days2 <= 0) throw new Error("Invalid vendor retention period");
-      const fetched = typeof obj.fetchedAt === "string" ? Date.parse(obj.fetchedAt) : created;
-      if (!Number.isFinite(fetched)) throw new Error("Invalid retention timestamp");
-      expires = Math.min(expires, Math.min(fetched, created) + days2 * 864e5);
-    }
-    for (const item of Object.values(obj)) visit6(item);
-  }
-  visit6(value);
-  return expires;
 }
 
 // pipeline_core/connectors/registry.ts
@@ -80680,12 +80680,18 @@ async function cmdStore(args) {
 `);
 }
 async function cmdValidate(args, kind) {
-  if (args.length) throw new UsageError(`usage: intent-outreach validate-${kind} < input.json`);
+  const withRetention = kind === "run" && args.length === 1 && args[0] === "--with-retention";
+  if (args.length && !withRetention) throw new UsageError(`usage: intent-outreach validate-${kind}${kind === "run" ? " [--with-retention]" : ""} < input.json`);
   const raw = await readStdin(16 * 1024 * 1024);
   let checked;
   try {
     const input2 = JSON.parse(raw);
-    checked = kind === "run" ? assertCampaignRun(input2) : parseCrmContext(input2, Date.now());
+    if (kind === "run") {
+      const run = assertCampaignRun(input2);
+      checked = withRetention ? { version: 1, run, expiresAt: new Date(runExpiresAt(run, Date.now())).toISOString() } : run;
+    } else {
+      checked = parseCrmContext(input2, Date.now());
+    }
   } catch {
     throw new UsageError(`validate-${kind}: invalid JSON, schema, or freshness window`);
   }
