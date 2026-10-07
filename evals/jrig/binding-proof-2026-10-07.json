@@ -1,0 +1,70 @@
+{
+  "schema": "intent-outreach-jrig-binding-proof/v1",
+  "observedAt": "2026-10-07T23:20:25.421Z",
+  "scope": "scripted_loopback_real_cli_and_nested_bundle",
+  "behavioralVerdict": null,
+  "tier3bPassed": false,
+  "paidModelCalls": 0,
+  "vendorNetworkCalls": 0,
+  "messagesSent": 0,
+  "rootRequests": 8,
+  "nestedRequests": 4,
+  "bindings": [
+    {
+      "phase": "skill",
+      "sessionId": "1a5d0fb6-2d72-4b06-8755-92ea5a1fa5db",
+      "receiptSha256": "sha256:05ec3b9cc76df95ee20a139aeea3cf2c2241ce7d7fb7db474a344c9030055f26",
+      "traceSha256": "601169f8f5cfaf3feb2d2deee6b94498d5d28c5a6397909c445071a1400333a9",
+      "nestedUsage": {
+        "inputTokens": 22,
+        "outputTokens": 10
+      },
+      "audit": {
+        "caseId": "build-lead-list",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": true,
+        "failures": [],
+        "incomplete": [],
+        "traceSha256": "601169f8f5cfaf3feb2d2deee6b94498d5d28c5a6397909c445071a1400333a9",
+        "storedRuns": 0
+      },
+      "passed": true
+    },
+    {
+      "phase": "baseline",
+      "sessionId": "d95cb281-90f6-427a-b7db-444001b71cf6",
+      "receiptSha256": "sha256:80ed873f735576ed974b0aa8de9af92683bf677f620415fd056b572ffc6a17bc",
+      "traceSha256": "4ffdcd54419d8d0c02313ed5dffc5f47672b7bb0b1b060520c6e9f8e26a0ab44",
+      "nestedUsage": {
+        "inputTokens": 22,
+        "outputTokens": 10
+      },
+      "audit": {
+        "caseId": "build-lead-list",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": true,
+        "failures": [],
+        "incomplete": [],
+        "traceSha256": "4ffdcd54419d8d0c02313ed5dffc5f47672b7bb0b1b060520c6e9f8e26a0ab44",
+        "storedRuns": 0
+      },
+      "passed": true
+    }
+  ],
+  "sha256": {
+    "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+    "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+    "evals/jrig/bind-evidence.ts": "a479d90d073b8de6065153f70527ce63ff2b73294d42b91ea87ea468b00b74b5",
+    "evals/jrig/binding-proof.ts": "c7e5d76ac24d0ed66260a62e57dbd127c8daac57f950a881b40bc562960be5a6",
+    "evals/jrig/scenario-host.ts": "962819d6aee08e7719bae7bbd4f04efb281d4209fefa2f87bdf7ab875ab53bd9",
+    "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+    "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
+    "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",
+    "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69",
+    "jrigCli": "be03a8731c35ce04037c62e006c0935ba0be261f705321ee7fc24383ab9f80fc"
+  }
+}

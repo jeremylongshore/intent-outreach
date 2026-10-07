@@ -51,7 +51,8 @@ async function start(evidence: string, baseUrl: string, suffix: string, checkpoi
     provider: "scripted-loopback", model: "fixture-model", baseUrl, checkpoints })), { mode: 0o600 });
   const transport = new StdioClientTransport({ command: process.execPath,
     args: ["--import", "tsx", join(root, "evals/jrig/scenario-host.ts"), config], cwd: root, stderr: "pipe",
-    env: { PATH: process.env.PATH ?? "", HOME: evidence, JRIG_AGENT_API_KEY: "fixture-only", APOLLO_API_KEY: "must-not-reach-bundle" },
+    env: { PATH: process.env.PATH ?? "", HOME: evidence, JRIG_AGENT_API_KEY: "fixture-only", APOLLO_API_KEY: "must-not-reach-bundle",
+      JRIG_EXECUTION_SESSION_ID: `component-${suffix}` },
   });
   transport.stderr?.on("data", () => { /* The protocol result and private trace are the evidence. */ });
   const client = new Client({ name: "scenario-host-component-test", version: "0" });
@@ -133,6 +134,7 @@ describe("scenario MCP host", () => {
       await first.client.close();
       await second.client.close();
       const trace = await events(first.home);
+      expect(trace[0].data.executionSessionId).toBe("component-prospect-and-draft");
       expect(trace.at(-1).kind).toBe("closed");
       expect(trace.at(-1).data.agentUsage).toEqual({ inputTokens: 66, outputTokens: 30 });
       expect(trace.filter((event) => event.kind === "checkpoint")).toHaveLength(2);

@@ -90,7 +90,9 @@ reviewed draft text in the question. An unknown or mismatched checkpoint is an
 error, never an implicit approval. Every reply remains a synthetic evaluation
 decision. The host records model and tool events privately in `host-events.jsonl`
 and verifies bundled-child shutdown. It retains the private fixture store for
-independent inspection; the case runner owns eventual fixture disposal.
+independent inspection; the case runner owns eventual fixture disposal. The start
+event also records J-Rig's `JRIG_EXECUTION_SESSION_ID`. Direct component launches
+may omit it, but a correlated evaluation requires a UUID from the J-Rig runtime.
 
 `audit-scenario.ts` independently checks real dispatch/tool receipts, preflight,
 research domains, retained-lead enrichment, canonical prompt reads, separate
@@ -106,8 +108,34 @@ phase agents, actual connector normalization, reviewed drafting resources,
 checkpoint replies and encrypted save. A second launch verifies store isolation;
 a separate negative case proves that the independent auditor rejects actual
 unapproved persistence. These are component checks. Still required are the
-single-case J-Rig runner, verified association of each skill/baseline execution
-with its host trace, actual non-Anthropic model runs and all behavioral layers.
+single-case J-Rig runner, actual non-Anthropic model runs and all behavioral layers.
+
+## Receipt-to-host association
+
+`bind-evidence.ts` checks a fresh single-case J-Rig database against private
+skill/baseline receipts and the exact MCP config digest. It joins each
+`tool-session.json` identity to exactly one host trace, verifies case/model,
+ordered root calls and completed-result sizes, then runs the independent store
+audit. Missing, duplicate, altered, mismatched or unassociated evidence is refused.
+A correlated failed execution remains failed. Nested token usage is retained
+separately; J-Rig's root cost meter does not include it. These checks establish
+correlation and structural evidence, not authentication or a model-quality verdict.
+
+Use a built J-Rig revision containing the session-identity change tracked by
+`bd_000-projects-h08j.11` / J-Rig issue #345:
+
+```sh
+pnpm exec tsx evals/jrig/binding-proof.ts /absolute/path/to/j-rig/packages/cli/dist/index.js /tmp/outreach-binding-proof.json
+```
+
+This component proof runs actual skill and naked-baseline MCP sessions through
+J-Rig, the scenario host, and nested research in the unchanged bundle. Scripted
+loopback model responses select tools; no real model is graded. It verifies
+separate session IDs, authored checkpoints, no saved records, reported nested
+usage, exact receipt association and child cleanup before removing its fixtures.
+The output retains source hashes and explicitly marks behavioral acceptance false.
+The tiny deterministic spec in this proof is only a component test; a behavioral
+runner must retain the draft spec's reviewed criteria and case policies.
 
 ## Behavioral acceptance contract
 

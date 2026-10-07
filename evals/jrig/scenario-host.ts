@@ -97,6 +97,7 @@ export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
     const validator = new AjvJsonSchemaValidator();
     const validators = new Map(tools.map((tool) => [tool.name, validator.getValidator(tool.inputSchema)]));
     await record("started", { caseId: config.caseId, home, bundlePid, provider: config.provider, model: config.model,
+      executionSessionId: process.env.JRIG_EXECUTION_SESSION_ID ?? null,
       fixtureOnly: true, checkpoints: config.checkpoints, tools: tools.map((tool) => tool.name),
       sha256: { skill: sha(skillBytes), bundle: sha(await readFile(bundle)), fixture: sha(await readFile(fixture)),
         host: sha(await readFile(fileURLToPath(import.meta.url))), agentHost: sha(await readFile(join(root, "evals/jrig/agent-host.ts"))),
