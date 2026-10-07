@@ -197,7 +197,7 @@ describe("store operations", () => {
     expect(out).not.toContain("cli-import");
     out = "";
     await main(["store", "purge", "--out", destination]);
-    expect(JSON.parse(out)).toEqual({ expired: 0 });
+    expect(JSON.parse(out)).toEqual({ expired: 0, cacheEntries: 0, monitorSnapshots: 0 });
   });
 
   it("rejects incomplete, misspelled and inconsistent commands", async () => {

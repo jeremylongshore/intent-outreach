@@ -1614,12 +1614,12 @@ describe("PII minimization", () => {
     expect(JSON.stringify(enrichments)).not.toContain("jane@gmail.com");
   });
 
-  it("INTENT_OUTREACH_KEEP_RAW=1 opts back in to the full payload", async () => {
+  it("INTENT_OUTREACH_KEEP_RAW=1 never bypasses normalized B2B minimization", async () => {
     process.env.INTENT_OUTREACH_KEEP_RAW = "1";
     _resetSecretCache();
     vi.stubGlobal("fetch", mockFetchWith({ data: { ...PERSONAL, work_email: "jane@acme.com" } }));
     const { enrichments } = await peopledatalabsConnector.enrich!({ lead, contacts: [contact] });
-    expect(enrichments[0]!.data).toHaveProperty("personal_emails");
+    expect(enrichments[0]!.data).not.toHaveProperty("personal_emails");
   });
 
   it("ZoomInfo enrichment data drops mobilePhone and home address", async () => {

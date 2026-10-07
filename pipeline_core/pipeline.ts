@@ -1,3 +1,5 @@
+import { BUSINESS_PII, PROPERTY_PII, PII_POLICY_VERSION, minimizeResearch, minimizeProperty, minimizeEnrichment, type PiiPolicy } from "./pii-policy.js";
+import { dataExpiresAt, retentionDaysForPack } from "./run-retention.js";
 /**
  * pipeline_core/pipeline.ts — DETERMINISTIC research → enrich orchestration.
  *
@@ -75,6 +77,9 @@ export const DEFAULT_MAX_DOMAINS = 25;
 export const DEFAULT_CONNECTOR_TIMEOUT_MS = 90_000;
 
 export interface ConnectorRunOptions {
+  piiPolicy?: PiiPolicy;
+  /** Maximum cache lifetime from the selected pack; vendor terms may shorten it. */
+  retentionDays?: number;
   /** Per-connector-invocation deadline in ms. Default 90s. */
   connectorTimeoutMs?: number;
   /** Buyer titles passed to every connector (people search/reveal targeting). */
@@ -417,12 +422,14 @@ const contactPointKey = (c: ContactPoint) =>
 function mergeContactPoint(a: ContactPoint, b: ContactPoint): ContactPoint {
   const dnc = DNC_RANK[b.dnc] > DNC_RANK[a.dnc] ? b.dnc : a.dnc;
   const restricted = Boolean(a.licenseTerms?.outreachRestricted || b.licenseTerms?.outreachRestricted);
+  const retentionDays = Math.min(a.licenseTerms?.retentionDays ?? Infinity, b.licenseTerms?.retentionDays ?? Infinity);
   const licenseTerms =
     a.licenseTerms || b.licenseTerms
-      ? { ...b.licenseTerms, ...a.licenseTerms, ...(restricted ? { outreachRestricted: true } : {}) }
+      ? { ...b.licenseTerms, ...a.licenseTerms, ...(restricted ? { outreachRestricted: true } : {}), ...(Number.isFinite(retentionDays) ? { retentionDays } : {}) }
       : undefined;
   return {
     ...a,
+    fetchedAt: Date.parse(a.fetchedAt) <= Date.parse(b.fetchedAt) ? a.fetchedAt : b.fetchedAt,
     dnc,
     ...(a.lineType === undefined || a.lineType === "unknown" ? (b.lineType ? { lineType: b.lineType } : {}) : {}),
     ...(licenseTerms ? { licenseTerms } : {}),
@@ -478,6 +485,9 @@ export async function runResearchQuery(
   registerBuiltinConnectors();
   const typed: ResearchQuery =
     query.kind === "domain" ? { kind: "domain", domain: normalizeDomain(query.domain) } : query;
+  const pii = opts.piiPolicy ?? (typed.kind === "domain" ? BUSINESS_PII : PROPERTY_PII);
+  const retentionDays = opts.retentionDays ?? (pii.kind === "business" ? 365 : 30);
+  if (!Number.isFinite(retentionDays) || retentionDays <= 0) throw new Error("Invalid pack retention period");
   const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
@@ -509,10 +519,11 @@ export async function runResearchQuery(
       const ttl = connector.cacheTtlMs ?? 0;
       const key =
         opts.cache && ttl > 0
-          ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting })
+          ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting, pii, retentionDays, policyVersion: PII_POLICY_VERSION })
           : undefined;
       let out = key ? await cacheRead(opts.cache!, key, clock()) : undefined;
       if (out) {
+        out = minimizeResearch(out, pii);
         cached.push(connector.name);
       } else {
         if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
@@ -524,14 +535,18 @@ export async function runResearchQuery(
           (signal) => connector.research!({ domain: target, query: typed, icp, ...targeting, signal }),
           timeoutMs,
         );
+        out = minimizeResearch(out, pii);
         // Cache only a COMPLETE answer: a result with item failures would replay
         // the failure for the whole TTL. A complete empty answer is cached (a paid
         // lookup that found nothing is not bought again).
         if (key && (out.failures?.length ?? 0) === 0) {
           const { raw: _raw, ...cacheable } = out;
-          await cacheWrite(opts.cache!, key, cacheable, ttl, clock());
+          const fetched = clock();
+          const boundedTtl = Math.min(ttl, dataExpiresAt(cacheable, fetched, retentionDays) - fetched);
+          if (boundedTtl > 0) await cacheWrite(opts.cache!, key, cacheable, boundedTtl, fetched);
         }
       }
+      if (dataExpiresAt({ ...out, raw: undefined }, clock(), retentionDays) <= clock()) throw new Error("Source data is past its retention deadline");
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       properties.push(...(out.properties ?? []));
@@ -647,6 +662,7 @@ export async function runEnrich(
         (signal) => connector.enrich!({ lead, contacts: current, ...targeting, signal }),
         timeoutMs,
       );
+      out.enrichments = out.enrichments.map(minimizeEnrichment);
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
@@ -693,7 +709,8 @@ export async function runPropertyEnrich(properties: Property[], opts: ConnectorR
   const failedConnectors: FailedConnector[] = [];
   const raw: Record<string, unknown> = {};
   let budgetExhausted = false;
-  let current = properties.map((p) => ({ ...p, attributes: { ...p.attributes } }));
+  const pii = opts.piiPolicy ?? PROPERTY_PII;
+  let current = properties.map((p) => minimizeProperty(p, pii));
 
   for (const connector of connectors) {
     if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
@@ -706,7 +723,10 @@ export async function runPropertyEnrich(properties: Property[], opts: ConnectorR
       const chunk = current.slice(i, i + PROPERTY_ENRICH_CHUNK);
       try {
         const out = await callWithDeadline((signal) => connector.enrichProperties!({ properties: chunk, signal }), timeoutMs);
-        const byKey = new Map(out.properties.map((p) => [p.key, p]));
+        const cleaned = out.properties.map((p) => minimizeProperty(p, pii));
+        const fetched = (opts.clock ?? Date.now)();
+        if (dataExpiresAt(cleaned, fetched, opts.retentionDays ?? 30) <= fetched) throw new Error("Source data is past its retention deadline");
+        const byKey = new Map(cleaned.map((p) => [p.key, p]));
         current = current.map((p) => {
           const add = byKey.get(p.key);
           if (!add) return p;
@@ -1179,6 +1199,9 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   input.scoreProvider?.assertPackApproved?.(pack.id);
   const researchRouting = pack.dataSources?.research?.["company.research"];
   const connectorOpts: ConnectorRunOptions = {
+    piiPolicy: pack.piiPolicy ?? BUSINESS_PII,
+    retentionDays: retentionDaysForPack(pack.id),
+    clock: () => Date.parse(now()),
     ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
     ...(buyerTitles.length > 0 ? { buyerTitles } : {}),
     ...(budget ? { budget } : {}),

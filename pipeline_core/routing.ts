@@ -25,7 +25,7 @@
  */
 
 import { createHash, randomUUID } from "node:crypto";
-import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ResearchQuery } from "./models.js";
 
@@ -183,23 +183,72 @@ export class MemoryResponseCache implements ResponseCache {
  * corrupt or expired entry is a miss, never an error.
  */
 export class FileResponseCache implements ResponseCache {
+  private sweptAt = -Infinity;
   constructor(private readonly dir: string) {}
 
+  private path(key: string): string {
+    if (!/^[a-zA-Z0-9_-]+$/.test(key)) throw new Error("Invalid cache key");
+    return join(this.dir, `${key}.json`);
+  }
+
+  /** Remove expired/corrupt entries, including obsolete cache-key generations. */
+  async purge(now: number): Promise<number> {
+    const names = await readdir(this.dir).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return [];
+      throw error;
+    });
+    let removed = 0;
+    for (const name of names) {
+      const temporary = /^[a-zA-Z0-9_-]+\.json\.\d+\.[0-9a-f-]+\.tmp$/.test(name);
+      if (!temporary && !/^[a-zA-Z0-9_-]+\.json$/.test(name)) continue;
+      const path = join(this.dir, name);
+      // Avoid discarding a replacement observed during this best-effort cache sweep.
+      try {
+        const before = await stat(path);
+        if (temporary) {
+          if (now - before.mtimeMs > 3_600_000) { await unlink(path); removed++; }
+          continue;
+        }
+        let expired = true;
+        try {
+          const e = JSON.parse(await readFile(path, "utf8")) as { version?: unknown; expiresAt?: unknown };
+          expired = e.version !== 1 || typeof e.expiresAt !== "number" || !Number.isFinite(e.expiresAt) || e.expiresAt <= now;
+        } catch { /* corrupt cache entries are disposable */ }
+        if (expired && (await stat(path)).ino === before.ino) { await unlink(path); removed++; }
+      } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    }
+    return removed;
+  }
+
+  private async sweep(now: number): Promise<void> {
+    if (now >= this.sweptAt && now - this.sweptAt < 60_000) return;
+    await this.purge(now);
+    this.sweptAt = now;
+  }
+
   async get(key: string, now: number): Promise<unknown | undefined> {
+    const path = this.path(key);
+    await this.sweep(now);
     try {
-      const e = JSON.parse(await readFile(join(this.dir, `${key}.json`), "utf8")) as { value: unknown; expiresAt: number };
-      return typeof e.expiresAt === "number" && e.expiresAt > now ? e.value : undefined;
+      const e = JSON.parse(await readFile(path, "utf8")) as { version?: number; value: unknown; expiresAt: number };
+      if (e.version === 1 && Number.isFinite(e.expiresAt) && e.expiresAt > now) return e.value;
+      await unlink(path);
+      return undefined;
     } catch {
       return undefined;
     }
   }
 
   async set(key: string, value: unknown, ttlMs: number, now: number): Promise<void> {
+    const path = this.path(key);
+    if (!Number.isFinite(ttlMs) || ttlMs <= 0 || !Number.isFinite(now)) throw new Error("Invalid cache retention period");
     await mkdir(this.dir, { recursive: true, mode: 0o700 });
-    const path = join(this.dir, `${key}.json`);
+    await this.sweep(now);
     const tmp = `${path}.${process.pid}.${randomUUID()}.tmp`; // unique per write: concurrent sets never collide
-    await writeFile(tmp, JSON.stringify({ value, expiresAt: now + ttlMs }), { mode: 0o600 });
-    await chmod(tmp, 0o600);
-    await rename(tmp, path);
+    try {
+      await writeFile(tmp, JSON.stringify({ version: 1, value, expiresAt: now + Math.min(ttlMs, 365 * 86_400_000) }), { mode: 0o600 });
+      await chmod(tmp, 0o600);
+      await rename(tmp, path);
+    } finally { await unlink(tmp).catch(() => undefined); }
   }
 }

@@ -91,6 +91,6 @@ describe("shipped storage migration", () => {
     expect(audit.code).toBe(0);
     expect(JSON.parse(audit.out)[0].action).toBe("import");
     expect(audit.out).not.toContain("private-legacy-run");
-    expect(JSON.parse(cli("store", "purge").out)).toEqual({ expired: 0 });
+    expect(JSON.parse(cli("store", "purge").out)).toEqual({ expired: 0, cacheEntries: 0, monitorSnapshots: 0 });
   });
 });

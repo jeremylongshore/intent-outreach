@@ -1,3 +1,4 @@
+import { PROPERTY_PII } from "../pii-policy.js";
 /**
  * pipeline_core/packs/residential-re.ts — the residential listing-agent pack.
  *
@@ -96,6 +97,7 @@ const LICENSED = { requireLicenseDisclosure: true } as const;
 
 export const residentialRePack: Pack = {
   id: "residential-re",
+  piiPolicy: PROPERTY_PII,
   displayName: "Residential real estate (listing agent)",
   // The B2B loop's gate is unused by property campaigns; propertyGate is the gate.
   compliance: noopCompliance,

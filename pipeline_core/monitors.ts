@@ -1,3 +1,5 @@
+import { dataExpiresAt } from "./run-retention.js";
+import { PROPERTY_PII } from "./pii-policy.js";
 /**
  * pipeline_core/monitors.ts — event monitors over property snapshots.
  *
@@ -31,7 +33,7 @@
  *     before it replaces the old one.
  */
 
-import { constants, mkdir, open, readFile, rename, stat, unlink } from "node:fs/promises";
+import { constants, mkdir, open, readFile, rename, readdir, stat, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { z } from "zod";
@@ -62,6 +64,7 @@ const SnapshotSchema = z.object({
   monitorId: z.string(),
   checkedAt: z.string().datetime(),
   parcels: z.record(z.string(), FingerprintSchema),
+  expiresAt: z.number().finite().optional(),
 });
 export type Snapshot = z.infer<typeof SnapshotSchema>;
 
@@ -145,7 +148,7 @@ export function monitorPath(id: string): string {
 }
 
 /** The last snapshot, or undefined when the monitor has never run. A corrupt snapshot throws (fail loud). */
-export async function readSnapshot(path: string): Promise<Snapshot | undefined> {
+export async function readSnapshot(path: string, now = Date.now()): Promise<Snapshot | undefined> {
   let text: string;
   try {
     text = await readFile(path, "utf8");
@@ -161,7 +164,8 @@ export async function readSnapshot(path: string): Promise<Snapshot | undefined> 
   }
   const r = SnapshotSchema.safeParse(parsed);
   if (!r.success) throw new Error(`monitor snapshot ${path} is invalid; delete it to re-baseline`);
-  return r.data;
+  const expires = Math.min(r.data.expiresAt ?? Infinity, Date.parse(r.data.checkedAt) + 30 * 86_400_000);
+  return expires <= now ? undefined : r.data;
 }
 
 async function writeSnapshot(path: string, snap: Snapshot): Promise<void> {
@@ -169,17 +173,12 @@ async function writeSnapshot(path: string, snap: Snapshot): Promise<void> {
   const tmp = `${path}.${randomUUID()}.tmp`;
   const fh = await open(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
   try {
-    await fh.write(JSON.stringify(snap));
-    await fh.sync();
-  } finally {
-    await fh.close();
-  }
-  try {
+    try {
+      await fh.write(JSON.stringify(snap));
+      await fh.sync();
+    } finally { await fh.close(); }
     await rename(tmp, path);
-  } catch (err) {
-    await unlink(tmp).catch(() => undefined);
-    throw err;
-  }
+  } finally { await unlink(tmp).catch(() => undefined); }
 }
 
 /** Merge a check into the previous snapshot: never drop a parcel, never overwrite a known value with a missing one. */
@@ -251,8 +250,11 @@ export async function checkMonitor(
   const path = opts.path ?? monitorPath(m.id);
   const release = await acquireMonitorLock(path);
   try {
-    const previous = await readSnapshot(path); // a corrupt snapshot fails BEFORE any paid research
-    const r = await runResearchQuery(m.query, opts.icp ?? "monitor", opts);
+    const checkedAt = opts.now();
+    const checked = Date.parse(checkedAt);
+    const previous = await readSnapshot(path, checked); // a corrupt snapshot fails BEFORE any paid research
+    if (!previous) await unlink(path).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; });
+    const r = await runResearchQuery(m.query, opts.icp ?? "monitor", { ...opts, piiPolicy: opts.piiPolicy ?? PROPERTY_PII, clock: () => checked });
     const model = mergePropertyModel(r);
     const failed = r.failedConnectors.map((f) => ({ name: f.name, status: f.status }));
     const seen: Record<string, Fingerprint> = {};
@@ -262,6 +264,9 @@ export async function checkMonitor(
         .sort((a, b) => Number(b.role === "owner") - Number(a.role === "owner") || a.partyKey.localeCompare(b.partyKey))[0];
       seen[p.key] = fingerprint(p, own ? model.parties.find((x) => x.key === own.partyKey) : undefined);
     }
+    const expiresAt = Math.min(dataExpiresAt(model, checked, 30), previous?.expiresAt ?? (previous ? Date.parse(previous.checkedAt) + 30 * 86_400_000 : Infinity));
+    if (expiresAt <= checked) throw new Error("Monitor data is past its retention deadline");
+    const canBaseline = model.properties.length > 0 && r.ran.length > 0 && failed.length === 0;
     const after = mergeFingerprints(previous?.parcels ?? {}, seen);
     const events = previous ? diffSnapshots(previous.parcels, after, m.valueChangePct) : [];
     const changed = [...new Set(events.map((e) => e.propertyKey))];
@@ -280,7 +285,7 @@ export async function checkMonitor(
         if (done) return;
         done = true;
         try {
-          await writeSnapshot(path, { monitorId: m.id, checkedAt: opts.now(), parcels: after });
+          if (previous || canBaseline) await writeSnapshot(path, { monitorId: m.id, checkedAt, expiresAt, parcels: after });
         } finally {
           await release();
         }
@@ -295,4 +300,34 @@ export async function checkMonitor(
     await release();
     throw err;
   }
+}
+
+
+/** Scheduled cleanup shares the monitor lock; definitions and active checks are preserved. */
+export async function purgeExpiredSnapshots(dir: string, now = Date.now()): Promise<number> {
+  const names = await readdir(dir).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  });
+  let removed = 0;
+  for (const name of names) {
+    const temporary = /^([a-z0-9][a-z0-9-]{0,63})\.json\.[0-9a-f-]+\.tmp$/.exec(name);
+    if (!temporary && !/^[a-z0-9][a-z0-9-]{0,63}\.json$/.test(name)) continue;
+    const path = join(dir, name);
+    let release: (() => Promise<void>) | undefined;
+    try {
+      release = await acquireMonitorLock(temporary ? join(dir, `${temporary[1]}.json`) : path);
+      if (temporary) {
+        if (now - (await stat(path)).mtimeMs > 3_600_000) { await unlink(path); removed++; }
+        continue;
+      }
+      if (!(await readSnapshot(path, now))) {
+        await unlink(path).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; });
+        removed++;
+      }
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.startsWith("monitor check already running")) throw error;
+    } finally { if (release) await release(); }
+  }
+  return removed;
 }
