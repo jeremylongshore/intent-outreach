@@ -1,7 +1,7 @@
 {
   "schema": "intent-outreach-case-runner-proof/v1",
   "scope": "scripted_actual_cli_case_runner_only",
-  "observedAt": "2026-10-07T23:43:48.418Z",
+  "observedAt": "2026-10-07T23:50:12.250Z",
   "behavioralVerdict": null,
   "tier3bPassed": false,
   "paidModelCalls": 0,
@@ -27,7 +27,7 @@
     {
       "caseResult": "pass",
       "processResult": {
-        "pid": 865707,
+        "pid": 900528,
         "code": 0,
         "signal": null,
         "timedOut": false,
@@ -38,18 +38,18 @@
     {
       "caseResult": "pass",
       "processResult": {
-        "pid": 866081,
+        "pid": 901221,
         "code": 0,
         "signal": null,
         "timedOut": false,
         "cancelled": false
       },
-      "priorReceiptSha256": "d4254b057b8ca4c94d9c4707cb128dcd229ae3a05891df6bb62f6960d20eeda0"
+      "priorReceiptSha256": "14643865f8ee712e2af80b695d720f9afe07d3d2773f9d7c0904959c6a15eb5d"
     },
     {
       "caseResult": "incomplete",
       "processResult": {
-        "pid": 866440,
+        "pid": 902271,
         "code": 2,
         "signal": null,
         "timedOut": false,
@@ -60,7 +60,7 @@
     {
       "caseResult": "incomplete",
       "processResult": {
-        "pid": 866900,
+        "pid": 902815,
         "code": null,
         "signal": "SIGTERM",
         "timedOut": false,
@@ -72,7 +72,7 @@
   "sha256": {
     "run-case.ts": "f312960c398f22829a4741d466564be26d89ab06ac93e52d3c45a7a31a1235a1",
     "case-runner-proof.ts": "5391b8cf3015d624864fcd12157f5581feb85bab6162c61a46f3773661bb5f96",
-    "inputSpec": "6ebf988e2a894549add4b4ce3e3e745c0e6b1aef7b9dcf0f4e8ff7e6d3895d67",
+    "inputSpec": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
     "jrigCli": "be03a8731c35ce04037c62e006c0935ba0be261f705321ee7fc24383ab9f80fc"
   }
 }

@@ -19,6 +19,16 @@ function run(source: string) {
 }
 
 describe("J-Rig fixture transport isolation", () => {
+  it("keeps enrichment answer facts in the judge rubric rather than the execution prompts", () => {
+    const spec = readFileSync(resolve(import.meta.dirname, "../skills/intent-outreach/eval-spec.yaml"), "utf8");
+    const [rubric, cases] = spec.split("\ntest_cases:\n");
+    expect(rubric).toContain("riley@example.test");
+    expect(rubric).toContain("morgan@second.example.test");
+    expect(cases).toBeDefined();
+    expect(cases).not.toContain("riley@example.test");
+    expect(cases).not.toContain("morgan@second.example.test");
+    expect(cases).toContain("retrieve the email through enrichment");
+  });
   it("serves only the reviewed synthetic vendor response and omits keys from its trace", () => {
     const result = run(`const r = await fetch('https://api.hunter.io/v2/domain-search?domain=example.test&api_key=jrig-offline-fixture'); console.log(JSON.stringify(await r.json()));`);
     expect(JSON.parse(result.stdout).data.organization).toBe("Example Fixture Labs");

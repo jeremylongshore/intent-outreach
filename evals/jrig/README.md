@@ -82,6 +82,10 @@ uses the explicit HTTPS endpoint (or loopback for component tests), preserves
 correlated tool turns and actual token usage, refuses truncated/malformed
 responses, and honors cancellation. It performs no retries or provider fallback.
 Nested usage is recorded separately from J-Rig's root-model cost accounting.
+The `save_run` description supplies the actual execution provider/model for both
+skill and baseline attribution. Enrichment email answers live in the judge-only
+fixture reference, so execution must retrieve them through the connector rather
+than receiving them in its request prompt.
 
 The root receives the skill's own declared tools plus `Agent`, `AskUserQuestion`
 and scoped `Read`; research and enrichment tools belong only to their phase

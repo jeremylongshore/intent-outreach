@@ -101,7 +101,9 @@ describe("scenario MCP host", () => {
     let second: Awaited<ReturnType<typeof start>> | undefined;
     try {
       first = await start(evidence, fixture.baseUrl, "prospect-and-draft", scenarios["prospect-and-draft"]!.checkpoints);
-      const names = (await first.client.listTools()).tools.map((tool) => tool.name);
+      const listed = (await first.client.listTools()).tools;
+      const names = listed.map((tool) => tool.name);
+      expect(listed.find((tool) => tool.name === "save_run")?.description).toContain('provider="scripted-loopback", model="fixture-model"');
       expect(names).toContain("Agent");
       expect(names).not.toContain("research_domain");
       expect(names).not.toContain("enrich_lead");

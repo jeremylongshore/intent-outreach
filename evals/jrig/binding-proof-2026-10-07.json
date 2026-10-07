@@ -1,6 +1,6 @@
 {
   "schema": "intent-outreach-jrig-binding-proof/v1",
-  "observedAt": "2026-10-07T23:43:04.568Z",
+  "observedAt": "2026-10-07T23:49:30.927Z",
   "scope": "scripted_loopback_real_cli_and_nested_bundle",
   "behavioralVerdict": null,
   "tier3bPassed": false,
@@ -12,9 +12,9 @@
   "bindings": [
     {
       "phase": "skill",
-      "sessionId": "b2b07ed8-4a12-481f-8b76-80ce4d23c13f",
-      "receiptSha256": "sha256:557d3a455d1aa3fd1b8c11654f5400705143f7a8987d0c7c9739924a91bd139c",
-      "traceSha256": "cf86522b41b7d25939b0b4da591e343c9d7a1b0a67b2f53bbb6ba502d7494701",
+      "sessionId": "e7f20d18-a7c7-4404-baba-8324a42f0802",
+      "receiptSha256": "sha256:fbfea12260d09efa55b7cdd1bbc3bcccfc6bcc314da5361214240425f1a22b61",
+      "traceSha256": "afee168264046c75218f857baadcaff6f0dadb82d3f2347f20dcfa9071aff403",
       "nestedUsage": {
         "inputTokens": 22,
         "outputTokens": 10
@@ -27,16 +27,16 @@
         "passed": true,
         "failures": [],
         "incomplete": [],
-        "traceSha256": "cf86522b41b7d25939b0b4da591e343c9d7a1b0a67b2f53bbb6ba502d7494701",
+        "traceSha256": "afee168264046c75218f857baadcaff6f0dadb82d3f2347f20dcfa9071aff403",
         "storedRuns": 0
       },
       "passed": true
     },
     {
       "phase": "baseline",
-      "sessionId": "84c9b465-787e-47b4-baae-cdcb8f9252a5",
-      "receiptSha256": "sha256:df4944d6193c5728b6d1092fd5e0b12eeebd7159832521a64ef8f3b436a46641",
-      "traceSha256": "b5cc32fae124c3f853ef7b0f9a406840fe1269445ed76b4255c8a8c5c5a28828",
+      "sessionId": "7a592a2d-efbc-42af-be39-0cf8825435e5",
+      "receiptSha256": "sha256:2a9f19754c3a0a1128d9ec1614325b4bc42227df148f193f2dd5c0fa01653d68",
+      "traceSha256": "79c4b52c39f056e3775953f710395225d6a94790f177af9e06ef94b96e22f2a0",
       "nestedUsage": {
         "inputTokens": 22,
         "outputTokens": 10
@@ -49,7 +49,7 @@
         "passed": true,
         "failures": [],
         "incomplete": [],
-        "traceSha256": "b5cc32fae124c3f853ef7b0f9a406840fe1269445ed76b4255c8a8c5c5a28828",
+        "traceSha256": "79c4b52c39f056e3775953f710395225d6a94790f177af9e06ef94b96e22f2a0",
         "storedRuns": 0
       },
       "passed": true
@@ -60,7 +60,7 @@
     "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
     "evals/jrig/bind-evidence.ts": "c986de42ea3aad146f3ed03ef920b59e9034055b8f2435be0681989519828289",
     "evals/jrig/binding-proof.ts": "c7e5d76ac24d0ed66260a62e57dbd127c8daac57f950a881b40bc562960be5a6",
-    "evals/jrig/scenario-host.ts": "c2aa3d4555ae9a982636551e8997e9d01d0273535c4e7608576cafc56ada5112",
+    "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
     "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
     "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
     "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",

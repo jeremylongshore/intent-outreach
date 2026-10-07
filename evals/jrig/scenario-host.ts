@@ -91,7 +91,10 @@ export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
       ...rootTools.map((name) => {
         const tool = listed.find((candidate) => candidate.name === name);
         assert(tool, "missing root tool");
-        return { ...tool, description: tool.description ?? "" };
+        // Runtime attribution is host context, not a fact the model can infer
+        // from its API-visible messages. Supply it equally to skill/baseline.
+        const identity = name === "save_run" ? ` Current execution identity: provider=${JSON.stringify(config.provider)}, model=${JSON.stringify(config.model)}. Record this identity in provider/model.` : "";
+        return { ...tool, description: (tool.description ?? "") + identity };
       }),
     ];
     const validator = new AjvJsonSchemaValidator();
