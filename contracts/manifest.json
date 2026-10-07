@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "schemaVersion": 6,
+  "artifacts": {
+    "engine.schema.json": "080f94adae5041ded8c265c4d28325c9fe958d108eddc46e86dfb228411e6281",
+    "engine.d.ts": "4bfff1369caca871d8d14940f845b47d22020740914608254909277113df8397"
+  }
+}
