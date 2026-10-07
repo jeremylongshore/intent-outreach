@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Intent Outreach — a model-agnostic, Claude-Code-native SDR orchestrator (research → enrich → outreach). Local-only, BYO keys, zero Google dependency.",
+  "description": "Intent Outreach \u2014 a model-agnostic, Claude-Code-native SDR orchestrator (research \u2192 enrich \u2192 outreach). Local-only, BYO keys, zero Google dependency.",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Jeremy Longshore <jeremy@intentsolutions.io> (https://intentsolutions.io)",
   "homepage": "https://github.com/jeremylongshore/intent-outreach",
@@ -20,7 +20,8 @@
     "hooks/",
     "profiles/",
     ".mcp.json",
-    ".claude-plugin/"
+    ".claude-plugin/",
+    "contracts/"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('prompts','dist/prompts',{recursive:true})\"",
@@ -36,11 +37,13 @@
     "test:e2e": "vitest run tests/mcp.e2e.test.ts tests/cli.e2e.test.ts",
     "test:architecture": "vitest run tests/architecture.test.ts",
     "mutation": "stryker run",
-    "audit:gate": "node .github/scripts/audit-gate.mjs"
+    "audit:gate": "node .github/scripts/audit-gate.mjs",
+    "contracts:generate": "tsx scripts/export-contracts.ts",
+    "contracts:check": "tsx scripts/export-contracts.ts --check"
   },
   "dependencies": {
-    "@intent-outreach/deal-math": "workspace:*",
     "@ai-sdk/anthropic": "^4.0.63",
+    "@intent-outreach/deal-math": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "ai": "^7.0.114",
     "zod": "^4.6.5"
@@ -52,6 +55,7 @@
     "@types/node": "^26.6.4",
     "@vitest/coverage-v8": "^5.0.3",
     "esbuild": "^0.28.2",
+    "json-schema-to-typescript": "16.0.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"

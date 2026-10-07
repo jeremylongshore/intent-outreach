@@ -475,3 +475,11 @@ one-line `DEFAULT_MODEL` edit for you to make as a separate, reviewed change. De
 
 Intent Solutions Proprietary — see `LICENSE`.
 Built by Jeremy Longshore · intentsolutions.io
+
+## Generated integration contracts
+
+External TypeScript consumers can pin an engine commit and use the standalone declarations in
+[`contracts/`](contracts/README.md). `pnpm run contracts:generate` derives them from the canonical
+Zod output schemas; normal tests reject stale artifacts and typecheck proves both-way structural
+compatibility. These types cover runs, property/party/contact records, messages, consent and DNC.
+Runtime refinements and send eligibility still require the canonical engine validators.
