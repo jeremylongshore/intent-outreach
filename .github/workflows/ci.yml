@@ -4,7 +4,7 @@ name: CI
 #   build-test, invariants, e2e, security   (and mutation, see mutation.yml)
 # Architectural invariants (storage/provider separation, zero Google, no Validated casts, no
 # framework bloat, connectors never read process.env) live in tests/architecture.test.ts and
-# tests/types/, so they run locally under `npm test` and `npm run typecheck`, not only here.
+# tests/types/, so they run locally under `pnpm test` and `pnpm run typecheck`, not only here.
 on:
   push:
     branches: [main]
@@ -28,26 +28,27 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Typecheck (includes the compile-time storage-invariant proofs in tests/types)
-        run: npm run typecheck
+        run: pnpm run typecheck
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
       - name: Bundle is fresh (committed bundle/ matches source)
         run: |
-          npm run bundle
+          pnpm run bundle
           git diff --exit-code -- bundle/ \
-            || { echo "::error::bundle/ is stale. Run npm run bundle and commit the result."; exit 1; }
+            || { echo "::error::bundle/ is stale. Run pnpm run bundle and commit the result."; exit 1; }
       - name: Unit + integration tests with coverage thresholds
-        run: npx vitest run --coverage --exclude "tests/*.e2e.test.ts"
+        run: pnpm exec vitest run --coverage --exclude "tests/*.e2e.test.ts"
       - name: Eval gate (offline, deterministic)
-        run: npx tsx evals/run.ts --offline
+        run: pnpm exec tsx evals/run.ts --offline
       - name: Build (also confirms prompts/ are copied into dist/)
-        run: npm run build
+        run: pnpm run build
 
   invariants:
     name: invariants
@@ -57,15 +58,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: "Invariant: no un-validated output reaches storage (type-level proof)"
-        run: npm run typecheck
+        run: pnpm run typecheck
       - name: "Invariants: store/provider separation, zero Google, no Validated casts, no framework bloat, connectors never read process.env"
-        run: npm run test:architecture
+        run: pnpm run test:architecture
       - name: "Audit harness: hash-pinned gates, tests and workflows are untampered"
         run: scripts/audit-harness verify
 
@@ -77,11 +79,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Smoke - shipped CLI binary runs
         run: |
           node bundle/cli.mjs --help
@@ -95,7 +98,7 @@ jobs:
           echo "$out" | grep -q "\"serverInfo\"" \
             || { echo "::error::bundle/server.mjs did not answer MCP initialize"; exit 1; }
       - name: E2E - real MCP client over stdio and the shipped CLI, against the committed bundle
-        run: npm run test:e2e
+        run: pnpm run test:e2e
 
   security:
     name: security
@@ -113,8 +116,9 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
       - name: Dependency audit (production deps, high+critical, explicit allowlist)
-        run: npm run audit:gate
+        run: pnpm run audit:gate

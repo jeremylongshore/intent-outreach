@@ -7,19 +7,19 @@ are accepted via pull request and, per the license, become the property of Inten
 
 - **Branch, never commit to `main`** (it's protected). Use a feature branch and open a PR.
 - Keep changes minimal and focused. Match the surrounding code's style and idiom.
-- Every PR must keep the build green: `npm run typecheck` and `npm test` pass, and the
+- Every PR must keep the build green: `pnpm run typecheck` and `pnpm test` pass, and the
   policy-enforcement workflow's invariants hold.
 
 ## Dev setup
 
 ```bash
-npm install
-npm run typecheck      # tsc --noEmit
-npm test               # vitest
-npm run bundle         # rebuild bundle/ (what ships); commit it with any source change
-npm run build          # tsc → dist/ (CI build check; nothing ships from dist/)
-npm run mcp            # run the MCP server on stdio (tsx)
-npx tsx evals/run.ts --offline   # free wiring check (CI); not a model-quality gate
+pnpm install --frozen-lockfile
+pnpm run typecheck      # tsc --noEmit
+pnpm test               # vitest
+pnpm run bundle         # rebuild bundle/ (what ships); commit it with any source change
+pnpm run build          # tsc → dist/ (CI build check; nothing ships from dist/)
+pnpm run mcp            # run the MCP server on stdio (tsx)
+pnpm exec tsx evals/run.ts --offline   # free wiring check (CI); not a model-quality gate
 ```
 
 Stack: TypeScript/Node (ESM), zod, Vercel AI SDK (`ai` + `@ai-sdk/*`), `@modelcontextprotocol/sdk`,
@@ -58,7 +58,7 @@ connector".
 
 Adapters for OpenAI and xAI exist in `pipeline_core/providers.ts`. Approval is per model: a model is
 approved only by a passing keyed eval run, via
-`npm run evals:promote -- --provider <name> --model <id>`. On a pass, commit the record it writes under
+`pnpm run evals:promote --provider <name> --model <id>`. On a pass, commit the record it writes under
 `evals/results/` and the updated `evals/supported.ts`. Don't edit `SUPPORTED_PROVIDERS` by hand; it is
 derived from `supported.ts`. See `evals/README.md` and `CLAUDE.md` → "Adding a model provider".
 
@@ -66,7 +66,7 @@ derived from `supported.ts`. See `evals/README.md` and `CLAUDE.md` → "Adding a
 
 - **Keep your real data out of it.** Point `INTENT_OUTREACH_HOME` at a scratch directory (absolute path);
   runs, `suppressions.jsonl` and profiles are then read and written there (files 0600, directories 0700).
-- **CLI:** `node bundle/cli.mjs run --icp … --domains … --profile <path|name>` after `npm run bundle`.
+- **CLI:** `node bundle/cli.mjs run --icp … --domains … --profile <path|name>` after `pnpm run bundle`.
   Add a `sender` block to the profile to see the CAN-SPAM footer; leave it out to see
   `needsSenderIdentity`. Manage opt-outs with `node bundle/cli.mjs suppress add|remove|list`.
 - **MCP:** opening Claude Code in this checkout loads the root `.mcp.json` (project scope, tools named

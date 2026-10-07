@@ -1,6 +1,6 @@
 // Compile-time proof of the load-bearing invariant: NO UN-VALIDATED MODEL OUTPUT REACHES STORAGE.
 //
-// Never executed. tsc --noEmit (npm run typecheck) compiles it; each expect-error below itself
+// Never executed. tsc --noEmit (pnpm run typecheck) compiles it; each expect-error below itself
 // becomes a compile ERROR if the line underneath ever stops being one, so loosening saveRun's
 // parameter type, or exporting the brand, fails CI rather than passing silently.
 import type { CampaignRun } from "../../pipeline_core/models.js";

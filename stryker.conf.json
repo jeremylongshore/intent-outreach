@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "command",
-  "commandRunner": { "command": "npx vitest run tests/compliance.test.ts tests/core.test.ts tests/store.test.ts tests/security.test.ts tests/packs.test.ts tests/pipeline.test.ts tests/can-spam.test.ts tests/wave1-followups.test.ts" },
+  "commandRunner": { "command": "pnpm exec vitest run tests/compliance.test.ts tests/core.test.ts tests/store.test.ts tests/security.test.ts tests/packs.test.ts tests/pipeline.test.ts tests/can-spam.test.ts tests/wave1-followups.test.ts" },
   "tsconfigFile": "tsconfig.stryker-unused.json",
   "mutate": ["pipeline_core/compliance/**/*.ts", "pipeline_core/validator.ts"],
   "coverageAnalysis": "off",

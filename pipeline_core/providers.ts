@@ -36,7 +36,7 @@ export type ProviderName = "anthropic" | "openai" | "xai" | "minimax";
 /**
  * Providers that may run unguarded: DERIVED from evals/supported.ts. A provider
  * is supported iff it has at least one approved {provider, model} pair there;
- * a pair is approved by a passing keyed run of the eval harness (`npm run
+ * a pair is approved by a passing keyed run of the eval harness (`pnpm run
  * evals:promote`). anthropic + openai are carried as legacy claims
  * (verified: false) until re-run with a key. The xai adapter ships ready but
  * stays gated until an eval run with a real key passes.
@@ -233,7 +233,7 @@ function warnIfUnapproved(provider: ProviderName, model: string): void {
   warnedUnapproved.add(key);
   process.stderr.write(
     `intent-outreach: warning: ${provider} model "${model}" has no approved eval record (evals/supported.ts); ` +
-      `qualify it with: npm run evals:promote -- --provider ${provider} --model ${model}\n`,
+      `qualify it with: pnpm run evals:promote --provider ${provider} --model ${model}\n`,
   );
 }
 

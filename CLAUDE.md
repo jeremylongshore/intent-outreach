@@ -53,7 +53,7 @@ standalone CLI ────┘   handlers mcp/tools.ts) └─ save_run ──�
 | `approvals.ts` | The human approval queue: an append-only `approvals.jsonl` (0600) binding a person's decision to run id + contact key + sha256(channel, subject, body, CTA). `checkSendable` requires `approval: "approved"` on every channel (a pack cannot turn it off); an edited draft needs a new approval. CLI `approvals pending|approve|reject`, MCP `list_pending`/`approve`/`reject`. |
 | `cost.ts`, `prompts.ts` | `CostMeter` (real AI SDK v7 usage, cache-aware). `loadPrompt` returns `{text, sha256}`; `promptRef()` = `"<file>@<sha8>"`. |
 
-Standalone libraries live under `packages/` (npm workspaces; the engine itself stays at the repo root,
+Standalone libraries live under `packages/` (pnpm workspaces; the engine itself stays at the repo root,
 which is the plugin root): `packages/deal-math` is pure deal math (integer cents, basis points, half-even,
 explicit assumptions, zod only, CI-guarded in `tests/architecture.test.ts`).
 
@@ -67,7 +67,7 @@ Outside the spine: `mcp/tools.ts` holds every MCP handler (`server.ts` is a thin
 1. **No un-validated model output reaches storage.** Three layers: the type brand (`RunStore.saveRun`
    accepts only `Validated<CampaignRun>`, minted solely by `validator.ts`); `saveRun` **re-validates at
    runtime** with `assertCampaignRun` and persists that output; validated records are deep-frozen. CI runs
-   `npm run typecheck` and rejects any `as Validated` / `as unknown as Validated` cast in `pipeline_core/`,
+   `pnpm run typecheck` and rejects any `as Validated` / `as unknown as Validated` cast in `pipeline_core/`,
    `mcp/` and `cli.ts` outside `validator.ts`.
 2. **Zero Google dependency.** No import of google / firebase / firestore / vertex / `@google-cloud` /
    secretmanager / aiplatform in `pipeline_core/` or `mcp/` (CI greps import lines). The Google model
@@ -107,7 +107,7 @@ the model. A vendor billed per call reads its key with `useKey(name, credits)` (
 Approval is **per model**, recorded in `evals/supported.ts`. `SUPPORTED_PROVIDERS` is derived from it, so
 never hand-edit that list. A new provider needs an adapter in `providers.ts` (`ProviderName`,
 `DEFAULT_MODEL`, a dynamically imported optional `@ai-sdk/*` dependency). To approve a model, run with a
-real key: `npm run evals:promote -- --provider <name> --model <id> [--pack residential-re]` (keyed
+real key: `pnpm run evals:promote --provider <name> --model <id> [--pack residential-re]` (keyed
 harness, repeat ≥3, every fixture must pass every run). Approval is per `{provider, model, pack}`;
 `SUPPORTED_PROVIDERS` comes from the `b2b-sdr` entries only. On a pass it writes `evals/results/<record>.json` and upserts a
 `verified: true` entry in `supported.ts`; commit both. It never changes `DEFAULT_MODEL`: that is a separate
@@ -142,18 +142,18 @@ matches no contact. Do not add a persistence path that skips it.
 ### Commands
 
 ```bash
-npm install
-npm run typecheck                 # tsc --noEmit (also the storage invariant gate)
-npm test                          # vitest
-npm run bundle                    # → bundle/cli.mjs + bundle/server.mjs: what ships; commit them (CI checks freshness)
-npm run build                     # tsc → dist/ + prompts copy; a CI build check only, nothing ships from dist/
-npm run mcp                       # run the MCP server on stdio (tsx)
-npx tsx evals/run.ts --offline    # free WIRING CHECK (CI); says nothing about model quality
-npm run evals                     # keyed eval harness (anthropic, repeat 3); writes evals/results/
-npm run evals:promote -- --provider <p> --model <id>   # approve a model (keyed, costs money)
+pnpm install --frozen-lockfile
+pnpm run typecheck                 # tsc --noEmit (also the storage invariant gate)
+pnpm test                          # vitest
+pnpm run bundle                    # → bundle/cli.mjs + bundle/server.mjs: what ships; commit them (CI checks freshness)
+pnpm run build                     # tsc → dist/ + prompts copy; a CI build check only, nothing ships from dist/
+pnpm run mcp                       # run the MCP server on stdio (tsx)
+pnpm exec tsx evals/run.ts --offline    # free WIRING CHECK (CI); says nothing about model quality
+pnpm run evals                     # keyed eval harness (anthropic, repeat 3); writes evals/results/
+pnpm run evals:promote --provider <p> --model <id>   # approve a model (keyed, costs money)
 ```
 
-Any change under `pipeline_core/`, `mcp/` or `cli.ts` needs `npm run bundle` and the rebuilt `bundle/`
+Any change under `pipeline_core/`, `mcp/` or `cli.ts` needs `pnpm run bundle` and the rebuilt `bundle/`
 committed. Stack: TypeScript/Node (ESM), zod, Vercel AI SDK (`ai` + `@ai-sdk/*`),
 `@modelcontextprotocol/sdk`, esbuild, vitest. Runtime rationale: `000-docs/017-AT-DECR` (D5).
 

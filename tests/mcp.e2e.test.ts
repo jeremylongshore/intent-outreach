@@ -22,7 +22,7 @@ const runsFile = () => join(home, "runs.jsonl");
 const text = (r: unknown) => ((r as { content: { text: string }[] }).content[0]?.text ?? "");
 
 beforeAll(async () => {
-  expect(existsSync(SERVER), "bundle/server.mjs missing: run npm run bundle").toBe(true);
+  expect(existsSync(SERVER), "bundle/server.mjs missing: run pnpm run bundle").toBe(true);
   home = mkdtempSync(join(tmpdir(), "io-mcp-e2e-"));
   client = new Client({ name: "e2e", version: "0" });
   await client.connect(

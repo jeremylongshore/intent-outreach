@@ -70,17 +70,22 @@ which provider to call.
 
 ### 2.1 Workspace layout (amends the plan's Phase 2)
 
-**Decision.** The repo uses **npm workspaces, not pnpm.** The engine stays at the repo root. Only standalone
-libraries live under `packages/*`; the first is `packages/deal-math` (Phase 5). Built-in packs stay in
-`pipeline_core/packs/`.
+**Decision (updated 2026-10-07).** The repo uses **pnpm workspaces**, pinned to 10.8.1 with a
+frozen lockfile in CI. The engine stays at the repo root. Only standalone libraries live under
+`packages/*`; the first is `packages/deal-math` (Phase 5). Built-in packs stay in `pipeline_core/packs/`.
 
 **Why.** The repo root is the Claude Code plugin root. `.claude-plugin/plugin.json` runs
 `${CLAUDE_PLUGIN_ROOT}/bundle/server.mjs`, and `.mcp.json`, `skills/`, the CI bundle-freshness and e2e jobs,
 and the `.harness-hash` pins all assume the root. Moving the engine to `packages/engine` would break installed
-plugins and churn every open PR, for zero behavior change. Switching npm to pnpm would rewrite the lockfile and
-CI for no gain. Packs compile into the single bundle and share engine types, so a package per pack only pays
-off once a third party ships one. The plan's goal (deal-math as an independent, zod-only library, plus room for
-future packages) is met without the move.
+plugins. Packs compile into the single bundle and share engine types, so a package per pack only pays
+off once a third party ships one.
+
+Phase 5 initially used npm workspaces to avoid blocking the engine build on a tooling migration.
+The subsequent request to finish the outstanding work resumes the separately tracked pnpm conversion:
+explicit `workspace:*` dependencies enforce local package resolution, one pinned package manager runs
+locally and in CI, and `pnpm import` preserves the existing dependency selections. This supersedes the
+package-manager portion of the original decision; the root layout and pack boundaries remain the same.
+Workspace conventions are in `packages/README.md`.
 
 **Effect on the plan.** Phase 2 becomes the schema v6 data model plus the typed research query. The workspace
 skeleton lands with deal-math in Phase 5. Plan 019 Stage B's `packages/engine` lift is rejected (§5).

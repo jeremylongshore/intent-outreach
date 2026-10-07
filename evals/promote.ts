@@ -1,7 +1,7 @@
 /**
  * evals/promote.ts — qualify a {provider, model, pack} through the keyed gate.
  *
- *   npm run evals:promote -- --provider anthropic --model claude-sonnet-5-5 [--pack residential-re] [--repeat 3] [--judge]
+ *   pnpm run evals:promote --provider anthropic --model claude-sonnet-5-5 [--pack residential-re] [--repeat 3] [--judge]
  *
  * 1. Runs the KEYED eval harness for that one pair on that pack's fixtures
  *    (default pack b2b-sdr; repeat ≥3, every fixture must pass every run) and
@@ -137,7 +137,7 @@ if (invokedDirectly) {
   const packRaw = arg(argv, "--pack");
   if (!provider || !model || (packRaw !== undefined && !isEvalPack(packRaw))) {
     console.error(
-      `usage: npm run evals:promote -- --provider <anthropic|openai|minimax|xai> --model <id> [--pack <${EVAL_PACKS.join("|")}>] [--repeat 3] [--judge]`,
+      `usage: pnpm run evals:promote --provider <anthropic|openai|minimax|xai> --model <id> [--pack <${EVAL_PACKS.join("|")}>] [--repeat 3] [--judge]`,
     );
     process.exit(2);
   }

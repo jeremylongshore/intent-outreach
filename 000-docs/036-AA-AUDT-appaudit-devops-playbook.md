@@ -5,6 +5,11 @@
 *Audience: the next engineer or agent (Codex, Claude, a person) picking this repo up cold. Read Section 1, then
 Section 11 ("Current State") and Section 12 ("Roadmap"). Section 14 is the exact resume procedure.*
 
+**Tooling update (2026-10-07):** Development and CI now use pnpm 10.8.1; see
+`packages/README.md` and the amended workspace decision in 031 §2.1. The commands
+below are retained as the original handoff record; use `pnpm install --frozen-lockfile`,
+`pnpm run <script>` and `pnpm exec <tool>` in the current checkout.
+
 ---
 
 ## 1. This System in 5 Minutes

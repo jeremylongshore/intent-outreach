@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // audit-gate.mjs — fail CI on high/critical production advisories that are not explicitly allowlisted.
 //
-// npm audit --audit-level=high alone cannot express "known and unreachable"; this wraps it with an
+// pnpm audit --audit-level=high alone cannot express "known and unreachable"; this wraps it with an
 // allowlist (audit-allowlist.json next to the workflows) whose entries carry a reason and an expiry.
 // Usage: node .github/scripts/audit-gate.mjs   (run from the repo root)
 import { spawnSync } from "node:child_process";
@@ -27,26 +27,48 @@ for (const e of allowFile.allow ?? []) {
   allowed.set(e.id, e);
 }
 
-const r = spawnSync("npm", ["audit", "--omit=dev", "--json"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+const r = spawnSync("pnpm", ["audit", "--prod", "--json"], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 let report;
 try {
   report = JSON.parse(r.stdout);
 } catch {
-  console.error("::error::npm audit did not return JSON:\n" + r.stdout + r.stderr);
+  console.error("::error::pnpm audit did not return JSON:\n" + r.stdout + r.stderr);
   process.exit(1);
 }
-if (report.error) {
-  console.error("::error::npm audit failed: " + JSON.stringify(report.error));
+if (r.error || (r.status !== 0 && r.status !== 1) || !report || report.error) {
+  console.error("::error::pnpm audit failed: " + (r.error?.message ?? JSON.stringify(report?.error) ?? r.stderr));
+  process.exit(1);
+}
+if (!report.advisories || typeof report.advisories !== "object" || Array.isArray(report.advisories)
+    || !report.metadata?.vulnerabilities) {
+  console.error("::error::pnpm audit returned an unrecognized report");
   process.exit(1);
 }
 
 const findings = [];
-for (const [name, v] of Object.entries(report.vulnerabilities ?? {})) {
-  for (const via of v.via ?? []) {
-    if (typeof via !== "object" || !LEVELS.includes(via.severity)) continue;
-    const id = (via.url ?? "").split("/").pop();
-    findings.push({ pkg: name, id, severity: via.severity, title: via.title });
+for (const advisory of Object.values(report.advisories)) {
+  if (!advisory || typeof advisory !== "object" || !["info", "low", "moderate", ...LEVELS].includes(advisory.severity)) {
+    console.error("::error::pnpm audit returned a malformed advisory");
+    process.exit(1);
   }
+  if (!LEVELS.includes(advisory.severity)) continue;
+  const id = advisory.github_advisory_id ?? (advisory.url ?? "").split("/").pop();
+  if (!/^GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/.test(id ?? "") || !advisory.module_name || !advisory.title) {
+    console.error("::error::pnpm audit returned an incomplete high/critical advisory");
+    process.exit(1);
+  }
+  findings.push({ pkg: advisory.module_name, id, severity: advisory.severity, title: advisory.title });
+}
+for (const level of LEVELS) {
+  const count = report.metadata.vulnerabilities[level];
+  if (!Number.isInteger(count) || count < 0 || (count > 0 && !findings.some((f) => f.severity === level))) {
+    console.error("::error::pnpm audit vulnerability counts are missing or inconsistent");
+    process.exit(1);
+  }
+}
+if (r.status === 1 && Object.keys(report.advisories).length === 0) {
+  console.error("::error::pnpm audit failed without advisory details");
+  process.exit(1);
 }
 
 const unallowed = findings.filter((f) => !allowed.has(f.id));
