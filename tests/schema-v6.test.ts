@@ -34,6 +34,9 @@ import { _resetBuiltins, acceptsQuery, registerConnector } from "../pipeline_cor
 import type { Connector, ResearchInput } from "../pipeline_core/connectors/types.js";
 import { mergePropertyModel, runCampaign, runResearch, runResearchQuery } from "../pipeline_core/pipeline.js";
 import { normalizePhone } from "../pipeline_core/compliance/index.js";
+import { registerPack } from "../pipeline_core/packs/index.js";
+import { noopCompliance } from "../pipeline_core/packs/types.js";
+import { PROPERTY_PII } from "../pipeline_core/pii-policy.js";
 import type { LLMProvider } from "../pipeline_core/providers.js";
 import type { ContactPoint } from "../pipeline_core/models.js";
 import { _resetSecretCache } from "../pipeline_core/secrets.js";
@@ -363,7 +366,7 @@ describe("runCampaign carries the property model into the run", () => {
     process.env = { ...saved };
   });
 
-  it("property data a connector returns is stored, never silently discarded", async () => {
+  it("a pack opting into owner PII preserves property data from a domain connector", async () => {
     const calls: string[] = [];
     registerConnector(
       recorder("parcel-on-domain", undefined, calls, {
@@ -378,7 +381,8 @@ describe("runCampaign carries the property model into the run", () => {
         throw new Error("no lead, so the model must not be called");
       },
     } as unknown as LLMProvider;
-    const { run } = await runCampaign({ id: "run-v6-carry", icp: "x", domains: ["acme.com"], provider, now: () => T });
+    registerPack({ id: "v6-carry", displayName: "Property PII", compliance: noopCompliance, piiPolicy: PROPERTY_PII, prompts: { score: [], draft: "unused" } });
+    const { run } = await runCampaign({ pack: "v6-carry", id: "run-v6-carry", icp: "x", domains: ["acme.com"], provider, now: () => T });
     expect(run.schemaVersion).toBe(6);
     expect(run.properties.map((p) => p.key)).toEqual([property.key]);
     expect(run.contactPoints[0]?.dnc).toBe("listed");

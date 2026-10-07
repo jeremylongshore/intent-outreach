@@ -1,3 +1,4 @@
+import { minimizeEnrichment } from "../pipeline_core/pii-policy.js";
 /**
  * mcp/tools.ts — the Intent Outreach MCP tool handlers (pure functions + zod input shapes).
  *
@@ -238,6 +239,7 @@ export async function handleSaveRun(rawArgs: SaveRunArgs, deps: SaveRunDeps = {}
     return toolError(`validation failed (run NOT saved): ${issues}`);
   }
   const args = parsedArgs.data;
+  args.enrichments = args.enrichments.map(minimizeEnrichment);
   if (JSON.stringify(args).length > MAX_SAVE_RUN_BYTES) {
     return toolError(`run NOT saved: payload exceeds ${MAX_SAVE_RUN_BYTES} bytes; drop raw enrichment data or split the run`);
   }

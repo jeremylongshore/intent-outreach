@@ -12,6 +12,7 @@
  * vertical prompts WITHOUT touching this engine.
  */
 
+import type { PiiPolicy } from "../pii-policy.js";
 import type { ServiceArea } from "../compliance/index.js";
 import type { ChannelPolicy } from "../compliance/send.js";
 import type { Capability, Routing } from "../routing.js";
@@ -76,6 +77,8 @@ export interface Pack {
   /** Stable id, stamped onto every CampaignRun as `vertical`. */
   id: string;
   displayName: string;
+  /** Fixed normalized-data policy; defaults follow the business/property entrypoint. */
+  piiPolicy?: PiiPolicy;
   compliance: ComplianceGate;
   prompts: PackPrompts;
   /**

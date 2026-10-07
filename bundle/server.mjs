@@ -37702,7 +37702,6 @@ function keepRawOptIn() {
 }
 function pickAllowed(record2, allow) {
   if (!record2 || typeof record2 !== "object") return {};
-  if (keepRawOptIn()) return { ...record2 };
   const out = {};
   for (const k of allow) {
     const v = record2[k];
@@ -37928,7 +37927,6 @@ function workPhone(p) {
   return hit?.raw_number ?? void 0;
 }
 function minimizePerson(p) {
-  if (keepRawOptIn()) return { ...p };
   const out = pickAllowed(p, APOLLO_PERSON_ALLOW);
   if (p.organization) out.organization = pickAllowed(p.organization, APOLLO_ORG_ALLOW);
   const phone = workPhone(p);
@@ -39545,6 +39543,194 @@ function registerBuiltinConnectors() {
   registered = true;
 }
 
+// pipeline_core/compliance/risk.ts
+var MANUAL_REVIEW_PATTERNS = [
+  ["probate", /\bprobat/],
+  ["probate", /\bdeceased\b/],
+  ["probate", /^estate$/],
+  ["probate", /\bestate sale\b/],
+  ["probate", /\bestate of\b/],
+  ["probate", /\bheirs?\b/],
+  ["probate", /\blife estate\b/],
+  ["divorce", /\bdivorc/],
+  ["divorce", /\bdissolution of marriage\b/],
+  ["pre-foreclosure", /\bforeclos/],
+  ["pre-foreclosure", /\blis pendens\b/],
+  ["pre-foreclosure", /\bnotice of (?:default|trustee sale|sale)\b/],
+  ["pre-foreclosure", /^nod$/],
+  ["pre-foreclosure", /\btax (?:sale|lien sale|deed)\b/]
+];
+var normalizeTag = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function manualReviewVerdict(signals) {
+  const categories = /* @__PURE__ */ new Set();
+  for (const raw of signals) {
+    const tag = normalizeTag(raw);
+    for (const [category, pattern] of MANUAL_REVIEW_PATTERNS) if (pattern.test(tag)) categories.add(category);
+  }
+  if (categories.size === 0) return { status: "clean" };
+  return { status: "blocked", reason: `manual-review:${[...categories].sort().join(",")}` };
+}
+var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+var ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+function agreementEnd(value) {
+  if (ISO_DATE.test(value)) {
+    const day = Date.parse(`${value}T00:00:00Z`);
+    return Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== value ? Number.NaN : day + 36 * 36e5;
+  }
+  return ISO_DATETIME.test(value) ? Date.parse(value) : Number.NaN;
+}
+function listingContactVerdict(listing, now) {
+  const ends = listing.agreementEndsAt !== void 0 ? agreementEnd(listing.agreementEndsAt) : void 0;
+  if (ends !== void 0 && Number.isNaN(ends)) return { status: "blocked", reason: "listing:agreement-date-invalid" };
+  const stillRuns = ends !== void 0 && ends > now.getTime();
+  const status = normalizeTag(String(listing.status ?? "")).replace(/ /g, "-");
+  switch (status) {
+    case "active":
+    case "pending":
+    case "coming-soon":
+      return { status: "blocked", reason: `listing:${status}` };
+    case "withdrawn":
+      return ends !== void 0 && !stillRuns ? { status: "clean" } : { status: "blocked", reason: "listing:withdrawn-under-agreement" };
+    case "expired":
+    case "cancelled":
+    case "canceled":
+      return stillRuns ? { status: "blocked", reason: "listing:agreement-still-in-effect" } : { status: "clean" };
+    case "sold":
+    case "off-market":
+      return { status: "clean" };
+    default:
+      return { status: "blocked", reason: "listing:status-unknown" };
+  }
+}
+var ALWAYS_PERSONAL = [
+  /^credit$/,
+  /^fico$/,
+  /^vantage/,
+  /^wealth/,
+  /^worth$/,
+  /^salar/,
+  /^wages?$/,
+  /^bankrupt/,
+  /^judge?ments?$/,
+  /^evict/,
+  /^reposs/,
+  /^collections?$/,
+  /^garnish/,
+  /^payday$/,
+  /^ssn$/,
+  /^dob$/,
+  /^birth/,
+  /^ages?$/,
+  /^marital$/,
+  /^gender$/,
+  /^sex$/,
+  /^race$/,
+  /^ethnic/,
+  /^religio/,
+  /^disab/,
+  /^child/,
+  /^familial$/,
+  /^household$/,
+  /^occupation$/,
+  /^education$/,
+  /^spouse$/
+];
+var CONDITIONAL = [
+  [/^incomes?$/, /^(rent|rental|rents|gross|operating|property|producing|noi)$/],
+  [/^debts?$/, /^(mortgage|liens?|loans?)$/],
+  [/^delinquen/, /^tax(es)?$/],
+  [/^assets?$/, /^$/],
+  [/^scores?$/, /^(flood|wind|hurricane)$/],
+  [/^payments?$/, /^(mortgage|tax|taxes|hoa)$/]
+];
+function keyTokens(key) {
+  return key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+}
+function isFcraSensitiveKey(key) {
+  const tokens = keyTokens(key);
+  const creditUnion = tokens.some((t, i) => t === "credit" && tokens[i + 1] === "union");
+  if (tokens.some((t) => ALWAYS_PERSONAL.some((re) => re.test(t))) && !creditUnion) return true;
+  for (const [word, context] of CONDITIONAL) {
+    if (tokens.some((t) => word.test(t)) && !tokens.some((t) => context.test(t))) return true;
+  }
+  return false;
+}
+
+// pipeline_core/pii-policy.ts
+var BUSINESS_PII = Object.freeze({ kind: "business" });
+var PROPERTY_PII = Object.freeze({ kind: "property-owner" });
+var PII_POLICY_VERSION = 1;
+var PROPERTY_FACTS = /* @__PURE__ */ new Set([
+  "justValueCents",
+  "marketValueCents",
+  "assessedValueCents",
+  "landValueCents",
+  "improvementValueCents",
+  "landUseCode",
+  "propertyType",
+  "yearBuilt",
+  "livingAreaSqft",
+  "landSqft",
+  "lotAcres",
+  "bedrooms",
+  "bathrooms",
+  "homesteadExemption",
+  "lastSalePriceCents",
+  "lastSaleDate",
+  "lastSaleYear",
+  "floodZone",
+  "floodRisk",
+  "listingStatus",
+  "distressSignals",
+  "taxDelinquent",
+  "taxAmountCents",
+  "taxesOwedCents",
+  "mortgageBalanceCents",
+  "annualRentalIncome",
+  "lienAmountCents",
+  "rentCents",
+  "noiCents",
+  "capRateBps",
+  "occupancyRateBps"
+]);
+function minimizeBusinessData(value) {
+  const scrub = (v) => {
+    if (Array.isArray(v)) return v.map(scrub);
+    if (!v || typeof v !== "object") return v;
+    return Object.fromEntries(Object.entries(v).filter(([key]) => {
+      const tokens = keyTokens(key);
+      return !isFcraSensitiveKey(key) && !tokens.some((t) => /^(personal|mobile|home|residential|passport)$/.test(t));
+    }).map(([key, inner]) => [key, scrub(inner)]));
+  };
+  return scrub(value);
+}
+function minimizeProperty(input2, policy = PROPERTY_PII) {
+  const p = PropertySchema.parse(input2);
+  const extra = new Set(policy.propertyAttributes ?? []);
+  p.attributes = Object.fromEntries(Object.entries(p.attributes).filter(
+    ([key]) => (PROPERTY_FACTS.has(key) || extra.has(key)) && !isFcraSensitiveKey(key)
+  ).map(([key, fact]) => [key, { ...fact, value: fact.value && typeof fact.value === "object" ? minimizeBusinessData(fact.value) : fact.value }]));
+  return p;
+}
+function minimizeResearch(out, policy) {
+  return {
+    leads: out.leads.map((p) => LeadSchema.parse(p)),
+    contacts: out.contacts.map((p) => ContactSchema.parse(p)),
+    ...policy.kind === "property-owner" ? {
+      properties: (out.properties ?? []).map((p) => minimizeProperty(p, policy)),
+      parties: (out.parties ?? []).map((p) => PartySchema.parse(p)),
+      ownerships: (out.ownerships ?? []).map((p) => OwnershipSchema.parse(p)),
+      entityLinks: (out.entityLinks ?? []).map((p) => EntityLinkSchema.parse(p)),
+      contactPoints: (out.contactPoints ?? []).map((p) => ContactPointSchema.parse(p))
+    } : {},
+    ...out.failures ? { failures: out.failures } : {},
+    ...out.raw !== void 0 ? { raw: out.raw } : {}
+  };
+}
+function minimizeEnrichment(e) {
+  return { ...e, data: minimizeBusinessData(e.data) };
+}
+
 // pipeline_core/approvals.ts
 import { createHash as createHash3, randomUUID } from "node:crypto";
 import { constants, mkdir, open as open2, readFile, rename, stat, truncate, unlink } from "node:fs/promises";
@@ -40005,66 +40191,6 @@ var fairHousingDraftRule = (draft) => {
     ([field, text]) => lintFairHousing(text).hard.map((term) => `fair-housing: "${term}" in ${field}`)
   );
 };
-
-// pipeline_core/compliance/risk.ts
-var MANUAL_REVIEW_PATTERNS = [
-  ["probate", /\bprobat/],
-  ["probate", /\bdeceased\b/],
-  ["probate", /^estate$/],
-  ["probate", /\bestate sale\b/],
-  ["probate", /\bestate of\b/],
-  ["probate", /\bheirs?\b/],
-  ["probate", /\blife estate\b/],
-  ["divorce", /\bdivorc/],
-  ["divorce", /\bdissolution of marriage\b/],
-  ["pre-foreclosure", /\bforeclos/],
-  ["pre-foreclosure", /\blis pendens\b/],
-  ["pre-foreclosure", /\bnotice of (?:default|trustee sale|sale)\b/],
-  ["pre-foreclosure", /^nod$/],
-  ["pre-foreclosure", /\btax (?:sale|lien sale|deed)\b/]
-];
-var normalizeTag = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-function manualReviewVerdict(signals) {
-  const categories = /* @__PURE__ */ new Set();
-  for (const raw of signals) {
-    const tag = normalizeTag(raw);
-    for (const [category, pattern] of MANUAL_REVIEW_PATTERNS) if (pattern.test(tag)) categories.add(category);
-  }
-  if (categories.size === 0) return { status: "clean" };
-  return { status: "blocked", reason: `manual-review:${[...categories].sort().join(",")}` };
-}
-var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-var ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
-function agreementEnd(value) {
-  if (ISO_DATE.test(value)) {
-    const day = Date.parse(`${value}T00:00:00Z`);
-    return Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== value ? Number.NaN : day + 36 * 36e5;
-  }
-  return ISO_DATETIME.test(value) ? Date.parse(value) : Number.NaN;
-}
-function listingContactVerdict(listing, now) {
-  const ends = listing.agreementEndsAt !== void 0 ? agreementEnd(listing.agreementEndsAt) : void 0;
-  if (ends !== void 0 && Number.isNaN(ends)) return { status: "blocked", reason: "listing:agreement-date-invalid" };
-  const stillRuns = ends !== void 0 && ends > now.getTime();
-  const status = normalizeTag(String(listing.status ?? "")).replace(/ /g, "-");
-  switch (status) {
-    case "active":
-    case "pending":
-    case "coming-soon":
-      return { status: "blocked", reason: `listing:${status}` };
-    case "withdrawn":
-      return ends !== void 0 && !stillRuns ? { status: "clean" } : { status: "blocked", reason: "listing:withdrawn-under-agreement" };
-    case "expired":
-    case "cancelled":
-    case "canceled":
-      return stillRuns ? { status: "blocked", reason: "listing:agreement-still-in-effect" } : { status: "clean" };
-    case "sold":
-    case "off-market":
-      return { status: "clean" };
-    default:
-      return { status: "blocked", reason: "listing:status-unknown" };
-  }
-}
 
 // pipeline_core/draft-guard.ts
 var MAX_BODY_WORDS = 120;
@@ -41120,6 +41246,43 @@ async function withLockAt(path, fn) {
   return withLock2(path, fn);
 }
 
+// pipeline_core/run-retention.ts
+var RUN_RETENTION_DAYS = Object.freeze({
+  "b2b-sdr": 365,
+  "residential-re": 30,
+  "commercial-re": 30
+});
+function retentionDaysForPack(id) {
+  return Object.hasOwn(RUN_RETENTION_DAYS, id) ? RUN_RETENTION_DAYS[id] : 30;
+}
+function runExpiresAt(run, now) {
+  const created = Math.min(Date.parse(run.createdAt), now);
+  const days = retentionDaysForPack(run.vertical);
+  return dataExpiresAt(run, created, days);
+}
+function dataExpiresAt(value, created, days) {
+  let expires = created + days * 864e5;
+  function visit2(value2) {
+    if (!value2 || typeof value2 !== "object") return;
+    if (Array.isArray(value2)) {
+      for (const item of value2) visit2(item);
+      return;
+    }
+    const obj = value2;
+    const terms = obj.licenseTerms;
+    if (terms && typeof terms.retentionDays === "number") {
+      const days2 = terms.retentionDays;
+      if (!Number.isSafeInteger(days2) || days2 <= 0) throw new Error("Invalid vendor retention period");
+      const fetched = typeof obj.fetchedAt === "string" ? Date.parse(obj.fetchedAt) : created;
+      if (!Number.isFinite(fetched)) throw new Error("Invalid retention timestamp");
+      expires = Math.min(expires, Math.min(fetched, created) + days2 * 864e5);
+    }
+    for (const item of Object.values(obj)) visit2(item);
+  }
+  visit2(value);
+  return expires;
+}
+
 // pipeline_core/routing.ts
 import { createHash as createHash4, randomUUID as randomUUID2 } from "node:crypto";
 function capabilityForQuery(query) {
@@ -41261,6 +41424,7 @@ function resolvePack(id) {
 // pipeline_core/packs/b2b-sdr.ts
 var b2bSdrPack = {
   id: "b2b-sdr",
+  piiPolicy: BUSINESS_PII,
   displayName: "B2B SDR",
   // Pack-specific checks only; the engine-wide suppression gate runs first.
   compliance: noopCompliance,
@@ -41344,6 +41508,7 @@ function residentialPropertyGate(ctx) {
 var LICENSED = { requireLicenseDisclosure: true };
 var residentialRePack = {
   id: "residential-re",
+  piiPolicy: PROPERTY_PII,
   displayName: "Residential real estate (listing agent)",
   // The B2B loop's gate is unused by property campaigns; propertyGate is the gate.
   compliance: noopCompliance,
@@ -41772,9 +41937,11 @@ var contactPointKey = (c) => `${c.partyKey}|${c.kind}|${c.kind === "email" ? c.v
 function mergeContactPoint(a, b) {
   const dnc = DNC_RANK[b.dnc] > DNC_RANK[a.dnc] ? b.dnc : a.dnc;
   const restricted = Boolean(a.licenseTerms?.outreachRestricted || b.licenseTerms?.outreachRestricted);
-  const licenseTerms = a.licenseTerms || b.licenseTerms ? { ...b.licenseTerms, ...a.licenseTerms, ...restricted ? { outreachRestricted: true } : {} } : void 0;
+  const retentionDays = Math.min(a.licenseTerms?.retentionDays ?? Infinity, b.licenseTerms?.retentionDays ?? Infinity);
+  const licenseTerms = a.licenseTerms || b.licenseTerms ? { ...b.licenseTerms, ...a.licenseTerms, ...restricted ? { outreachRestricted: true } : {}, ...Number.isFinite(retentionDays) ? { retentionDays } : {} } : void 0;
   return {
     ...a,
+    fetchedAt: Date.parse(a.fetchedAt) <= Date.parse(b.fetchedAt) ? a.fetchedAt : b.fetchedAt,
     dnc,
     ...a.lineType === void 0 || a.lineType === "unknown" ? b.lineType ? { lineType: b.lineType } : {} : {},
     ...licenseTerms ? { licenseTerms } : {}
@@ -41801,6 +41968,9 @@ async function runResearch(domain2, icp, opts = {}) {
 async function runResearchQuery(query, icp, opts = {}) {
   registerBuiltinConnectors();
   const typed = query.kind === "domain" ? { kind: "domain", domain: normalizeDomain2(query.domain) } : query;
+  const pii = opts.piiPolicy ?? (typed.kind === "domain" ? BUSINESS_PII : PROPERTY_PII);
+  const retentionDays = opts.retentionDays ?? (pii.kind === "business" ? 365 : 30);
+  if (!Number.isFinite(retentionDays) || retentionDays <= 0) throw new Error("Invalid pack retention period");
   const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
@@ -41827,9 +41997,10 @@ async function runResearchQuery(query, icp, opts = {}) {
     if (!connector.research) continue;
     try {
       const ttl = connector.cacheTtlMs ?? 0;
-      const key = opts.cache && ttl > 0 ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting }) : void 0;
+      const key = opts.cache && ttl > 0 ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting, pii, retentionDays, policyVersion: PII_POLICY_VERSION }) : void 0;
       let out = key ? await cacheRead(opts.cache, key, clock2()) : void 0;
       if (out) {
+        out = minimizeResearch(out, pii);
         cached2.push(connector.name);
       } else {
         if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
@@ -41840,11 +42011,15 @@ async function runResearchQuery(query, icp, opts = {}) {
           (signal) => connector.research({ domain: target, query: typed, icp, ...targeting, signal }),
           timeoutMs
         );
+        out = minimizeResearch(out, pii);
         if (key && (out.failures?.length ?? 0) === 0) {
           const { raw: _raw, ...cacheable } = out;
-          await cacheWrite(opts.cache, key, cacheable, ttl, clock2());
+          const fetched = clock2();
+          const boundedTtl = Math.min(ttl, dataExpiresAt(cacheable, fetched, retentionDays) - fetched);
+          if (boundedTtl > 0) await cacheWrite(opts.cache, key, cacheable, boundedTtl, fetched);
         }
       }
+      if (dataExpiresAt({ ...out, raw: void 0 }, clock2(), retentionDays) <= clock2()) throw new Error("Source data is past its retention deadline");
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       properties.push(...out.properties ?? []);
@@ -41930,6 +42105,7 @@ async function runEnrich(lead, contacts, opts = {}) {
         (signal) => connector.enrich({ lead, contacts: current, ...targeting, signal }),
         timeoutMs
       );
+      out.enrichments = out.enrichments.map(minimizeEnrichment);
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
@@ -42106,37 +42282,6 @@ function loadProfileRef(ref, cwd) {
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { closeSync, constants as constants3, existsSync as existsSync2, fchmodSync, fstatSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync as readFileSync3, unlinkSync, writeFileSync } from "node:fs";
 import { dirname as dirname5, isAbsolute as isAbsolute3, resolve as resolve3 } from "node:path";
-
-// pipeline_core/run-retention.ts
-var RUN_RETENTION_DAYS = Object.freeze({
-  "b2b-sdr": 365,
-  "residential-re": 30,
-  "commercial-re": 30
-});
-function runExpiresAt(run, now) {
-  const created = Math.min(Date.parse(run.createdAt), now);
-  const days = Object.hasOwn(RUN_RETENTION_DAYS, run.vertical) ? RUN_RETENTION_DAYS[run.vertical] : 30;
-  let expires = created + days * 864e5;
-  function visit2(value) {
-    if (!value || typeof value !== "object") return;
-    if (Array.isArray(value)) {
-      for (const item of value) visit2(item);
-      return;
-    }
-    const obj = value;
-    const terms = obj.licenseTerms;
-    if (terms && typeof terms.retentionDays === "number") {
-      const days2 = terms.retentionDays;
-      if (!Number.isSafeInteger(days2) || days2 <= 0) throw new Error("Invalid vendor retention period");
-      const fetched = typeof obj.fetchedAt === "string" ? Date.parse(obj.fetchedAt) : created;
-      if (!Number.isFinite(fetched)) throw new Error("Invalid retention timestamp");
-      expires = Math.min(expires, Math.min(fetched, created) + days2 * 864e5);
-    }
-    for (const item of Object.values(obj)) visit2(item);
-  }
-  visit2(run);
-  return expires;
-}
 
 // pipeline_core/store.ts
 import { dirname as dirname4, join as join5 } from "node:path";
@@ -42539,6 +42684,7 @@ async function handleSaveRun(rawArgs, deps = {}) {
     return toolError(`validation failed (run NOT saved): ${issues}`);
   }
   const args = parsedArgs.data;
+  args.enrichments = args.enrichments.map(minimizeEnrichment);
   if (JSON.stringify(args).length > MAX_SAVE_RUN_BYTES) {
     return toolError(`run NOT saved: payload exceeds ${MAX_SAVE_RUN_BYTES} bytes; drop raw enrichment data or split the run`);
   }

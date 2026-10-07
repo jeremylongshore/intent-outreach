@@ -61522,6 +61522,614 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 import { parseArgs } from "node:util";
 
+// node_modules/.pnpm/zod@4.6.5/node_modules/zod/index.js
+init_external();
+init_external();
+
+// pipeline_core/models.ts
+var SCHEMA_VERSION = 6;
+var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
+var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
+var SchemaVersionSchema = external_exports.union([
+  external_exports.literal(V_FIRST),
+  external_exports.literal(V_SECOND),
+  ...V_REST.map((v) => external_exports.literal(v))
+]);
+var SourceSchema = external_exports.string().min(1);
+var LeadSchema = external_exports.object({
+  domain: external_exports.string().min(1),
+  companyName: external_exports.string().min(1),
+  industry: external_exports.string().optional(),
+  /** Free-text headcount band, e.g. "11-50". Connectors disagree on format. */
+  size: external_exports.string().optional(),
+  description: external_exports.string().optional(),
+  source: SourceSchema
+});
+var ContactSchema = external_exports.object({
+  name: external_exports.string().min(1),
+  leadDomain: external_exports.string().min(1),
+  email: external_exports.string().email().optional(),
+  title: external_exports.string().optional(),
+  // A LinkedIn handle OR full URL — providers return both shapes, so don't reject
+  // an otherwise-valid contact (and thus the whole run) over a non-URL handle.
+  linkedin: external_exports.string().optional(),
+  source: SourceSchema,
+  /**
+   * True when the provider withheld the surname (the last token is a lone
+   * initial, e.g. "Kristina L"). The contact is kept, but the drafter addresses
+   * them by first name only. Optional + additive: older lines simply omit it.
+   */
+  nameIncomplete: external_exports.boolean().optional()
+});
+var EnrichmentSchema = external_exports.object({
+  /** What this enrichment is attached to. */
+  subjectType: external_exports.enum(["lead", "contact"]),
+  /** Natural key of the subject: a domain (lead) or an email (contact). */
+  subjectKey: external_exports.string().min(1),
+  provider: SourceSchema,
+  /** Normalized highlights the scorer/draft seam reads. */
+  funding: external_exports.object({
+    lastRound: external_exports.string().optional(),
+    totalRaisedUsd: external_exports.number().nonnegative().optional(),
+    lastRoundDate: external_exports.string().optional(),
+    investors: external_exports.array(external_exports.string()).optional()
+  }).optional(),
+  verifiedEmail: external_exports.string().email().optional(),
+  /**
+   * Optional back-reference to the Contact's `name` when the enrichment found an
+   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
+   * pipeline fold the found email into the working contact list. Optional/additive.
+   */
+  contactName: external_exports.string().min(1).optional(),
+  phone: external_exports.string().optional(),
+  /** Raw provider payload, retained for audit; never trusted as schema. */
+  data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
+  fetchedAt: external_exports.string().datetime()
+});
+var Sha256HexSchema = external_exports.string().regex(/^[0-9a-f]{64}$/, "expected a sha256 hex digest");
+var LicenseTermsSchema = external_exports.object({
+  /** Short identifier of the terms, e.g. "dealmachine-tos-2026" or "public-record". */
+  id: external_exports.string().min(1).optional(),
+  outreachRestricted: external_exports.boolean().optional(),
+  /** Days the vendor allows this fact to be retained. */
+  retentionDays: external_exports.number().int().positive().optional(),
+  /** Required attribution text, if the terms demand one. */
+  attribution: external_exports.string().min(1).optional()
+});
+function factSchema(value) {
+  return external_exports.object({
+    value,
+    source: SourceSchema,
+    fetchedAt: external_exports.string().datetime(),
+    responseHash: Sha256HexSchema.optional(),
+    licenseTerms: LicenseTermsSchema.optional(),
+    /** When the value came through a vendor MCP server: which server, version and tool. */
+    via: external_exports.object({ server: external_exports.string().min(1), version: external_exports.string().min(1), tool: external_exports.string().min(1) }).optional()
+  });
+}
+var FactSchema = factSchema(external_exports.unknown());
+var UsStateSchema = external_exports.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code");
+var CountyFipsSchema = external_exports.string().regex(/^\d{5}$/, "expected a 5-digit county FIPS code");
+var AddressSchema = external_exports.object({
+  line1: external_exports.string().min(1),
+  line2: external_exports.string().min(1).optional(),
+  city: external_exports.string().min(1),
+  state: UsStateSchema,
+  zip: external_exports.string().regex(/^\d{5}(?:-\d{4})?$/, "expected ZIP5 or ZIP+4"),
+  county: external_exports.string().min(1).optional(),
+  countyFips: CountyFipsSchema.optional()
+});
+function propertyKey(countyFips, apn) {
+  return `${countyFips}:${apn.trim().toUpperCase()}`;
+}
+var PropertySchema = external_exports.object({
+  key: external_exports.string().min(1),
+  apn: external_exports.string().min(1),
+  countyFips: CountyFipsSchema,
+  address: AddressSchema.optional(),
+  /** A point on the parcel (centroid or label point), WGS84. Used for flood and other spatial lookups. */
+  location: external_exports.object({ lat: external_exports.number().min(-90).max(90), lon: external_exports.number().min(-180).max(180) }).optional(),
+  attributes: external_exports.record(external_exports.string().min(1), FactSchema).default({}),
+  source: SourceSchema
+}).refine((p) => p.key === propertyKey(p.countyFips, p.apn), {
+  message: "key must equal propertyKey(countyFips, apn)",
+  path: ["key"]
+}).refine((p) => p.apn === p.apn.trim(), { message: "apn must not carry surrounding whitespace", path: ["apn"] });
+var PartySchema = external_exports.object({
+  /** Stable id within the run, e.g. "person:<connector-id>" or "entity:AL:000123456". */
+  key: external_exports.string().min(1),
+  kind: external_exports.enum(["person", "entity"]),
+  name: external_exports.string().min(1),
+  /** For entities only. */
+  entityType: external_exports.enum(["llc", "corporation", "trust", "estate", "partnership", "government", "other"]).optional(),
+  mailingAddress: AddressSchema.optional(),
+  source: SourceSchema,
+  /**
+   * Terms of the record this party (and its mailing address) came from. A
+   * property pack may write to a party only when `outreachRestricted` is
+   * explicitly false; absent or undeclared is treated as restricted.
+   */
+  licenseTerms: LicenseTermsSchema.optional()
+});
+var OwnershipSchema = external_exports.object({
+  propertyKey: external_exports.string().min(1),
+  partyKey: external_exports.string().min(1),
+  /** Fraction held, 0 < share <= 1, when the record states it. */
+  share: external_exports.number().gt(0).lte(1).optional(),
+  role: external_exports.enum(["owner", "co-owner", "trustee", "life-tenant"]).default("owner"),
+  /** Recording or deed date (ISO date), when known. */
+  asOf: external_exports.string().date().optional(),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime()
+});
+var EntityLinkSchema = external_exports.object({
+  entityKey: external_exports.string().min(1),
+  personKey: external_exports.string().min(1),
+  role: external_exports.enum(["member", "manager", "officer", "registered-agent", "organizer", "other"]),
+  confidence: external_exports.number().min(0).max(1),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime()
+});
+var DncStatusSchema = external_exports.enum(["clean", "listed", "unknown"]);
+var ContactPointSchema = external_exports.object({
+  partyKey: external_exports.string().min(1),
+  kind: external_exports.enum(["phone", "email", "mail"]),
+  /** E.164 phone, email address, or a one-line mailing address. */
+  value: external_exports.string().min(1),
+  /** Phones only. "unknown" means the line type was not established. */
+  lineType: external_exports.enum(["mobile", "landline", "voip", "unknown"]).optional(),
+  /** Phones only; defaults to "unknown" (fail closed). */
+  dnc: DncStatusSchema.default("unknown"),
+  source: SourceSchema,
+  fetchedAt: external_exports.string().datetime(),
+  verifiedAt: external_exports.string().datetime().optional(),
+  licenseTerms: LicenseTermsSchema.optional()
+}).refine((c) => c.kind !== "phone" || /^\+[1-9]\d{9,14}$/.test(c.value), {
+  message: "a phone contact point must be E.164",
+  path: ["value"]
+}).refine((c) => c.kind !== "email" || external_exports.string().email().safeParse(c.value).success, {
+  message: "an email contact point must be a valid email",
+  path: ["value"]
+});
+var ResearchQuerySchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("domain"), domain: external_exports.string().min(1) }),
+  external_exports.object({
+    kind: external_exports.literal("area"),
+    geography: external_exports.object({
+      state: UsStateSchema.optional(),
+      countyFips: external_exports.array(CountyFipsSchema).optional(),
+      zips: external_exports.array(external_exports.string().regex(/^\d{5}$/)).optional()
+    }).refine((g) => Boolean(g.state || g.countyFips?.length || g.zips?.length), {
+      message: "an area query needs a state, county FIPS codes or ZIPs"
+    }),
+    /** Pack buy-box filters, already compiled to plain values. */
+    filters: external_exports.record(external_exports.string().min(1), external_exports.unknown()).default({})
+  }),
+  external_exports.object({
+    kind: external_exports.literal("parcel"),
+    countyFips: CountyFipsSchema.optional(),
+    apn: external_exports.string().min(1).optional(),
+    address: AddressSchema.optional()
+  }).refine((q) => Boolean(q.countyFips && q.apn || q.address), {
+    message: "a parcel query needs countyFips + apn, or an address"
+  })
+]);
+var CHANNELS = ["email", "linkedin", "sms", "mail", "call_script"];
+var ChannelSchema = external_exports.enum(CHANNELS);
+var MessageSchema = external_exports.object({
+  /** FK to the Contact this message is for (email if known, else name@domain). */
+  contactKey: external_exports.string().min(1),
+  channel: ChannelSchema,
+  subject: external_exports.string().optional(),
+  body: external_exports.string().min(1),
+  cta: external_exports.string().min(1),
+  /** 0-100 fit score the model assigned at the score() seam. */
+  fitScore: external_exports.number().min(0).max(100).optional(),
+  /** Provenance: which model + prompt version produced this. */
+  model: external_exports.string().min(1),
+  promptVersion: external_exports.string().min(1),
+  createdAt: external_exports.string().datetime(),
+  /**
+   * True when the channel's required sender identity was not configured, so its
+   * footer could NOT be appended: name + company + postal address for email and
+   * mail, name + company for sms and call_script. Such a draft must not be sent
+   * as-is. Additive (v4); defaults false.
+   */
+  needsSenderIdentity: external_exports.boolean().default(false),
+  /** Property campaigns (v6, optional): the parcel this letter is about. */
+  propertyKey: external_exports.string().min(1).optional()
+});
+var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
+var LEGACY_RUN_STATUSES = ["pending", "drafted"];
+var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
+var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
+var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
+var RunErrorSchema = external_exports.object({
+  /** The lead's domain (company campaigns). */
+  domain: external_exports.string().min(1).optional(),
+  /** The parcel's `<countyFips>:<apn>` (property campaigns, v6). */
+  propertyKey: external_exports.string().min(1).optional(),
+  contactKey: external_exports.string().min(1).optional(),
+  stage: RunErrorStageSchema,
+  /** Sanitized, truncated error message (secrets redacted). */
+  message: external_exports.string(),
+  /** AI SDK finish reason when the error carried one (e.g. "length"). */
+  finishReason: external_exports.string().optional()
+}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0 || e.contactKey !== void 0, {
+  message: "a run error needs a domain, a propertyKey or a contactKey"
+});
+var FailedConnectorSchema = external_exports.object({
+  name: external_exports.string().min(1),
+  phase: external_exports.enum(["research", "enrich"]),
+  /** HTTP status, "timeout", or "error". */
+  status: external_exports.union([external_exports.number().int(), external_exports.string().min(1)])
+});
+var CampaignRunSchema = external_exports.object({
+  /** Caller-supplied or generated run id (no Date.now/random inside core). */
+  id: external_exports.string().min(1),
+  // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
+  // existing v1 line on read (store.ts re-validates each line). New writes emit
+  // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
+  schemaVersion: SchemaVersionSchema,
+  icp: external_exports.string().min(1),
+  domains: external_exports.array(external_exports.string().min(1)),
+  /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
+  vertical: external_exports.string().min(1).default("b2b-sdr"),
+  /** Model + provider that ran the LLM seams. */
+  provider: external_exports.string().min(1),
+  model: external_exports.string().min(1),
+  status: StoredRunStatusSchema,
+  leads: external_exports.array(LeadSchema).default([]),
+  contacts: external_exports.array(ContactSchema).default([]),
+  enrichments: external_exports.array(EnrichmentSchema).default([]),
+  messages: external_exports.array(MessageSchema).default([]),
+  /** Cumulative spend across LLM seams, if metered. */
+  costUsd: external_exports.number().nonnegative().optional(),
+  /** Names of connectors that were skipped (no key / unsupported) this run. */
+  skippedConnectors: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Contacts the pack's compliance gate blocked before drafting — the audit trail
+   * for "did not contact, and why". Always empty for b2b-sdr (no-op gate); the
+   * append-only RunStore IS the compliance record for verticals that do block.
+   */
+  blockedContacts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      reason: external_exports.string().min(1),
+      /** Property campaigns (v6): the parcel the block was about. */
+      propertyKey: external_exports.string().min(1).optional()
+    })
+  ).default([]),
+  /**
+   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
+   * A provider error on domain 2 no longer loses domain 1's drafts.
+   */
+  errors: external_exports.array(RunErrorSchema).default([]),
+  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
+  rejectedDrafts: external_exports.array(
+    external_exports.object({
+      contactKey: external_exports.string().min(1),
+      issues: external_exports.array(external_exports.string()),
+      /** Property campaigns (v6): the parcel the draft was about. */
+      propertyKey: external_exports.string().min(1).optional()
+    })
+  ).default([]),
+  /**
+   * Configured connectors that threw (sanitized status only — never the error
+   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
+   * "not configured" only (v3).
+   */
+  failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
+  /**
+   * Run-level compliance warnings that did not block a contact but must be seen
+   * before anything is sent — e.g. email drafts produced without a configured
+   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
+   */
+  complianceWarnings: external_exports.array(external_exports.string()).default([]),
+  /**
+   * Prompt provenance for the run's LLM seams (v5, additive): each entry is
+   * "<prompt-file>@<sha8>". `score` lists the joined score-seam files; `draft` is
+   * the draft-seam file. Empty for agent-saved runs (the agent drafted, not a seam).
+   */
+  promptRefs: external_exports.object({
+    score: external_exports.array(external_exports.string().min(1)).optional(),
+    draft: external_exports.string().min(1).optional()
+  }).default({}),
+  /**
+   * Score-seam angles removed because they cited a fact absent from the inputs
+   * (groundAngles) — kept so an operator can see what the model tried (v5).
+   */
+  droppedAngles: external_exports.array(
+    external_exports.object({
+      domain: external_exports.string().min(1).optional(),
+      /** Property campaigns (v6). */
+      propertyKey: external_exports.string().min(1).optional(),
+      angle: external_exports.string(),
+      reason: external_exports.string()
+    }).refine((d) => d.domain !== void 0 || d.propertyKey !== void 0, {
+      message: "a dropped angle needs a domain or a propertyKey"
+    })
+  ).default([]),
+  /**
+   * Who assembled the record (v5, optional so older lines stay unlabeled rather
+   * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
+   * where the drafts and the `model` field are caller-claimed.
+   */
+  origin: external_exports.enum(["pipeline", "agent"]).optional(),
+  /** The typed research queries this run executed (v6, optional). */
+  queries: external_exports.array(ResearchQuerySchema).optional(),
+  /**
+   * Which provider + model ran each LLM seam when they differ (v6, optional):
+   * a cheap model scores, a stronger one drafts. Absent ⇒ `provider`/`model` ran both.
+   */
+  seamModels: external_exports.object({
+    score: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) }),
+    draft: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) })
+  }).optional(),
+  /**
+   * An inbound reply (v6, optional): where the inquiry came from, when it
+   * arrived, when the reply was drafted, and the speed-to-lead in between.
+   */
+  inbound: external_exports.object({
+    source: external_exports.string().min(1),
+    receivedAt: external_exports.string().datetime({ offset: true }),
+    draftedAt: external_exports.string().datetime(),
+    speedToLeadMs: external_exports.number().int().nonnegative()
+  }).optional(),
+  /** Vendor-credit accounting when the run had a budget (v6, optional). */
+  credits: external_exports.object({
+    limit: external_exports.number().nonnegative(),
+    spent: external_exports.number().nonnegative(),
+    exhausted: external_exports.boolean(),
+    byConnector: external_exports.record(external_exports.string(), external_exports.number().nonnegative())
+  }).optional(),
+  /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
+  properties: external_exports.array(PropertySchema).default([]),
+  parties: external_exports.array(PartySchema).default([]),
+  ownerships: external_exports.array(OwnershipSchema).default([]),
+  entityLinks: external_exports.array(EntityLinkSchema).default([]),
+  contactPoints: external_exports.array(ContactPointSchema).default([]),
+  createdAt: external_exports.string().datetime(),
+  finishedAt: external_exports.string().datetime().optional()
+});
+
+// pipeline_core/compliance/risk.ts
+var MANUAL_REVIEW_PATTERNS = [
+  ["probate", /\bprobat/],
+  ["probate", /\bdeceased\b/],
+  ["probate", /^estate$/],
+  ["probate", /\bestate sale\b/],
+  ["probate", /\bestate of\b/],
+  ["probate", /\bheirs?\b/],
+  ["probate", /\blife estate\b/],
+  ["divorce", /\bdivorc/],
+  ["divorce", /\bdissolution of marriage\b/],
+  ["pre-foreclosure", /\bforeclos/],
+  ["pre-foreclosure", /\blis pendens\b/],
+  ["pre-foreclosure", /\bnotice of (?:default|trustee sale|sale)\b/],
+  ["pre-foreclosure", /^nod$/],
+  ["pre-foreclosure", /\btax (?:sale|lien sale|deed)\b/]
+];
+var normalizeTag = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function manualReviewVerdict(signals) {
+  const categories = /* @__PURE__ */ new Set();
+  for (const raw of signals) {
+    const tag = normalizeTag(raw);
+    for (const [category, pattern] of MANUAL_REVIEW_PATTERNS) if (pattern.test(tag)) categories.add(category);
+  }
+  if (categories.size === 0) return { status: "clean" };
+  return { status: "blocked", reason: `manual-review:${[...categories].sort().join(",")}` };
+}
+var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+var ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+function agreementEnd(value) {
+  if (ISO_DATE.test(value)) {
+    const day = Date.parse(`${value}T00:00:00Z`);
+    return Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== value ? Number.NaN : day + 36 * 36e5;
+  }
+  return ISO_DATETIME.test(value) ? Date.parse(value) : Number.NaN;
+}
+function listingContactVerdict(listing, now2) {
+  const ends = listing.agreementEndsAt !== void 0 ? agreementEnd(listing.agreementEndsAt) : void 0;
+  if (ends !== void 0 && Number.isNaN(ends)) return { status: "blocked", reason: "listing:agreement-date-invalid" };
+  const stillRuns = ends !== void 0 && ends > now2.getTime();
+  const status = normalizeTag(String(listing.status ?? "")).replace(/ /g, "-");
+  switch (status) {
+    case "active":
+    case "pending":
+    case "coming-soon":
+      return { status: "blocked", reason: `listing:${status}` };
+    case "withdrawn":
+      return ends !== void 0 && !stillRuns ? { status: "clean" } : { status: "blocked", reason: "listing:withdrawn-under-agreement" };
+    case "expired":
+    case "cancelled":
+    case "canceled":
+      return stillRuns ? { status: "blocked", reason: "listing:agreement-still-in-effect" } : { status: "clean" };
+    case "sold":
+    case "off-market":
+      return { status: "clean" };
+    default:
+      return { status: "blocked", reason: "listing:status-unknown" };
+  }
+}
+var ALWAYS_PERSONAL = [
+  /^credit$/,
+  /^fico$/,
+  /^vantage/,
+  /^wealth/,
+  /^worth$/,
+  /^salar/,
+  /^wages?$/,
+  /^bankrupt/,
+  /^judge?ments?$/,
+  /^evict/,
+  /^reposs/,
+  /^collections?$/,
+  /^garnish/,
+  /^payday$/,
+  /^ssn$/,
+  /^dob$/,
+  /^birth/,
+  /^ages?$/,
+  /^marital$/,
+  /^gender$/,
+  /^sex$/,
+  /^race$/,
+  /^ethnic/,
+  /^religio/,
+  /^disab/,
+  /^child/,
+  /^familial$/,
+  /^household$/,
+  /^occupation$/,
+  /^education$/,
+  /^spouse$/
+];
+var CONDITIONAL = [
+  [/^incomes?$/, /^(rent|rental|rents|gross|operating|property|producing|noi)$/],
+  [/^debts?$/, /^(mortgage|liens?|loans?)$/],
+  [/^delinquen/, /^tax(es)?$/],
+  [/^assets?$/, /^$/],
+  [/^scores?$/, /^(flood|wind|hurricane)$/],
+  [/^payments?$/, /^(mortgage|tax|taxes|hoa)$/]
+];
+function keyTokens(key) {
+  return key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+}
+function isFcraSensitiveKey(key) {
+  const tokens = keyTokens(key);
+  const creditUnion = tokens.some((t, i) => t === "credit" && tokens[i + 1] === "union");
+  if (tokens.some((t) => ALWAYS_PERSONAL.some((re) => re.test(t))) && !creditUnion) return true;
+  for (const [word, context] of CONDITIONAL) {
+    if (tokens.some((t) => word.test(t)) && !tokens.some((t) => context.test(t))) return true;
+  }
+  return false;
+}
+function stripFcraSensitive(attributes) {
+  const scrub = (v) => {
+    if (Array.isArray(v)) return v.map(scrub);
+    if (v && typeof v === "object") {
+      const out = {};
+      for (const [k, inner] of Object.entries(v)) if (!isFcraSensitiveKey(k)) out[k] = scrub(inner);
+      return out;
+    }
+    return v;
+  };
+  return scrub(attributes);
+}
+
+// pipeline_core/pii-policy.ts
+var BUSINESS_PII = Object.freeze({ kind: "business" });
+var PROPERTY_PII = Object.freeze({ kind: "property-owner" });
+var PII_POLICY_VERSION = 1;
+var PROPERTY_FACTS = /* @__PURE__ */ new Set([
+  "justValueCents",
+  "marketValueCents",
+  "assessedValueCents",
+  "landValueCents",
+  "improvementValueCents",
+  "landUseCode",
+  "propertyType",
+  "yearBuilt",
+  "livingAreaSqft",
+  "landSqft",
+  "lotAcres",
+  "bedrooms",
+  "bathrooms",
+  "homesteadExemption",
+  "lastSalePriceCents",
+  "lastSaleDate",
+  "lastSaleYear",
+  "floodZone",
+  "floodRisk",
+  "listingStatus",
+  "distressSignals",
+  "taxDelinquent",
+  "taxAmountCents",
+  "taxesOwedCents",
+  "mortgageBalanceCents",
+  "annualRentalIncome",
+  "lienAmountCents",
+  "rentCents",
+  "noiCents",
+  "capRateBps",
+  "occupancyRateBps"
+]);
+function minimizeBusinessData(value) {
+  const scrub = (v) => {
+    if (Array.isArray(v)) return v.map(scrub);
+    if (!v || typeof v !== "object") return v;
+    return Object.fromEntries(Object.entries(v).filter(([key]) => {
+      const tokens = keyTokens(key);
+      return !isFcraSensitiveKey(key) && !tokens.some((t) => /^(personal|mobile|home|residential|passport)$/.test(t));
+    }).map(([key, inner]) => [key, scrub(inner)]));
+  };
+  return scrub(value);
+}
+function minimizeProperty(input2, policy2 = PROPERTY_PII) {
+  const p = PropertySchema.parse(input2);
+  const extra = new Set(policy2.propertyAttributes ?? []);
+  p.attributes = Object.fromEntries(Object.entries(p.attributes).filter(
+    ([key]) => (PROPERTY_FACTS.has(key) || extra.has(key)) && !isFcraSensitiveKey(key)
+  ).map(([key, fact]) => [key, { ...fact, value: fact.value && typeof fact.value === "object" ? minimizeBusinessData(fact.value) : fact.value }]));
+  return p;
+}
+function minimizeResearch(out, policy2) {
+  return {
+    leads: out.leads.map((p) => LeadSchema.parse(p)),
+    contacts: out.contacts.map((p) => ContactSchema.parse(p)),
+    ...policy2.kind === "property-owner" ? {
+      properties: (out.properties ?? []).map((p) => minimizeProperty(p, policy2)),
+      parties: (out.parties ?? []).map((p) => PartySchema.parse(p)),
+      ownerships: (out.ownerships ?? []).map((p) => OwnershipSchema.parse(p)),
+      entityLinks: (out.entityLinks ?? []).map((p) => EntityLinkSchema.parse(p)),
+      contactPoints: (out.contactPoints ?? []).map((p) => ContactPointSchema.parse(p))
+    } : {},
+    ...out.failures ? { failures: out.failures } : {},
+    ...out.raw !== void 0 ? { raw: out.raw } : {}
+  };
+}
+function minimizeEnrichment(e) {
+  return { ...e, data: minimizeBusinessData(e.data) };
+}
+
+// pipeline_core/run-retention.ts
+var RUN_RETENTION_DAYS = Object.freeze({
+  "b2b-sdr": 365,
+  "residential-re": 30,
+  "commercial-re": 30
+});
+function retentionDaysForPack(id) {
+  return Object.hasOwn(RUN_RETENTION_DAYS, id) ? RUN_RETENTION_DAYS[id] : 30;
+}
+function runExpiresAt(run, now2) {
+  const created = Math.min(Date.parse(run.createdAt), now2);
+  const days = retentionDaysForPack(run.vertical);
+  return dataExpiresAt(run, created, days);
+}
+function dataExpiresAt(value, created, days) {
+  let expires = created + days * 864e5;
+  function visit6(value2) {
+    if (!value2 || typeof value2 !== "object") return;
+    if (Array.isArray(value2)) {
+      for (const item of value2) visit6(item);
+      return;
+    }
+    const obj = value2;
+    const terms = obj.licenseTerms;
+    if (terms && typeof terms.retentionDays === "number") {
+      const days2 = terms.retentionDays;
+      if (!Number.isSafeInteger(days2) || days2 <= 0) throw new Error("Invalid vendor retention period");
+      const fetched = typeof obj.fetchedAt === "string" ? Date.parse(obj.fetchedAt) : created;
+      if (!Number.isFinite(fetched)) throw new Error("Invalid retention timestamp");
+      expires = Math.min(expires, Math.min(fetched, created) + days2 * 864e5);
+    }
+    for (const item of Object.values(obj)) visit6(item);
+  }
+  visit6(value);
+  return expires;
+}
+
 // pipeline_core/connectors/registry.ts
 var REGISTRY = /* @__PURE__ */ new Map();
 function registerConnector(connector) {
@@ -61546,10 +62154,6 @@ function getSkippedConnectors(phase) {
     (c) => c.phases.includes(phase) && !c.isConfigured()
   );
 }
-
-// node_modules/.pnpm/zod@4.6.5/node_modules/zod/index.js
-init_external();
-init_external();
 
 // pipeline_core/rate-limit.ts
 var RateLimitExceededError = class extends Error {
@@ -62002,7 +62606,6 @@ function keepRawOptIn() {
 }
 function pickAllowed(record2, allow) {
   if (!record2 || typeof record2 !== "object") return {};
-  if (keepRawOptIn()) return { ...record2 };
   const out = {};
   for (const k of allow) {
     const v = record2[k];
@@ -62228,7 +62831,6 @@ function workPhone(p) {
   return hit?.raw_number ?? void 0;
 }
 function minimizePerson(p) {
-  if (keepRawOptIn()) return { ...p };
   const out = pickAllowed(p, APOLLO_PERSON_ALLOW);
   if (p.organization) out.organization = pickAllowed(p.organization, APOLLO_ORG_ALLOW);
   const phone = workPhone(p);
@@ -62768,375 +63370,6 @@ var femaNfhlConnector = {
 
 // pipeline_core/connectors/fl-dor-parcels.ts
 import { createHash as createHash2 } from "node:crypto";
-
-// pipeline_core/models.ts
-var SCHEMA_VERSION = 6;
-var SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4, 5, 6];
-var [V_FIRST, V_SECOND, ...V_REST] = SUPPORTED_SCHEMA_VERSIONS;
-var SchemaVersionSchema = external_exports.union([
-  external_exports.literal(V_FIRST),
-  external_exports.literal(V_SECOND),
-  ...V_REST.map((v) => external_exports.literal(v))
-]);
-var SourceSchema = external_exports.string().min(1);
-var LeadSchema = external_exports.object({
-  domain: external_exports.string().min(1),
-  companyName: external_exports.string().min(1),
-  industry: external_exports.string().optional(),
-  /** Free-text headcount band, e.g. "11-50". Connectors disagree on format. */
-  size: external_exports.string().optional(),
-  description: external_exports.string().optional(),
-  source: SourceSchema
-});
-var ContactSchema = external_exports.object({
-  name: external_exports.string().min(1),
-  leadDomain: external_exports.string().min(1),
-  email: external_exports.string().email().optional(),
-  title: external_exports.string().optional(),
-  // A LinkedIn handle OR full URL — providers return both shapes, so don't reject
-  // an otherwise-valid contact (and thus the whole run) over a non-URL handle.
-  linkedin: external_exports.string().optional(),
-  source: SourceSchema,
-  /**
-   * True when the provider withheld the surname (the last token is a lone
-   * initial, e.g. "Kristina L"). The contact is kept, but the drafter addresses
-   * them by first name only. Optional + additive: older lines simply omit it.
-   */
-  nameIncomplete: external_exports.boolean().optional()
-});
-var EnrichmentSchema = external_exports.object({
-  /** What this enrichment is attached to. */
-  subjectType: external_exports.enum(["lead", "contact"]),
-  /** Natural key of the subject: a domain (lead) or an email (contact). */
-  subjectKey: external_exports.string().min(1),
-  provider: SourceSchema,
-  /** Normalized highlights the scorer/draft seam reads. */
-  funding: external_exports.object({
-    lastRound: external_exports.string().optional(),
-    totalRaisedUsd: external_exports.number().nonnegative().optional(),
-    lastRoundDate: external_exports.string().optional(),
-    investors: external_exports.array(external_exports.string()).optional()
-  }).optional(),
-  verifiedEmail: external_exports.string().email().optional(),
-  /**
-   * Optional back-reference to the Contact's `name` when the enrichment found an
-   * email for a contact that had none (so `subjectKey` is the NEW email). Lets the
-   * pipeline fold the found email into the working contact list. Optional/additive.
-   */
-  contactName: external_exports.string().min(1).optional(),
-  phone: external_exports.string().optional(),
-  /** Raw provider payload, retained for audit; never trusted as schema. */
-  data: external_exports.record(external_exports.string(), external_exports.unknown()).default({}),
-  fetchedAt: external_exports.string().datetime()
-});
-var Sha256HexSchema = external_exports.string().regex(/^[0-9a-f]{64}$/, "expected a sha256 hex digest");
-var LicenseTermsSchema = external_exports.object({
-  /** Short identifier of the terms, e.g. "dealmachine-tos-2026" or "public-record". */
-  id: external_exports.string().min(1).optional(),
-  outreachRestricted: external_exports.boolean().optional(),
-  /** Days the vendor allows this fact to be retained. */
-  retentionDays: external_exports.number().int().positive().optional(),
-  /** Required attribution text, if the terms demand one. */
-  attribution: external_exports.string().min(1).optional()
-});
-function factSchema(value) {
-  return external_exports.object({
-    value,
-    source: SourceSchema,
-    fetchedAt: external_exports.string().datetime(),
-    responseHash: Sha256HexSchema.optional(),
-    licenseTerms: LicenseTermsSchema.optional(),
-    /** When the value came through a vendor MCP server: which server, version and tool. */
-    via: external_exports.object({ server: external_exports.string().min(1), version: external_exports.string().min(1), tool: external_exports.string().min(1) }).optional()
-  });
-}
-var FactSchema = factSchema(external_exports.unknown());
-var UsStateSchema = external_exports.string().regex(/^[A-Z]{2}$/, "expected a 2-letter state code");
-var CountyFipsSchema = external_exports.string().regex(/^\d{5}$/, "expected a 5-digit county FIPS code");
-var AddressSchema = external_exports.object({
-  line1: external_exports.string().min(1),
-  line2: external_exports.string().min(1).optional(),
-  city: external_exports.string().min(1),
-  state: UsStateSchema,
-  zip: external_exports.string().regex(/^\d{5}(?:-\d{4})?$/, "expected ZIP5 or ZIP+4"),
-  county: external_exports.string().min(1).optional(),
-  countyFips: CountyFipsSchema.optional()
-});
-function propertyKey(countyFips, apn) {
-  return `${countyFips}:${apn.trim().toUpperCase()}`;
-}
-var PropertySchema = external_exports.object({
-  key: external_exports.string().min(1),
-  apn: external_exports.string().min(1),
-  countyFips: CountyFipsSchema,
-  address: AddressSchema.optional(),
-  /** A point on the parcel (centroid or label point), WGS84. Used for flood and other spatial lookups. */
-  location: external_exports.object({ lat: external_exports.number().min(-90).max(90), lon: external_exports.number().min(-180).max(180) }).optional(),
-  attributes: external_exports.record(external_exports.string().min(1), FactSchema).default({}),
-  source: SourceSchema
-}).refine((p) => p.key === propertyKey(p.countyFips, p.apn), {
-  message: "key must equal propertyKey(countyFips, apn)",
-  path: ["key"]
-}).refine((p) => p.apn === p.apn.trim(), { message: "apn must not carry surrounding whitespace", path: ["apn"] });
-var PartySchema = external_exports.object({
-  /** Stable id within the run, e.g. "person:<connector-id>" or "entity:AL:000123456". */
-  key: external_exports.string().min(1),
-  kind: external_exports.enum(["person", "entity"]),
-  name: external_exports.string().min(1),
-  /** For entities only. */
-  entityType: external_exports.enum(["llc", "corporation", "trust", "estate", "partnership", "government", "other"]).optional(),
-  mailingAddress: AddressSchema.optional(),
-  source: SourceSchema,
-  /**
-   * Terms of the record this party (and its mailing address) came from. A
-   * property pack may write to a party only when `outreachRestricted` is
-   * explicitly false; absent or undeclared is treated as restricted.
-   */
-  licenseTerms: LicenseTermsSchema.optional()
-});
-var OwnershipSchema = external_exports.object({
-  propertyKey: external_exports.string().min(1),
-  partyKey: external_exports.string().min(1),
-  /** Fraction held, 0 < share <= 1, when the record states it. */
-  share: external_exports.number().gt(0).lte(1).optional(),
-  role: external_exports.enum(["owner", "co-owner", "trustee", "life-tenant"]).default("owner"),
-  /** Recording or deed date (ISO date), when known. */
-  asOf: external_exports.string().date().optional(),
-  source: SourceSchema,
-  fetchedAt: external_exports.string().datetime()
-});
-var EntityLinkSchema = external_exports.object({
-  entityKey: external_exports.string().min(1),
-  personKey: external_exports.string().min(1),
-  role: external_exports.enum(["member", "manager", "officer", "registered-agent", "organizer", "other"]),
-  confidence: external_exports.number().min(0).max(1),
-  source: SourceSchema,
-  fetchedAt: external_exports.string().datetime()
-});
-var DncStatusSchema = external_exports.enum(["clean", "listed", "unknown"]);
-var ContactPointSchema = external_exports.object({
-  partyKey: external_exports.string().min(1),
-  kind: external_exports.enum(["phone", "email", "mail"]),
-  /** E.164 phone, email address, or a one-line mailing address. */
-  value: external_exports.string().min(1),
-  /** Phones only. "unknown" means the line type was not established. */
-  lineType: external_exports.enum(["mobile", "landline", "voip", "unknown"]).optional(),
-  /** Phones only; defaults to "unknown" (fail closed). */
-  dnc: DncStatusSchema.default("unknown"),
-  source: SourceSchema,
-  fetchedAt: external_exports.string().datetime(),
-  verifiedAt: external_exports.string().datetime().optional(),
-  licenseTerms: LicenseTermsSchema.optional()
-}).refine((c) => c.kind !== "phone" || /^\+[1-9]\d{9,14}$/.test(c.value), {
-  message: "a phone contact point must be E.164",
-  path: ["value"]
-}).refine((c) => c.kind !== "email" || external_exports.string().email().safeParse(c.value).success, {
-  message: "an email contact point must be a valid email",
-  path: ["value"]
-});
-var ResearchQuerySchema = external_exports.discriminatedUnion("kind", [
-  external_exports.object({ kind: external_exports.literal("domain"), domain: external_exports.string().min(1) }),
-  external_exports.object({
-    kind: external_exports.literal("area"),
-    geography: external_exports.object({
-      state: UsStateSchema.optional(),
-      countyFips: external_exports.array(CountyFipsSchema).optional(),
-      zips: external_exports.array(external_exports.string().regex(/^\d{5}$/)).optional()
-    }).refine((g) => Boolean(g.state || g.countyFips?.length || g.zips?.length), {
-      message: "an area query needs a state, county FIPS codes or ZIPs"
-    }),
-    /** Pack buy-box filters, already compiled to plain values. */
-    filters: external_exports.record(external_exports.string().min(1), external_exports.unknown()).default({})
-  }),
-  external_exports.object({
-    kind: external_exports.literal("parcel"),
-    countyFips: CountyFipsSchema.optional(),
-    apn: external_exports.string().min(1).optional(),
-    address: AddressSchema.optional()
-  }).refine((q) => Boolean(q.countyFips && q.apn || q.address), {
-    message: "a parcel query needs countyFips + apn, or an address"
-  })
-]);
-var CHANNELS = ["email", "linkedin", "sms", "mail", "call_script"];
-var ChannelSchema = external_exports.enum(CHANNELS);
-var MessageSchema = external_exports.object({
-  /** FK to the Contact this message is for (email if known, else name@domain). */
-  contactKey: external_exports.string().min(1),
-  channel: ChannelSchema,
-  subject: external_exports.string().optional(),
-  body: external_exports.string().min(1),
-  cta: external_exports.string().min(1),
-  /** 0-100 fit score the model assigned at the score() seam. */
-  fitScore: external_exports.number().min(0).max(100).optional(),
-  /** Provenance: which model + prompt version produced this. */
-  model: external_exports.string().min(1),
-  promptVersion: external_exports.string().min(1),
-  createdAt: external_exports.string().datetime(),
-  /**
-   * True when the channel's required sender identity was not configured, so its
-   * footer could NOT be appended: name + company + postal address for email and
-   * mail, name + company for sms and call_script. Such a draft must not be sent
-   * as-is. Additive (v4); defaults false.
-   */
-  needsSenderIdentity: external_exports.boolean().default(false),
-  /** Property campaigns (v6, optional): the parcel this letter is about. */
-  propertyKey: external_exports.string().min(1).optional()
-});
-var RunStatusSchema = external_exports.enum(["researched", "enriched", "complete", "partial", "failed"]);
-var LEGACY_RUN_STATUSES = ["pending", "drafted"];
-var LegacyRunStatusSchema = external_exports.enum(LEGACY_RUN_STATUSES);
-var StoredRunStatusSchema = external_exports.union([RunStatusSchema, LegacyRunStatusSchema]);
-var RunErrorStageSchema = external_exports.enum(["score", "gate", "draft"]);
-var RunErrorSchema = external_exports.object({
-  /** The lead's domain (company campaigns). */
-  domain: external_exports.string().min(1).optional(),
-  /** The parcel's `<countyFips>:<apn>` (property campaigns, v6). */
-  propertyKey: external_exports.string().min(1).optional(),
-  contactKey: external_exports.string().min(1).optional(),
-  stage: RunErrorStageSchema,
-  /** Sanitized, truncated error message (secrets redacted). */
-  message: external_exports.string(),
-  /** AI SDK finish reason when the error carried one (e.g. "length"). */
-  finishReason: external_exports.string().optional()
-}).refine((e) => e.domain !== void 0 || e.propertyKey !== void 0 || e.contactKey !== void 0, {
-  message: "a run error needs a domain, a propertyKey or a contactKey"
-});
-var FailedConnectorSchema = external_exports.object({
-  name: external_exports.string().min(1),
-  phase: external_exports.enum(["research", "enrich"]),
-  /** HTTP status, "timeout", or "error". */
-  status: external_exports.union([external_exports.number().int(), external_exports.string().min(1)])
-});
-var CampaignRunSchema = external_exports.object({
-  /** Caller-supplied or generated run id (no Date.now/random inside core). */
-  id: external_exports.string().min(1),
-  // UNION, not z.literal(SCHEMA_VERSION): a re-literal would silently REJECT every
-  // existing v1 line on read (store.ts re-validates each line). New writes emit
-  // SCHEMA_VERSION; old lines still parse. This is the "old JSONL survives" guarantee.
-  schemaVersion: SchemaVersionSchema,
-  icp: external_exports.string().min(1),
-  domains: external_exports.array(external_exports.string().min(1)),
-  /** Which pack produced this run. Defaults so v1 lines (no field) still parse. */
-  vertical: external_exports.string().min(1).default("b2b-sdr"),
-  /** Model + provider that ran the LLM seams. */
-  provider: external_exports.string().min(1),
-  model: external_exports.string().min(1),
-  status: StoredRunStatusSchema,
-  leads: external_exports.array(LeadSchema).default([]),
-  contacts: external_exports.array(ContactSchema).default([]),
-  enrichments: external_exports.array(EnrichmentSchema).default([]),
-  messages: external_exports.array(MessageSchema).default([]),
-  /** Cumulative spend across LLM seams, if metered. */
-  costUsd: external_exports.number().nonnegative().optional(),
-  /** Names of connectors that were skipped (no key / unsupported) this run. */
-  skippedConnectors: external_exports.array(external_exports.string()).default([]),
-  /**
-   * Contacts the pack's compliance gate blocked before drafting — the audit trail
-   * for "did not contact, and why". Always empty for b2b-sdr (no-op gate); the
-   * append-only RunStore IS the compliance record for verticals that do block.
-   */
-  blockedContacts: external_exports.array(
-    external_exports.object({
-      contactKey: external_exports.string().min(1),
-      reason: external_exports.string().min(1),
-      /** Property campaigns (v6): the parcel the block was about. */
-      propertyKey: external_exports.string().min(1).optional()
-    })
-  ).default([]),
-  /**
-   * Per-lead/contact failures that were ISOLATED instead of aborting the run (v3).
-   * A provider error on domain 2 no longer loses domain 1's drafts.
-   */
-  errors: external_exports.array(RunErrorSchema).default([]),
-  /** Drafts the model produced that FAILED validation — kept for audit, never sent (v3). */
-  rejectedDrafts: external_exports.array(
-    external_exports.object({
-      contactKey: external_exports.string().min(1),
-      issues: external_exports.array(external_exports.string()),
-      /** Property campaigns (v6): the parcel the draft was about. */
-      propertyKey: external_exports.string().min(1).optional()
-    })
-  ).default([]),
-  /**
-   * Configured connectors that threw (sanitized status only — never the error
-   * text, which can carry a secret-bearing URL). `skippedConnectors` is now
-   * "not configured" only (v3).
-   */
-  failedConnectors: external_exports.array(FailedConnectorSchema).default([]),
-  /**
-   * Run-level compliance warnings that did not block a contact but must be seen
-   * before anything is sent — e.g. email drafts produced without a configured
-   * sender identity, so no CAN-SPAM footer could be appended (v4, additive).
-   */
-  complianceWarnings: external_exports.array(external_exports.string()).default([]),
-  /**
-   * Prompt provenance for the run's LLM seams (v5, additive): each entry is
-   * "<prompt-file>@<sha8>". `score` lists the joined score-seam files; `draft` is
-   * the draft-seam file. Empty for agent-saved runs (the agent drafted, not a seam).
-   */
-  promptRefs: external_exports.object({
-    score: external_exports.array(external_exports.string().min(1)).optional(),
-    draft: external_exports.string().min(1).optional()
-  }).default({}),
-  /**
-   * Score-seam angles removed because they cited a fact absent from the inputs
-   * (groundAngles) — kept so an operator can see what the model tried (v5).
-   */
-  droppedAngles: external_exports.array(
-    external_exports.object({
-      domain: external_exports.string().min(1).optional(),
-      /** Property campaigns (v6). */
-      propertyKey: external_exports.string().min(1).optional(),
-      angle: external_exports.string(),
-      reason: external_exports.string()
-    }).refine((d) => d.domain !== void 0 || d.propertyKey !== void 0, {
-      message: "a dropped angle needs a domain or a propertyKey"
-    })
-  ).default([]),
-  /**
-   * Who assembled the record (v5, optional so older lines stay unlabeled rather
-   * than mislabeled): "pipeline" = runCampaign; "agent" = the MCP save_run path,
-   * where the drafts and the `model` field are caller-claimed.
-   */
-  origin: external_exports.enum(["pipeline", "agent"]).optional(),
-  /** The typed research queries this run executed (v6, optional). */
-  queries: external_exports.array(ResearchQuerySchema).optional(),
-  /**
-   * Which provider + model ran each LLM seam when they differ (v6, optional):
-   * a cheap model scores, a stronger one drafts. Absent ⇒ `provider`/`model` ran both.
-   */
-  seamModels: external_exports.object({
-    score: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) }),
-    draft: external_exports.object({ provider: external_exports.string().min(1), model: external_exports.string().min(1) })
-  }).optional(),
-  /**
-   * An inbound reply (v6, optional): where the inquiry came from, when it
-   * arrived, when the reply was drafted, and the speed-to-lead in between.
-   */
-  inbound: external_exports.object({
-    source: external_exports.string().min(1),
-    receivedAt: external_exports.string().datetime({ offset: true }),
-    draftedAt: external_exports.string().datetime(),
-    speedToLeadMs: external_exports.number().int().nonnegative()
-  }).optional(),
-  /** Vendor-credit accounting when the run had a budget (v6, optional). */
-  credits: external_exports.object({
-    limit: external_exports.number().nonnegative(),
-    spent: external_exports.number().nonnegative(),
-    exhausted: external_exports.boolean(),
-    byConnector: external_exports.record(external_exports.string(), external_exports.number().nonnegative())
-  }).optional(),
-  /** Property/owner model (v6, additive, defaulted). Empty for b2b-sdr runs. */
-  properties: external_exports.array(PropertySchema).default([]),
-  parties: external_exports.array(PartySchema).default([]),
-  ownerships: external_exports.array(OwnershipSchema).default([]),
-  entityLinks: external_exports.array(EntityLinkSchema).default([]),
-  contactPoints: external_exports.array(ContactPointSchema).default([]),
-  createdAt: external_exports.string().datetime(),
-  finishedAt: external_exports.string().datetime().optional()
-});
-
-// pipeline_core/connectors/fl-dor-parcels.ts
 var FL_DOR_URL = "https://services9.arcgis.com/Gh9awoU677aKree0/arcgis/rest/services/Florida_Statewide_Cadastral/FeatureServer/0/query";
 var FL_DOR_COUNTY = { "12033": 27, "12091": 56 };
 var FIPS_BY_CO_NO = Object.fromEntries(
@@ -63847,7 +64080,7 @@ function registerBuiltinConnectors() {
 
 // pipeline_core/routing.ts
 import { createHash as createHash3, randomUUID } from "node:crypto";
-import { chmod, mkdir as mkdir2, readFile as readFile2, rename as rename2, writeFile } from "node:fs/promises";
+import { chmod, mkdir as mkdir2, readFile as readFile2, readdir, rename as rename2, stat as stat2, unlink as unlink2, writeFile } from "node:fs/promises";
 import { join as join3 } from "node:path";
 function capabilityForQuery(query) {
   switch (query.kind) {
@@ -63929,21 +64162,77 @@ var FileResponseCache = class {
     this.dir = dir;
   }
   dir;
+  sweptAt = -Infinity;
+  path(key) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(key)) throw new Error("Invalid cache key");
+    return join3(this.dir, `${key}.json`);
+  }
+  /** Remove expired/corrupt entries, including obsolete cache-key generations. */
+  async purge(now2) {
+    const names = await readdir(this.dir).catch((error62) => {
+      if (error62.code === "ENOENT") return [];
+      throw error62;
+    });
+    let removed = 0;
+    for (const name31 of names) {
+      const temporary = /^[a-zA-Z0-9_-]+\.json\.\d+\.[0-9a-f-]+\.tmp$/.test(name31);
+      if (!temporary && !/^[a-zA-Z0-9_-]+\.json$/.test(name31)) continue;
+      const path = join3(this.dir, name31);
+      try {
+        const before = await stat2(path);
+        if (temporary) {
+          if (now2 - before.mtimeMs > 36e5) {
+            await unlink2(path);
+            removed++;
+          }
+          continue;
+        }
+        let expired = true;
+        try {
+          const e = JSON.parse(await readFile2(path, "utf8"));
+          expired = e.version !== 1 || typeof e.expiresAt !== "number" || !Number.isFinite(e.expiresAt) || e.expiresAt <= now2;
+        } catch {
+        }
+        if (expired && (await stat2(path)).ino === before.ino) {
+          await unlink2(path);
+          removed++;
+        }
+      } catch (error62) {
+        if (error62.code !== "ENOENT") throw error62;
+      }
+    }
+    return removed;
+  }
+  async sweep(now2) {
+    if (now2 >= this.sweptAt && now2 - this.sweptAt < 6e4) return;
+    await this.purge(now2);
+    this.sweptAt = now2;
+  }
   async get(key, now2) {
+    const path = this.path(key);
+    await this.sweep(now2);
     try {
-      const e = JSON.parse(await readFile2(join3(this.dir, `${key}.json`), "utf8"));
-      return typeof e.expiresAt === "number" && e.expiresAt > now2 ? e.value : void 0;
+      const e = JSON.parse(await readFile2(path, "utf8"));
+      if (e.version === 1 && Number.isFinite(e.expiresAt) && e.expiresAt > now2) return e.value;
+      await unlink2(path);
+      return void 0;
     } catch {
       return void 0;
     }
   }
   async set(key, value, ttlMs, now2) {
+    const path = this.path(key);
+    if (!Number.isFinite(ttlMs) || ttlMs <= 0 || !Number.isFinite(now2)) throw new Error("Invalid cache retention period");
     await mkdir2(this.dir, { recursive: true, mode: 448 });
-    const path = join3(this.dir, `${key}.json`);
+    await this.sweep(now2);
     const tmp = `${path}.${process.pid}.${randomUUID()}.tmp`;
-    await writeFile(tmp, JSON.stringify({ value, expiresAt: now2 + ttlMs }), { mode: 384 });
-    await chmod(tmp, 384);
-    await rename2(tmp, path);
+    try {
+      await writeFile(tmp, JSON.stringify({ version: 1, value, expiresAt: now2 + Math.min(ttlMs, 365 * 864e5) }), { mode: 384 });
+      await chmod(tmp, 384);
+      await rename2(tmp, path);
+    } finally {
+      await unlink2(tmp).catch(() => void 0);
+    }
   }
 };
 
@@ -76258,6 +76547,7 @@ function resolvePack(id) {
 // pipeline_core/packs/b2b-sdr.ts
 var b2bSdrPack = {
   id: "b2b-sdr",
+  piiPolicy: BUSINESS_PII,
   displayName: "B2B SDR",
   // Pack-specific checks only; the engine-wide suppression gate runs first.
   compliance: noopCompliance,
@@ -76450,131 +76740,6 @@ var fairHousingDraftRule = (draft) => {
   );
 };
 
-// pipeline_core/compliance/risk.ts
-var MANUAL_REVIEW_PATTERNS = [
-  ["probate", /\bprobat/],
-  ["probate", /\bdeceased\b/],
-  ["probate", /^estate$/],
-  ["probate", /\bestate sale\b/],
-  ["probate", /\bestate of\b/],
-  ["probate", /\bheirs?\b/],
-  ["probate", /\blife estate\b/],
-  ["divorce", /\bdivorc/],
-  ["divorce", /\bdissolution of marriage\b/],
-  ["pre-foreclosure", /\bforeclos/],
-  ["pre-foreclosure", /\blis pendens\b/],
-  ["pre-foreclosure", /\bnotice of (?:default|trustee sale|sale)\b/],
-  ["pre-foreclosure", /^nod$/],
-  ["pre-foreclosure", /\btax (?:sale|lien sale|deed)\b/]
-];
-var normalizeTag = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-function manualReviewVerdict(signals) {
-  const categories = /* @__PURE__ */ new Set();
-  for (const raw of signals) {
-    const tag = normalizeTag(raw);
-    for (const [category, pattern] of MANUAL_REVIEW_PATTERNS) if (pattern.test(tag)) categories.add(category);
-  }
-  if (categories.size === 0) return { status: "clean" };
-  return { status: "blocked", reason: `manual-review:${[...categories].sort().join(",")}` };
-}
-var ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-var ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
-function agreementEnd(value) {
-  if (ISO_DATE.test(value)) {
-    const day = Date.parse(`${value}T00:00:00Z`);
-    return Number.isNaN(day) || new Date(day).toISOString().slice(0, 10) !== value ? Number.NaN : day + 36 * 36e5;
-  }
-  return ISO_DATETIME.test(value) ? Date.parse(value) : Number.NaN;
-}
-function listingContactVerdict(listing, now2) {
-  const ends = listing.agreementEndsAt !== void 0 ? agreementEnd(listing.agreementEndsAt) : void 0;
-  if (ends !== void 0 && Number.isNaN(ends)) return { status: "blocked", reason: "listing:agreement-date-invalid" };
-  const stillRuns = ends !== void 0 && ends > now2.getTime();
-  const status = normalizeTag(String(listing.status ?? "")).replace(/ /g, "-");
-  switch (status) {
-    case "active":
-    case "pending":
-    case "coming-soon":
-      return { status: "blocked", reason: `listing:${status}` };
-    case "withdrawn":
-      return ends !== void 0 && !stillRuns ? { status: "clean" } : { status: "blocked", reason: "listing:withdrawn-under-agreement" };
-    case "expired":
-    case "cancelled":
-    case "canceled":
-      return stillRuns ? { status: "blocked", reason: "listing:agreement-still-in-effect" } : { status: "clean" };
-    case "sold":
-    case "off-market":
-      return { status: "clean" };
-    default:
-      return { status: "blocked", reason: "listing:status-unknown" };
-  }
-}
-var ALWAYS_PERSONAL = [
-  /^credit$/,
-  /^fico$/,
-  /^vantage/,
-  /^wealth/,
-  /^worth$/,
-  /^salar/,
-  /^wages?$/,
-  /^bankrupt/,
-  /^judge?ments?$/,
-  /^evict/,
-  /^reposs/,
-  /^collections?$/,
-  /^garnish/,
-  /^payday$/,
-  /^ssn$/,
-  /^dob$/,
-  /^birth/,
-  /^ages?$/,
-  /^marital$/,
-  /^gender$/,
-  /^sex$/,
-  /^race$/,
-  /^ethnic/,
-  /^religio/,
-  /^disab/,
-  /^child/,
-  /^familial$/,
-  /^household$/,
-  /^occupation$/,
-  /^education$/,
-  /^spouse$/
-];
-var CONDITIONAL = [
-  [/^incomes?$/, /^(rent|rental|rents|gross|operating|property|producing|noi)$/],
-  [/^debts?$/, /^(mortgage|liens?|loans?)$/],
-  [/^delinquen/, /^tax(es)?$/],
-  [/^assets?$/, /^$/],
-  [/^scores?$/, /^(flood|wind|hurricane)$/],
-  [/^payments?$/, /^(mortgage|tax|taxes|hoa)$/]
-];
-function keyTokens(key) {
-  return key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-}
-function isFcraSensitiveKey(key) {
-  const tokens = keyTokens(key);
-  const creditUnion = tokens.some((t, i) => t === "credit" && tokens[i + 1] === "union");
-  if (tokens.some((t) => ALWAYS_PERSONAL.some((re) => re.test(t))) && !creditUnion) return true;
-  for (const [word, context] of CONDITIONAL) {
-    if (tokens.some((t) => word.test(t)) && !tokens.some((t) => context.test(t))) return true;
-  }
-  return false;
-}
-function stripFcraSensitive(attributes) {
-  const scrub = (v) => {
-    if (Array.isArray(v)) return v.map(scrub);
-    if (v && typeof v === "object") {
-      const out = {};
-      for (const [k, inner] of Object.entries(v)) if (!isFcraSensitiveKey(k)) out[k] = scrub(inner);
-      return out;
-    }
-    return v;
-  };
-  return scrub(attributes);
-}
-
 // pipeline_core/packs/service-areas.ts
 var GULF_COAST_AL_FL = defineServiceArea("gulf-coast-al-fl", [
   // Baldwin County, AL — coastal / south-of-I-10
@@ -76648,6 +76813,7 @@ function residentialPropertyGate(ctx) {
 var LICENSED = { requireLicenseDisclosure: true };
 var residentialRePack = {
   id: "residential-re",
+  piiPolicy: PROPERTY_PII,
   displayName: "Residential real estate (listing agent)",
   // The B2B loop's gate is unused by property campaigns; propertyGate is the gate.
   compliance: noopCompliance,
@@ -76943,7 +77109,7 @@ function composeGates(...gates) {
 }
 
 // pipeline_core/suppressions.ts
-import { constants as constants2, mkdir as mkdir3, open as open3, readFile as readFile3, rename as rename3, stat as stat2, unlink as unlink2 } from "node:fs/promises";
+import { constants as constants2, mkdir as mkdir3, open as open3, readFile as readFile3, rename as rename3, stat as stat3, unlink as unlink3 } from "node:fs/promises";
 import { dirname as dirname2, join as join5 } from "node:path";
 function defaultSuppressionsPath() {
   return join5(intentOutreachHome(), "suppressions.jsonl");
@@ -77011,8 +77177,8 @@ async function withLock(path, fn, timeoutMs = 1e4, staleMs = 3e4) {
     } catch (err) {
       if (err.code !== "EEXIST") throw err;
       try {
-        if (Date.now() - (await stat2(lockPath)).mtimeMs > staleMs) {
-          await unlink2(lockPath).catch(() => void 0);
+        if (Date.now() - (await stat3(lockPath)).mtimeMs > staleMs) {
+          await unlink3(lockPath).catch(() => void 0);
           continue;
         }
       } catch {
@@ -77027,7 +77193,7 @@ async function withLock(path, fn, timeoutMs = 1e4, staleMs = 3e4) {
     return await fn();
   } finally {
     await lock.close().catch(() => void 0);
-    await unlink2(lockPath).catch(() => void 0);
+    await unlink3(lockPath).catch(() => void 0);
   }
 }
 async function writeAll(path, entries) {
@@ -77493,9 +77659,11 @@ var contactPointKey = (c) => `${c.partyKey}|${c.kind}|${c.kind === "email" ? c.v
 function mergeContactPoint(a, b) {
   const dnc = DNC_RANK[b.dnc] > DNC_RANK[a.dnc] ? b.dnc : a.dnc;
   const restricted = Boolean(a.licenseTerms?.outreachRestricted || b.licenseTerms?.outreachRestricted);
-  const licenseTerms = a.licenseTerms || b.licenseTerms ? { ...b.licenseTerms, ...a.licenseTerms, ...restricted ? { outreachRestricted: true } : {} } : void 0;
+  const retentionDays = Math.min(a.licenseTerms?.retentionDays ?? Infinity, b.licenseTerms?.retentionDays ?? Infinity);
+  const licenseTerms = a.licenseTerms || b.licenseTerms ? { ...b.licenseTerms, ...a.licenseTerms, ...restricted ? { outreachRestricted: true } : {}, ...Number.isFinite(retentionDays) ? { retentionDays } : {} } : void 0;
   return {
     ...a,
+    fetchedAt: Date.parse(a.fetchedAt) <= Date.parse(b.fetchedAt) ? a.fetchedAt : b.fetchedAt,
     dnc,
     ...a.lineType === void 0 || a.lineType === "unknown" ? b.lineType ? { lineType: b.lineType } : {} : {},
     ...licenseTerms ? { licenseTerms } : {}
@@ -77522,6 +77690,9 @@ async function runResearch(domain2, icp, opts = {}) {
 async function runResearchQuery(query, icp, opts = {}) {
   registerBuiltinConnectors();
   const typed = query.kind === "domain" ? { kind: "domain", domain: normalizeDomain2(query.domain) } : query;
+  const pii = opts.piiPolicy ?? (typed.kind === "domain" ? BUSINESS_PII : PROPERTY_PII);
+  const retentionDays = opts.retentionDays ?? (pii.kind === "business" ? 365 : 30);
+  if (!Number.isFinite(retentionDays) || retentionDays <= 0) throw new Error("Invalid pack retention period");
   const target = typed.kind === "domain" ? typed.domain : "";
   const timeoutMs = opts.connectorTimeoutMs ?? DEFAULT_CONNECTOR_TIMEOUT_MS;
   const targeting = buyerTitlesArg(opts);
@@ -77548,9 +77719,10 @@ async function runResearchQuery(query, icp, opts = {}) {
     if (!connector.research) continue;
     try {
       const ttl = connector.cacheTtlMs ?? 0;
-      const key = opts.cache && ttl > 0 ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting }) : void 0;
+      const key = opts.cache && ttl > 0 ? cacheKey(connector.name, capabilityForQuery(typed), { query: typed, icp, ...targeting, pii, retentionDays, policyVersion: PII_POLICY_VERSION }) : void 0;
       let out = key ? await cacheRead(opts.cache, key, clock2()) : void 0;
       if (out) {
+        out = minimizeResearch(out, pii);
         cached2.push(connector.name);
       } else {
         if (!chargeOrStop(connector, "research", opts.budget, failedConnectors)) {
@@ -77561,11 +77733,15 @@ async function runResearchQuery(query, icp, opts = {}) {
           (signal) => connector.research({ domain: target, query: typed, icp, ...targeting, signal }),
           timeoutMs
         );
+        out = minimizeResearch(out, pii);
         if (key && (out.failures?.length ?? 0) === 0) {
           const { raw: _raw, ...cacheable } = out;
-          await cacheWrite(opts.cache, key, cacheable, ttl, clock2());
+          const fetched = clock2();
+          const boundedTtl = Math.min(ttl, dataExpiresAt(cacheable, fetched, retentionDays) - fetched);
+          if (boundedTtl > 0) await cacheWrite(opts.cache, key, cacheable, boundedTtl, fetched);
         }
       }
+      if (dataExpiresAt({ ...out, raw: void 0 }, clock2(), retentionDays) <= clock2()) throw new Error("Source data is past its retention deadline");
       leads.push(...out.leads);
       contacts.push(...out.contacts);
       properties.push(...out.properties ?? []);
@@ -77651,6 +77827,7 @@ async function runEnrich(lead, contacts, opts = {}) {
         (signal) => connector.enrich({ lead, contacts: current, ...targeting, signal }),
         timeoutMs
       );
+      out.enrichments = out.enrichments.map(minimizeEnrichment);
       enrichments.push(...out.enrichments);
       raw[connector.name] = out.raw;
       ran.push(connector.name);
@@ -77676,7 +77853,8 @@ async function runPropertyEnrich(properties, opts = {}) {
   const failedConnectors = [];
   const raw = {};
   let budgetExhausted = false;
-  let current = properties.map((p) => ({ ...p, attributes: { ...p.attributes } }));
+  const pii = opts.piiPolicy ?? PROPERTY_PII;
+  let current = properties.map((p) => minimizeProperty(p, pii));
   for (const connector of connectors) {
     if (!chargeOrStop(connector, "enrich", opts.budget, failedConnectors)) {
       budgetExhausted = true;
@@ -77687,7 +77865,10 @@ async function runPropertyEnrich(properties, opts = {}) {
       const chunk = current.slice(i, i + PROPERTY_ENRICH_CHUNK);
       try {
         const out = await callWithDeadline((signal) => connector.enrichProperties({ properties: chunk, signal }), timeoutMs);
-        const byKey = new Map(out.properties.map((p) => [p.key, p]));
+        const cleaned = out.properties.map((p) => minimizeProperty(p, pii));
+        const fetched = (opts.clock ?? Date.now)();
+        if (dataExpiresAt(cleaned, fetched, opts.retentionDays ?? 30) <= fetched) throw new Error("Source data is past its retention deadline");
+        const byKey = new Map(cleaned.map((p) => [p.key, p]));
         current = current.map((p) => {
           const add = byKey.get(p.key);
           if (!add) return p;
@@ -77822,6 +78003,9 @@ async function runCampaign(input2) {
   input2.scoreProvider?.assertPackApproved?.(pack.id);
   const researchRouting = pack.dataSources?.research?.["company.research"];
   const connectorOpts = {
+    piiPolicy: pack.piiPolicy ?? BUSINESS_PII,
+    retentionDays: retentionDaysForPack(pack.id),
+    clock: () => Date.parse(now2()),
     ...input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {},
     ...buyerTitles.length > 0 ? { buyerTitles } : {},
     ...budget ? { budget } : {},
@@ -78213,6 +78397,9 @@ async function runPropertyCampaign(input2) {
   for (const query of input2.queries) {
     const routing = pack.dataSources?.research?.[capabilityForQuery(query)];
     const opts = {
+      piiPolicy: pack.piiPolicy ?? PROPERTY_PII,
+      retentionDays: retentionDaysForPack(pack.id),
+      clock: () => Date.parse(now2()),
       ...input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {},
       ...routing ? { routing } : {},
       ...budget ? { budget } : {},
@@ -78279,6 +78466,9 @@ async function runPropertyCampaign(input2) {
   const enriched = await runPropertyEnrich(
     selected.map((x) => x.property),
     {
+      piiPolicy: pack.piiPolicy ?? PROPERTY_PII,
+      retentionDays: retentionDaysForPack(pack.id),
+      clock: () => Date.parse(now2()),
       ...input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {},
       ...pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {},
       ...budget ? { budget } : {}
@@ -78397,7 +78587,7 @@ async function runPropertyCampaign(input2) {
 }
 
 // pipeline_core/monitors.ts
-import { constants as constants3, mkdir as mkdir4, open as open4, readFile as readFile4, rename as rename4, stat as stat3, unlink as unlink3 } from "node:fs/promises";
+import { constants as constants3, mkdir as mkdir4, open as open4, readFile as readFile4, rename as rename4, readdir as readdir2, stat as stat4, unlink as unlink4 } from "node:fs/promises";
 import { randomUUID as randomUUID2 } from "node:crypto";
 import { dirname as dirname4, join as join7 } from "node:path";
 var MonitorSchema = external_exports.object({
@@ -78418,7 +78608,8 @@ var FingerprintSchema = external_exports.object({
 var SnapshotSchema = external_exports.object({
   monitorId: external_exports.string(),
   checkedAt: external_exports.string().datetime(),
-  parcels: external_exports.record(external_exports.string(), FingerprintSchema)
+  parcels: external_exports.record(external_exports.string(), FingerprintSchema),
+  expiresAt: external_exports.number().finite().optional()
 });
 var VALUE_KEYS = ["justValueCents", "marketValueCents", "assessedValueCents"];
 function normalizeOwnerName(name31) {
@@ -78472,7 +78663,7 @@ function diffSnapshots(before, after, valueChangePct) {
 function monitorPath(id) {
   return join7(intentOutreachHome(), "monitors", `${id}.json`);
 }
-async function readSnapshot(path) {
+async function readSnapshot(path, now2 = Date.now()) {
   let text2;
   try {
     text2 = await readFile4(path, "utf8");
@@ -78488,23 +78679,23 @@ async function readSnapshot(path) {
   }
   const r = SnapshotSchema.safeParse(parsed);
   if (!r.success) throw new Error(`monitor snapshot ${path} is invalid; delete it to re-baseline`);
-  return r.data;
+  const expires = Math.min(r.data.expiresAt ?? Infinity, Date.parse(r.data.checkedAt) + 30 * 864e5);
+  return expires <= now2 ? void 0 : r.data;
 }
 async function writeSnapshot(path, snap) {
   await mkdir4(dirname4(path), { recursive: true, mode: 448 });
   const tmp = `${path}.${randomUUID2()}.tmp`;
   const fh = await open4(tmp, constants3.O_WRONLY | constants3.O_CREAT | constants3.O_EXCL, 384);
   try {
-    await fh.write(JSON.stringify(snap));
-    await fh.sync();
-  } finally {
-    await fh.close();
-  }
-  try {
+    try {
+      await fh.write(JSON.stringify(snap));
+      await fh.sync();
+    } finally {
+      await fh.close();
+    }
     await rename4(tmp, path);
-  } catch (err) {
-    await unlink3(tmp).catch(() => void 0);
-    throw err;
+  } finally {
+    await unlink4(tmp).catch(() => void 0);
   }
 }
 function mergeFingerprints(previous, seen) {
@@ -78528,13 +78719,13 @@ async function acquireMonitorLock(path) {
     await fh.close();
   } catch (err) {
     if (err.code !== "EEXIST") throw err;
-    const age = Date.now() - (await stat3(lockPath)).mtimeMs;
+    const age = Date.now() - (await stat4(lockPath)).mtimeMs;
     if (age < STALE_LOCK_MS) throw new Error(`monitor check already running (${lockPath}); retry later`);
-    await unlink3(lockPath).catch(() => void 0);
+    await unlink4(lockPath).catch(() => void 0);
     return acquireMonitorLock(path);
   }
   return async () => {
-    await unlink3(lockPath).catch(() => void 0);
+    await unlink4(lockPath).catch(() => void 0);
   };
 }
 async function checkMonitor(monitor, opts) {
@@ -78542,8 +78733,13 @@ async function checkMonitor(monitor, opts) {
   const path = opts.path ?? monitorPath(m.id);
   const release = await acquireMonitorLock(path);
   try {
-    const previous = await readSnapshot(path);
-    const r = await runResearchQuery(m.query, opts.icp ?? "monitor", opts);
+    const checkedAt = opts.now();
+    const checked = Date.parse(checkedAt);
+    const previous = await readSnapshot(path, checked);
+    if (!previous) await unlink4(path).catch((error62) => {
+      if (error62.code !== "ENOENT") throw error62;
+    });
+    const r = await runResearchQuery(m.query, opts.icp ?? "monitor", { ...opts, piiPolicy: opts.piiPolicy ?? PROPERTY_PII, clock: () => checked });
     const model = mergePropertyModel(r);
     const failed = r.failedConnectors.map((f) => ({ name: f.name, status: f.status }));
     const seen = {};
@@ -78551,6 +78747,9 @@ async function checkMonitor(monitor, opts) {
       const own2 = [...model.ownerships].filter((o) => o.propertyKey === p.key).sort((a, b) => Number(b.role === "owner") - Number(a.role === "owner") || a.partyKey.localeCompare(b.partyKey))[0];
       seen[p.key] = fingerprint(p, own2 ? model.parties.find((x) => x.key === own2.partyKey) : void 0);
     }
+    const expiresAt = Math.min(dataExpiresAt(model, checked, 30), previous?.expiresAt ?? (previous ? Date.parse(previous.checkedAt) + 30 * 864e5 : Infinity));
+    if (expiresAt <= checked) throw new Error("Monitor data is past its retention deadline");
+    const canBaseline = model.properties.length > 0 && r.ran.length > 0 && failed.length === 0;
     const after = mergeFingerprints(previous?.parcels ?? {}, seen);
     const events = previous ? diffSnapshots(previous.parcels, after, m.valueChangePct) : [];
     const changed = [...new Set(events.map((e) => e.propertyKey))];
@@ -78569,7 +78768,7 @@ async function checkMonitor(monitor, opts) {
         if (done) return;
         done = true;
         try {
-          await writeSnapshot(path, { monitorId: m.id, checkedAt: opts.now(), parcels: after });
+          if (previous || canBaseline) await writeSnapshot(path, { monitorId: m.id, checkedAt, expiresAt, parcels: after });
         } finally {
           await release();
         }
@@ -78584,6 +78783,40 @@ async function checkMonitor(monitor, opts) {
     await release();
     throw err;
   }
+}
+async function purgeExpiredSnapshots(dir, now2 = Date.now()) {
+  const names = await readdir2(dir).catch((error62) => {
+    if (error62.code === "ENOENT") return [];
+    throw error62;
+  });
+  let removed = 0;
+  for (const name31 of names) {
+    const temporary = /^([a-z0-9][a-z0-9-]{0,63})\.json\.[0-9a-f-]+\.tmp$/.exec(name31);
+    if (!temporary && !/^[a-z0-9][a-z0-9-]{0,63}\.json$/.test(name31)) continue;
+    const path = join7(dir, name31);
+    let release;
+    try {
+      release = await acquireMonitorLock(temporary ? join7(dir, `${temporary[1]}.json`) : path);
+      if (temporary) {
+        if (now2 - (await stat4(path)).mtimeMs > 36e5) {
+          await unlink4(path);
+          removed++;
+        }
+        continue;
+      }
+      if (!await readSnapshot(path, now2)) {
+        await unlink4(path).catch((error62) => {
+          if (error62.code !== "ENOENT") throw error62;
+        });
+        removed++;
+      }
+    } catch (error62) {
+      if (!(error62 instanceof Error) || !error62.message.startsWith("monitor check already running")) throw error62;
+    } finally {
+      if (release) await release();
+    }
+  }
+  return removed;
 }
 
 // pipeline_core/store.ts
@@ -78607,39 +78840,6 @@ function legacyStorePath() {
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { closeSync, constants as constants4, existsSync as existsSync2, fchmodSync, fstatSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync as readFileSync4, unlinkSync, writeFileSync } from "node:fs";
 import { dirname as dirname6, isAbsolute as isAbsolute3, resolve as resolve5 } from "node:path";
-
-// pipeline_core/run-retention.ts
-var RUN_RETENTION_DAYS = Object.freeze({
-  "b2b-sdr": 365,
-  "residential-re": 30,
-  "commercial-re": 30
-});
-function runExpiresAt(run, now2) {
-  const created = Math.min(Date.parse(run.createdAt), now2);
-  const days = Object.hasOwn(RUN_RETENTION_DAYS, run.vertical) ? RUN_RETENTION_DAYS[run.vertical] : 30;
-  let expires = created + days * 864e5;
-  function visit6(value) {
-    if (!value || typeof value !== "object") return;
-    if (Array.isArray(value)) {
-      for (const item of value) visit6(item);
-      return;
-    }
-    const obj = value;
-    const terms = obj.licenseTerms;
-    if (terms && typeof terms.retentionDays === "number") {
-      const days2 = terms.retentionDays;
-      if (!Number.isSafeInteger(days2) || days2 <= 0) throw new Error("Invalid vendor retention period");
-      const fetched = typeof obj.fetchedAt === "string" ? Date.parse(obj.fetchedAt) : created;
-      if (!Number.isFinite(fetched)) throw new Error("Invalid retention timestamp");
-      expires = Math.min(expires, Math.min(fetched, created) + days2 * 864e5);
-    }
-    for (const item of Object.values(obj)) visit6(item);
-  }
-  visit6(run);
-  return expires;
-}
-
-// pipeline_core/encrypted-store.ts
 var StoreIntegrityError = class extends Error {
   constructor(message = "Encrypted run store integrity check failed; restore a verified database/key backup") {
     super(message);
@@ -79330,7 +79530,7 @@ async function runInbound(input2) {
 
 // pipeline_core/approvals.ts
 import { createHash as createHash5, randomUUID as randomUUID3 } from "node:crypto";
-import { constants as constants5, mkdir as mkdir5, open as open5, readFile as readFile5, rename as rename5, stat as stat4, truncate, unlink as unlink4 } from "node:fs/promises";
+import { constants as constants5, mkdir as mkdir5, open as open5, readFile as readFile5, rename as rename5, stat as stat5, truncate, unlink as unlink5 } from "node:fs/promises";
 import { dirname as dirname7, join as join9 } from "node:path";
 var ApprovalRecordSchema = external_exports.object({
   runId: external_exports.string().min(1),
@@ -79396,10 +79596,10 @@ async function withLock2(path, fn) {
     } catch (err) {
       if (err.code !== "EEXIST") throw err;
       try {
-        if (Date.now() - (await stat4(lockPath)).mtimeMs > 3e4) {
+        if (Date.now() - (await stat5(lockPath)).mtimeMs > 3e4) {
           const stolen = `${lockPath}.stale.${token}`;
           await rename5(lockPath, stolen);
-          await unlink4(stolen).catch(() => void 0);
+          await unlink5(stolen).catch(() => void 0);
           continue;
         }
       } catch {
@@ -79413,7 +79613,7 @@ async function withLock2(path, fn) {
   } finally {
     await lock.close().catch(() => void 0);
     const holder = await readFile5(lockPath, "utf8").catch(() => void 0);
-    if (holder === token) await unlink4(lockPath).catch(() => void 0);
+    if (holder === token) await unlink5(lockPath).catch(() => void 0);
   }
 }
 async function repairTornTail(path) {
@@ -79985,10 +80185,10 @@ async function cmdMonitor(args) {
   const values = parsed.values;
   const [action, id, ...extra] = positionals;
   if (extra.length > 0) throw new UsageError(MONITOR_USAGE);
-  const { mkdir: mkdir6, readFile: readFile6, readdir, unlink: unlink5, writeFile: writeFile2 } = await import("node:fs/promises");
+  const { mkdir: mkdir6, readFile: readFile6, readdir: readdir3, unlink: unlink6, writeFile: writeFile2 } = await import("node:fs/promises");
   if (action === "list" && id === void 0) {
     const dir = join10(intentOutreachHome(), "monitors");
-    const names = await readdir(dir).catch(() => []);
+    const names = await readdir3(dir).catch(() => []);
     const defs = names.filter((n) => n.endsWith(".monitor.json"));
     if (defs.length === 0) process.stdout.write("no monitors\n");
     for (const n of defs.sort()) {
@@ -80030,7 +80230,7 @@ async function cmdMonitor(args) {
     const existing = await readFile6(path, "utf8").then((t) => JSON.parse(t)).catch(() => void 0);
     if (existing && JSON.stringify(existing.query) !== JSON.stringify(monitor.query)) {
       if (!values.replace) throw new UsageError(`monitor ${id} already watches ${JSON.stringify(existing.query)}; pass --replace to change it (resets its baseline)`);
-      await unlink5(monitorPath(id)).catch(() => void 0);
+      await unlink6(monitorPath(id)).catch(() => void 0);
     }
     await mkdir6(join10(intentOutreachHome(), "monitors"), { recursive: true, mode: 448 });
     await writeFile2(path, JSON.stringify(monitor, null, 2), { mode: 384 });
@@ -80290,7 +80490,11 @@ async function cmdStore(args) {
     throw new UsageError("usage: intent-outreach store migrate [--from runs.jsonl] [--out runs.sqlite] | store purge|audit [--out runs.sqlite]");
   }
   const store = new EncryptedSqliteRunStore(values.out);
-  const result = action === "migrate" ? { ...await store.migrateJsonl(values.from ?? legacyStorePath()), sourcePreserved: true } : action === "purge" ? { expired: await store.purgeExpired() } : await store.audit();
+  const result = action === "migrate" ? { ...await store.migrateJsonl(values.from ?? legacyStorePath()), sourcePreserved: true } : action === "purge" ? {
+    expired: await store.purgeExpired(),
+    cacheEntries: await new FileResponseCache(join10(intentOutreachHome(), "cache")).purge(Date.now()),
+    monitorSnapshots: await purgeExpiredSnapshots(join10(intentOutreachHome(), "monitors"))
+  } : await store.audit();
   process.stdout.write(`${JSON.stringify(result, null, 2)}
 `);
 }
