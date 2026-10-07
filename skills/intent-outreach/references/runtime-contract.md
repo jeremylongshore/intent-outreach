@@ -9,10 +9,10 @@ The bundled MCP server exposes four phase-level tools:
 | `list_connectors` | none               | Returns registry metadata and whether each expected credential variable is present.             |
 | `research_domain` | provider API calls | Runs configured research connectors in fixed registration order and aggregates their results.   |
 | `enrich_lead`     | provider API calls | Runs configured enrichment connectors in fixed registration order and aggregates their results. |
-| `save_run`        | local file append  | Validates an assembled `CampaignRun`, then appends it to the local JSONL store.                 |
+| `save_run`        | local transaction  | Validates an assembled `CampaignRun`, then saves it in the local encrypted SQLite store.                 |
 
 `save_run` does not send email or LinkedIn messages. Its default path is
-`~/.intent-outreach/runs.jsonl`; setting `INTENT_OUTREACH_HOME` changes the parent directory.
+`~/.intent-outreach/runs.sqlite`; setting `INTENT_OUTREACH_HOME` changes the parent directory.
 
 ## Credential boundary
 

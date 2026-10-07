@@ -35,7 +35,7 @@ import { _resetPacks } from "../pipeline_core/packs/index.js";
 import { EMPTY_SUPPRESSION_LIST } from "../pipeline_core/compliance/suppression.js";
 import { FOOTER_DELIMITER, type SenderIdentity } from "../pipeline_core/footer.js";
 import { handleSaveRun, type SaveRunArgs } from "../mcp/tools.js";
-import { JsonlRunStore } from "../pipeline_core/store.js";
+import { EncryptedSqliteRunStore } from "../pipeline_core/encrypted-store.js";
 
 const DASHES: VoiceRules = { banDashes: true };
 const draft = (body: string, subject: string | null = "An idea", cta = "Open to a call?") => ({ subject, body, cta });
@@ -397,7 +397,7 @@ describe("enforcement paths", () => {
       { now: clock, suppressions: EMPTY_SUPPRESSION_LIST },
     );
     expect(res.isError).toBeUndefined();
-    const run = await new JsonlRunStore(join(home, "runs.jsonl")).getRun("voice-mcp");
+    const run = await new EncryptedSqliteRunStore(join(home, "runs.sqlite")).getRun("voice-mcp");
     expect(run!.messages).toEqual([]);
     expect(run!.rejectedDrafts).toEqual([
       {
@@ -412,7 +412,7 @@ describe("enforcement paths", () => {
       now: clock,
       suppressions: EMPTY_SUPPRESSION_LIST,
     });
-    const run = await new JsonlRunStore(join(home, "runs.jsonl")).getRun("voice-mcp");
+    const run = await new EncryptedSqliteRunStore(join(home, "runs.sqlite")).getRun("voice-mcp");
     expect(run!.rejectedDrafts).toEqual([]);
     expect(run!.messages[0]!.body).toContain("Pat Sender, Example Co LLC");
   });

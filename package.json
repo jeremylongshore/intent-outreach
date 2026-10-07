@@ -62,7 +62,7 @@
     "@ai-sdk/xai": "^4.0.59"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.16.0"
   },
   "packageManager": "pnpm@10.8.1"
 }

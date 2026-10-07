@@ -1,7 +1,7 @@
 // tests/cli.e2e.test.ts — the shipped CLI (bundle/cli.mjs, what users actually run) as a black box.
 // Every child gets a scrubbed environment: no keys, HOME and INTENT_OUTREACH_HOME in a tmpdir.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -72,6 +72,25 @@ describe("shipped CLI", () => {
     expect(r.err).toContain("ANTHROPIC_API_KEY");
     expect(r.err).toContain("environment variable");
     expect(r.err).not.toMatch(/\n\s+at /); // a message, not a stack trace
-    expect(existsSync(join(home, "runs.jsonl"))).toBe(false);
+    expect(existsSync(join(home, "runs.sqlite"))).toBe(false);
+  });
+});
+
+
+describe("shipped storage migration", () => {
+  it("migrates default JSONL, leaves the source intact, and exposes audit/purge commands", () => {
+    const source = join(home, "runs.jsonl");
+    const original = JSON.stringify({ id: "private-legacy-run", schemaVersion: 1, icp: "Private legacy ICP", domains: [], provider: "fixture", model: "fixture", status: "complete", createdAt: new Date().toISOString() });
+    writeFileSync(source, original);
+    const migrated = cli("store", "migrate");
+    expect(migrated.code).toBe(0);
+    expect(JSON.parse(migrated.out)).toMatchObject({ imported: 1, sourcePreserved: true });
+    expect(readFileSync(source, "utf8")).toBe(original);
+    expect(readFileSync(join(home, "runs.sqlite"), "utf8")).not.toContain("Private legacy ICP");
+    const audit = cli("store", "audit");
+    expect(audit.code).toBe(0);
+    expect(JSON.parse(audit.out)[0].action).toBe("import");
+    expect(audit.out).not.toContain("private-legacy-run");
+    expect(JSON.parse(cli("store", "purge").out)).toEqual({ expired: 0 });
   });
 });

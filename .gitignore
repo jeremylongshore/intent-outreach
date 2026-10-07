@@ -38,3 +38,8 @@ out/
 coverage/
 reports/mutation/
 .stryker-tmp/
+
+# Local encrypted run databases and key material
+*.sqlite
+*.sqlite-*
+*.sqlite.key*

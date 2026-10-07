@@ -186,7 +186,7 @@ describe("CLI: inbound", () => {
     const { Readable } = await import("node:stream");
     const { vi } = await import("vitest");
     const { main, UsageError } = await import("../cli.js");
-    const { JsonlRunStore } = await import("../pipeline_core/store.js");
+    const { EncryptedSqliteRunStore } = await import("../pipeline_core/encrypted-store.js");
     const stdin = (t: string) => Object.defineProperty(process, "stdin", { value: Readable.from([Buffer.from(t)]), configurable: true });
     let out = "";
     const spy = vi.spyOn(process.stdout, "write").mockImplementation((c: string | Uint8Array) => {
@@ -197,7 +197,7 @@ describe("CLI: inbound", () => {
       stdin(JSON.stringify({ inquiry: INQUIRY }));
       await main(["inbound", "--offer", "Listing agent", "--channel", "sms"]);
       expect(out).toContain("blocked: consent:missing");
-      const runs = await new JsonlRunStore().listRuns();
+      const runs = await new EncryptedSqliteRunStore().listRuns();
       expect(runs.some((r) => r.blockedContacts[0]?.reason === "consent:missing" && r.vertical === "residential-re")).toBe(true);
       await expect(main(["inbound"])).rejects.toBeInstanceOf(UsageError);
       await expect(main(["inbound", "--offer", "x", "--channel", "fax"])).rejects.toThrow(/email or sms/);
