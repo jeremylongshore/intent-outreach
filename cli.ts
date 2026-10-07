@@ -219,12 +219,13 @@ function cmdProviders(): void {
 }
 
 /** Resolve the optional score-seam provider (cheap scorer); undefined ⇒ the main provider scores too. */
-async function scoreProviderFrom(values: Record<string, unknown>) {
+async function scoreProviderFrom(values: Record<string, unknown>, pack = "b2b-sdr") {
   const m = values["score-model"];
   // --score-model alone keeps the run's --provider (never silently auto-detects a different vendor).
   const p = values["score-provider"] ?? values.provider;
   if (typeof values["score-provider"] !== "string" && typeof m !== "string") return undefined;
   return getProvider({
+    pack,
     ...(typeof p === "string" ? { provider: p as ProviderName } : {}),
     ...(typeof m === "string" ? { model: m } : {}),
   });
@@ -468,12 +469,13 @@ async function cmdPropertyRun(args: string[]): Promise<void> {
   const provider =
     values.provider || values.model
       ? await getProvider({
+          pack: typeof values.pack === "string" ? values.pack : "residential-re",
           ...(typeof values.provider === "string" ? { provider: values.provider as ProviderName } : {}),
           ...(typeof values.model === "string" ? { model: values.model } : {}),
         })
       : undefined;
 
-  const propScoreProvider = await scoreProviderFrom(values);
+  const propScoreProvider = await scoreProviderFrom(values, typeof values.pack === "string" ? values.pack : "residential-re");
   const { run, cost } = await runPropertyCampaign({
     id: makeRunId(),
     icp,
@@ -802,6 +804,7 @@ async function cmdInbound(args: string[]): Promise<void> {
   const provider =
     values.provider || values.model
       ? await getProvider({
+          pack: typeof values.pack === "string" ? values.pack : "residential-re",
           ...(typeof values.provider === "string" ? { provider: values.provider as ProviderName } : {}),
           ...(typeof values.model === "string" ? { model: values.model } : {}),
         })

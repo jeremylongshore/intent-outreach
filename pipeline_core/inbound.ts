@@ -63,6 +63,7 @@ export interface RunInboundInput {
   consents?: readonly ConsentRecord[];
   sender?: SenderIdentity;
   pack?: string;
+  /** Trusted injection for tests/evals; production providers recheck the resolved pack. */
   provider?: LLMProvider;
   suppressions?: SuppressionList;
   /** Clock (ISO). Injected for tests. */
@@ -153,7 +154,8 @@ export async function runInbound(input: RunInboundInput): Promise<RunInboundResu
   } else if (revokedElsewhere) {
     blockedContacts.push({ contactKey, reason: "consent:revoked" });
   } else {
-    provider ??= await getProvider();
+    provider ??= await getProvider({ pack: pack.id });
+    provider.assertPackApproved?.(pack.id);
     const file = pack.prompts.inbound ?? DEFAULT_INBOUND_PROMPT;
     const system = loadPrompt(file).text;
     draftRef = promptRef(file);

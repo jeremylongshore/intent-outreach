@@ -75362,6 +75362,19 @@ function warnIfUnapproved(provider, model) {
 `
   );
 }
+function assertModelSupported(provider, model, pack) {
+  if (pack === DEFAULT_EVAL_PACK) {
+    assertSupported(provider);
+    if (SUPPORTED_PROVIDERS.has(provider)) warnIfUnapproved(provider, model);
+    return;
+  }
+  if (process.env.INTENT_OUTREACH_ALLOW_UNGATED === "1") return;
+  const entry = approvedEntry(provider, model, void 0, pack);
+  if (entry?.verified && entry.resultFile) return;
+  throw new Error(
+    `model "${provider}/${model}" has not passed the eval gate for pack "${pack}". Qualify it with: pnpm run evals:promote --provider ${provider} --model ${model} --pack ${pack}. INTENT_OUTREACH_ALLOW_UNGATED=1 overrides this check for local testing only.`
+  );
+}
 async function getProvider(opts = {}) {
   return createProvider(opts, true);
 }
@@ -75370,13 +75383,13 @@ async function createProvider(opts, gated) {
   if (!Object.hasOwn(KEY_ENV10, name31)) {
     throw new Error(`unknown provider "${String(name31)}" (known: ${Object.keys(KEY_ENV10).join(", ")})`);
   }
-  if (gated) assertSupported(name31);
   const model = opts.model ?? process.env.INTENT_OUTREACH_MODEL ?? DEFAULT_MODEL[name31];
-  if (gated && SUPPORTED_PROVIDERS.has(name31)) warnIfUnapproved(name31, model);
+  if (gated) assertModelSupported(name31, model, opts.pack ?? DEFAULT_EVAL_PACK);
   const languageModel = await resolveModel(name31, model);
   return {
     name: name31,
     model,
+    ...gated ? { assertPackApproved: (pack) => assertModelSupported(name31, model, pack) } : {},
     async generateObject(args) {
       const opts2 = args.options ?? {};
       const providerOptions = name31 === "anthropic" && opts2.effort && supportsEffort(model) ? { anthropic: { effort: opts2.effort } } : void 0;
@@ -77803,9 +77816,11 @@ async function runCampaign(input2) {
   const buyerTitles = cleanBuyerTitles(input2.buyerTitles);
   const budget = input2.budgetCredits !== void 0 ? new CreditBudget(input2.budgetCredits) : void 0;
   const suppressions = input2.suppressions ?? await loadSuppressionList();
-  const provider = input2.provider ?? await getProvider();
   registerBuiltinPacks();
   const pack = resolvePack(input2.pack);
+  const provider = input2.provider ?? await getProvider({ pack: pack.id });
+  provider.assertPackApproved?.(pack.id);
+  input2.scoreProvider?.assertPackApproved?.(pack.id);
   const researchRouting = pack.dataSources?.research?.["company.research"];
   const connectorOpts = {
     ...input2.connectorTimeoutMs ? { connectorTimeoutMs: input2.connectorTimeoutMs } : {},
@@ -78184,9 +78199,11 @@ async function runPropertyCampaign(input2) {
   const minScore = input2.minScore ?? 0;
   const maxProperties = input2.maxProperties ?? DEFAULT_MAX_PROPERTIES;
   const suppressions = input2.suppressions ?? await loadSuppressionList();
-  const provider = input2.provider ?? await getProvider();
   registerBuiltinPacks();
   const pack = resolvePack(input2.pack ?? DEFAULT_PROPERTY_PACK);
+  const provider = input2.provider ?? await getProvider({ pack: pack.id });
+  provider.assertPackApproved?.(pack.id);
+  input2.scoreProvider?.assertPackApproved?.(pack.id);
   const budget = input2.budgetCredits !== void 0 ? new CreditBudget(input2.budgetCredits) : void 0;
   const meter = new CostMeter();
   const createdAt = now2();
@@ -79083,7 +79100,8 @@ async function runInbound(input2) {
   } else if (revokedElsewhere) {
     blockedContacts.push({ contactKey: contactKey2, reason: "consent:revoked" });
   } else {
-    provider ??= await getProvider();
+    provider ??= await getProvider({ pack: pack.id });
+    provider.assertPackApproved?.(pack.id);
     const file2 = pack.prompts.inbound ?? DEFAULT_INBOUND_PROMPT;
     const system = loadPrompt(file2).text;
     draftRef = promptRef(file2);
@@ -79501,11 +79519,12 @@ function cmdProviders() {
 auto-detected provider: ${detected}
 `);
 }
-async function scoreProviderFrom(values) {
+async function scoreProviderFrom(values, pack = "b2b-sdr") {
   const m = values["score-model"];
   const p = values["score-provider"] ?? values.provider;
   if (typeof values["score-provider"] !== "string" && typeof m !== "string") return void 0;
   return getProvider({
+    pack,
     ...typeof p === "string" ? { provider: p } : {},
     ...typeof m === "string" ? { model: m } : {}
   });
@@ -79710,10 +79729,11 @@ ${PROPERTY_RUN_USAGE}`);
     }
   }
   const provider = values.provider || values.model ? await getProvider({
+    pack: typeof values.pack === "string" ? values.pack : "residential-re",
     ...typeof values.provider === "string" ? { provider: values.provider } : {},
     ...typeof values.model === "string" ? { model: values.model } : {}
   }) : void 0;
-  const propScoreProvider = await scoreProviderFrom(values);
+  const propScoreProvider = await scoreProviderFrom(values, typeof values.pack === "string" ? values.pack : "residential-re");
   const { run, cost } = await runPropertyCampaign({
     id: makeRunId(),
     icp,
@@ -80009,6 +80029,7 @@ ${INBOUND_USAGE}`);
     }
   }
   const provider = values.provider || values.model ? await getProvider({
+    pack: typeof values.pack === "string" ? values.pack : "residential-re",
     ...typeof values.provider === "string" ? { provider: values.provider } : {},
     ...typeof values.model === "string" ? { model: values.model } : {}
   }) : void 0;
