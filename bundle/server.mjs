@@ -4536,7 +4536,7 @@ function isRef(value) {
 function cloneIssues(issues) {
   return issues.map((iss) => iss.path ? { ...iss, path: iss.path.slice() } : { ...iss });
 }
-function isRecursive(inst, stack, resolve3) {
+function isRecursive(inst, stack, resolve4) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -4546,7 +4546,7 @@ function isRecursive(inst, stack, resolve3) {
   let result2 = NONE;
   const check2 = (child) => {
     if (result2 !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve3);
+      const answer = isRecursive(child, stack, resolve4);
       if (answer > result2)
         result2 = answer;
     }
@@ -4557,7 +4557,7 @@ function isRecursive(inst, stack, resolve3) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve3) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve4) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -4621,7 +4621,7 @@ function isRecursive(inst, stack, resolve3) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve3 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve4 ? inst._zod.innerType : void 0);
       merge2(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -22416,7 +22416,7 @@ var require_subschema = __commonJS({
 var require_fast_deep_equal = __commonJS({
   "node_modules/.pnpm/fast-deep-equal@3.1.3/node_modules/fast-deep-equal/index.js"(exports, module) {
     "use strict";
-    module.exports = function equal(a, b) {
+    module.exports = function equal2(a, b) {
       if (a === b) return true;
       if (a && b && typeof a == "object" && typeof b == "object") {
         if (a.constructor !== b.constructor) return false;
@@ -22425,7 +22425,7 @@ var require_fast_deep_equal = __commonJS({
           length = a.length;
           if (length != b.length) return false;
           for (i = length; i-- !== 0; )
-            if (!equal(a[i], b[i])) return false;
+            if (!equal2(a[i], b[i])) return false;
           return true;
         }
         if (a.constructor === RegExp) return a.source === b.source && a.flags === b.flags;
@@ -22438,7 +22438,7 @@ var require_fast_deep_equal = __commonJS({
           if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false;
         for (i = length; i-- !== 0; ) {
           var key = keys[i];
-          if (!equal(a[key], b[key])) return false;
+          if (!equal2(a[key], b[key])) return false;
         }
         return true;
       }
@@ -22542,7 +22542,7 @@ var require_resolve = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getSchemaRefs = exports.resolveUrl = exports.normalizeId = exports._getFullPath = exports.getFullPath = exports.inlineRef = void 0;
     var util_1 = require_util();
-    var equal = require_fast_deep_equal();
+    var equal2 = require_fast_deep_equal();
     var traverse = require_json_schema_traverse();
     var SIMPLE_INLINED = /* @__PURE__ */ new Set([
       "type",
@@ -22680,7 +22680,7 @@ var require_resolve = __commonJS({
       });
       return localRefs;
       function checkAmbiguosRef(sch1, sch2, ref) {
-        if (sch2 !== void 0 && !equal(sch1, sch2))
+        if (sch2 !== void 0 && !equal2(sch1, sch2))
           throw ambiguos(ref);
       }
       function ambiguos(ref) {
@@ -23356,7 +23356,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve3.call(this, root, ref);
+      let _sch = resolve4.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -23383,7 +23383,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve3(root, ref) {
+    function resolve4(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -24213,7 +24213,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve3(baseURI, relativeURI, options) {
+    function resolve4(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -24299,7 +24299,7 @@ var require_fast_uri = __commonJS({
       target.fragment = relative.fragment;
       return target;
     }
-    function equal(uriA, uriB, options) {
+    function equal2(uriA, uriB, options) {
       const normalizedA = normalizeComparableURI(uriA, options);
       const normalizedB = normalizeComparableURI(uriB, options);
       return normalizedA !== void 0 && normalizedB !== void 0 && normalizedA === normalizedB;
@@ -24582,9 +24582,9 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize: normalize2,
-      resolve: resolve3,
+      resolve: resolve4,
       resolveComponent,
-      equal,
+      equal: equal2,
       serialize,
       parse: parse3
     };
@@ -25674,9 +25674,9 @@ var require_equal = __commonJS({
   "node_modules/.pnpm/ajv@8.20.0/node_modules/ajv/dist/runtime/equal.js"(exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var equal = require_fast_deep_equal();
-    equal.code = 'require("ajv/dist/runtime/equal").default';
-    exports.default = equal;
+    var equal2 = require_fast_deep_equal();
+    equal2.code = 'require("ajv/dist/runtime/equal").default';
+    exports.default = equal2;
   }
 });
 
@@ -35089,7 +35089,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
+        await new Promise((resolve4) => setTimeout(resolve4, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error62) {
@@ -35106,7 +35106,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       const earlyReject = (error62) => {
         reject(error62);
       };
@@ -35184,7 +35184,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve3(parseResult.data);
+            resolve4(parseResult.data);
           }
         } catch (error62) {
           reject(error62);
@@ -35446,12 +35446,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve3, reject) => {
+    return new Promise((resolve4, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve3, interval);
+      const timeoutId = setTimeout(resolve4, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -36586,7 +36586,7 @@ var McpServer = class {
     let task = createTaskResult.task;
     const pollInterval = task.pollInterval ?? 5e3;
     while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-      await new Promise((resolve3) => setTimeout(resolve3, pollInterval));
+      await new Promise((resolve4) => setTimeout(resolve4, pollInterval));
       const updatedTask = await extra.taskStore.getTask(taskId);
       if (!updatedTask) {
         throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -37250,12 +37250,12 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve3) => {
+    return new Promise((resolve4) => {
       const json2 = serializeMessage(message);
       if (this._stdout.write(json2)) {
-        resolve3();
+        resolve4();
       } else {
-        this._stdout.once("drain", resolve3);
+        this._stdout.once("drain", resolve4);
       }
     });
   }
@@ -37300,9 +37300,9 @@ var RateLimitExceededError = class extends Error {
 var MINUTE = 6e4;
 var DAY = 24 * 60 * MINUTE;
 var RateLimiter = class {
-  constructor(clock2 = Date.now, sleep5 = defaultSleep) {
+  constructor(clock2 = Date.now, sleep4 = defaultSleep) {
     this.clock = clock2;
-    this.sleep = sleep5;
+    this.sleep = sleep4;
   }
   clock;
   sleep;
@@ -37339,9 +37339,9 @@ function positive(n) {
   return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : void 0;
 }
 function defaultSleep(ms, signal) {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
-    const t = setTimeout(resolve3, ms);
+    const t = setTimeout(resolve4, ms);
     signal?.addEventListener(
       "abort",
       () => {
@@ -37450,11 +37450,11 @@ function backoffMs(attempt) {
   return Math.min(MAX_RETRY_WAIT_MS, Math.round(ceiling * (0.5 + Math.random() * 0.5)));
 }
 function sleep(ms, signal) {
-  return new Promise((resolve3, reject) => {
+  return new Promise((resolve4, reject) => {
     if (signal?.aborted) return reject(signal.reason ?? new Error("aborted"));
     const t = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
-      resolve3();
+      resolve4();
     }, ms);
     const onAbort = () => {
       clearTimeout(t);
@@ -41193,7 +41193,6 @@ function gateOrThrow(kind, schema, raw) {
   return r.value;
 }
 var validateMessage = (raw) => gate("Message", MessageSchema, raw);
-var validateCampaignRun = (raw) => gate("CampaignRun", CampaignRunSchema, raw);
 var assertCampaignRun = (raw) => gateOrThrow("CampaignRun", CampaignRunSchema, raw);
 
 // evals/supported.ts
@@ -42103,12 +42102,47 @@ function loadProfileRef(ref, cwd) {
   return loadProfile(resolveProfilePath(ref, cwd));
 }
 
+// pipeline_core/encrypted-store.ts
+import { createCipheriv, createDecipheriv, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { closeSync, constants as constants3, existsSync as existsSync2, fchmodSync, fstatSync, fsyncSync, linkSync, lstatSync, mkdirSync, openSync, readFileSync as readFileSync3, unlinkSync, writeFileSync } from "node:fs";
+import { dirname as dirname5, isAbsolute as isAbsolute3, resolve as resolve3 } from "node:path";
+
+// pipeline_core/run-retention.ts
+var RUN_RETENTION_DAYS = Object.freeze({
+  "b2b-sdr": 365,
+  "residential-re": 30,
+  "commercial-re": 30
+});
+function runExpiresAt(run, now) {
+  const created = Math.min(Date.parse(run.createdAt), now);
+  const days = Object.hasOwn(RUN_RETENTION_DAYS, run.vertical) ? RUN_RETENTION_DAYS[run.vertical] : 30;
+  let expires = created + days * 864e5;
+  function visit2(value) {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      for (const item of value) visit2(item);
+      return;
+    }
+    const obj = value;
+    const terms = obj.licenseTerms;
+    if (terms && typeof terms.retentionDays === "number") {
+      const days2 = terms.retentionDays;
+      if (!Number.isSafeInteger(days2) || days2 <= 0) throw new Error("Invalid vendor retention period");
+      const fetched = typeof obj.fetchedAt === "string" ? Date.parse(obj.fetchedAt) : created;
+      if (!Number.isFinite(fetched)) throw new Error("Invalid retention timestamp");
+      expires = Math.min(expires, Math.min(fetched, created) + days2 * 864e5);
+    }
+    for (const item of Object.values(obj)) visit2(item);
+  }
+  visit2(run);
+  return expires;
+}
+
 // pipeline_core/store.ts
-import { constants as constants3, mkdir as mkdir3, open as open4, readFile as readFile3, stat as stat3, unlink as unlink3 } from "node:fs/promises";
 import { dirname as dirname4, join as join5 } from "node:path";
 var DuplicateRunError = class extends Error {
   constructor(runId) {
-    super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
+    super(`run "${runId}" already exists in the store; pass { overwrite: true } to replace the saved snapshot`);
     this.runId = runId;
     this.name = "DuplicateRunError";
   }
@@ -42123,165 +42157,271 @@ var StoreLockTimeoutError = class extends Error {
   lockPath;
 };
 function defaultStorePath() {
+  return join5(intentOutreachHome(), "runs.sqlite");
+}
+function legacyStorePath() {
   return join5(intentOutreachHome(), "runs.jsonl");
 }
-var SUPPORTED_VERSIONS = SUPPORTED_SCHEMA_VERSIONS;
-var sleep4 = (ms) => new Promise((r) => setTimeout(r, ms));
-var JsonlRunStore = class {
-  constructor(path = defaultStorePath(), opts = {}) {
-    this.path = path;
-    this.lockTimeoutMs = opts.lockTimeoutMs ?? 1e4;
-    this.staleLockMs = opts.staleLockMs ?? 3e4;
+
+// pipeline_core/encrypted-store.ts
+var StoreIntegrityError = class extends Error {
+  constructor(message = "Encrypted run store integrity check failed; restore a verified database/key backup") {
+    super(message);
+    this.name = "StoreIntegrityError";
   }
-  path;
-  lockTimeoutMs;
-  staleLockMs;
-  permsChecked = false;
-  warnedKey = "";
-  async saveRun(run, opts = {}) {
-    const checked = assertCampaignRun(run);
-    const line = JSON.stringify(checked) + "\n";
-    await mkdir3(dirname4(this.path), { recursive: true, mode: 448 });
-    await this.withLock(async () => {
-      if (!opts.overwrite) {
-        const { runs } = await this.scan();
-        if (runs.some((r) => r.run.id === checked.id)) throw new DuplicateRunError(checked.id);
+};
+function mac3(key, value) {
+  return createHmac("sha256", key).update(value).digest("hex");
+}
+function equal(a, b) {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+function privateFile(path, create) {
+  const fd = openSync(path, constants3.O_RDWR | constants3.O_NOFOLLOW | (create ? constants3.O_CREAT : 0), 384);
+  try {
+    const st = fstatSync(fd);
+    if (!st.isFile() || st.nlink !== 1) throw new StoreIntegrityError("Run-store files must be regular, unlinked files");
+    if ((st.mode & 63) !== 0) fchmodSync(fd, 384);
+    return fd;
+  } catch (error62) {
+    closeSync(fd);
+    throw error62;
+  }
+}
+async function readKey(path, dbExists) {
+  if (!existsSync2(path)) {
+    if (dbExists) throw new StoreIntegrityError("Run-store key is missing; restore the original key, never generate a replacement");
+    mkdirSync(dirname5(path), { recursive: true, mode: 448 });
+    const temporary = `${path}.${randomBytes(12).toString("hex")}.tmp`;
+    const fd2 = openSync(temporary, "wx", 384);
+    try {
+      writeFileSync(fd2, randomBytes(32));
+      fsyncSync(fd2);
+      try {
+        linkSync(temporary, path);
+      } catch (error62) {
+        if (error62.code !== "EEXIST") throw error62;
       }
-      await this.append(line);
+    } finally {
+      closeSync(fd2);
+      unlinkSync(temporary);
+    }
+    const directory = openSync(dirname5(path), "r");
+    try {
+      fsyncSync(directory);
+    } finally {
+      closeSync(directory);
+    }
+  }
+  for (let attempt = 0; attempt < 5 && lstatSync(path).nlink > 1; attempt++) {
+    await new Promise((done) => setTimeout(done, 10));
+  }
+  const fd = privateFile(path, false);
+  try {
+    const key = readFileSync3(fd);
+    if (key.length !== 32) throw new StoreIntegrityError("Run-store key must contain exactly 32 random bytes");
+    return key;
+  } finally {
+    closeSync(fd);
+  }
+}
+var EncryptedSqliteRunStore = class {
+  path;
+  keyPath;
+  clock;
+  constructor(path = defaultStorePath(), options = {}) {
+    this.path = resolve3(path);
+    const configuredKey = options.keyPath ?? process.env.INTENT_OUTREACH_STORE_KEY_FILE;
+    if (configuredKey !== void 0 && (!configuredKey.trim() || !isAbsolute3(configuredKey))) {
+      throw new Error("INTENT_OUTREACH_STORE_KEY_FILE must be an absolute path");
+    }
+    this.keyPath = configuredKey ?? `${this.path}.key`;
+    if (resolve3(this.keyPath) === this.path) throw new Error("Run-store database and key paths must differ");
+    this.clock = options.now ?? (() => /* @__PURE__ */ new Date());
+  }
+  async saveRun(run, options = {}) {
+    const checked = assertCampaignRun(run);
+    const now = this.clock().getTime();
+    const expires = runExpiresAt(checked, now);
+    if (expires <= now) throw new Error("Run is past its retention deadline and cannot be saved");
+    await this.transact((db, key) => {
+      this.purge(db, key, now);
+      const token = this.token(key, checked.id);
+      const old = db.prepare("SELECT expires FROM runs WHERE token = ?").get(token);
+      if (old && !options.overwrite) throw new DuplicateRunError(checked.id);
+      this.write(db, key, checked, Math.min(expires, old ? Number(old.expires) : expires), old ? "overwrite" : "save", now);
     });
   }
   async getRun(id) {
-    const { runs } = await this.scan();
-    for (let i = runs.length - 1; i >= 0; i--) {
-      const r = runs[i];
-      if (r && r.run.id === id) return r.run;
-    }
-    return null;
+    return this.transact((db, key) => {
+      this.purge(db, key, this.clock().getTime());
+      const row = db.prepare("SELECT * FROM runs WHERE token = ?").get(this.token(key, id));
+      return row ? this.decrypt(key, row) : null;
+    });
   }
   async listRunIds() {
-    const { runs } = await this.scan();
-    return [...new Set(runs.map((r) => r.run.id))];
+    return (await this.listRuns()).map((run) => run.id);
   }
   async listRuns() {
-    const { runs } = await this.scan();
-    const latest = /* @__PURE__ */ new Map();
-    for (const r of runs) latest.set(r.run.id, r.run);
-    return [...latest.values()];
+    return this.transact((db, key) => {
+      this.purge(db, key, this.clock().getTime());
+      return db.prepare("SELECT * FROM runs ORDER BY rowid").all().map((row) => this.decrypt(key, row));
+    });
   }
+  /** SQLite corruption fails the entire operation; never return a partial clean list. */
   async corruptLines() {
-    return (await this.scan()).corrupt;
+    await this.listRuns();
+    return [];
   }
-  // ── write path ──────────────────────────────────────────────────────────────
-  /** One O_APPEND write (with torn-tail repair folded in), then fsync. */
-  async append(line) {
-    const fh = await open4(
-      this.path,
-      constants3.O_RDWR | constants3.O_APPEND | constants3.O_CREAT,
-      384
-    );
-    try {
-      const st = await fh.stat();
-      if (!this.permsChecked) {
-        if ((st.mode & 63) !== 0) await fh.chmod(384);
-        this.permsChecked = true;
-      }
-      let payload = line;
-      if (st.size > 0) {
-        const last = Buffer.alloc(1);
-        await fh.read(last, 0, 1, st.size - 1);
-        if (last[0] !== 10) payload = "\n" + line;
-      }
-      await fh.write(payload);
-      await fh.sync();
-    } finally {
-      await fh.close();
-    }
+  async purgeExpired() {
+    return this.transact((db, key) => this.purge(db, key, this.clock().getTime()));
   }
-  /**
-   * Cross-process mutual exclusion via an exclusive-create lockfile. A lock older
-   * than `staleLockMs` (writer crashed mid-save) is broken. Backoff is bounded.
-   */
-  async withLock(fn) {
-    const lockPath = `${this.path}.lock`;
-    const deadline = Date.now() + this.lockTimeoutMs;
-    let delay = 5;
-    let lock;
-    while (!lock) {
+  async audit() {
+    return this.transact((db) => db.prepare("SELECT * FROM audit ORDER BY sequence").all());
+  }
+  /** All-or-nothing import of latest snapshots. Source is never edited or removed. */
+  async migrateJsonl(source) {
+    if (resolve3(source) === this.path || resolve3(source) === resolve3(this.keyPath)) throw new Error("Migration source must differ from database and key");
+    const bytes = readFileSync3(source);
+    const runs = /* @__PURE__ */ new Map();
+    const now = this.clock().getTime();
+    for (const [index, line] of bytes.toString("utf8").split("\n").entries()) {
+      if (!line.trim()) continue;
       try {
-        lock = await open4(lockPath, "wx", 384);
-      } catch (err) {
-        if (err.code !== "EEXIST") throw err;
-        try {
-          const st = await stat3(lockPath);
-          if (Date.now() - st.mtimeMs > this.staleLockMs) {
-            await unlink3(lockPath).catch(() => void 0);
-            continue;
-          }
-        } catch {
-          continue;
-        }
-        if (Date.now() >= deadline) throw new StoreLockTimeoutError(lockPath);
-        await sleep4(delay + Math.floor(Math.random() * delay));
-        delay = Math.min(delay * 2, 200);
-      }
-    }
-    try {
-      await lock.write(`${process.pid} ${(/* @__PURE__ */ new Date()).toISOString()}
-`);
-      return await fn();
-    } finally {
-      await lock.close().catch(() => void 0);
-      await unlink3(lockPath).catch(() => void 0);
-    }
-  }
-  // ── read path ───────────────────────────────────────────────────────────────
-  async scan() {
-    let text;
-    try {
-      text = await readFile3(this.path, "utf8");
-    } catch (err) {
-      if (err.code === "ENOENT") return { runs: [], corrupt: [] };
-      throw err;
-    }
-    const runs = [];
-    const corrupt = [];
-    const lines = text.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i];
-      if (raw === void 0 || raw.trim().length === 0) continue;
-      const lineNo = i + 1;
-      let parsed;
-      try {
-        parsed = JSON.parse(raw);
+        const run = assertCampaignRun(JSON.parse(line));
+        const expires = Math.min(runExpiresAt(run, now), runs.get(run.id)?.expires ?? Infinity);
+        runs.set(run.id, { run, expires });
       } catch {
-        corrupt.push({ line: lineNo, reason: "invalid-json" });
-        continue;
+        throw new StoreIntegrityError(`Legacy JSONL line ${index + 1} is invalid; no records imported`);
       }
-      const r = validateCampaignRun(parsed);
-      if (r.ok) {
-        runs.push({ line: lineNo, run: r.value });
-        continue;
-      }
-      const version2 = parsed && typeof parsed === "object" ? parsed.schemaVersion : void 0;
-      corrupt.push({
-        line: lineNo,
-        reason: SUPPORTED_VERSIONS.includes(version2) ? "schema-invalid" : "unknown-schema-version"
-      });
     }
-    this.warnCorrupt(corrupt);
-    return { runs, corrupt };
+    return this.transact((db, key) => {
+      const digest = mac3(key, bytes);
+      const prior = db.prepare("SELECT value FROM metadata WHERE name = 'legacy_digest'").get();
+      if (prior?.value === digest) return { imported: 0, expired: 0, alreadyMigrated: true };
+      if (prior || Number(db.prepare("SELECT count(*) AS n FROM audit").get()?.n) > 0) {
+        throw new Error("Migration requires an empty encrypted store; use a new --out path");
+      }
+      let imported = 0;
+      let expired = 0;
+      for (const { run, expires } of runs.values()) {
+        if (expires <= now) {
+          this.appendAudit(db, key, this.token(key, run.id), "expire", now, "");
+          expired++;
+        } else {
+          this.write(db, key, run, expires, "import", now);
+          imported++;
+        }
+      }
+      db.prepare("INSERT INTO metadata VALUES ('legacy_digest', ?)").run(digest);
+      return { imported, expired, alreadyMigrated: false };
+    }, true);
   }
-  /** One stderr warning per distinct set of bad lines (not one per read). */
-  warnCorrupt(corrupt) {
-    if (corrupt.length === 0) return;
-    const key = corrupt.map((c) => `${c.line}:${c.reason}`).join(",");
-    if (key === this.warnedKey) return;
-    this.warnedKey = key;
-    const detail = corrupt.map((c) => `${c.line} (${c.reason})`).join(", ");
-    process.stderr.write(
-      `intent-outreach: warning: ${corrupt.length} unreadable line(s) in ${this.path} were skipped: line ${detail}
-`
-    );
+  token(key, id) {
+    return mac3(key, `run-id:${id}`);
+  }
+  write(db, key, run, expires, action, now) {
+    const token = this.token(key, run.id);
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", Buffer.from(mac3(key, "payload-key:v1"), "hex"), iv);
+    cipher.setAAD(Buffer.from(JSON.stringify([1, token, expires])));
+    const ciphertext = Buffer.concat([cipher.update(JSON.stringify(run), "utf8"), cipher.final()]);
+    const payload = Buffer.concat([iv, cipher.getAuthTag(), ciphertext]);
+    db.prepare("INSERT INTO runs(token, expires, payload) VALUES (?, ?, ?) ON CONFLICT(token) DO UPDATE SET expires=excluded.expires, payload=excluded.payload").run(token, expires, payload);
+    this.appendAudit(db, key, token, action, now, this.rowDigest(key, { token, expires, payload }));
+  }
+  decrypt(key, row) {
+    try {
+      const payload = Buffer.from(row.payload);
+      const decipher = createDecipheriv("aes-256-gcm", Buffer.from(mac3(key, "payload-key:v1"), "hex"), payload.subarray(0, 12));
+      decipher.setAuthTag(payload.subarray(12, 28));
+      decipher.setAAD(Buffer.from(JSON.stringify([1, row.token, row.expires])));
+      const clear = Buffer.concat([decipher.update(payload.subarray(28)), decipher.final()]);
+      const run = assertCampaignRun(JSON.parse(clear.toString("utf8")));
+      if (this.token(key, run.id) !== row.token) throw new StoreIntegrityError();
+      return run;
+    } catch {
+      throw new StoreIntegrityError();
+    }
+  }
+  rowDigest(key, row) {
+    return mac3(key, JSON.stringify([row.token, row.expires, Buffer.from(row.payload).toString("base64")]));
+  }
+  appendAudit(db, key, token, action, at, digest) {
+    const last = db.prepare("SELECT sequence, chain FROM audit ORDER BY sequence DESC LIMIT 1").get();
+    const sequence = Number(last?.sequence ?? 0) + 1;
+    const chain = mac3(key, JSON.stringify([last?.chain ?? "", sequence, token, action, at, digest]));
+    db.prepare("INSERT INTO audit VALUES (?, ?, ?, ?, ?, ?)").run(sequence, token, action, at, digest, chain);
+  }
+  verify(db, key) {
+    const check2 = db.prepare("SELECT value FROM metadata WHERE name = 'key_check'").get();
+    if (!equal(String(check2?.value ?? ""), mac3(key, "store-key-check:v1"))) throw new StoreIntegrityError("Wrong run-store key or damaged store metadata");
+    let previous = "";
+    let sequence = 0;
+    const expected = /* @__PURE__ */ new Map();
+    for (const event of db.prepare("SELECT * FROM audit ORDER BY sequence").all()) {
+      const chain = mac3(key, JSON.stringify([previous, ++sequence, event.token, event.action, event.at, event.digest]));
+      if (event.sequence !== sequence || !equal(event.chain, chain)) throw new StoreIntegrityError();
+      if (event.action === "expire") expected.delete(event.token);
+      else expected.set(event.token, event.digest);
+      previous = chain;
+    }
+    for (const row of db.prepare("SELECT * FROM runs").all()) {
+      if (!equal(expected.get(row.token) ?? "", this.rowDigest(key, row))) throw new StoreIntegrityError();
+      expected.delete(row.token);
+    }
+    if (expected.size) throw new StoreIntegrityError();
+  }
+  purge(db, key, now) {
+    const expired = db.prepare("SELECT token FROM runs WHERE expires <= ?").all(now);
+    for (const row of expired) this.appendAudit(db, key, String(row.token), "expire", now, "");
+    db.prepare("DELETE FROM runs WHERE expires <= ?").run(now);
+    return expired.length;
+  }
+  async transact(fn, migrating = false) {
+    const { DatabaseSync } = await import("node:sqlite");
+    const legacy = this.path === resolve3(defaultStorePath()) && existsSync2(legacyStorePath()) ? readFileSync3(legacyStorePath()) : void 0;
+    if (!migrating && legacy && !existsSync2(this.path)) throw new Error("Legacy runs.jsonl exists; run intent-outreach store migrate before using encrypted storage");
+    mkdirSync(dirname5(this.path), { recursive: true, mode: 448 });
+    const key = await readKey(this.keyPath, existsSync2(this.path));
+    const fd = privateFile(this.path, true);
+    closeSync(fd);
+    const db = new DatabaseSync(this.path);
+    let transaction = false;
+    try {
+      db.exec("PRAGMA busy_timeout=10000; PRAGMA synchronous=FULL; PRAGMA secure_delete=ON; BEGIN IMMEDIATE");
+      transaction = true;
+      const version2 = Number(db.prepare("PRAGMA user_version").get()?.user_version);
+      if (version2 === 0) {
+        if (Number(db.prepare("SELECT count(*) AS n FROM sqlite_master").get()?.n) !== 0) throw new StoreIntegrityError("Not an Intent Outreach encrypted database");
+        db.exec(`
+          CREATE TABLE metadata(name TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT;
+          CREATE TABLE runs(token TEXT PRIMARY KEY, expires INTEGER NOT NULL, payload BLOB NOT NULL) STRICT;
+          CREATE TABLE audit(sequence INTEGER PRIMARY KEY, token TEXT NOT NULL, action TEXT NOT NULL CHECK(action IN ('save','overwrite','import','expire')), at INTEGER NOT NULL, digest TEXT NOT NULL, chain TEXT NOT NULL) STRICT;
+          CREATE TRIGGER audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT, 'audit is append-only'); END;
+          CREATE TRIGGER audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT, 'audit is append-only'); END;
+          PRAGMA user_version=1;
+        `);
+        db.prepare("INSERT INTO metadata VALUES ('key_check', ?)").run(mac3(key, "store-key-check:v1"));
+      } else if (version2 !== 1) throw new StoreIntegrityError("Unsupported encrypted store version");
+      this.verify(db, key);
+      if (!migrating && legacy) {
+        const imported = db.prepare("SELECT value FROM metadata WHERE name = 'legacy_digest'").get();
+        if (imported?.value !== mac3(key, legacy)) throw new Error("Legacy runs.jsonl is unimported or changed; run intent-outreach store migrate into an empty store");
+      }
+      const result2 = fn(db, key);
+      db.exec("COMMIT");
+      transaction = false;
+      return result2;
+    } catch (error62) {
+      if (transaction) db.exec("ROLLBACK");
+      throw error62;
+    } finally {
+      db.close();
+      key.fill(0);
+    }
   }
 };
 
@@ -42389,7 +42529,7 @@ var SaveRunInput = {
   errors: external_exports.array(RunErrorSchema).max(2e3).default([]),
   rejectedDrafts: external_exports.array(external_exports.object({ contactKey: external_exports.string().min(1).max(400), issues: external_exports.array(external_exports.string().max(1e3)).max(50) })).max(2e3).default([]),
   failedConnectors: external_exports.array(FailedConnectorSchema).max(500).default([]),
-  overwrite: external_exports.boolean().default(false).describe("Replace an existing run with the same id (the old snapshot stays in the append-only log)")
+  overwrite: external_exports.boolean().default(false).describe("Replace an existing run with the same id (a minimal audit event is retained; old message content is replaced)")
 };
 var SaveRunArgsSchema = external_exports.object(SaveRunInput);
 async function handleSaveRun(rawArgs, deps = {}) {
@@ -42491,7 +42631,7 @@ async function handleSaveRun(rawArgs, deps = {}) {
       createdAt: stamped,
       finishedAt: stamped
     });
-    const store = deps.store ?? new JsonlRunStore(deps.storePath);
+    const store = deps.store ?? new EncryptedSqliteRunStore(deps.storePath);
     await store.saveRun(run, { overwrite: args.overwrite });
     return asText({
       saved: run.id,
@@ -42521,7 +42661,7 @@ var ListPendingInput = {
 };
 async function handleListPending(args, deps = {}) {
   try {
-    const store = deps.store ?? new JsonlRunStore();
+    const store = deps.store ?? new EncryptedSqliteRunStore();
     const pending = await listPending(store, deps.approvalsPath);
     return asText({ total: pending.length, pending: pending.slice(0, args.limit ?? 50) });
   } catch (err) {
@@ -42537,7 +42677,7 @@ var DecideInput = {
 async function decideVia(decision, args, deps) {
   try {
     const record2 = await decide({
-      store: deps.store ?? new JsonlRunStore(),
+      store: deps.store ?? new EncryptedSqliteRunStore(),
       runId: args.runId,
       contactKey: args.contactKey,
       decision,
@@ -42559,7 +42699,7 @@ var ListRunsInput = {
 };
 async function handleListRuns(args, deps = {}) {
   try {
-    const store = deps.store ?? new JsonlRunStore();
+    const store = deps.store ?? new EncryptedSqliteRunStore();
     const runs = await store.listRuns();
     const corrupt = (await store.corruptLines()).length;
     const summaries = [...runs].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id)).slice(0, args.limit ?? 20).map((r) => ({
@@ -42665,7 +42805,7 @@ server.registerTool(
   "save_run",
   {
     title: "Save a validated campaign run",
-    description: "Gate and append an assembled campaign run to the LOCAL run store (JSONL under the user's home, never the cloud). The same compliance as a CLI run applies: suppressed or pack-blocked contacts move to blockedContacts (never saved as messages), each draft must pass the send-safety guard (failures go to rejectedDrafts), and email drafts get the CAN-SPAM footer from the profile's sender identity (or are flagged needsSenderIdentity). The whole record is schema-validated before it is persisted. Returns the saved run id + path, or an error describing what to fix.",
+    description: "Gate and save an assembled campaign run to the LOCAL encrypted SQLite run store (under the user's home, never the cloud). The same compliance as a CLI run applies: suppressed or pack-blocked contacts move to blockedContacts (never saved as messages), each draft must pass the send-safety guard (failures go to rejectedDrafts), and email drafts get the CAN-SPAM footer from the profile's sender identity (or are flagged needsSenderIdentity). The whole record is schema-validated before it is persisted. Returns the saved run id + path, or an error describing what to fix.",
     inputSchema: SaveRunInput
   },
   async (args) => handleSaveRun(args)

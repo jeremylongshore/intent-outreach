@@ -44,8 +44,10 @@ providers whose keys you configured. Clay is a push-only connector that posts le
 
 ## Local data
 
-- Run records go to a **local** JSONL file (`~/.intent-outreach/runs.jsonl`); opt-outs to
-  `suppressions.jsonl` beside it. There is no telemetry and no server-side retention.
+- Run records default to **local encrypted SQLite** (`~/.intent-outreach/runs.sqlite`). AES-256-GCM protects payloads; keyed IDs and an authenticated audit avoid plaintext prospect identifiers. The default key is the adjacent 0600 `runs.sqlite.key`; configure `INTENT_OUTREACH_STORE_KEY_FILE` and keep key backups separate. A database plus its key is readable by their holder. Metadata (counts, times, lengths) is visible; this is not full-file/SQLCipher encryption.
+- Run retention is 30 days for property/unknown packs and 365 for B2B, tightened by vendor terms. Reads/writes and `store purge` enforce deadlines; idle installations need a scheduled purge. Backups and legacy JSONL are outside this cleanup. Migration preserves plaintext originals for operator review and disposal.
+- Suppression/consent/approval ledgers, provider caches, monitor snapshots and explicit exports remain local plaintext under their existing permission controls. This run-store change does not encrypt those separate stores. There is no telemetry and no server-side retention.
+- Audit triggers prevent updates/deletes through normal SQLite operations; a keyed chain detects altered history or live payloads on access. An attacker with database write access can still roll back a complete backup, or with the key forge records. No external audit anchor or automatic key rotation is provided. See [storage operations](README.md#where-your-data-lives).
 - Directories are created with mode 0700 and files with 0600; an existing run store with broader
   permissions is tightened on the next write.
 - **PII minimization:** connector enrichment data is cut down to a B2B allowlist (title, seniority, company,

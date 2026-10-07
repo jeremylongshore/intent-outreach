@@ -334,14 +334,14 @@ describe("defaultStorePath honours INTENT_OUTREACH_HOME safely", () => {
 
   it("uses an absolute override", () => {
     process.env.INTENT_OUTREACH_HOME = dir;
-    expect(defaultStorePath()).toBe(join(dir, "runs.jsonl"));
+    expect(defaultStorePath()).toBe(join(dir, "runs.sqlite"));
   });
 
   for (const unset of ["", "   ", "${INTENT_OUTREACH_HOME}", "${user_config.home}"]) {
     it(`treats ${JSON.stringify(unset)} as unset (falls back to ~/.intent-outreach)`, () => {
       process.env.INTENT_OUTREACH_HOME = unset;
       const p = defaultStorePath();
-      expect(p.endsWith(join(".intent-outreach", "runs.jsonl"))).toBe(true);
+      expect(p.endsWith(join(".intent-outreach", "runs.sqlite"))).toBe(true);
       expect(p.startsWith("/")).toBe(true);
     });
   }

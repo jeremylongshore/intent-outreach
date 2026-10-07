@@ -5,9 +5,8 @@
  * mandatory"): the record exists, but its backend is a local file by default.
  *
  * HARD CONSTRAINT (017-AT-DECR §5): local-only. No hosted/managed database, no
- * telemetry, no server-side retention. The default impl writes append-only JSONL
- * under the user's own directory. A local SQLite adapter can be slotted in behind
- * the same interface later — never a network store.
+ * telemetry, no server-side retention. The default CLI/MCP implementation is
+ * encrypted-store.ts. JsonlRunStore remains for explicit legacy tooling.
  *
  * INVARIANT (017-AT-DECR §8): `saveRun` accepts ONLY `Validated<CampaignRun>`.
  * The brand can only be minted by validator.ts, so un-validated model output
@@ -30,8 +29,9 @@ import { assertCampaignRun, validateCampaignRun, type Validated } from "./valida
 
 export interface SaveRunOptions {
   /**
-   * Allow saving a run whose id is already persisted. The new snapshot is
-   * appended (append-only: the old line is kept for audit) and wins on read.
+   * Allow saving a run whose id is already persisted. The new snapshot wins
+   * on read. Encrypted storage retains only a minimal audit of the old write;
+   * the legacy JSONL adapter retains the previous payload.
    */
   overwrite?: boolean;
 }
@@ -64,7 +64,7 @@ export interface RunStore {
 
 export class DuplicateRunError extends Error {
   constructor(public readonly runId: string) {
-    super(`run "${runId}" already exists in the store; pass { overwrite: true } to append a new snapshot`);
+    super(`run "${runId}" already exists in the store; pass { overwrite: true } to replace the saved snapshot`);
     this.name = "DuplicateRunError";
   }
 }
@@ -82,6 +82,11 @@ export class StoreLockTimeoutError extends Error {
  * relative one is rejected (see secrets.ts `envPath`).
  */
 export function defaultStorePath(): string {
+  return join(intentOutreachHome(), "runs.sqlite");
+}
+
+/** Legacy plaintext location, only for explicit compatibility and migration. */
+export function legacyStorePath(): string {
   return join(intentOutreachHome(), "runs.jsonl");
 }
 
@@ -112,7 +117,7 @@ export class JsonlRunStore implements RunStore {
   private warnedKey = "";
 
   constructor(
-    private readonly path: string = defaultStorePath(),
+    private readonly path: string = legacyStorePath(),
     opts: JsonlRunStoreOptions = {},
   ) {
     this.lockTimeoutMs = opts.lockTimeoutMs ?? 10_000;

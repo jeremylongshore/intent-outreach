@@ -4,6 +4,8 @@
  * command code itself): suppress, approvals, check-send, monitor, property-run.
  */
 
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { Readable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main, UsageError } from "../cli.js";
@@ -12,13 +14,14 @@ import { _resetBuiltins, registerConnector } from "../pipeline_core/connectors/i
 import type { ResearchOutput } from "../pipeline_core/connectors/types.js";
 import { propertyKey, SCHEMA_VERSION } from "../pipeline_core/models.js";
 import { _resetSecretCache } from "../pipeline_core/secrets.js";
-import { JsonlRunStore } from "../pipeline_core/store.js";
+import { EncryptedSqliteRunStore } from "../pipeline_core/encrypted-store.js";
 import { assertCampaignRun } from "../pipeline_core/validator.js";
 
 let out = "";
 const T = "2026-10-06T12:00:00.000Z";
 
 beforeEach(() => {
+  vi.useFakeTimers({ now: Date.parse(T), toFake: ["Date"] });
   out = "";
   vi.spyOn(process.stdout, "write").mockImplementation((chunk: string | Uint8Array) => {
     out += String(chunk);
@@ -29,6 +32,7 @@ beforeEach(() => {
   _resetSecretCache();
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   process.exitCode = undefined;
 });
@@ -54,7 +58,7 @@ describe("suppress", () => {
 describe("approvals + check-send", () => {
   const body = "Hi Jane, a quick note about Acme.";
   const seed = async () =>
-    new JsonlRunStore().saveRun(
+    new EncryptedSqliteRunStore().saveRun(
       assertCampaignRun({
         id: "r1",
         schemaVersion: SCHEMA_VERSION,
@@ -174,5 +178,31 @@ describe("property-run", () => {
     await expect(main(["property-run", "--icp", "x", "--zips", "32507", "--max-properties", "0"])).rejects.toBeInstanceOf(UsageError);
     await expect(main(["property-run", "--icp", "x", "--zips", "32507", "--profile", "missing.json"])).rejects.toThrow(/--profile/);
     await expect(main(["property-run", "--icp", "x", "--zips", "32507"])).rejects.not.toBeInstanceOf(UsageError);
+  });
+});
+
+
+describe("store operations", () => {
+  it("migrates explicitly, shows minimal audit and purges through the public commands", async () => {
+    const source = join(process.env.INTENT_OUTREACH_HOME!, "legacy.jsonl");
+    const destination = join(process.env.INTENT_OUTREACH_HOME!, "import.sqlite");
+    const original = JSON.stringify({ id: "cli-import", schemaVersion: 1, icp: "legacy", domains: [], provider: "fixture", model: "fixture", status: "complete", createdAt: T });
+    writeFileSync(source, original);
+    await main(["store", "migrate", "--from", source, "--out", destination]);
+    expect(JSON.parse(out)).toEqual({ imported: 1, expired: 0, alreadyMigrated: false, sourcePreserved: true });
+    expect(readFileSync(source, "utf8")).toBe(original);
+    out = "";
+    await main(["store", "audit", "--out", destination]);
+    expect(JSON.parse(out)[0].action).toBe("import");
+    expect(out).not.toContain("cli-import");
+    out = "";
+    await main(["store", "purge", "--out", destination]);
+    expect(JSON.parse(out)).toEqual({ expired: 0 });
+  });
+
+  it("rejects incomplete, misspelled and inconsistent commands", async () => {
+    for (const args of [[], ["wrong"], ["purge", "extra"], ["audit", "--from", "unused"], ["purge", "--bogus"], ["migrate", "--from"]]) {
+      await expect(main(["store", ...args])).rejects.toBeInstanceOf(UsageError);
+    }
   });
 });

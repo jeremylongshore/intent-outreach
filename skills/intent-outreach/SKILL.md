@@ -47,7 +47,7 @@ disable-model-invocation: true
 
 Coordinate a reviewed Research → Enrich → Score and Draft workflow without sending any message. The
 bundled MCP server runs configured connectors in fixed registration order and rejects invalid campaign
-runs before writing them to the local JSONL store.
+runs before writing them to the local encrypted SQLite store.
 
 ## Prerequisites
 
@@ -105,8 +105,8 @@ runs before writing them to the local JSONL store.
 - Never invent a person, address, company fact, funding event, customer, metric, or relationship.
 - Never display secrets. Connector credentials are read from environment variables and sent only to
   the corresponding provider API by that connector.
-- `save_run` writes locally to `$INTENT_OUTREACH_HOME/runs.jsonl`, or
-  `~/.intent-outreach/runs.jsonl` when that variable is unset. It does not send outreach.
+- `save_run` writes locally to `$INTENT_OUTREACH_HOME/runs.sqlite`, or
+  `~/.intent-outreach/runs.sqlite` when that variable is unset. It does not send outreach.
 - An email draft saved without a configured sender identity is flagged `needsSenderIdentity` and must
   not be sent as-is; tell the user to add `sender` to their profile.
 - Tool names: installed as a plugin, the MCP tools are `mcp__plugin_intent-outreach_intent-outreach__<tool>`;

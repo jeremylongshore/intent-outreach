@@ -7,6 +7,9 @@ import type { CampaignRun } from "../../pipeline_core/models.js";
 import type { JsonlRunStore, MemoryRunStore, RunStore } from "../../pipeline_core/store.js";
 import { assertCampaignRun, type Validated } from "../../pipeline_core/validator.js";
 
+import type { EncryptedSqliteRunStore } from "../../pipeline_core/encrypted-store.js";
+
+declare const encrypted: EncryptedSqliteRunStore;
 declare const raw: CampaignRun;
 declare const unknownFromModel: unknown;
 declare const store: RunStore;
@@ -18,6 +21,7 @@ export const ok = async (): Promise<void> => {
   await store.saveRun(assertCampaignRun(unknownFromModel));
   await jsonl.saveRun(assertCampaignRun(unknownFromModel));
   await memory.saveRun(assertCampaignRun(unknownFromModel));
+  await encrypted.saveRun(assertCampaignRun(unknownFromModel));
 };
 
 export const rejected = async (): Promise<void> => {
@@ -27,6 +31,8 @@ export const rejected = async (): Promise<void> => {
   await jsonl.saveRun(raw);
   // @ts-expect-error same for the in-memory implementation
   await memory.saveRun(raw);
+  // @ts-expect-error same for the encrypted SQLite implementation
+  await encrypted.saveRun(raw);
   // @ts-expect-error raw model output (unknown) cannot be persisted
   await store.saveRun(unknownFromModel);
 };

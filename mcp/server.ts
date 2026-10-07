@@ -91,7 +91,7 @@ server.registerTool(
   {
     title: "Save a validated campaign run",
     description:
-      "Gate and append an assembled campaign run to the LOCAL run store (JSONL under the " +
+      "Gate and save an assembled campaign run to the LOCAL encrypted SQLite run store (under the " +
       "user's home, never the cloud). The same compliance as a CLI run applies: suppressed " +
       "or pack-blocked contacts move to blockedContacts (never saved as messages), each draft " +
       "must pass the send-safety guard (failures go to rejectedDrafts), and email drafts get " +
