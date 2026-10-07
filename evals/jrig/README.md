@@ -18,8 +18,9 @@ pnpm exec tsc -p evals/jrig/tsconfig.json
 
 The output path must not already exist. The command uses the unchanged shipped
 `bundle/server.mjs`, J-Rig's actual CLI and MCP loop, a scripted loopback model
-endpoint and a test-only fetch preload. Only two synthetic Hunter responses are
-available. Every other fetch is refused; no vendor request is forwarded. The
+endpoint and a test-only fetch preload. Only the two reviewed synthetic domains
+have Hunter research/enrichment responses. Every other fetch is refused; no
+vendor request is forwarded. The
 child environment supplies only synthetic keys, disposable HOME/store/secrets
 paths, and disables public-records connectors. It never reads production keys.
 
@@ -59,10 +60,54 @@ resource boundaries, cancellation, failure receipts and budgets. Its integration
 case runs research and enrichment through the unchanged shipped bundle with the
 synthetic transport, verifies actual returned company/email data, checks that no
 store was created, and verifies child cleanup. These tests use scripted model
-turns and establish host mechanics only. The component still needs the scenario
-MCP entrypoint, model transport, authored human checkpoints and independent
-case/store assertions before it can establish behavioral acceptance. A reviewed
-Report Profile must be added explicitly if a later case requires one.
+turns and establish host mechanics only. The scenario MCP entrypoint, model transport, authored human checkpoints and
+independent case/store assertions are described below. A reviewed Report Profile
+must be added explicitly if a later case requires one; the current host refuses
+`save_run.profile` and does not read arbitrary profile paths.
+
+## Scenario MCP host and independent assertions
+
+`scenario-host.ts` is an explicit stdio MCP entrypoint. Launch it with Node's
+`--import tsx` and an absolute JSON config path. The config contains `caseId`, an
+absolute private `evidenceDir`, explicit `provider`, `model` and `baseUrl`, and
+`checkpoints` copied from the matching entry in `scenarios.ts`. Supply the model
+key only through `JRIG_AGENT_API_KEY`. Use the same execution provider/model as
+J-Rig so the agents inherit that model. The host never chooses a provider or key
+implicitly and does not approve a provider/model for production.
+
+The host starts the unchanged bundle in a fresh directory on every launch,
+including a naked-baseline launch. Only synthetic Hunter credentials reach that
+child; the fetch preload rejects unlisted vendor requests. The model adapter
+uses the explicit HTTPS endpoint (or loopback for component tests), preserves
+correlated tool turns and actual token usage, refuses truncated/malformed
+responses, and honors cancellation. It performs no retries or provider fallback.
+Nested usage is recorded separately from J-Rig's root-model cost accounting.
+
+The root receives the skill's own declared tools plus `Agent`, `AskUserQuestion`
+and scoped `Read`; research and enrichment tools belong only to their phase
+agents. Authored answers are finite, separate checkpoint replies. Include all
+reviewed draft text in the question. An unknown or mismatched checkpoint is an
+error, never an implicit approval. Every reply remains a synthetic evaluation
+decision. The host records model and tool events privately in `host-events.jsonl`
+and verifies bundled-child shutdown. It retains the private fixture store for
+independent inspection; the case runner owns eventual fixture disposal.
+
+`audit-scenario.ts` independently checks real dispatch/tool receipts, preflight,
+research domains, retained-lead enrichment, canonical prompt reads, separate
+checkpoints, exact approved draft text, and actual encrypted records. It also
+checks that no send approval or suppression was written. Premature persistence is
+allowed to reach the real bundled validator/store so the auditor can detect it;
+the host does not hide a bad model decision by enforcing the workflow itself.
+Missing or errored evidence cannot pass. The auditor reports structural evidence
+only, always `behavioralVerdict: null` and `tier3bPassed: false`.
+
+The stdio integration test uses a scripted loopback model to exercise all three
+phase agents, actual connector normalization, reviewed drafting resources,
+checkpoint replies and encrypted save. A second launch verifies store isolation;
+a separate negative case proves that the independent auditor rejects actual
+unapproved persistence. These are component checks. Still required are the
+single-case J-Rig runner, verified association of each skill/baseline execution
+with its host trace, actual non-Anthropic model runs and all behavioral layers.
 
 ## Behavioral acceptance contract
 

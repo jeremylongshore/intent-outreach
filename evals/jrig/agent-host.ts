@@ -58,6 +58,7 @@ export async function loadAgentResources(root: string) {
   for (const path of [...roles.map((role) => `agents/${role}.md`), ...resources]) {
     const actual = await realpath(resolve(base, path));
     if (!actual.startsWith(base + sep)) throw new Error("agent resource escapes repository");
+    if (actual !== resolve(base, path)) throw new Error("agent resource path is not reviewed");
     const text = await readFile(actual, "utf8");
     if (Buffer.byteLength(text) > 65536) throw new Error("agent resource exceeds size limit");
     contents.set(path, text);
@@ -70,6 +71,9 @@ export async function loadAgentResources(root: string) {
     const metadata = match?.[1];
     const body = match?.[2];
     if (!metadata || !body || !new RegExp(`^name: ${role}$`, "m").test(metadata)) throw new Error("invalid agent definition");
+    for (const declaration of ["model: inherit", "background: false", "skills: []", "disallowedTools: []"]) {
+      if (!metadata.split("\n").includes(declaration)) throw new Error("agent execution metadata changed; review host contract");
+    }
     const tools = /^tools:\n((?: {2}- [^\n]+\n)+)/m.exec(metadata + "\n")?.[1];
     if (!tools) throw new Error("missing agent tools");
     const declared = tools.trim().split("\n").map((line) => line.trim().slice(2));
@@ -124,7 +128,7 @@ export async function createAgentHost(options: {
   };
   return {
     snapshot: () => structuredClone({ events, invocations, calls, bytes, usage }),
-    async dispatch(input: { subagent_type: string; prompt: string }, parentSignal?: AbortSignal): Promise<string> {
+    async dispatch(input: { subagent_type: string; prompt: string }, parentSignal?: AbortSignal, correlationCallId?: number): Promise<string> {
       const { subagent_type: role, prompt } = z.object({
         subagent_type: z.enum(roles), prompt: z.string().min(1).max(65536),
       }).strict().parse(input);
@@ -140,7 +144,7 @@ export async function createAgentHost(options: {
       });
       const messages: AgentMessage[] = [{ role: "system", content: definition.body }, { role: "user", content: prompt }];
       const ids = new Set<string>();
-      record(invocation, role, "started", { prompt, definitionSha256: definition.sha256, provider: options.model.provider, model: options.model.model, tools: available.map((tool) => tool.name) });
+      record(invocation, role, "started", { correlationCallId, prompt, definitionSha256: definition.sha256, provider: options.model.provider, model: options.model.model, tools: available.map((tool) => tool.name) });
       try {
         account(messages);
         for (let turnIndex = 0; turnIndex < limits.maxTurns; turnIndex++) {

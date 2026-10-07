@@ -8,13 +8,19 @@ if (!home || process.env.HUNTER_API_KEY !== "jrig-offline-fixture") {
 writeFileSync(join(home, "mcp.pid"), String(process.pid), { mode: 0o600 });
 globalThis.fetch = async (input) => {
   const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
-  const valid = url.origin === "https://api.hunter.io" && url.searchParams.get("api_key") === "jrig-offline-fixture" && url.searchParams.get("domain") === "example.test";
+  const fixtures = {
+    "example.test": { organization: "Example Fixture Labs", first: "Riley", last: "Example", email: "riley@example.test" },
+    "second.example.test": { organization: "Second Fixture Labs", first: "Morgan", last: "Sample", email: "morgan@second.example.test" },
+  };
+  const domain = url.searchParams.get("domain");
+  const fixture = Object.hasOwn(fixtures, domain) ? fixtures[domain] : undefined;
+  const valid = url.origin === "https://api.hunter.io" && url.searchParams.get("api_key") === "jrig-offline-fixture" && fixture;
   if (!valid) throw new Error("fixture refuses all unlisted network requests");
   let data;
   if (url.pathname === "/v2/domain-search") {
-    data = { organization: "Example Fixture Labs", emails: [{ first_name: "Riley", last_name: "Example", position: "Founder" }] };
-  } else if (url.pathname === "/v2/email-finder" && url.searchParams.get("full_name") === "Riley Example") {
-    data = { email: "riley@example.test", score: 98 };
+    data = { organization: fixture.organization, emails: [{ first_name: fixture.first, last_name: fixture.last, position: "Founder" }] };
+  } else if (url.pathname === "/v2/email-finder" && url.searchParams.get("full_name") === `${fixture.first} ${fixture.last}`) {
+    data = { email: fixture.email, score: 98 };
   } else {
     throw new Error("fixture endpoint or parameters not allowlisted");
   }

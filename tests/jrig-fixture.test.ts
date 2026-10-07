@@ -25,11 +25,24 @@ describe("J-Rig fixture transport isolation", () => {
     expect(JSON.parse(result.fetches)).toEqual({ path: "/v2/domain-search" });
     expect(result.fetches).not.toContain("api_key");
   });
+  it("keeps the second domain's company, person and enrichment separate", () => {
+    const result = run(`
+      const a = await fetch('https://api.hunter.io/v2/domain-search?domain=second.example.test&api_key=jrig-offline-fixture');
+      const b = await fetch('https://api.hunter.io/v2/email-finder?domain=second.example.test&full_name=Morgan%20Sample&api_key=jrig-offline-fixture');
+      console.log(JSON.stringify([await a.json(),await b.json()]));
+    `);
+    const [research,enrichment] = JSON.parse(result.stdout);
+    expect(research.data.organization).toBe("Second Fixture Labs");
+    expect(research.data.emails[0].first_name).toBe("Morgan");
+    expect(enrichment.data.email).toBe("morgan@second.example.test");
+    expect(result.stdout).not.toContain("Riley");
+  });
   it.each([
     "https://unlisted.example/v2/domain-search?domain=example.test&api_key=jrig-offline-fixture",
     "https://api.hunter.io/v2/domain-search?domain=real-company.example&api_key=jrig-offline-fixture",
     "https://api.hunter.io/v2/domain-search?domain=example.test&api_key=wrong",
     "https://api.hunter.io/v2/unlisted?domain=example.test&api_key=jrig-offline-fixture",
+    "https://api.hunter.io/v2/email-finder?domain=second.example.test&full_name=Riley%20Example&api_key=jrig-offline-fixture",
   ])("refuses an unlisted request without forwarding it: %s", (url) => {
     const result = run(`try { await fetch(${JSON.stringify(url)}); process.exitCode = 9; } catch (error) { console.log(error.message); }`);
     expect(result.stdout.trim()).toMatch(/^fixture (refuses|endpoint)/);
