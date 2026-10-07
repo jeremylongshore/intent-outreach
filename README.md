@@ -190,6 +190,12 @@ intent-outreach property-run --icp "Listing agent for Perdido Key homes" --zips 
 intent-outreach property-run --icp "..." --parcels 12033:082S305005000002 --budget-credits 50
 ```
 
+Both scoring and drafting models need a verified `residential-re` approval in
+`evals/supported.ts`. B2B approval does not qualify a model for this pack. The same
+requirement applies to monitor drafts and residential inbound replies. An unapproved
+selection stops with the command needed to qualify it; see [the eval gate](evals/README.md).
+`INTENT_OUTREACH_ALLOW_UNGATED=1` is an explicit override for local testing only.
+
 Public records come from free, keyless sources (`000-docs/035`): the Florida statewide parcel roll and
 FEMA flood zones. Every owner passes the suppression list and the pack's gate first: the service area,
 manual review for probate, divorce and pre-foreclosure, known active listings, government owners, and the

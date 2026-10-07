@@ -128,6 +128,19 @@ describe("monitor", () => {
     });
   });
 
+  it("an unapproved draft model leaves monitor changes pending for a later retry", async () => {
+    reply = p("1", "ANN");
+    await main(["monitor", "add", "gated", "--zips", "32507"]);
+    await main(["monitor", "check", "gated"]);
+    reply = p("1", "ZED");
+    await expect(main(["monitor", "check", "gated", "--draft", "--icp", "Listing agent"]))
+      .rejects.toThrow(/eval gate for pack "residential-re"/);
+    out = "";
+    await main(["monitor", "check", "gated", "--json"]);
+    expect(JSON.parse(out).events).toEqual([{ kind: "owner-change", propertyKey: "12033:1", before: "ANN", after: "ZED" }]);
+    reply = p("1", "ANN");
+  });
+
   it("add → check (baseline) → check (owner change, json) → list; option validation", async () => {
     await main(["monitor", "add", "pk", "--zips", "32507", "--value-change-pct", "15"]);
     expect(out).toContain("monitor pk saved");
@@ -154,7 +167,7 @@ describe("monitor", () => {
 });
 
 describe("property-run", () => {
-  it("validates flags, then fails on a missing model key before any research", async () => {
+  it("validates flags, then fails the model gate before any research", async () => {
     await expect(main(["property-run", "--zips", "32507"])).rejects.toBeInstanceOf(UsageError);
     await expect(main(["property-run", "--icp", "x", "--zips", "3250"])).rejects.toThrow(/5-digit/);
     await expect(main(["property-run", "--icp", "x", "--parcels", "nope"])).rejects.toThrow(/countyFips/);

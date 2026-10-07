@@ -1105,7 +1105,7 @@ export interface RunCampaignInput {
    * slice, and connectors aim people search/reveals at them. Absent ⇒ unchanged order.
    */
   buyerTitles?: string[];
-  /** Injected provider (tests/evals). Default: getProvider() from env (eval-gated). */
+  /** Trusted injection for tests/evals. Production providers recheck the resolved pack. */
   provider?: LLMProvider;
   /** Injected clock for determinism in tests. Default: real wall clock. */
   now?: () => string;
@@ -1172,9 +1172,11 @@ export async function runCampaign(input: RunCampaignInput): Promise<RunCampaignR
   // Opt-outs are loaded (I/O, pipeline layer) BEFORE anything is spent; a corrupt
   // suppression file throws here — fail closed rather than draft to an opt-out.
   const suppressions = input.suppressions ?? (await loadSuppressionList());
-  const provider = input.provider ?? (await getProvider());
   registerBuiltinPacks();
   const pack = resolvePack(input.pack);
+  const provider = input.provider ?? (await getProvider({ pack: pack.id }));
+  provider.assertPackApproved?.(pack.id);
+  input.scoreProvider?.assertPackApproved?.(pack.id);
   const researchRouting = pack.dataSources?.research?.["company.research"];
   const connectorOpts: ConnectorRunOptions = {
     ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),

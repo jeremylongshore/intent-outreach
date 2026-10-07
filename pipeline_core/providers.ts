@@ -9,8 +9,8 @@
  * Google was dropped entirely (owner decision, 2026-10): no adapter, no key
  * lookup, no optional dependency. Intent Outreach is zero-Google.
  *
- * D4 (Claude-first): only providers in SUPPORTED_PROVIDERS may run. A provider
- * earns its place by passing the eval gate (Epic 4/6). Until then it throws —
+ * D4 (Claude-first): B2B retains the SUPPORTED_PROVIDERS gate; other packs
+ * require a verified approval for the exact provider/model/pack. Until then it throws —
  * "BYO any key with no gate" is the silent-quality trap Huyen warned about.
  * Keys come from getSecret (env | local file); non-Anthropic deps are optional
  * and dynamically imported, so a minimal install still works on Claude alone.
@@ -29,7 +29,7 @@ import type { z } from "zod";
 import { getSecret, hasSecret } from "./secrets.js";
 import { costFor, type Usage } from "./cost.js";
 import { minimaxJsonMiddleware } from "./minimax.js";
-import { approvedEntry, supportedProviderNames } from "../evals/supported.js";
+import { approvedEntry, DEFAULT_EVAL_PACK, supportedProviderNames } from "../evals/supported.js";
 
 export type ProviderName = "anthropic" | "openai" | "xai" | "minimax";
 
@@ -83,6 +83,8 @@ export interface GenerateObjectArgs<S extends z.ZodTypeAny> {
 export interface LLMProvider {
   readonly name: ProviderName;
   readonly model: string;
+  /** Production factories enforce approval again when a campaign selects its pack. */
+  assertPackApproved?(pack: string): void;
   generateObject<S extends z.ZodTypeAny>(
     args: GenerateObjectArgs<S>,
   ): Promise<{ object: z.infer<S>; usage: Usage }>;
@@ -217,6 +219,8 @@ export function usageFrom(model: string, u: LanguageModelUsage): Usage {
 export interface GetProviderOptions {
   provider?: ProviderName;
   model?: string;
+  /** Eval approval scope. Default b2b-sdr retains its legacy provider gate. */
+  pack?: string;
 }
 
 const warnedUnapproved = new Set<string>();
@@ -234,6 +238,23 @@ function warnIfUnapproved(provider: ProviderName, model: string): void {
   process.stderr.write(
     `intent-outreach: warning: ${provider} model "${model}" has no approved eval record (evals/supported.ts); ` +
       `qualify it with: pnpm run evals:promote --provider ${provider} --model ${model}\n`,
+  );
+}
+
+/** Runtime approval uses the exact model AND pack; B2B's legacy behavior stays intact. */
+function assertModelSupported(provider: ProviderName, model: string, pack: string): void {
+  if (pack === DEFAULT_EVAL_PACK) {
+    assertSupported(provider);
+    if (SUPPORTED_PROVIDERS.has(provider)) warnIfUnapproved(provider, model);
+    return;
+  }
+  if (process.env.INTENT_OUTREACH_ALLOW_UNGATED === "1") return;
+  const entry = approvedEntry(provider, model, undefined, pack);
+  if (entry?.verified && entry.resultFile) return;
+  throw new Error(
+    `model "${provider}/${model}" has not passed the eval gate for pack "${pack}". ` +
+      `Qualify it with: pnpm run evals:promote --provider ${provider} --model ${model} --pack ${pack}. ` +
+      `INTENT_OUTREACH_ALLOW_UNGATED=1 overrides this check for local testing only.`,
   );
 }
 
@@ -263,14 +284,14 @@ async function createProvider(opts: GetProviderOptions, gated: boolean): Promise
   if (!Object.hasOwn(KEY_ENV, name)) {
     throw new Error(`unknown provider "${String(name)}" (known: ${Object.keys(KEY_ENV).join(", ")})`);
   }
-  if (gated) assertSupported(name);
   const model = opts.model ?? process.env.INTENT_OUTREACH_MODEL ?? DEFAULT_MODEL[name];
-  if (gated && SUPPORTED_PROVIDERS.has(name)) warnIfUnapproved(name, model);
+  if (gated) assertModelSupported(name, model, opts.pack ?? DEFAULT_EVAL_PACK);
   const languageModel = await resolveModel(name, model);
 
   return {
     name,
     model,
+    ...(gated ? { assertPackApproved: (pack: string) => assertModelSupported(name, model, pack) } : {}),
     async generateObject<S extends z.ZodTypeAny>(
       args: GenerateObjectArgs<S>,
     ): Promise<{ object: z.infer<S>; usage: Usage }> {

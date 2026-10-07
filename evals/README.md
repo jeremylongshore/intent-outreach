@@ -64,9 +64,16 @@ checks four kinds of result:
 `supported.ts` lists approved `{provider, model, pack}` records. A pass on one pack says nothing
 about another. Entries written before packs existed are `b2b-sdr`. `pipeline_core/providers.ts`
 derives `SUPPORTED_PROVIDERS` from the `b2b-sdr` entries, so a provider is supported only if it has
-at least one of them, and an approval on another pack never switches a provider on. Running a model
-that has no `b2b-sdr` entry under a supported provider prints a warning on stderr. Product code does
-not yet check an approval per pack at runtime (follow-up).
+at least one of them, and an approval on another pack never switches a provider on for B2B. Running a model
+that has no `b2b-sdr` entry under a supported provider prints a warning on stderr.
+
+Non-B2B runtime selection requires an exact entry with `verified: true` and a result record
+for the selected pack; B2B approval cannot qualify residential scoring or drafting. Both drafter
+and separately selected scorer are checked. Property campaigns, monitor drafts and inbound
+replies use their resolved pack, including when a production provider is passed into the engine.
+`INTENT_OUTREACH_ALLOW_UNGATED=1` remains an explicit local-testing override. Custom injected
+providers and `getProviderUnchecked` are trusted test/eval seams; normal callers use
+`getProvider({ provider, model, pack })`.
 
 `verified: true` means `resultFile` points at a committed record whose verdict is `pass`.
 `tests/eval-gate.test.ts` enforces this. The anthropic and openai entries are legacy claims from
