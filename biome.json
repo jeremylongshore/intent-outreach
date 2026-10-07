@@ -2,7 +2,7 @@
   "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
   "vcs": { "enabled": false },
   "files": {
-    "includes": ["pipeline_core/**", "mcp/**", "evals/**/*.ts", "tests/**", "cli.ts", "vitest.config.ts", "biome.json", "package.json"]
+    "includes": ["pipeline_core/**", "mcp/**", "evals/**/*.ts", "tests/**", "cli.ts", "scripts/export-contracts.ts", "vitest.config.ts", "biome.json", "package.json"]
   },
   "formatter": { "enabled": false },
   "assist": { "enabled": false },

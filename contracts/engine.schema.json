@@ -1,0 +1,2334 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EngineContracts",
+  "description": "Structural output contracts only; canonical Zod refinements remain authoritative.",
+  "type": "object",
+  "properties": {
+    "Lead": {
+      "$ref": "#/definitions/Lead"
+    },
+    "Contact": {
+      "$ref": "#/definitions/Contact"
+    },
+    "Enrichment": {
+      "$ref": "#/definitions/Enrichment"
+    },
+    "Message": {
+      "$ref": "#/definitions/Message"
+    },
+    "CampaignRun": {
+      "$ref": "#/definitions/CampaignRun"
+    },
+    "Property": {
+      "$ref": "#/definitions/Property"
+    },
+    "Party": {
+      "$ref": "#/definitions/Party"
+    },
+    "Ownership": {
+      "$ref": "#/definitions/Ownership"
+    },
+    "EntityLink": {
+      "$ref": "#/definitions/EntityLink"
+    },
+    "ContactPoint": {
+      "$ref": "#/definitions/ContactPoint"
+    },
+    "ResearchQuery": {
+      "$ref": "#/definitions/ResearchQuery"
+    },
+    "Address": {
+      "$ref": "#/definitions/Address"
+    },
+    "Channel": {
+      "$ref": "#/definitions/Channel"
+    },
+    "DncStatus": {
+      "$ref": "#/definitions/DncStatus"
+    },
+    "LicenseTerms": {
+      "$ref": "#/definitions/LicenseTerms"
+    },
+    "ConsentRecord": {
+      "$ref": "#/definitions/ConsentRecord"
+    }
+  },
+  "required": [
+    "Lead",
+    "Contact",
+    "Enrichment",
+    "Message",
+    "CampaignRun",
+    "Property",
+    "Party",
+    "Ownership",
+    "EntityLink",
+    "ContactPoint",
+    "ResearchQuery",
+    "Address",
+    "Channel",
+    "DncStatus",
+    "LicenseTerms",
+    "ConsentRecord"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "Lead": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "companyName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "industry": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "domain",
+        "companyName",
+        "source"
+      ],
+      "additionalProperties": false,
+      "title": "Lead"
+    },
+    "Contact": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "leadDomain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "linkedin": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nameIncomplete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "leadDomain",
+        "source"
+      ],
+      "additionalProperties": false,
+      "title": "Contact"
+    },
+    "Enrichment": {
+      "type": "object",
+      "properties": {
+        "subjectType": {
+          "type": "string",
+          "enum": [
+            "lead",
+            "contact"
+          ]
+        },
+        "subjectKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "funding": {
+          "type": "object",
+          "properties": {
+            "lastRound": {
+              "type": "string"
+            },
+            "totalRaisedUsd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "lastRoundDate": {
+              "type": "string"
+            },
+            "investors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "verifiedEmail": {
+          "type": "string",
+          "format": "email",
+          "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        },
+        "contactName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "phone": {
+          "type": "string"
+        },
+        "data": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        },
+        "fetchedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        }
+      },
+      "required": [
+        "subjectType",
+        "subjectKey",
+        "provider",
+        "data",
+        "fetchedAt"
+      ],
+      "additionalProperties": false,
+      "title": "Enrichment"
+    },
+    "Message": {
+      "type": "object",
+      "properties": {
+        "contactKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "channel": {
+          "type": "string",
+          "enum": [
+            "email",
+            "linkedin",
+            "sms",
+            "mail",
+            "call_script"
+          ]
+        },
+        "subject": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cta": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fitScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "promptVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "needsSenderIdentity": {
+          "default": false,
+          "type": "boolean"
+        },
+        "propertyKey": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "contactKey",
+        "channel",
+        "body",
+        "cta",
+        "model",
+        "promptVersion",
+        "createdAt",
+        "needsSenderIdentity"
+      ],
+      "additionalProperties": false,
+      "title": "Message"
+    },
+    "CampaignRun": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schemaVersion": {
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 1
+            },
+            {
+              "type": "number",
+              "const": 2
+            },
+            {
+              "type": "number",
+              "const": 3
+            },
+            {
+              "type": "number",
+              "const": 4
+            },
+            {
+              "type": "number",
+              "const": 5
+            },
+            {
+              "type": "number",
+              "const": 6
+            }
+          ]
+        },
+        "icp": {
+          "type": "string",
+          "minLength": 1
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "vertical": {
+          "default": "b2b-sdr",
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "researched",
+                "enriched",
+                "complete",
+                "partial",
+                "failed"
+              ]
+            },
+            {
+              "type": "string",
+              "enum": [
+                "pending",
+                "drafted"
+              ]
+            }
+          ]
+        },
+        "leads": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "domain": {
+                "type": "string",
+                "minLength": 1
+              },
+              "companyName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "industry": {
+                "type": "string"
+              },
+              "size": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "domain",
+              "companyName",
+              "source"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "contacts": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "leadDomain": {
+                "type": "string",
+                "minLength": 1
+              },
+              "email": {
+                "type": "string",
+                "format": "email",
+                "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "linkedin": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "nameIncomplete": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "leadDomain",
+              "source"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "enrichments": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "subjectType": {
+                "type": "string",
+                "enum": [
+                  "lead",
+                  "contact"
+                ]
+              },
+              "subjectKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provider": {
+                "type": "string",
+                "minLength": 1
+              },
+              "funding": {
+                "type": "object",
+                "properties": {
+                  "lastRound": {
+                    "type": "string"
+                  },
+                  "totalRaisedUsd": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "lastRoundDate": {
+                    "type": "string"
+                  },
+                  "investors": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "verifiedEmail": {
+                "type": "string",
+                "format": "email",
+                "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              },
+              "contactName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "phone": {
+                "type": "string"
+              },
+              "data": {
+                "default": {},
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "fetchedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "subjectType",
+              "subjectKey",
+              "provider",
+              "data",
+              "fetchedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "messages": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "contactKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "channel": {
+                "type": "string",
+                "enum": [
+                  "email",
+                  "linkedin",
+                  "sms",
+                  "mail",
+                  "call_script"
+                ]
+              },
+              "subject": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string",
+                "minLength": 1
+              },
+              "cta": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fitScore": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "promptVersion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "needsSenderIdentity": {
+                "default": false,
+                "type": "boolean"
+              },
+              "propertyKey": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "contactKey",
+              "channel",
+              "body",
+              "cta",
+              "model",
+              "promptVersion",
+              "createdAt",
+              "needsSenderIdentity"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "costUsd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "skippedConnectors": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blockedContacts": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "contactKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "propertyKey": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "contactKey",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "errors": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "domain": {
+                "type": "string",
+                "minLength": 1
+              },
+              "propertyKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "contactKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stage": {
+                "type": "string",
+                "enum": [
+                  "score",
+                  "gate",
+                  "draft"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "finishReason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "stage",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "rejectedDrafts": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "contactKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "issues": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "propertyKey": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "contactKey",
+              "issues"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "failedConnectors": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "phase": {
+                "type": "string",
+                "enum": [
+                  "research",
+                  "enrich"
+                ]
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "phase",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "complianceWarnings": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "promptRefs": {
+          "default": {},
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "draft": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "droppedAngles": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "domain": {
+                "type": "string",
+                "minLength": 1
+              },
+              "propertyKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "angle": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "angle",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "pipeline",
+            "agent"
+          ]
+        },
+        "queries": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "domain"
+                  },
+                  "domain": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "kind",
+                  "domain"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "area"
+                  },
+                  "geography": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "pattern": "^[A-Z]{2}$"
+                      },
+                      "countyFips": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^\\d{5}$"
+                        }
+                      },
+                      "zips": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^\\d{5}$"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "filters": {
+                    "default": {},
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "kind",
+                  "geography",
+                  "filters"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "parcel"
+                  },
+                  "countyFips": {
+                    "type": "string",
+                    "pattern": "^\\d{5}$"
+                  },
+                  "apn": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "address": {
+                    "type": "object",
+                    "properties": {
+                      "line1": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "line2": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "city": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "state": {
+                        "type": "string",
+                        "pattern": "^[A-Z]{2}$"
+                      },
+                      "zip": {
+                        "type": "string",
+                        "pattern": "^\\d{5}(?:-\\d{4})?$"
+                      },
+                      "county": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "countyFips": {
+                        "type": "string",
+                        "pattern": "^\\d{5}$"
+                      }
+                    },
+                    "required": [
+                      "line1",
+                      "city",
+                      "state",
+                      "zip"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "seamModels": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "model": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "provider",
+                "model"
+              ],
+              "additionalProperties": false
+            },
+            "draft": {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "model": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "provider",
+                "model"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "score",
+            "draft"
+          ],
+          "additionalProperties": false
+        },
+        "inbound": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "receivedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            "draftedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            },
+            "speedToLeadMs": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "source",
+            "receivedAt",
+            "draftedAt",
+            "speedToLeadMs"
+          ],
+          "additionalProperties": false
+        },
+        "credits": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number",
+              "minimum": 0
+            },
+            "spent": {
+              "type": "number",
+              "minimum": 0
+            },
+            "exhausted": {
+              "type": "boolean"
+            },
+            "byConnector": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          },
+          "required": [
+            "limit",
+            "spent",
+            "exhausted",
+            "byConnector"
+          ],
+          "additionalProperties": false
+        },
+        "properties": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "apn": {
+                "type": "string",
+                "minLength": 1
+              },
+              "countyFips": {
+                "type": "string",
+                "pattern": "^\\d{5}$"
+              },
+              "address": {
+                "type": "object",
+                "properties": {
+                  "line1": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "line2": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "city": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "state": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{2}$"
+                  },
+                  "zip": {
+                    "type": "string",
+                    "pattern": "^\\d{5}(?:-\\d{4})?$"
+                  },
+                  "county": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "countyFips": {
+                    "type": "string",
+                    "pattern": "^\\d{5}$"
+                  }
+                },
+                "required": [
+                  "line1",
+                  "city",
+                  "state",
+                  "zip"
+                ],
+                "additionalProperties": false
+              },
+              "location": {
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lon": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lon"
+                ],
+                "additionalProperties": false
+              },
+              "attributes": {
+                "default": {},
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "value": {},
+                    "source": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "fetchedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "responseHash": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "licenseTerms": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "outreachRestricted": {
+                          "type": "boolean"
+                        },
+                        "retentionDays": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "attribution": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "via": {
+                      "type": "object",
+                      "properties": {
+                        "server": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "version": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "tool": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "server",
+                        "version",
+                        "tool"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "source",
+                    "fetchedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "key",
+              "apn",
+              "countyFips",
+              "attributes",
+              "source"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "parties": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "person",
+                  "entity"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "entityType": {
+                "type": "string",
+                "enum": [
+                  "llc",
+                  "corporation",
+                  "trust",
+                  "estate",
+                  "partnership",
+                  "government",
+                  "other"
+                ]
+              },
+              "mailingAddress": {
+                "type": "object",
+                "properties": {
+                  "line1": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "line2": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "city": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "state": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{2}$"
+                  },
+                  "zip": {
+                    "type": "string",
+                    "pattern": "^\\d{5}(?:-\\d{4})?$"
+                  },
+                  "county": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "countyFips": {
+                    "type": "string",
+                    "pattern": "^\\d{5}$"
+                  }
+                },
+                "required": [
+                  "line1",
+                  "city",
+                  "state",
+                  "zip"
+                ],
+                "additionalProperties": false
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "licenseTerms": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outreachRestricted": {
+                    "type": "boolean"
+                  },
+                  "retentionDays": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "attribution": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "key",
+              "kind",
+              "name",
+              "source"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "ownerships": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "propertyKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "partyKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "share": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              },
+              "role": {
+                "default": "owner",
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "co-owner",
+                  "trustee",
+                  "life-tenant"
+                ]
+              },
+              "asOf": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fetchedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "propertyKey",
+              "partyKey",
+              "role",
+              "source",
+              "fetchedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "entityLinks": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entityKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "personKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "member",
+                  "manager",
+                  "officer",
+                  "registered-agent",
+                  "organizer",
+                  "other"
+                ]
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fetchedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "entityKey",
+              "personKey",
+              "role",
+              "confidence",
+              "source",
+              "fetchedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "contactPoints": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "partyKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "phone",
+                  "email",
+                  "mail"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lineType": {
+                "type": "string",
+                "enum": [
+                  "mobile",
+                  "landline",
+                  "voip",
+                  "unknown"
+                ]
+              },
+              "dnc": {
+                "default": "unknown",
+                "type": "string",
+                "enum": [
+                  "clean",
+                  "listed",
+                  "unknown"
+                ]
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fetchedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "verifiedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "licenseTerms": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outreachRestricted": {
+                    "type": "boolean"
+                  },
+                  "retentionDays": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "attribution": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "partyKey",
+              "kind",
+              "value",
+              "dnc",
+              "source",
+              "fetchedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "finishedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        }
+      },
+      "required": [
+        "id",
+        "schemaVersion",
+        "icp",
+        "domains",
+        "vertical",
+        "provider",
+        "model",
+        "status",
+        "leads",
+        "contacts",
+        "enrichments",
+        "messages",
+        "skippedConnectors",
+        "blockedContacts",
+        "errors",
+        "rejectedDrafts",
+        "failedConnectors",
+        "complianceWarnings",
+        "promptRefs",
+        "droppedAngles",
+        "properties",
+        "parties",
+        "ownerships",
+        "entityLinks",
+        "contactPoints",
+        "createdAt"
+      ],
+      "additionalProperties": false,
+      "title": "CampaignRun"
+    },
+    "Property": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "apn": {
+          "type": "string",
+          "minLength": 1
+        },
+        "countyFips": {
+          "type": "string",
+          "pattern": "^\\d{5}$"
+        },
+        "address": {
+          "type": "object",
+          "properties": {
+            "line1": {
+              "type": "string",
+              "minLength": 1
+            },
+            "line2": {
+              "type": "string",
+              "minLength": 1
+            },
+            "city": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state": {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            },
+            "zip": {
+              "type": "string",
+              "pattern": "^\\d{5}(?:-\\d{4})?$"
+            },
+            "county": {
+              "type": "string",
+              "minLength": 1
+            },
+            "countyFips": {
+              "type": "string",
+              "pattern": "^\\d{5}$"
+            }
+          },
+          "required": [
+            "line1",
+            "city",
+            "state",
+            "zip"
+          ],
+          "additionalProperties": false
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lon": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "lat",
+            "lon"
+          ],
+          "additionalProperties": false
+        },
+        "attributes": {
+          "default": {},
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "value": {},
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fetchedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "responseHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "licenseTerms": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outreachRestricted": {
+                    "type": "boolean"
+                  },
+                  "retentionDays": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "attribution": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              },
+              "via": {
+                "type": "object",
+                "properties": {
+                  "server": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "tool": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "server",
+                  "version",
+                  "tool"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "value",
+              "source",
+              "fetchedAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "key",
+        "apn",
+        "countyFips",
+        "attributes",
+        "source"
+      ],
+      "additionalProperties": false,
+      "title": "Property"
+    },
+    "Party": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "person",
+            "entity"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "enum": [
+            "llc",
+            "corporation",
+            "trust",
+            "estate",
+            "partnership",
+            "government",
+            "other"
+          ]
+        },
+        "mailingAddress": {
+          "type": "object",
+          "properties": {
+            "line1": {
+              "type": "string",
+              "minLength": 1
+            },
+            "line2": {
+              "type": "string",
+              "minLength": 1
+            },
+            "city": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state": {
+              "type": "string",
+              "pattern": "^[A-Z]{2}$"
+            },
+            "zip": {
+              "type": "string",
+              "pattern": "^\\d{5}(?:-\\d{4})?$"
+            },
+            "county": {
+              "type": "string",
+              "minLength": 1
+            },
+            "countyFips": {
+              "type": "string",
+              "pattern": "^\\d{5}$"
+            }
+          },
+          "required": [
+            "line1",
+            "city",
+            "state",
+            "zip"
+          ],
+          "additionalProperties": false
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "licenseTerms": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outreachRestricted": {
+              "type": "boolean"
+            },
+            "retentionDays": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "attribution": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "key",
+        "kind",
+        "name",
+        "source"
+      ],
+      "additionalProperties": false,
+      "title": "Party"
+    },
+    "Ownership": {
+      "type": "object",
+      "properties": {
+        "propertyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "partyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "share": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "role": {
+          "default": "owner",
+          "type": "string",
+          "enum": [
+            "owner",
+            "co-owner",
+            "trustee",
+            "life-tenant"
+          ]
+        },
+        "asOf": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fetchedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        }
+      },
+      "required": [
+        "propertyKey",
+        "partyKey",
+        "role",
+        "source",
+        "fetchedAt"
+      ],
+      "additionalProperties": false,
+      "title": "Ownership"
+    },
+    "EntityLink": {
+      "type": "object",
+      "properties": {
+        "entityKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "personKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "member",
+            "manager",
+            "officer",
+            "registered-agent",
+            "organizer",
+            "other"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fetchedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        }
+      },
+      "required": [
+        "entityKey",
+        "personKey",
+        "role",
+        "confidence",
+        "source",
+        "fetchedAt"
+      ],
+      "additionalProperties": false,
+      "title": "EntityLink"
+    },
+    "ContactPoint": {
+      "type": "object",
+      "properties": {
+        "partyKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "phone",
+            "email",
+            "mail"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lineType": {
+          "type": "string",
+          "enum": [
+            "mobile",
+            "landline",
+            "voip",
+            "unknown"
+          ]
+        },
+        "dnc": {
+          "default": "unknown",
+          "type": "string",
+          "enum": [
+            "clean",
+            "listed",
+            "unknown"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fetchedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "verifiedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+        },
+        "licenseTerms": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outreachRestricted": {
+              "type": "boolean"
+            },
+            "retentionDays": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "attribution": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "partyKey",
+        "kind",
+        "value",
+        "dnc",
+        "source",
+        "fetchedAt"
+      ],
+      "additionalProperties": false,
+      "title": "ContactPoint"
+    },
+    "ResearchQuery": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "domain"
+            },
+            "domain": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "domain"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "area"
+            },
+            "geography": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "countyFips": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\d{5}$"
+                  }
+                },
+                "zips": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\d{5}$"
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "filters": {
+              "default": {},
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {}
+            }
+          },
+          "required": [
+            "kind",
+            "geography",
+            "filters"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "parcel"
+            },
+            "countyFips": {
+              "type": "string",
+              "pattern": "^\\d{5}$"
+            },
+            "apn": {
+              "type": "string",
+              "minLength": 1
+            },
+            "address": {
+              "type": "object",
+              "properties": {
+                "line1": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "line2": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "city": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "state": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{2}$"
+                },
+                "zip": {
+                  "type": "string",
+                  "pattern": "^\\d{5}(?:-\\d{4})?$"
+                },
+                "county": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "countyFips": {
+                  "type": "string",
+                  "pattern": "^\\d{5}$"
+                }
+              },
+              "required": [
+                "line1",
+                "city",
+                "state",
+                "zip"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "title": "ResearchQuery"
+    },
+    "Address": {
+      "type": "object",
+      "properties": {
+        "line1": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line2": {
+          "type": "string",
+          "minLength": 1
+        },
+        "city": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "zip": {
+          "type": "string",
+          "pattern": "^\\d{5}(?:-\\d{4})?$"
+        },
+        "county": {
+          "type": "string",
+          "minLength": 1
+        },
+        "countyFips": {
+          "type": "string",
+          "pattern": "^\\d{5}$"
+        }
+      },
+      "required": [
+        "line1",
+        "city",
+        "state",
+        "zip"
+      ],
+      "additionalProperties": false,
+      "title": "Address"
+    },
+    "Channel": {
+      "type": "string",
+      "enum": [
+        "email",
+        "linkedin",
+        "sms",
+        "mail",
+        "call_script"
+      ],
+      "title": "Channel"
+    },
+    "DncStatus": {
+      "type": "string",
+      "enum": [
+        "clean",
+        "listed",
+        "unknown"
+      ],
+      "title": "DncStatus"
+    },
+    "LicenseTerms": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outreachRestricted": {
+          "type": "boolean"
+        },
+        "retentionDays": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "attribution": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "title": "LicenseTerms"
+    },
+    "ConsentRecord": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email",
+                "mail"
+              ]
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "scope": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "email",
+              "linkedin",
+              "sms",
+              "mail",
+              "call_script"
+            ]
+          }
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "web_form",
+            "signed_form",
+            "verbal_documented",
+            "in_person",
+            "sphere_import"
+          ]
+        },
+        "recordedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        "textShown": {
+          "type": "string",
+          "minLength": 1
+        },
+        "textVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "remoteAddress": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        },
+        "revokedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        "revocationMethod": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "contact",
+        "scope",
+        "method",
+        "recordedAt",
+        "textShown",
+        "textVersion"
+      ],
+      "additionalProperties": false,
+      "title": "ConsentRecord"
+    }
+  }
+}

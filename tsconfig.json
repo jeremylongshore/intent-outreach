@@ -16,14 +16,21 @@
     "sourceMap": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "pipeline_core/**/*.ts",
     "mcp/**/*.ts",
     "tests/**/*.ts",
     "packages/*/src/**/*.ts",
-    "cli.ts"
+    "cli.ts",
+    "scripts/export-contracts.ts",
+    "contracts/**/*.d.ts"
   ],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
