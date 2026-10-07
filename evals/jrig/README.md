@@ -1,6 +1,6 @@
 # J-Rig evaluation of Intent Outreach
 
-The behavioral task is `io-k3l`; the evaluation spec remains a draft on PR #41.
+The behavioral task is `io-k3l`; the evaluation spec remains a draft on PR #114 (superseding PR #41).
 The current skill delegates to three phase agents and pauses for human decisions.
 A completion that describes those steps, or a run that exercises only preflight,
 cannot establish a Tier 3B pass.
