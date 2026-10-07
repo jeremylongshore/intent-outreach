@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { loadProfileRef, normalizeDomain, runCampaign } from "./pipeline_core/pipeline.js";
 import { runPropertyCampaign } from "./pipeline_core/property-campaign.js";
-import { checkMonitor, MonitorSchema, monitorPath, readSnapshot } from "./pipeline_core/monitors.js";
+import { checkMonitor, purgeExpiredSnapshots, MonitorSchema, monitorPath, readSnapshot } from "./pipeline_core/monitors.js";
 import type { ResearchQuery } from "./pipeline_core/models.js";
 import { applyProfileToCampaignInput, type ReportProfile } from "./pipeline_core/profiles.js";
 import { cleanBuyerTitles } from "./pipeline_core/targeting.js";
@@ -948,7 +948,11 @@ async function cmdStore(args: string[]): Promise<void> {
   const store = new EncryptedSqliteRunStore(values.out);
   const result = action === "migrate"
     ? { ...(await store.migrateJsonl(values.from ?? legacyStorePath())), sourcePreserved: true }
-    : action === "purge" ? { expired: await store.purgeExpired() } : await store.audit();
+    : action === "purge" ? {
+      expired: await store.purgeExpired(),
+      cacheEntries: await new FileResponseCache(join(intentOutreachHome(), "cache")).purge(Date.now()),
+      monitorSnapshots: await purgeExpiredSnapshots(join(intentOutreachHome(), "monitors")),
+    } : await store.audit();
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 

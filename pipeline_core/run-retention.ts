@@ -8,10 +8,19 @@ export const RUN_RETENTION_DAYS: Readonly<Record<string, number>> = Object.freez
   "commercial-re": 30,
 });
 
+export function retentionDaysForPack(id: string): number {
+  return Object.hasOwn(RUN_RETENTION_DAYS, id) ? RUN_RETENTION_DAYS[id]! : 30;
+}
+
 /** Expire the whole record at its earliest applicable deadline, including vendor facts. */
 export function runExpiresAt(run: Validated<CampaignRun>, now: number): number {
   const created = Math.min(Date.parse(run.createdAt), now);
-  const days = Object.hasOwn(RUN_RETENTION_DAYS, run.vertical) ? RUN_RETENTION_DAYS[run.vertical]! : 30;
+  const days = retentionDaysForPack(run.vertical);
+  return dataExpiresAt(run, created, days);
+}
+
+/** Shared deadline for normalized caches and monitor snapshots, without inventing a new fetch date. */
+export function dataExpiresAt(value: unknown, created: number, days: number): number {
   let expires = created + days * 86_400_000;
   // Facts can occur in arbitrary attribute bags. A license on an object without
   // its own fetchedAt (e.g. Party) uses the run's creation time conservatively.
@@ -29,6 +38,6 @@ export function runExpiresAt(run: Validated<CampaignRun>, now: number): number {
     }
     for (const item of Object.values(obj)) visit(item);
   }
-  visit(run);
+  visit(value);
   return expires;
 }

@@ -288,7 +288,7 @@ Other settings:
 | `INTENT_OUTREACH_STORE_KEY_FILE` | Absolute path to the 32-byte run-store encryption key. Defaults to `<database>.key`; store and back it up separately from the database. |
 | `INTENT_OUTREACH_MODEL` | Override the model id for the chosen provider. |
 | `INTENT_OUTREACH_PROFILE` | Report Profile used by MCP `save_run` when the call doesn't pass one. |
-| `INTENT_OUTREACH_KEEP_RAW=1` | Keep full vendor payloads in run records. Off by default: personal emails, mobile/personal phones, home addresses and birth data are dropped and only a B2B field allowlist is kept. |
+| `INTENT_OUTREACH_KEEP_RAW=1` | Allow full vendor payloads in explicit debug responses where supported. Never bypasses normalized B2B field allowlists or enables raw cache/run retention. |
 | `INTENT_OUTREACH_PROMPTS_DIR` | Load prompt files from another directory. |
 | `INTENT_OUTREACH_ALLOW_UNGATED=1` | Let a provider with no approved model run (local testing only). |
 
@@ -348,6 +348,29 @@ legacy file. Review the import counts and inspect runs with `approvals pending` 
 before removing the plaintext source according to your retention policy. Migration never removes
 it for you; old backups and exports need their own retention process. Restoring an older application
 requires its preserved JSONL records; older releases cannot read this encrypted database.
+
+The built-in packs declare their normalized-data policy in code. `b2b-sdr` keeps business contacts
+and business enrichment fields, excluding the property-owner model. `residential-re` retains typed
+owner names, mailing addresses, contact points, DNC status and license/provenance records. Property
+attribute bags use an allowlist for parcel, value, listing and gate facts; a trusted custom pack can
+add fact keys through `piiPolicy.propertyAttributes`, but protected person fields stay excluded.
+The same property policy applies to property enrichment and monitors. Custom packs using the B2B
+campaign entrypoint must explicitly select `{ kind: "property-owner" }` to retain owner data.
+
+Normalized B2B enrichment always uses the connector allowlists and recursively drops known personal
+fields, including with `KEEP_RAW=1`. MCP `save_run` also minimizes enrichment bags. This is a field
+policy, not a detector for personal information embedded in arbitrary prose. Explicit debug/raw
+responses and user-written messages still need appropriate handling; the legacy storage API does
+not retroactively rewrite previously saved records.
+
+Research caches include the policy and retention limit in their identity and reapply minimization
+on hits. Cache writes omit raw responses and expire at the earlier connector TTL, pack limit or
+vendor deadline. Access and `store purge` remove expired/corrupt cache files; caches written before
+this policy are discarded. Monitor snapshots expire at the earliest vendor deadline or 30 days,
+without extending the deadline as old facts are merged. Cleanup preserves monitor definitions and
+active checks. After expiry, a successful nonempty check establishes a new baseline without firing
+new-parcel events; a failed or empty check cannot establish that baseline. Schedule `store purge`
+for cleanup on idle machines. Its output includes run, cache-entry and snapshot removal counts.
 
 Encryption applies to the run store. Suppression/consent/approval ledgers, provider caches, monitor
 snapshots, explicit exports and delivery outputs have separate storage paths and are **not encrypted

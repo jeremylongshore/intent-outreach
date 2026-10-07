@@ -44,7 +44,7 @@ export function keepRawOptIn(): boolean {
 
 /**
  * Return a copy of `record` holding only `allow`ed keys (undefined/null dropped),
- * unless the user opted in to raw retention. Personal emails, personal/mobile
+ * regardless of the debug raw-response opt-in. Personal emails, personal/mobile
  * phones, home addresses and birth data are never on an allowlist.
  */
 export function pickAllowed(
@@ -52,7 +52,6 @@ export function pickAllowed(
   allow: readonly string[],
 ): Record<string, unknown> {
   if (!record || typeof record !== "object") return {};
-  if (keepRawOptIn()) return { ...record };
   const out: Record<string, unknown> = {};
   for (const k of allow) {
     const v = record[k];

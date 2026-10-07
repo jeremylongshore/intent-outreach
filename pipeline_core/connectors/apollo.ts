@@ -141,7 +141,6 @@ function workPhone(p: ApolloPerson): string | undefined {
 }
 
 function minimizePerson(p: ApolloPerson): Record<string, unknown> {
-  if (keepRawOptIn()) return { ...p };
   const out = pickAllowed(p as Record<string, unknown>, APOLLO_PERSON_ALLOW);
   if (p.organization) out.organization = pickAllowed(p.organization as Record<string, unknown>, APOLLO_ORG_ALLOW);
   const phone = workPhone(p);

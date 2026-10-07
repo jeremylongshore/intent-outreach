@@ -1,3 +1,4 @@
+import { BUSINESS_PII } from "../pii-policy.js";
 /**
  * pipeline_core/packs/b2b-sdr.ts — the built-in B2B SDR pack.
  *
@@ -19,6 +20,7 @@ import { noopCompliance, type Pack } from "./types.js";
 
 export const b2bSdrPack: Pack = {
   id: "b2b-sdr",
+  piiPolicy: BUSINESS_PII,
   displayName: "B2B SDR",
   // Pack-specific checks only; the engine-wide suppression gate runs first.
   compliance: noopCompliance,

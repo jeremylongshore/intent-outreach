@@ -1,3 +1,5 @@
+import { retentionDaysForPack } from "./run-retention.js";
+import { PROPERTY_PII } from "./pii-policy.js";
 /**
  * pipeline_core/property-campaign.ts — the PROPERTY campaign loop.
  *
@@ -177,6 +179,9 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   for (const query of input.queries) {
     const routing = pack.dataSources?.research?.[capabilityForQuery(query)];
     const opts: ConnectorRunOptions = {
+      piiPolicy: pack.piiPolicy ?? PROPERTY_PII,
+      retentionDays: retentionDaysForPack(pack.id),
+      clock: () => Date.parse(now()),
       ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
       ...(routing ? { routing } : {}),
       ...(budget ? { budget } : {}),
@@ -250,6 +255,9 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   const enriched = await runPropertyEnrich(
     selected.map((x) => x.property),
     {
+      piiPolicy: pack.piiPolicy ?? PROPERTY_PII,
+      retentionDays: retentionDaysForPack(pack.id),
+      clock: () => Date.parse(now()),
       ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
       ...(pack.dataSources?.enrich ? { routing: pack.dataSources.enrich } : {}),
       ...(budget ? { budget } : {}),

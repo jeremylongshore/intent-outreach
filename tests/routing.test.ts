@@ -221,10 +221,11 @@ describe("response cache", () => {
     const dir = join(mkdtempSync(join(tmpdir(), "io-cache-")), "cache");
     await new FileResponseCache(dir).set("k1", { v: 1 }, 1_000, 0);
     expect(await new FileResponseCache(dir).get("k1", 500)).toEqual({ v: 1 });
-    expect(await new FileResponseCache(dir).get("k1", 1_000)).toBeUndefined();
     const file = join(dir, readdirSync(dir)[0]!);
     expect(statSync(file).mode & 0o777).toBe(0o600);
     expect(statSync(dir).mode & 0o777).toBe(0o700);
+    expect(await new FileResponseCache(dir).get("k1", 1_000)).toBeUndefined();
+    expect(readdirSync(dir)).toEqual([]);
     writeFileSync(join(dir, "k2.json"), "{not json");
     expect(await new FileResponseCache(dir).get("k2", 0)).toBeUndefined();
   });
