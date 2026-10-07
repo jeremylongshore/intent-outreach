@@ -5,10 +5,10 @@ offline mode is a wiring check, not a quality gate.
 
 | Mode | Command | What it proves | Writes a record? |
 |---|---|---|---|
-| Offline wiring check | `npx tsx evals/run.ts --offline` | Seams, gates, guard, scorers and report run end to end for **every pack**. The stub is grounded by construction, and score bands are skipped. | No |
-| Keyed gate | `npm run evals` (= `tsx evals/run.ts --providers anthropic --repeat 3`) | Real model quality on the golden fixtures, k runs each | Yes, `evals/results/` |
-| Keyed gate, residential | `npx tsx evals/run.ts --providers minimax --model MiniMax-M3 --pack residential-re --judge` | Real model quality on the residential fixtures | Yes |
-| Promote | `npm run evals:promote -- --provider anthropic --model claude-sonnet-5-5 [--pack residential-re]` | Keyed gate on that pack, then marks `{provider, model, pack}` `verified: true` in `supported.ts` on a pass | Yes |
+| Offline wiring check | `pnpm exec tsx evals/run.ts --offline` | Seams, gates, guard, scorers and report run end to end for **every pack**. The stub is grounded by construction, and score bands are skipped. | No |
+| Keyed gate | `pnpm run evals` (= `tsx evals/run.ts --providers anthropic --repeat 3`) | Real model quality on the golden fixtures, k runs each | Yes, `evals/results/` |
+| Keyed gate, residential | `pnpm exec tsx evals/run.ts --providers minimax --model MiniMax-M3 --pack residential-re --judge` | Real model quality on the residential fixtures | Yes |
+| Promote | `pnpm run evals:promote --provider anthropic --model claude-sonnet-5-5 [--pack residential-re]` | Keyed gate on that pack, then marks `{provider, model, pack}` `verified: true` in `supported.ts` on a pass | Yes |
 
 ## What a pass means
 
@@ -79,8 +79,8 @@ qualifies an ungated model. No product code may call it, and a test enforces tha
 
 ```bash
 export ANTHROPIC_API_KEY=...            # or via scripts/sops-env
-npm run evals:promote -- --provider anthropic --model claude-sonnet-5-5                         # b2b-sdr
-npm run evals:promote -- --provider minimax --model MiniMax-M3 --pack residential-re --judge   # residential
+pnpm run evals:promote --provider anthropic --model claude-sonnet-5-5                         # b2b-sdr
+pnpm run evals:promote --provider minimax --model MiniMax-M3 --pack residential-re --judge   # residential
 # on PASS: commit evals/results/<record>.json + evals/supported.ts
 # to switch the default, edit DEFAULT_MODEL in pipeline_core/providers.ts by hand (the script prints the line)
 ```

@@ -11,8 +11,8 @@
 
 ## Checklist
 
-- [ ] `npm run typecheck` passes
-- [ ] `npm test` passes
+- [ ] `pnpm run typecheck` passes
+- [ ] `pnpm test` passes
 - [ ] Policy-enforcement invariants hold (no un-validated output reaches storage; zero Google imports in `pipeline_core`/`mcp`; deterministic connector order)
 - [ ] No secrets committed; BYO-key handling stays local
 - [ ] Docs updated if behavior/architecture changed (`README.md` / `CLAUDE.md` / `000-docs/`)

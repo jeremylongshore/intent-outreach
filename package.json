@@ -7,9 +7,6 @@
   "license": "SEE LICENSE IN LICENSE",
   "author": "Jeremy Longshore <jeremy@intentsolutions.io> (https://intentsolutions.io)",
   "homepage": "https://github.com/jeremylongshore/intent-outreach",
-  "workspaces": [
-    "packages/*"
-  ],
   "bin": {
     "intent-outreach": "bundle/cli.mjs"
   },
@@ -42,7 +39,7 @@
     "audit:gate": "node .github/scripts/audit-gate.mjs"
   },
   "dependencies": {
-    "@intent-outreach/deal-math": "1.0.0",
+    "@intent-outreach/deal-math": "workspace:*",
     "@ai-sdk/anthropic": "^4.0.63",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "ai": "^7.0.114",
@@ -66,5 +63,6 @@
   },
   "engines": {
     "node": ">=20.0.0"
-  }
+  },
+  "packageManager": "pnpm@10.8.1"
 }

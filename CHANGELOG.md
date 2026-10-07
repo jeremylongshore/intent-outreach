@@ -6,6 +6,10 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ## [Unreleased]
 
+- Move development and CI to pnpm 10.8.1 workspaces with frozen installs, explicit local
+  library dependencies, and a fail-closed pnpm production-audit gate. The plugin remains
+  rooted at the repository root; shipped bundles still run without installing dependencies.
+
 ### Added
 
 - **Inbound first replies with speed-to-lead** (#83 phase 7). `runInbound()` (`pipeline_core/inbound.ts`) and

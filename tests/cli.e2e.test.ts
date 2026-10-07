@@ -10,7 +10,7 @@ const CLI = resolve(import.meta.dirname, "..", "bundle", "cli.mjs");
 let home: string;
 
 beforeAll(() => {
-  expect(existsSync(CLI), "bundle/cli.mjs missing: run npm run bundle").toBe(true);
+  expect(existsSync(CLI), "bundle/cli.mjs missing: run pnpm run bundle").toBe(true);
   home = mkdtempSync(join(tmpdir(), "io-cli-e2e-"));
 });
 afterAll(() => rmSync(home, { recursive: true, force: true }));
