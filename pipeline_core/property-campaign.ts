@@ -1,3 +1,4 @@
+import { assertFreshCrmContext, parseCrmContext, mergeCrmSuppressions, crmQueryExcluded, crmExcludedProperties, removeCrmExcluded, type CrmContext } from "./crm-context.js";
 import { retentionDaysForPack } from "./run-retention.js";
 import { PROPERTY_PII } from "./pii-policy.js";
 /**
@@ -68,6 +69,8 @@ export interface RunPropertyCampaignInput {
   now?: () => string;
   sender?: SenderIdentity;
   suppressions?: SuppressionList;
+  /** A freshly pulled CRM snapshot. Invalid or expired context aborts the run. */
+  crmContext?: CrmContext;
   budgetCredits?: number;
   cache?: ResponseCache;
   connectorTimeoutMs?: number;
@@ -162,7 +165,9 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   const channel = input.channel ?? "mail";
   const minScore = input.minScore ?? 0;
   const maxProperties = input.maxProperties ?? DEFAULT_MAX_PROPERTIES;
-  const suppressions = input.suppressions ?? (await loadSuppressionList());
+  const crm = input.crmContext === undefined ? undefined : parseCrmContext(input.crmContext, Date.parse(now()));
+  const localSuppressions = input.suppressions ?? (await loadSuppressionList());
+  const suppressions = crm ? mergeCrmSuppressions(localSuppressions, crm) : localSuppressions;
   registerBuiltinPacks();
   const pack = resolvePack(input.pack ?? DEFAULT_PROPERTY_PACK);
   const provider = input.provider ?? (await getProvider({ pack: pack.id }));
@@ -176,7 +181,12 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   const failedConnectors: FailedConnector[] = [];
   const skipped = new Set<string>();
   let researchRan = false;
+  let crmSkippedQueries = 0;
   for (const query of input.queries) {
+    if (crm) {
+      assertFreshCrmContext(crm, Date.parse(now()));
+      if (crmQueryExcluded(query, crm)) { crmSkippedQueries++; continue; }
+    }
     const routing = pack.dataSources?.research?.[capabilityForQuery(query)];
     const opts: ConnectorRunOptions = {
       piiPolicy: pack.piiPolicy ?? PROPERTY_PII,
@@ -185,7 +195,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
       ...(input.connectorTimeoutMs ? { connectorTimeoutMs: input.connectorTimeoutMs } : {}),
       ...(routing ? { routing } : {}),
       ...(budget ? { budget } : {}),
-      ...(input.cache ? { cache: input.cache } : {}),
+      ...(input.cache && !crm?.doNotResearch.length ? { cache: input.cache } : {}),
     };
     const r = await runResearchQuery(query, input.icp, opts);
     if (r.ran.length > 0) researchRan = true;
@@ -199,7 +209,12 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     model.entityLinks.push(...r.entityLinks);
     model.contactPoints.push(...r.contactPoints);
   }
-  const merged = mergePropertyModel(model);
+  let merged = mergePropertyModel(model);
+  if (crm) assertFreshCrmContext(crm, Date.parse(now()));
+  const researchExcluded = crm ? crmExcludedProperties(merged, crm.doNotResearch) : new Set<string>();
+  const crmExcludedCount = merged.properties.filter((p) => researchExcluded.has(p.key)).length;
+  if (crm?.doNotResearch.length) merged = removeCrmExcluded(merged, researchExcluded);
+  const crmSuppressed = crm ? crmExcludedProperties(merged, crm.suppressions) : new Set<string>();
 
   const messages: Message[] = [];
   const blockedContacts: { contactKey: string; reason: string; propertyKey: string }[] = [];
@@ -207,6 +222,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   const errors: RunError[] = [];
   const droppedAngles: { propertyKey: string; angle: string; reason: string }[] = [];
   const warnings: string[] = [];
+  if (crm) warnings.push(`CRM exclusions: ${crmSkippedQueries} queries skipped; ${crmExcludedCount} discovered parcels removed before enrichment`);
   /** Owners already written to in this run: one letter per owner, however many parcels they hold. */
   const contacted = new Map<string, string>();
   let scoredCount = 0;
@@ -224,6 +240,10 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   // Pass 1: gate every property, one parcel per owner, up to the cap. Nothing is spent here.
   const selected: { property: Property; owner: Party; ctx: PropertyGateContext; nowDate: Date }[] = [];
   for (const property of merged.properties) {
+    if (crmSuppressed.has(property.key)) {
+      blockedContacts.push({ contactKey: property.key, reason: "suppressed:crm", propertyKey: property.key });
+      continue;
+    }
     const owner = ownerOf(property, merged);
     if (!owner) {
       blockedContacts.push({ contactKey: property.key, reason: "owner:unknown", propertyKey: property.key });
@@ -251,6 +271,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
     selected.push({ property, owner, ctx, nowDate });
   }
 
+  if (crm) assertFreshCrmContext(crm, Date.parse(now()));
   // Property enrichment (flood zones, ...) on the selected parcels only: adds facts, never overwrites.
   const enriched = await runPropertyEnrich(
     selected.map((x) => x.property),
@@ -272,6 +293,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
 
   // Pass 2: score, underwrite, draft, finalize.
   for (const sel of selected) {
+    if (crm) assertFreshCrmContext(crm, Date.parse(now()));
     const property = enrichedByKey.get(sel.property.key) ?? sel.property;
     const { owner, nowDate } = sel;
     const ctx: PropertyGateContext = { ...sel.ctx, property };
@@ -297,6 +319,7 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
       continue;
     }
 
+    if (crm) assertFreshCrmContext(crm, Date.parse(now()));
     let drafted: Awaited<ReturnType<typeof draftPropertyMessage>>;
     try {
       drafted = await draftPropertyMessage(provider, {

@@ -12,7 +12,7 @@
  *   • minScore, underwriting facts in the draft prompt, and the credit budget.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildSuppressionList, EMPTY_SUPPRESSION_LIST } from "../pipeline_core/compliance/suppression.js";
 import { _resetBuiltins, registerConnector } from "../pipeline_core/connectors/index.js";
 import type { Connector } from "../pipeline_core/connectors/types.js";
@@ -490,5 +490,55 @@ describe("review regressions", () => {
       suppressions: EMPTY_SUPPRESSION_LIST,
     });
     expect(run.rejectedDrafts[0]?.issues).toEqual(['distress-language: "foreclosure" in body']);
+  });
+});
+
+
+describe("CRM exclusion boundary", () => {
+  const context = (patch = {}) => ({ version: 1 as const, source: "erpnext" as const, generatedAt: T, expiresAt: new Date(Date.parse(T) + 900_000).toISOString(), suppressions: [], doNotResearch: [], ...patch });
+  it("never calls a connector for an explicitly excluded parcel", async () => {
+    const research = vi.fn(gis([good]).research!);
+    registerConnector(gis([good], { research }));
+    const captured = { prompts: [] as string[] };
+    const { run } = await runPropertyCampaign({ id: "crm-parcel", icp: "x", queries: [{ kind: "parcel", countyFips: FIPS, apn: "100" }], provider: stubModel(captured), now: () => T, crmContext: context({ doNotResearch: [{ kind: "parcel", value: good.key }] }) });
+    expect(research).not.toHaveBeenCalled();
+    expect(captured.prompts).toEqual([]);
+    expect(run.properties).toEqual([]);
+    expect(run.complianceWarnings).toContain("CRM exclusions: 1 queries skipped; 0 discovered parcels removed before enrichment");
+  });
+  it("removes owners discovered in an area query before enrichment, cache, prompts and persistence", async () => {
+    registerConnector(gis([good]));
+    const enrich = vi.fn(async () => ({ properties: [] }));
+    registerConnector({ ...gis(), name: "spy-enrich", phases: ["enrich"], enrichProperties: enrich });
+    const cache = { get: vi.fn(async () => null), set: vi.fn(async () => {}) };
+    const captured = { prompts: [] as string[] };
+    const { run } = await runPropertyCampaign({ id: "crm-area", icp: "x", queries: [QUERY], provider: stubModel(captured), now: () => T, cache, crmContext: context({ doNotResearch: [{ kind: "party", value: "p-good" }] }) });
+    expect(run.properties).toEqual([]);
+    expect(run.parties).toEqual([]);
+    expect(run.ownerships).toEqual([]);
+    expect(captured.prompts).toEqual([]);
+    expect(enrich).not.toHaveBeenCalled();
+    expect(cache.set).not.toHaveBeenCalled();
+    expect(cache.get).not.toHaveBeenCalled();
+  });
+  it("CRM suppressions block drafting without removing the suppression audit record", async () => {
+    registerConnector(gis([good]));
+    const captured = { prompts: [] as string[] };
+    const { run } = await runPropertyCampaign({ id: "crm-stop", icp: "x", queries: [QUERY], provider: stubModel(captured), now: () => T, crmContext: context({ suppressions: [{ kind: "party", value: "p-good" }] }) });
+    expect(run.blockedContacts).toContainEqual({ contactKey: good.key, propertyKey: good.key, reason: "suppressed:crm" });
+    expect(captured.prompts).toEqual([]);
+    expect(run.properties).toHaveLength(1);
+  });
+  it("fails before research on an expired snapshot and when a snapshot expires during discovery", async () => {
+    const research = vi.fn(gis([good]).research!);
+    registerConnector(gis([good], { research }));
+    const captured = { prompts: [] as string[] };
+    const base = { id: "crm-old", icp: "x", queries: [QUERY], provider: stubModel(captured), crmContext: context() };
+    await expect(runPropertyCampaign({ ...base, now: () => new Date(Date.parse(T) + 900_000).toISOString() })).rejects.toThrow(/expired/);
+    expect(research).not.toHaveBeenCalled();
+    let clock = T;
+    research.mockImplementation(async () => { clock = new Date(Date.parse(T) + 900_000).toISOString(); return { leads: [], contacts: [], properties: [good], parties, ownerships }; });
+    await expect(runPropertyCampaign({ ...base, now: () => clock })).rejects.toThrow(/expired/);
+    expect(captured.prompts).toEqual([]);
   });
 });
