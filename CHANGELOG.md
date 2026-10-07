@@ -6,6 +6,10 @@ All notable changes to Intent Outreach are documented here. Format follows
 
 ## [Unreleased]
 
+- Enforce verified per-model, per-pack approvals when selecting residential scoring and
+  drafting models in property campaigns, monitor drafts and inbound replies. B2B approval
+  does not qualify a model for residential work; the explicit local-testing override remains.
+
 - Move development and CI to pnpm 10.8.1 workspaces with frozen installs, explicit local
   library dependencies, and a fail-closed pnpm production-audit gate. The plugin remains
   rooted at the repository root; shipped bundles still run without installing dependencies.

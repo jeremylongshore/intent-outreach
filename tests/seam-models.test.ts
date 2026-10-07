@@ -140,7 +140,7 @@ describe("CLI: --score-model alone keeps --provider", () => {
     await expect(main(["run", "--icp", "x", "--domains", "acme.com", "--provider", "openai", "--score-model", "gpt-4o-mini"])).rejects.toThrow(
       /stop after resolution/,
     );
-    expect(seen[0]).toEqual({ provider: "openai", model: "gpt-4o-mini" });
+    expect(seen[0]).toEqual({ provider: "openai", model: "gpt-4o-mini", pack: "b2b-sdr" });
     spy.mockRestore();
   });
 });

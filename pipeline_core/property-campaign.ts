@@ -59,6 +59,7 @@ export interface RunPropertyCampaignInput {
   minScore?: number;
   /** Ceiling on properties scored per run (cost control). Default 25. */
   maxProperties?: number;
+  /** Trusted injection for tests/evals; production providers recheck the resolved pack. */
   provider?: LLMProvider;
   /** A separate (usually cheaper) model for the SCORE seam; `provider` drafts. */
   scoreProvider?: LLMProvider;
@@ -160,9 +161,11 @@ export async function runPropertyCampaign(input: RunPropertyCampaignInput): Prom
   const minScore = input.minScore ?? 0;
   const maxProperties = input.maxProperties ?? DEFAULT_MAX_PROPERTIES;
   const suppressions = input.suppressions ?? (await loadSuppressionList());
-  const provider = input.provider ?? (await getProvider());
   registerBuiltinPacks();
   const pack = resolvePack(input.pack ?? DEFAULT_PROPERTY_PACK);
+  const provider = input.provider ?? (await getProvider({ pack: pack.id }));
+  provider.assertPackApproved?.(pack.id);
+  input.scoreProvider?.assertPackApproved?.(pack.id);
   const budget = input.budgetCredits !== undefined ? new CreditBudget(input.budgetCredits) : undefined;
   const meter = new CostMeter();
   const createdAt = now();
