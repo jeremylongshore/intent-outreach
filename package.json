@@ -42,10 +42,10 @@
     "contracts:check": "tsx scripts/export-contracts.ts --check"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.63",
+    "@ai-sdk/anthropic": "^4.0.71",
     "@intent-outreach/deal-math": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.1",
-    "ai": "^7.0.114",
+    "ai": "^7.0.127",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -61,9 +61,9 @@
     "vitest": "^5.0.0"
   },
   "optionalDependencies": {
-    "@ai-sdk/openai": "^4.0.75",
+    "@ai-sdk/openai": "^4.0.83",
     "@ai-sdk/openai-compatible": "^3.0.62",
-    "@ai-sdk/xai": "^4.0.59"
+    "@ai-sdk/xai": "^5.0.14"
   },
   "engines": {
     "node": ">=22.16.0"
