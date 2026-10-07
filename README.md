@@ -195,7 +195,10 @@ intent-outreach property-run --icp "..." --parcels 12033:082S305005000002 --budg
 External CRM adapters can run `intent-outreach validate-run < run.json` to use the same
 schema and defaults as storage. It emits normalized JSON on success, exits 2 on invalid
 input, and opens no store or provider. Input is limited to 16 MiB. This validates structure;
-it does not approve drafts, establish consent, or authorize a send.
+it does not approve drafts, establish consent, or authorize a send. Add `--with-retention`
+to receive `{version: 1, run, expiresAt}` using the engine's pack/vendor retention policy.
+Adapters must reject expired exports and honor that deadline on their retained copies;
+validation alone does not enforce retention in an external CRM.
 
 An ERPNext adapter can supply `--crm-context ./crm-context.json` to `property-run` and
 `check-send`. Validate the snapshot with `intent-outreach validate-crm-context < crm-context.json`.
