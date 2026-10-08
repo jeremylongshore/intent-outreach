@@ -500,3 +500,10 @@ retained. The skill audit passes with positive nested research usage and no
 persistence; the baseline again fails research-before-preflight. Routing and
 package checks pass. This new-spec initial pass has no regression seed supplied;
 J-Rig's advisory `obsolete_review` does not establish full-suite acceptance.
+
+`glm53-weather-routing-pass-2026-10-08.json` retains the corrected-spec weather
+control: all four criteria and all nine skill-side judge samples pass, with
+negative routing, both independent audits passing and no campaign tools or
+persistence. This control is not campaign acceptance. The research artifact also
+lists the trace-derived root tools and actual researcher `research_domain`
+start/completion events, without exposing tool arguments or model output.
