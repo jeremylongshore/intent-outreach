@@ -118,13 +118,22 @@ exactly; the checkpoint and encrypted-store checks also remain required.
 GLM 5.3 low run and a separately hashed parser diagnostic. The corrected parser
 accepts its skill trace, but this does not change the original case result: all three
 truthful-receipt judge samples rejected it, and the baseline has ordering failures.
-The criterion description and prompt need consistency review before another run.
+The criterion description and prompt were inconsistent at that run's source revision.
 Original private receipts are unchanged; the diagnostic is not a new behavioral run.
 `drafter-section-binding-proof-2026-10-08.json` binds the corrected auditor source
 to a fresh scripted actual-CLI research-only proof with explicit low reasoning,
 separate skill/baseline sessions and nested usage. It establishes association
 mechanics, not drafting quality or a Tier 3B verdict. The actual-host regression
 separately covers accepted message formats, ambiguous sections and changed fields.
+
+`truthful-receipt-calibration-2026-10-08.json` records a separate real Nemotron
+judge diagnostic: nine controls with three samples each. The old description
+rejected the actual supported output; the clarified description accepts it and a
+concise supported receipt while rejecting invented IDs, paths, counts, sending,
+premature persistence and concealed save failure. Only the description changed to
+distinguish observed completion/persistence from invented claims. The detailed
+judge prompt, blocker, seven criteria, ten cases and sampling/policies are unchanged.
+This diagnostic does not rerun the skill, revise old votes or establish Tier 3B.
 
 The stdio integration test uses a scripted loopback model to exercise all three
 phase agents, actual connector normalization, reviewed drafting resources,
