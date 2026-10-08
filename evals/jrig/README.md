@@ -593,3 +593,13 @@ original case records an invalid tool call/schema violation and zero judgments;
 the skill attempts unrequested underwriting and its draft evidence is
 unparseable. Original structural failures, positive nested usage and all
 artifact/trace digests remain visible. No model qualification follows.
+
+`minimax-m31flash-medium-prospect-incomplete-2026-10-08.json` retains the
+subsequent medium-reasoning comparison with the same runtime, spec, CLI, judge
+and phase budgets. All seven functional criteria aggregate yes, with one original
+approval-boundary sample unsure. Independent closed-trace assertions still fail:
+enrichment precedes lead selection, saves do not match the exact approved draft,
+and drafter evidence cannot be parsed. The skill stored one synthetic run; the
+baseline stored none and also returned tool errors. The original case remains
+incomplete despite favorable judge votes. This cannot seed passing regression or
+qualify the campaign. Actual nested usage and all original uncertainty are retained.
