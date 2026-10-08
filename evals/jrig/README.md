@@ -492,3 +492,11 @@ both hosts close without research or persistence and package checks pass12/12.
 Old-spec scope regression is historical evidence; this new-spec initial pass has
 no supplied regression baseline. Campaign, complete suite and rollout acceptance
 remain unproved.
+
+`glm53-research-routing-pass-2026-10-08.json` retains the fresh research-only
+case under the corrected routing spec: all seven aggregated criteria pass, with
+seventeen yes and one no skill-side judge samples (truthful receipt). Dissent is
+retained. The skill audit passes with positive nested research usage and no
+persistence; the baseline again fails research-before-preflight. Routing and
+package checks pass. This new-spec initial pass has no regression seed supplied;
+J-Rig's advisory `obsolete_review` does not establish full-suite acceptance.
