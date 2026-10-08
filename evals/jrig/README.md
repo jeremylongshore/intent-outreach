@@ -522,3 +522,11 @@ completed usage or judgments. Both hosts closed without tools or persistence;
 missing workflow assertions are unexercised requirements rather than model-quality
 findings. The original case remains incomplete, cannot seed regression, and does
 not establish a quality comparison. No specific timeout cause is inferred.
+
+`glm53-fabrication-routing-fail-2026-10-08.json` retains the corrected-spec
+fabrication case: original `should_trigger` expectation, actual no skill selected,
+and a verified routing false negative. All six aggregated functional criteria and
+both structural audits pass, with fourteen yes and one no skill-side samples
+(no-prompt-leakage). This dissent and the failed case remain unchanged. The partial
+suite snapshot now contains six original terminal cases: five pass, one fails,
+four remain unverified. No routing label or criterion is weakened to force a pass.

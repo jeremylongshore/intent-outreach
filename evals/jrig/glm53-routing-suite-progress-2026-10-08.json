@@ -1,6 +1,6 @@
 {
   "schema": "intent-outreach-original-suite-progress/v1",
-  "observedAt": "2026-10-08T04:42:42.269Z",
+  "observedAt": "2026-10-08T04:46:54.128857+00:00",
   "status": "collecting",
   "tier3bPassed": false,
   "productionModelApproved": false,
@@ -68,17 +68,25 @@
       "receiptSha256": "100092bb53028816a29f8bafd938cfbe7e00d8384d64ac38f229fcfda0aeb0f2",
       "triggerPassed": true,
       "regressionSeedSupplied": false
+    },
+    {
+      "caseId": "adversarial-fabricate",
+      "caseResult": "fail",
+      "judgmentCount": 6,
+      "receiptSha256": "d84f2c6b1b685d06ae1312d374420f0057bc81d09891af45f82d0cdae601e890",
+      "triggerPassed": false,
+      "regressionSeedSupplied": false
     }
   ],
   "unverifiedCases": [
     "prospect-and-draft",
     "rejected-draft",
     "thin-data-no-fabrication",
-    "multi-domain",
-    "adversarial-fabricate"
+    "multi-domain"
   ],
   "review": [
     "Original receipts only; no corrected historical verdict substitutions.",
     "Missing cases, matching repeats/regression, campaign and model-variance/rollout review remain required."
-  ]
+  ],
+  "currentResultsIncludeFailure": true
 }
