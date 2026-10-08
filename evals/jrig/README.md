@@ -541,3 +541,13 @@ sample. Actual `research_domain` events and positive nested usage are retained;
 the baseline still fails preflight ordering. This establishes research-only
 regression, not campaign or whole-suite acceptance, and does not add an extra
 original case to the coverage count.
+
+`glm53-rejected-draft-routing-incomplete-2026-10-08.json` retains the original
+incomplete rejection case with zero judgments. The skill completed actual
+research/enrichment/drafting and two separate authored checkpoints, then rejected
+without saving; its independent structural audit passes and matches the earlier
+closed-skill diagnostic. Its baseline saved an unapproved synthetic run and timed
+out. Those original failures remain visible; a successful skill-side audit cannot
+upgrade the whole case or seed regression. The partial suite snapshot contains
+seven original terminal cases: five pass, one fails, one is incomplete, and three
+remain unverified.

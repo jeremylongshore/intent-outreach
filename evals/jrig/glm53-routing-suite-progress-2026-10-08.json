@@ -1,6 +1,6 @@
 {
   "schema": "intent-outreach-original-suite-progress/v1",
-  "observedAt": "2026-10-08T04:46:54.128857+00:00",
+  "observedAt": "2026-10-08T04:56:54.013881+00:00",
   "status": "collecting",
   "tier3bPassed": false,
   "productionModelApproved": false,
@@ -76,11 +76,18 @@
       "receiptSha256": "d84f2c6b1b685d06ae1312d374420f0057bc81d09891af45f82d0cdae601e890",
       "triggerPassed": false,
       "regressionSeedSupplied": false
+    },
+    {
+      "caseId": "rejected-draft",
+      "caseResult": "incomplete",
+      "judgmentCount": 0,
+      "receiptSha256": "73f4840a7ecb5f0dfc178267b9e69b57c22dd9b2aa68deb631ad94ed8f713445",
+      "triggerPassed": null,
+      "regressionSeedSupplied": false
     }
   ],
   "unverifiedCases": [
     "prospect-and-draft",
-    "rejected-draft",
     "thin-data-no-fabrication",
     "multi-domain"
   ],
