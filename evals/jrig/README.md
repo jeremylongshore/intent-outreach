@@ -511,7 +511,7 @@ start/completion events, without exposing tool arguments or model output.
 `glm53-coding-routing-pass-2026-10-08.json` retains the fresh corrected-spec
 coding control, with original votes and separate no-campaign-effect audits.
 `glm53-routing-suite-progress-2026-10-08.json` is an explicit partial coverage
-snapshot: five original terminal passes, all ten required IDs and the five still
+snapshot: the original terminal outcomes, all ten required IDs and the remaining
 unverified cases. It records the current source/spec/model/budget cohort, without
 substituting historical receipts or implying completed regression or acceptance.
 
