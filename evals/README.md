@@ -64,6 +64,17 @@ checks four kinds of result:
 
 ## Approval: `supported.ts`
 
+For `MiniMax-M3.1-Flash-Preview`, native calls now forward an explicitly requested
+seam effort through the OpenAI-compatible `reasoning_effort` field: scoring uses
+`low` and drafting uses `medium`. Calls without an effort setting, including the
+judge, retain the endpoint default. This mapping applies only to that exact model;
+MiniMax-M3 and other models retain their existing behavior. The 60-second seam
+deadline, token limits, fixtures and qualification thresholds are unchanged.
+The shared effort type remains limited to `low`, `medium` and `high`.
+See [MiniMax's invocation documentation](https://platform.minimax.io/docs/guides/text-generation).
+Qualification records from before this mapping remain evidence for the prior
+profile, and a failed record is never upgraded by the change.
+
 `supported.ts` lists approved `{provider, model, pack}` records. A pass on one pack says nothing
 about another. Entries written before packs existed are `b2b-sdr`. `pipeline_core/providers.ts`
 derives `SUPPORTED_PROVIDERS` from the `b2b-sdr` entries, so a provider is supported only if it has
