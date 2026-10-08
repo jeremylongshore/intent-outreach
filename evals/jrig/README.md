@@ -370,3 +370,11 @@ and saved one synthetic run, but the guard rejected its draft for a banned stock
 phrase, leaving zero accepted messages; the drafter also skipped the canonical
 prompt read. The baseline hit the unchanged root timeout. The original receipt
 remains incomplete. Source, CLI and trace digests were reverified at export.
+
+`glm53-phase120-suite-progress-2026-10-08.json` records partial original
+real-case receipts for the GLM low/120-second phase profile, with the complete
+ten-case coverage requirement and missing coverage left explicit. The initial
+export contains two terminal incomplete cases (prospect and scope confirmation),
+both with zero judgments. The remaining cases are still being collected. A
+narrow structural audit with no failed assertions cannot override failed root
+execution or establish a case pass. The export claims no suite acceptance.
