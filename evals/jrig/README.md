@@ -628,3 +628,13 @@ component checks (three samples, distinct sessions, regression, malformed and
 cancelled execution) and a separate tools-disabled M3.1 medium static review.
 The first M3 static review exhausted its token limit without a verdict and is
 not counted as a pass. New real qualification remains required.
+
+`minimax-m31flash-max-returnvalue-prospect-incomplete-2026-10-08.json` retains the
+fresh actual trial at the committed Return value parser correction. It remains
+incomplete: the judge endpoint reported cluster overload/network timeout in two
+of twelve comparisons and no judgments were retained. Independent trace checks
+also find real workflow defects. The skill persisted a synthetic run with zero
+messages because the message contact key did not match its supplied contacts;
+the baseline violates ordering, delegation and approval/persistence checks. The
+new output is not repaired by inferring a recipient or a draft. All original
+receipts, source/artifact digests and both closed traces remain verified.
