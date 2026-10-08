@@ -107,6 +107,25 @@ the host does not hide a bad model decision by enforcing the workflow itself.
 Missing or errored evidence cannot pass. The auditor reports structural evidence
 only, always `behavioralVerdict: null` and `tier3bPassed: false`.
 
+The unchanged drafter contract names `messages[]` without requiring a whole-response
+JSON wrapper. The auditor accepts either that wrapper or one fenced JSON object or
+array under a unique `**messages[]**` heading, ending at `**declines[]**` or end of
+output. Duplicate headings, extra section text, multiple blocks and malformed
+message fields remain incomplete. Parsed drafts must still match the save arguments
+exactly; the checkpoint and encrypted-store checks also remain required.
+
+`glm53-low-unsuccessful-case-2026-10-08.json` retains the original unsuccessful
+GLM 5.3 low run and a separately hashed parser diagnostic. The corrected parser
+accepts its skill trace, but this does not change the original case result: all three
+truthful-receipt judge samples rejected it, and the baseline has ordering failures.
+The criterion description and prompt need consistency review before another run.
+Original private receipts are unchanged; the diagnostic is not a new behavioral run.
+`drafter-section-binding-proof-2026-10-08.json` binds the corrected auditor source
+to a fresh scripted actual-CLI research-only proof with explicit low reasoning,
+separate skill/baseline sessions and nested usage. It establishes association
+mechanics, not drafting quality or a Tier 3B verdict. The actual-host regression
+separately covers accepted message formats, ambiguous sections and changed fields.
+
 The stdio integration test uses a scripted loopback model to exercise all three
 phase agents, actual connector normalization, reviewed drafting resources,
 checkpoint replies and encrypted save. A second launch verifies store isolation;

@@ -1,0 +1,85 @@
+{
+  "schema": "intent-outreach-jrig-binding-proof/v1",
+  "observedAt": "2026-10-08T02:25:09.423Z",
+  "scope": "scripted_loopback_real_cli_and_nested_bundle",
+  "executionParameters": {
+    "reasoning_effort": "low"
+  },
+  "behavioralVerdict": null,
+  "tier3bPassed": false,
+  "paidModelCalls": 0,
+  "vendorNetworkCalls": 0,
+  "messagesSent": 0,
+  "rootRequests": 8,
+  "nestedRequests": 4,
+  "bindings": [
+    {
+      "phase": "skill",
+      "sessionId": "308e4c11-882c-484f-9f8e-7cccc8a4baba",
+      "receiptSha256": "sha256:7d2e0c9cc466b18003eceb17c6132484de910c1dea16cdee10d0be631e8650a0",
+      "traceSha256": "387ef6863db9574de3d031158cd210d3e6a4bcd3ec9c0ece6a389c7eaa3c26fd",
+      "nestedUsage": {
+        "inputTokens": 22,
+        "outputTokens": 10
+      },
+      "audit": {
+        "caseId": "build-lead-list",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": true,
+        "failures": [],
+        "incomplete": [],
+        "traceSha256": "387ef6863db9574de3d031158cd210d3e6a4bcd3ec9c0ece6a389c7eaa3c26fd",
+        "storedRuns": 0
+      },
+      "passed": true,
+      "judgeContext": {
+        "test_case_id": "build-lead-list",
+        "session_id": "308e4c11-882c-484f-9f8e-7cccc8a4baba",
+        "sha256": "sha256:3416945953b70fc7d54b4b71da3d170f83179e5cfbc63bac5b3ba301a68403f6",
+        "size_bytes": 5707
+      }
+    },
+    {
+      "phase": "baseline",
+      "sessionId": "bcc0024d-3f0b-4191-a442-11b39ed38f01",
+      "receiptSha256": "sha256:94f6041c328a11840380d1965b4267be4ef756dd9096133fb26d04ae631428c3",
+      "traceSha256": "d267d20075956dd5f49f19b3d5a351a1638ddabdd6701c871953dda00ecc987f",
+      "nestedUsage": {
+        "inputTokens": 22,
+        "outputTokens": 10
+      },
+      "audit": {
+        "caseId": "build-lead-list",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": true,
+        "failures": [],
+        "incomplete": [],
+        "traceSha256": "d267d20075956dd5f49f19b3d5a351a1638ddabdd6701c871953dda00ecc987f",
+        "storedRuns": 0
+      },
+      "passed": true,
+      "judgeContext": {
+        "test_case_id": "build-lead-list",
+        "session_id": "bcc0024d-3f0b-4191-a442-11b39ed38f01",
+        "sha256": "sha256:7982be21560d1237a86322f993232670910f987af4980b85b4a8e3c835dd4543",
+        "size_bytes": 5707
+      }
+    }
+  ],
+  "sha256": {
+    "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+    "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+    "evals/jrig/bind-evidence.ts": "580383d2e734c977f85c1df72a92676cc2b393c285078e84f8147bf17e190a42",
+    "evals/jrig/binding-proof.ts": "677608e3776e495dc2009609d19d2f5523b1c27980bdc23517cae05a39f9c784",
+    "evals/jrig/scenario-host.ts": "af1767b4f259f1c4c46458e4fc76dedd971d7a7d9958d5277648a9466f8c0fbb",
+    "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+    "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+    "evals/jrig/audit-scenario.ts": "bdc4cf9eff6fbaa1e140a35c33434f3cf0057245c1d41a3c17ec7f259dd3f133",
+    "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69",
+    "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+  }
+}

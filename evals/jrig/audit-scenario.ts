@@ -19,6 +19,29 @@ function jsonOutput(value: unknown): unknown {
   const text = z.string().parse(value).trim().replace(/^```(?:json)?\s*\n/, "").replace(/\n```$/, "");
   return JSON.parse(text);
 }
+function draftedMessages(value: unknown) {
+  const text = z.string().parse(value);
+  let messages: unknown;
+  try {
+    messages = object.parse(jsonOutput(text)).messages;
+  } catch {
+    // The unchanged agent contract names messages[] but does not require a
+    // whole-response JSON wrapper. Accept only an explicit, unambiguous section;
+    // never extract arbitrary JSON from prose or infer a draft's contents.
+    if ([...text.matchAll(/\*\*messages\[\]\*\*/g)].length !== 1) throw new Error("ambiguous messages section");
+    const lines = text.split(/\r?\n/);
+    const heading = lines.findIndex((line) => /^\s*\*\*messages\[\]\*\*\s*$/.test(line));
+    if (heading < 0) throw new Error("missing messages heading");
+    const following = lines.slice(heading + 1);
+    const next = following.findIndex((line) => /^\s*\*\*declines\[\]\*\*/.test(line));
+    const section = (next < 0 ? following : following.slice(0, next)).join("\n").trim();
+    const block = /^```json\s*\n([\s\S]+)\n```$/.exec(section);
+    if (!block?.[1]) throw new Error("messages section must contain one JSON block");
+    const parsed: unknown = JSON.parse(block[1]);
+    messages = Array.isArray(parsed) ? parsed : [parsed];
+  }
+  return z.array(draftSchema).parse(messages);
+}
 export async function auditScenario(home: string) {
   const bytes = await readFile(join(home, "host-events.jsonl"));
   const events = bytes.toString().trim().split("\n").map((line) => eventSchema.parse(JSON.parse(line)));
@@ -142,8 +165,7 @@ export async function auditScenario(home: string) {
     }
     const emitted = phase.filter((event) => event.role === "outreach-drafter" && event.kind === "completed");
     try {
-      const drafted = object.parse(jsonOutput(emitted[0]?.data.output));
-      check(JSON.stringify(z.array(draftSchema).parse(drafted.messages)) === JSON.stringify(drafts), "saved_draft_changed_after_agent");
+      check(JSON.stringify(draftedMessages(emitted[0]?.data.output)) === JSON.stringify(drafts), "saved_draft_changed_after_agent");
     } catch { incomplete.push("unparseable_drafter_evidence"); }
     const stored = runs.find((run) => run.id === save.arguments.id);
     check(stored?.messages.length === 1 && drafts.length === 1, "saved_message_count_mismatch");

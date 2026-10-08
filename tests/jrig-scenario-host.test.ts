@@ -173,6 +173,40 @@ describe("scenario MCP host", () => {
       expect(await auditScenario(first.home)).toMatchObject({ passed: true, failures: [], incomplete: [], behavioralVerdict: null, tier3bPassed: false });
       const tracePath = join(first.home, "host-events.jsonl");
       const originalTrace = await readFile(tracePath);
+      // Reproduce the observed agent format without copying private model output.
+      const section = (payload: unknown) => `**fitScore: 55** — fixture rationale
+
+**angles[]**
+- Fixture angle
+
+**messages[]**
+
+\`\`\`json
+${JSON.stringify(payload, null, 2)}
+\`\`\`
+
+**declines[]**: none`;
+      const auditOutput = async (output: string) => {
+        const changed = structuredClone(trace);
+        changed.find((event) => event.kind === "agent_event" && event.data.role === "outreach-drafter" && event.data.kind === "completed").data.data.output = output;
+        await writeFile(tracePath, changed.map((event) => JSON.stringify(event)).join("\n") + "\n");
+        return auditScenario(first!.home);
+      };
+      for (const output of [section(draft), section([draft]), "```json\n" + JSON.stringify({ messages: [draft] }) + "\n```",
+        section(draft).replaceAll("\n", "\r\n")]) {
+        expect(await auditOutput(output)).toMatchObject({ passed: true, failures: [], incomplete: [] });
+      }
+      for (const output of [section(draft) + "\n**messages[]**", section(draft).replace("**messages[]**", "Messages"),
+        section(draft).replace("```json", "unexplained prose\n```json"),
+        section(draft).replace("\n**declines[]**", "\n```json\n{}\n```\n**declines[]**"),
+        section({ ...draft, body: null }), section({ channel: "email" }), section({ messages: [draft] }),
+        section(draft).replace('"channel": "email"', '"channel": email')]) {
+        expect((await auditOutput(output)).incomplete).toContain("unparseable_drafter_evidence");
+      }
+      for (const field of ["contactKey", "channel", "subject", "body", "cta"] as const) {
+        expect((await auditOutput(section({ ...draft, [field]: "changed" }))).failures).toContain("saved_draft_changed_after_agent");
+      }
+      await writeFile(tracePath, originalTrace);
       const altered = structuredClone(trace);
       altered.find((event) => event.kind === "checkpoint" && event.data.index === 1).data.questions = [{ header: "Draft", question: "Approve something you have not seen?" }];
       await writeFile(tracePath, altered.map((event) => JSON.stringify(event)).join("\n") + "\n");
