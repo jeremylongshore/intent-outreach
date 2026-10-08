@@ -405,3 +405,10 @@ component evidence only, with zero paid or vendor model calls and no Tier 3B
 verdict. Actual host tests additionally cover unchanged exact draft persistence
 through batched lead-selection and approval questions, and altered-answer
 rejection.
+
+`mistral2-inventory-positive-unavailable-2026-10-08.json` preserves an
+actual Mistral Large 2 comparison attempt at the corrected checkpoint runtime.
+Fresh inventory listed the model, but execution returned HTTP 404/model-not-found.
+Skill and baseline performed no root tool calls or persistence; the original case
+is incomplete with zero judgments. Inventory presence does not prove hosted
+availability. This is unavailable-endpoint evidence, not model-quality evidence.
