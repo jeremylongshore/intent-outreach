@@ -25,7 +25,7 @@ export const caseRunConfig = z.object({
   priorReceipt: absolute.optional(),
 }).strict();
 const criterion = z.object({ id: z.string(), method: z.enum(["judge", "deterministic"]), samples: z.number().int().optional() }).passthrough();
-const testCase = z.object({ id: z.string(), criteria_ids: z.array(z.string()).optional() }).passthrough();
+const testCase = z.object({ id: z.string(), trigger_expectation: z.enum(["should_trigger", "should_not_trigger"]), criteria_ids: z.array(z.string()).optional() }).passthrough();
 const specSchema = z.object({ skill_name: z.literal("intent-outreach"), criteria: z.array(criterion).min(1), test_cases: z.array(testCase).min(1), models: z.array(z.string()), samples: z.literal(3) }).passthrough();
 
 /** Preserve the parsed spec verbatim except for selecting one case and execution model. */

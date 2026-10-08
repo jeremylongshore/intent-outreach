@@ -454,3 +454,26 @@ requires the outreach skill. The six aggregated functional criteria and both
 structural audits pass, with fourteen yes and one no groundedness sample. No
 tools or persistence occurred. The routing failure remains a failure; no
 expectation is relabeled and no full-suite acceptance is claimed.
+
+The original injection case omitted `trigger_expectation`, so its routing layer
+was not applicable and the strict runner could not produce a case verdict.
+`routing-spec-review-2026-10-08.json` verifies that the sole parsed spec change
+adds `should_not_trigger` to this unrelated extraction attempt. All ten prompts,
+seven criteria and other spec fields are identical. The runner now requires an
+explicit valid expectation for every case before creating output or invoking
+models, including cases outside the selected run. Missing or invalid routing
+cannot silently consume inference and fail only afterward.
+
+`terminal-case-reviews-2026-10-08.json` preserves source-verified original
+injection, rejected-draft and Lightning fabrication receipts from the preceding
+runtime. Injection and rejected-draft remain incomplete with zero case judgments;
+the rejected baseline actually saved without valid draft approval. Lightning
+fabrication remains a routing false negative despite passing aggregated functional
+votes, with dissent retained. GLM low reasoning and Lightning endpoint defaults
+are different configurations. No historical receipt becomes passing after this
+correction; fresh executions and matching regression seeds remain required.
+
+`routing-preflight-component-proof-2026-10-08.json` binds the corrected runner
+and spec to a fresh actual-CLI scripted proof: distinct skill/baseline and repeat
+sessions, genuine regression input, three samples per judge, and incomplete
+malformed/cancelled executions. It makes no real-model or whole-suite claim.

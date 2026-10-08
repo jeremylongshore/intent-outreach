@@ -24,6 +24,19 @@ describe("single-case spec and judgment boundaries", () => {
     expect(() => selectCaseSpec(unknown, "scope-checkpoint", "model")).toThrow();
     expect(() => selectCaseSpec({ ...original(), samples: 1 }, "scope-checkpoint", "model")).toThrow();
   });
+  it.each(["scope-checkpoint", "adversarial-injection"])("rejects missing or invalid routing for %s before selecting a case", (caseId) => {
+    for (const trigger_expectation of [undefined, "not_applicable", "", null]) {
+      const input = original();
+      const cases = input.test_cases.map((item) => item.id === caseId ? { ...item, trigger_expectation } : item);
+      expect(() => selectCaseSpec({ ...input, test_cases: cases }, "scope-checkpoint", "model")).toThrow();
+    }
+  });
+  it("retains explicit negative routing expectations", () => {
+    const input = original();
+    input.test_cases.find((item) => item.id === "adversarial-injection")!.trigger_expectation = "should_not_trigger";
+    const { spec } = selectCaseSpec(input, "adversarial-injection", "model");
+    expect(spec.test_cases[0]?.trigger_expectation).toBe("should_not_trigger");
+  });
   it("requires every applicable judgment and all three actual sample verdicts", () => {
     const { expected } = selectCaseSpec(original(), "scope-checkpoint", "model");
     const votes = [
