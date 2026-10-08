@@ -1,7 +1,7 @@
 {
   "schema": "intent-outreach-original-suite-progress/v1",
-  "observedAt": "2026-10-08T05:16:00.587170+00:00",
-  "status": "collecting",
+  "observedAt": "2026-10-08T05:30:44.828905+00:00",
+  "status": "terminal",
   "tier3bPassed": false,
   "productionModelApproved": false,
   "messagesSent": 0,
@@ -100,14 +100,21 @@
       "receiptSha256": "3acd208235f6a0139f835a39e91abde64dfe28f16579c9fe1641b2da4b723641",
       "triggerPassed": null,
       "regressionSeedSupplied": false
+    },
+    {
+      "caseId": "prospect-and-draft",
+      "caseResult": "incomplete",
+      "judgmentCount": 0,
+      "receiptSha256": "d7ba1c7b737b3fdea04aa0f762e9cae289e4c5d2a7e68aa4cc2fe536b108e01e",
+      "triggerPassed": null,
+      "regressionSeedSupplied": false
     }
   ],
-  "unverifiedCases": [
-    "prospect-and-draft"
-  ],
+  "unverifiedCases": [],
   "review": [
     "Original receipts only; no corrected historical verdict substitutions.",
-    "Matching research-only regression is retained separately from initial case coverage. Remaining cases, required repeats/regression, campaign and model-variance/rollout review remain incomplete."
+    "Matching research-only regression is retained separately from initial case coverage. Remaining cases, required repeats/regression, campaign and model-variance/rollout review remain incomplete.",
+    "All ten original cases are terminal: five pass, one routing failure, four incomplete. Collection is complete; behavioral acceptance is not achieved."
   ],
   "currentResultsIncludeFailure": true,
   "matchingRegressionCases": [
@@ -119,5 +126,10 @@
       "artifact": "glm53-research-routing-regression-pass-2026-10-08.json",
       "scope": "research-only"
     }
-  ]
+  ],
+  "caseResultCounts": {
+    "pass": 5,
+    "fail": 1,
+    "incomplete": 4
+  }
 }

@@ -1,0 +1,210 @@
+{
+  "schema": "intent-outreach-unsuccessful-case-review/v1",
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "messagesSent": 0,
+  "caseId": "prospect-and-draft",
+  "caseResult": "incomplete",
+  "provider": "minimax",
+  "model": "MiniMax-M3.1-Flash-Preview",
+  "judgeModel": "MiniMax-M3",
+  "executionParameters": {
+    "reasoning_effort": "low"
+  },
+  "executionReasoningOverride": "low",
+  "phaseTimeoutMs": 120000,
+  "rootTimeoutMs": 300000,
+  "receiptSha256": "2f699234ecbf8b50d1c15d7ca34ac8e3d8ef5b2766f40ddbd664531e0273c760",
+  "priorReceiptSha256": null,
+  "bundleSha256": "59b96ee0f432735db2a6357b652e550de69a24abb576458e0247a43ac0091c3b",
+  "inputSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+  "jrigCliSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+  "sourceHashes": {
+    "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+    "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+    "skills/intent-outreach/eval-spec.yaml": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+    "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+    "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+    "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+    "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+    "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+    "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+    "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+    "evals/jrig/run-case.ts": "6e35761af0b97a69a495441a881f4bbcd0af40b58ee80da834fbd561a6e0fd4e",
+    "evals/jrig/scenario-host.ts": "a9b88be011032d10b475220b2288454291ed8c8f951eeae4834633139b72443b",
+    "evals/jrig/agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+    "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+    "evals/jrig/scenarios.ts": "22d797d2e782f4dfc681d2b094879c044faccdc67a5db6597b764e8b9ec4e81a",
+    "evals/jrig/bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+    "evals/jrig/audit-scenario.ts": "8239bb9a3fd6c70b2a480752dfd9da09bc83e926fd573658a6040b9b6a4afc29",
+    "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+  },
+  "judgments": [],
+  "trigger": null,
+  "observedRouting": {
+    "schema": "jrig-trigger-evidence/v1",
+    "status": "complete",
+    "sha256": "sha256:e32c729103ffecf6831e536c54548b7faa281acfaa8d924cd7b3b00459f45e02",
+    "metrics": {
+      "total_cases": 1,
+      "true_positives": 1,
+      "true_negatives": 0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "sibling_confusions": 0,
+      "errors": 0,
+      "precision": 1,
+      "recall": 1,
+      "false_positive_rate": 0,
+      "false_negative_rate": 0
+    },
+    "cases": [
+      {
+        "test_case_id": "prospect-and-draft",
+        "expected": "should_trigger",
+        "outcome": "correct_trigger",
+        "selected_skill": "intent-outreach"
+      }
+    ]
+  },
+  "evaluationError": {
+    "type": "provider_failure",
+    "phase": "execution",
+    "provider": "mcp",
+    "category": "schema_violation",
+    "retryable": false,
+    "affected": 1,
+    "total": 2,
+    "message": "tool_execution/invalid_tool_call"
+  },
+  "evidenceError": "incomplete_or_unverifiable_evaluation; inspect private CLI, bundle and host receipts",
+  "process": {
+    "code": 2,
+    "signal": null,
+    "timedOut": false,
+    "cancelled": false
+  },
+  "bindings": [
+    {
+      "phase": "skill",
+      "sessionId": "bb620ae9-40ef-44a0-891b-80465e512847",
+      "receiptSha256": "sha256:aca793cacd927186ebee4122ec8758ef6207f8f794e2075d373df34c458bf7af",
+      "traceSha256": "ec963001c428f50b2e831802a395fe36203e1bd2de60534c64006293ec54a2ca",
+      "status": "completed",
+      "nestedUsage": {
+        "inputTokens": 10781,
+        "outputTokens": 1215
+      },
+      "audit": {
+        "caseId": "prospect-and-draft",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": false,
+        "failures": [
+          "unrequested_side_effect_or_calculation"
+        ],
+        "incomplete": [
+          "unparseable_drafter_evidence"
+        ],
+        "traceSha256": "ec963001c428f50b2e831802a395fe36203e1bd2de60534c64006293ec54a2ca",
+        "storedRuns": 1
+      },
+      "passed": false
+    },
+    {
+      "phase": "baseline",
+      "sessionId": "8b30b4d4-1764-4244-9d63-069210aa4169",
+      "receiptSha256": "sha256:0f90b2be5e9762184e09b352659a6f633ad6da6661585f75592c420af229ad29",
+      "traceSha256": "ef0bf16840f8c08ebdd20a89c01e2e6440898b3d10f7b7aeb3928f74448c6768",
+      "status": "failed",
+      "nestedUsage": {
+        "inputTokens": 13183,
+        "outputTokens": 1487
+      },
+      "audit": {
+        "caseId": "prospect-and-draft",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": false,
+        "failures": [
+          "enrichment_before_lead_selection",
+          "unexpected_save_count",
+          "unexpected_stored_run_count"
+        ],
+        "incomplete": [],
+        "traceSha256": "ef0bf16840f8c08ebdd20a89c01e2e6440898b3d10f7b7aeb3928f74448c6768",
+        "storedRuns": 0
+      },
+      "passed": false
+    }
+  ],
+  "cost": {
+    "phases": {
+      "trigger": {
+        "calls": 1,
+        "input_tokens": 425,
+        "output_tokens": 66
+      },
+      "execution": {
+        "calls": 18,
+        "input_tokens": 155471,
+        "output_tokens": 5409
+      },
+      "judge": {
+        "calls": 18,
+        "input_tokens": 104304,
+        "output_tokens": 15453
+      }
+    },
+    "total": {
+      "calls": 37,
+      "input_tokens": 260200,
+      "output_tokens": 20928
+    },
+    "estimated_usd": null,
+    "by_model": [
+      {
+        "model": "MiniMax-M3.1-Flash-Preview",
+        "calls": 19,
+        "input_tokens": 155896,
+        "output_tokens": 5475,
+        "usd": null
+      },
+      {
+        "model": "MiniMax-M3",
+        "calls": 18,
+        "input_tokens": 104304,
+        "output_tokens": 15453,
+        "usd": null
+      }
+    ]
+  },
+  "packageSummary": {
+    "total": 12,
+    "passed": 12,
+    "warnings": 0,
+    "errors": 0
+  },
+  "promotion": null,
+  "review": [
+    "Original unsuccessful case; source, CLI, private trigger/execution artifacts and both closed host traces independently digest-verified.",
+    "All original sample votes are retained, including dissent.",
+    "Functional votes or successful partial phases cannot upgrade an original incomplete case or seed passing regression. No campaign, complete-suite or production qualification follows.",
+    "Owner-authorized existing MiniMax subscription, execution MiniMax-M3.1-Flash-Preview at explicit low reasoning, judge MiniMax-M3 held at endpoint-default reasoning.",
+    "Actual original case records invalid_tool_call/schema_violation and zero judgments. Skill invokes unrequested underwriting and returns unparseable draft evidence; baseline also fails ordering/persistence requirements. No retrospective upgrade or model qualification.",
+    "Model/protocol profile is documented at https://platform.minimax.io/docs/guides/text-generation; account availability alone does not establish model quality."
+  ],
+  "observedSkillRootTools": [
+    "list_connectors",
+    "Agent",
+    "underwrite",
+    "AskUserQuestion",
+    "Agent",
+    "Agent",
+    "AskUserQuestion",
+    "save_run",
+    "list_pending"
+  ]
+}

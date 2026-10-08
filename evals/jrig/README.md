@@ -579,3 +579,17 @@ multi-domain incomplete case and zero judgments. The closed skill trace lacks
 separate draft approval and the expected save; the independent gate rejects it.
 The full original suite now has only prospect-and-draft pending. See the progress
 artifact for original outcomes; partial tool execution does not qualify a case.
+
+`glm53-prospect-routing-incomplete-2026-10-08.json` retains the final original
+NVIDIA prospect case: execution timeouts, zero judgments and failed independent
+workflow assertions. All ten original cases are now terminal; the progress
+artifact reports five passes, one routing failure and four incomplete cases.
+This completed collection does not satisfy behavioral acceptance.
+
+`minimax-m31flash-prospect-incomplete-2026-10-08.json` retains the bounded
+subscription-model comparison: MiniMax-M3.1-Flash-Preview at explicit low
+execution reasoning, with MiniMax-M3 judge held at its endpoint default. The
+original case records an invalid tool call/schema violation and zero judgments;
+the skill attempts unrequested underwriting and its draft evidence is
+unparseable. Original structural failures, positive nested usage and all
+artifact/trace digests remain visible. No model qualification follows.
