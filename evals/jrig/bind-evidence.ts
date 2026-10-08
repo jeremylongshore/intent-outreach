@@ -124,3 +124,56 @@ export async function bindScenarioEvidence(input: {
   assert(phases.has("skill") && (!input.baseline || phases.has("baseline")), "missing required execution phase");
   return { scope: "correlated_structural_evidence_only", behavioralVerdict: null, tier3bPassed: false, bindings };
 }
+
+/** Verify actual routing observations independently of J-Rig's coverage label. */
+export async function bindTriggerEvidence(input: {
+  dbPath: string; caseId: string; expected: "should_trigger" | "should_not_trigger";
+  target: string; prompt: string; siblings: string[]; summary: unknown; bundleSummary: unknown;
+}) {
+  const root = dirname(input.dbPath);
+  await privateFile(input.dbPath, root, 67108864);
+  const database = new DatabaseSync(input.dbPath, { readOnly: true });
+  let records: { run_id: number; relative_path: string; sha256: string; size_bytes: number }[];
+  let executionRuns: { run_id: number }[];
+  try {
+    records = database.prepare("SELECT run_id, relative_path, sha256, size_bytes FROM artifacts WHERE artifact_type = 'trigger-evidence'").all() as typeof records;
+    executionRuns = database.prepare("SELECT DISTINCT run_id FROM artifacts WHERE artifact_type = 'tool-execution'").all() as typeof executionRuns;
+  } finally { database.close(); }
+  assert.equal(records.length, 1, "missing or duplicate trigger receipt");
+  const record = records[0];
+  assert(record);
+  assert.deepEqual(executionRuns.map((entry) => entry.run_id), [record.run_id], "trigger/execution run mismatch");
+  const bytes = await privateFile(record.relative_path, root, 8388608);
+  assert.equal(record.size_bytes, bytes.length, "trigger receipt size mismatch");
+  assert.equal(record.sha256, "sha256:" + hash(bytes), "trigger receipt digest mismatch");
+  const resultSchema = z.object({ test_case_id: z.literal(input.caseId), expected: z.literal(input.expected),
+    selected_skill: z.string().nullable(), outcome: z.enum(["correct_trigger", "correct_no_trigger", "false_positive", "false_negative", "sibling_confusion", "error"]),
+    prompt: z.literal(input.prompt), reasoning: z.string(),
+  }).passthrough();
+  const receipt = z.object({ schema: z.literal("jrig-trigger-evidence/v1"), run_id: z.literal(record.run_id),
+    status: z.literal("complete"), results: z.array(resultSchema).length(1), metrics: object,
+  }).parse(JSON.parse(bytes.toString()));
+  const result = receipt.results[0];
+  assert(result);
+  assert(result.selected_skill === null || [input.target, ...input.siblings].includes(result.selected_skill), "selected skill outside declared roster");
+  const expectedOutcome = input.expected === "should_trigger"
+    ? result.selected_skill === input.target ? "correct_trigger" : result.selected_skill === null ? "false_negative" : "sibling_confusion"
+    : result.selected_skill === input.target ? "false_positive" : "correct_no_trigger";
+  assert.equal(result.outcome, expectedOutcome, "trigger outcome classification mismatch");
+  const tp = Number(result.outcome === "correct_trigger");
+  const tn = Number(result.outcome === "correct_no_trigger");
+  const fp = Number(result.outcome === "false_positive");
+  const fn = Number(result.outcome === "false_negative");
+  const metrics = { total_cases: 1, true_positives: tp, true_negatives: tn, false_positives: fp, false_negatives: fn,
+    sibling_confusions: Number(result.outcome === "sibling_confusion"), errors: 0,
+    precision: tp + fp ? tp / (tp + fp) : 1, recall: tp + fn ? tp / (tp + fn) : 1,
+    false_positive_rate: fp + tn ? fp / (fp + tn) : 0, false_negative_rate: fn + tp ? fn / (fn + tp) : 0,
+  };
+  assert.deepEqual(receipt.metrics, metrics, "trigger metrics mismatch");
+  const summary = { schema: receipt.schema, status: receipt.status, sha256: record.sha256, metrics,
+    cases: [{ test_case_id: result.test_case_id, expected: result.expected, outcome: result.outcome, selected_skill: result.selected_skill }],
+  };
+  assert.deepEqual(input.summary, summary, "CLI trigger summary mismatch");
+  assert.deepEqual(input.bundleSummary, summary, "bundle trigger summary mismatch");
+  return { ...summary, passed: result.outcome === "correct_trigger" || result.outcome === "correct_no_trigger" };
+}

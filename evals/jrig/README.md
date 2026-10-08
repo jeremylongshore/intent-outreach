@@ -227,3 +227,11 @@ case must produce a real validated saved draft rather than a described plan.
 
 The spec must not merge until that behavioral acceptance passes. The offline
 connection proof does not relax this condition or approve any model for production.
+
+
+The case runner requires J-Rig trigger evidence from merged PR #348 or later.
+It verifies the private trigger receipt against its SQLite digest and execution run,
+recomputes the selected case's outcome and metrics, and compares both JSON and bundle
+summaries. Missing, skipped, incomplete or changed routing evidence cannot produce a
+passing case. An observed incorrect route produces a failed case. Earlier receipts
+remain historical evidence of their original CLI and do not gain this verification.

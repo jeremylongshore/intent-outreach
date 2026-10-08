@@ -52,6 +52,9 @@ export async function runCaseRunnerProof(jrigCli: string) {
     const first = await runCase({ ...config, outputDir: firstDir }, "fixture-only");
     assert.equal(first.caseResult, "pass", first.evidenceError ?? "first run failed");
     assert.equal(first.tier3bPassed, false);
+    assert(first.trigger);
+    assert.equal(first.trigger.passed, true);
+    assert.equal(first.trigger.cases[0]?.outcome, "correct_no_trigger");
     assert.equal(first.judgments.length, 4);
     const repeat = await runCase({ ...config, outputDir: join(directory, "repeat"), priorReceipt: join(firstDir, "receipt.json") }, "fixture-only");
     assert.equal(repeat.caseResult, "pass", repeat.evidenceError ?? "repeat failed");
@@ -88,10 +91,10 @@ export async function runCaseRunnerProof(jrigCli: string) {
     assert.equal(counts.judge, 36);
     assert(requests.filter((item) => item.phase === "judge").every((item) => item.model === "fixture-judge"));
     assert(requests.filter((item) => item.phase !== "judge").every((item) => item.model === "fixture-execution"));
-    const hashes = Object.fromEntries(await Promise.all(["run-case.ts", "case-runner-proof.ts"].map(async (name) => [name, createHash("sha256").update(await readFile(join(root, "evals/jrig", name))).digest("hex")])));
+    const hashes = Object.fromEntries(await Promise.all(["run-case.ts", "case-runner-proof.ts", "bind-evidence.ts"].map(async (name) => [name, createHash("sha256").update(await readFile(join(root, "evals/jrig", name))).digest("hex")])));
     return { schema: "intent-outreach-case-runner-proof/v1", scope: "scripted_actual_cli_case_runner_only", observedAt: new Date().toISOString(),
       behavioralVerdict: null, tier3bPassed: false, paidModelCalls: 0, vendorNetworkCalls: 0, messagesSent: 0,
-      verified: { originalCriteriaRetained: true, explicitJudgeModel: true, threeSamples: true, distinctSkillBaselineAndRepeat: true,
+      verified: { triggerCasesDigestMetricsAndBundle: true, originalCriteriaRetained: true, explicitJudgeModel: true, threeSamples: true, distinctSkillBaselineAndRepeat: true,
         realRegressionEnabled: true, malformedExecutionHasNoVerdict: true, partialReceiptsRetained: true, cancellationStopsOwnedGroup: true, temporaryFixturesRemoved: true },
       counts, results: [first, repeat, failed, cancelled].map((item) => ({ caseResult: item.caseResult, processResult: item.processResult, priorReceiptSha256: item.priorReceiptSha256 })),
       sha256: { ...hashes, inputSpec: first.inputSpecSha256, jrigCli: config.jrigSha256 },

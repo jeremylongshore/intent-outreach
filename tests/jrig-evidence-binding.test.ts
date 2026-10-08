@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { bindScenarioEvidence } from "../evals/jrig/bind-evidence.js";
+import { bindScenarioEvidence, bindTriggerEvidence } from "../evals/jrig/bind-evidence.js";
 
 const hash = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 async function fixture() {
@@ -109,6 +109,37 @@ describe("private execution evidence binding", () => {
       expect(bound.bindings[0]?.passed).toBe(false);
       expect(bound.bindings[0]?.audit.incomplete).toContain("host_call_failed");
       expect(bound.bindings[0]?.audit.incomplete).toContain("bundled_tool_error");
+    } finally { await f.close(); }
+  });
+});
+
+
+describe("private trigger evidence binding", () => {
+  it.each(["correct", "incorrect", "digest", "metrics", "classification", "missing", "wrong-run", "bundle", "incomplete", "wrong-prompt", "unknown-skill"])("verifies actual routing and refuses corrupted evidence (%s)", async (defect) => {
+    const f = await fixture();
+    try {
+      const incorrect = defect === "incorrect";
+      const metrics = { total_cases: 1, true_positives: 0, true_negatives: Number(!incorrect), false_positives: Number(incorrect), false_negatives: 0,
+        sibling_confusions: 0, errors: 0, precision: incorrect ? 0 : 1, recall: 1, false_positive_rate: Number(incorrect), false_negative_rate: 0 };
+      const result = { test_case_id: "unrelated-weather", expected: "should_not_trigger", selected_skill: incorrect ? "intent-outreach" : null,
+        outcome: incorrect ? "false_positive" : "correct_no_trigger", prompt: "private prompt", reasoning: "private rationale" };
+      const receipt = { schema: "jrig-trigger-evidence/v1", run_id: 1, status: defect === "incomplete" ? "incomplete" : "complete", results: [result], metrics };
+      const portable = { ...result } as Record<string, unknown>; delete portable.prompt; delete portable.reasoning;
+      if (defect === "metrics") receipt.metrics.true_negatives = 0;
+      if (defect === "classification") receipt.results[0]!.outcome = "false_negative";
+      if (defect === "wrong-prompt") receipt.results[0]!.prompt = "different private case";
+      if (defect === "unknown-skill") receipt.results[0]!.selected_skill = "not-in-roster";
+      const bytes = JSON.stringify(receipt);
+      const path = join(f.root, "trigger.json"); await writeFile(path, bytes, { mode: 0o600 });
+      const digest = "sha256:" + hash(bytes);
+      const summary = { schema: receipt.schema, status: receipt.status, sha256: digest, metrics: receipt.metrics, cases: [portable] };
+      if (defect !== "missing") f.db.prepare("INSERT INTO artifacts VALUES (?, ?, ?, ?, ?)").run(defect === "wrong-run" ? 2 : 1, "trigger-evidence", path,
+        defect === "digest" ? "sha256:" + "0".repeat(64) : digest, Buffer.byteLength(bytes));
+      const input = { dbPath: f.input.dbPath, caseId: "unrelated-weather", expected: "should_not_trigger" as const, target: "intent-outreach", prompt: "private prompt", siblings: [], summary,
+        bundleSummary: defect === "bundle" ? {} : summary };
+      if (["correct", "incorrect"].includes(defect)) {
+        expect(await bindTriggerEvidence(input)).toMatchObject({ passed: !incorrect, metrics, cases: [portable] });
+      } else await expect(bindTriggerEvidence(input)).rejects.toThrow();
     } finally { await f.close(); }
   });
 });

@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import { bindScenarioEvidence } from "./bind-evidence.js";
+import { bindScenarioEvidence, bindTriggerEvidence } from "./bind-evidence.js";
 import { createAgentModel } from "./agent-model.js";
 import { scenarios } from "./scenarios.js";
 
@@ -154,6 +154,7 @@ export async function runCase(raw: unknown, apiKey: string) {
     LLM_BASE_URL: config.baseUrl, LLM_API_KEY: apiKey, LLM_MODEL: config.model, JRIG_AGENT_API_KEY: apiKey }, config.outputDir);
   let caseResult: "pass" | "fail" | "incomplete" = "incomplete";
   let evidence: Awaited<ReturnType<typeof bindScenarioEvidence>> | null = null;
+  let trigger: Awaited<ReturnType<typeof bindTriggerEvidence>> | null = null;
   let judgments: z.infer<typeof vote>[] = [];
   let jrigResult: Record<string, unknown> | null = null;
   let evidenceError: string | null = null;
@@ -173,11 +174,15 @@ export async function runCase(raw: unknown, apiKey: string) {
     const bundles = z.array(z.object({ predicate: z.object({ gate_decision: z.string(), metadata: z.record(z.string(), z.unknown()) }).passthrough() })).length(1).parse(JSON.parse(await readFile(join(config.outputDir, "bundle.json"), "utf8")));
     const predicate = bundles[0]?.predicate;
     assert(predicate && predicate.gate_decision !== "error", "gate_evidence_incomplete");
+    const triggerExpectation = z.enum(["should_trigger", "should_not_trigger"]).parse(spec.test_cases[0]?.trigger_expectation);
+    trigger = await bindTriggerEvidence({ dbPath, caseId: config.caseId, expected: triggerExpectation,
+      target: spec.skill_name, prompt: z.string().parse(spec.test_cases[0]?.prompt),
+      siblings: z.array(z.object({ name: z.string() })).parse(z.record(z.string(), z.unknown()).parse(spec).siblings ?? []).map((item) => item.name), summary: jrigResult.trigger, bundleSummary: predicate.metadata.trigger });
     judgments = inspectCaseVotes(predicate.metadata.criteria, expected, config.caseId);
     const references = z.object({ receipts: z.array(z.object({ phase: z.string(), sha256: z.string() })) }).parse(predicate.metadata.tool_execution).receipts;
     assert.deepEqual(references.map((item) => [item.phase, item.sha256]).sort(), evidence.bindings.map((item) => [item.phase, item.receiptSha256]).sort(), "bundle_receipt_mismatch");
     if (evidence.bindings.some((item) => item.status !== "completed" || item.audit.incomplete.length)) throw new Error("execution_or_host_incomplete");
-    caseResult = evidence.bindings.find((item) => item.phase === "skill")?.passed && judgments.every((item) => item.verdict === "yes") ? "pass" : "fail";
+    caseResult = trigger.passed && evidence.bindings.find((item) => item.phase === "skill")?.passed && judgments.every((item) => item.verdict === "yes") ? "pass" : "fail";
   } catch {
     // Detailed provider/tool diagnostics stay in the private original receipts.
     evidenceError = "incomplete_or_unverifiable_evaluation; inspect private CLI, bundle and host receipts";
@@ -185,7 +190,7 @@ export async function runCase(raw: unknown, apiKey: string) {
   const report = { schema: "intent-outreach-case-run/v1", caseId: config.caseId, evidenceKind: config.evidenceKind,
     caseResult, tier3bPassed: false, scope: "one_case_requires_suite_regression_variance_and_review", inputSpecSha256: hash(source),
     provider: config.provider, model: config.model, judgeModel: config.judgeModel, processResult, priorReceiptSha256,
-    judgments, evidence, evidenceError, jrigResult, sourceHashes: before,
+    judgments, trigger, evidence, evidenceError, jrigResult, sourceHashes: before,
     usageScope: "jrigResult.cost covers trigger, root execution and judgment; evidence.bindings nestedUsage is additional",
   };
   await write("receipt.json", report);

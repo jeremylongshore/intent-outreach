@@ -1,13 +1,14 @@
 {
   "schema": "intent-outreach-case-runner-proof/v1",
   "scope": "scripted_actual_cli_case_runner_only",
-  "observedAt": "2026-10-07T23:50:12.250Z",
+  "observedAt": "2026-10-08T00:20:24.551Z",
   "behavioralVerdict": null,
   "tier3bPassed": false,
   "paidModelCalls": 0,
   "vendorNetworkCalls": 0,
   "messagesSent": 0,
   "verified": {
+    "triggerCasesDigestMetricsAndBundle": true,
     "originalCriteriaRetained": true,
     "explicitJudgeModel": true,
     "threeSamples": true,
@@ -27,7 +28,7 @@
     {
       "caseResult": "pass",
       "processResult": {
-        "pid": 900528,
+        "pid": 1140320,
         "code": 0,
         "signal": null,
         "timedOut": false,
@@ -38,18 +39,18 @@
     {
       "caseResult": "pass",
       "processResult": {
-        "pid": 901221,
+        "pid": 1141248,
         "code": 0,
         "signal": null,
         "timedOut": false,
         "cancelled": false
       },
-      "priorReceiptSha256": "14643865f8ee712e2af80b695d720f9afe07d3d2773f9d7c0904959c6a15eb5d"
+      "priorReceiptSha256": "2440de914249f98fc3176e3b5c895a0b320e3c553c776dfae4a10498ab6f44e4"
     },
     {
       "caseResult": "incomplete",
       "processResult": {
-        "pid": 902271,
+        "pid": 1142182,
         "code": 2,
         "signal": null,
         "timedOut": false,
@@ -60,7 +61,7 @@
     {
       "caseResult": "incomplete",
       "processResult": {
-        "pid": 902815,
+        "pid": 1143167,
         "code": null,
         "signal": "SIGTERM",
         "timedOut": false,
@@ -70,9 +71,10 @@
     }
   ],
   "sha256": {
-    "run-case.ts": "f312960c398f22829a4741d466564be26d89ab06ac93e52d3c45a7a31a1235a1",
-    "case-runner-proof.ts": "5391b8cf3015d624864fcd12157f5581feb85bab6162c61a46f3773661bb5f96",
+    "run-case.ts": "e7834abf0eb55a76730115ab98df2003cbaccc4528a41bc69f6fc7d3a06d6145",
+    "case-runner-proof.ts": "af47120aea5c788044aa504a17d3f0dd08feee6d051d7093b54d46fb711d3201",
+    "bind-evidence.ts": "87290fe8090a6338e8992e629d9337b5bcacc075bfeb30dbcbbf834fa103d34f",
     "inputSpec": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
-    "jrigCli": "be03a8731c35ce04037c62e006c0935ba0be261f705321ee7fc24383ab9f80fc"
+    "jrigCli": "643348ddb5ec6825987e367838c886cd025e62b0f84d882fe08c62ed2a139ca5"
   }
 }
