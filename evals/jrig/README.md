@@ -573,3 +573,9 @@ and the save's messages argument. Both independent audits fail, so the original
 case stays incomplete despite a zero CLI exit. The synthetic stored runs,
 positive root/nested usage and original uncertainty are retained; no passing
 regression seed or campaign qualification follows.
+
+`glm53-multi-domain-routing-incomplete-2026-10-08.json` preserves the original
+multi-domain incomplete case and zero judgments. The closed skill trace lacks
+separate draft approval and the expected save; the independent gate rejects it.
+The full original suite now has only prospect-and-draft pending. See the progress
+artifact for original outcomes; partial tool execution does not qualify a case.
