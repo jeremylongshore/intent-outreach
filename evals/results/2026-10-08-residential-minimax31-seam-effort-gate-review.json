@@ -1,0 +1,53 @@
+{
+  "schema": "intent-outreach-residential-qualification-review/v1",
+  "sourceCommit": "70a58e55a050bf9d0b5f3507cb1bcd6ca1ee1b76",
+  "verifiedTrackedSourceFiles": 366,
+  "sourceManifestSha256": "11424dbadf4798244e41a7a9aa0a99cacd4407a051b0081fcbb80bc0d6fff759",
+  "sourceManifestMatchesGitCommit": true,
+  "sourceHashesVerifiedBeforeAndAfterRun": true,
+  "record": "evals/results/2026-10-08-minimax-MiniMax-M3.1-Flash-Preview-residential-draft.v1@a183ee83-2.json",
+  "recordSha256": "a467cf22c5942c1e30efd4994fbc3c9b239d5442b01318babfbb48b05a0b69c4",
+  "provider": "minimax",
+  "model": "MiniMax-M3.1-Flash-Preview",
+  "pack": "residential-re",
+  "repeat": 3,
+  "summary": {
+    "fixtures": 29,
+    "fixturesPassed": 28,
+    "passRate": 0.9655172413793104,
+    "runPassRate": 0.9885057471264368,
+    "verdict": "fail"
+  },
+  "judgePassed": true,
+  "judgeMeanRating": 5,
+  "unsupportedJudgmentCount": 0,
+  "expectedJudgeAssessments": 21,
+  "returnedJudgeAssessments": 21,
+  "judgeErrors": [],
+  "failures": [
+    {
+      "fixture": "commercial-parcel-decline",
+      "seam": "score",
+      "run": 0,
+      "failures": {
+        "scoreBand": [
+          "band \"hot\" (score 72) not in expected [cold, warm]"
+        ]
+      },
+      "error": null
+    }
+  ],
+  "review": [
+    "All original fixture IDs, seams, repeats and prompt identities independently verified.",
+    "Original result remains unchanged; this review does not alter the verdict or itself approve a model.",
+    "No timeout or protected-pair variance failure occurred in this run; all21 draft assessments are grounded with no hallucinated facts.",
+    "One commercial parcel was scored hot despite a residential-only agent offer. This deterministic score-band failure blocks qualification.",
+    "The scoring prompt describes ownership signals but does not explicitly prioritize whether recorded property use fits the user offer. Any prompt correction is a separate source requiring another full gate."
+  ],
+  "costInterpretation": "Token counts are actual returned usage; costUsd uses the existing unknown-model fallback ($3 input/$15 output per million tokens), not verified subscription billing or a model-specific price.",
+  "generationProfile": {
+    "score": "low",
+    "draft": "medium",
+    "judge": "endpoint default (no override)"
+  }
+}
