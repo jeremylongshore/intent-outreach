@@ -23,6 +23,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MockLanguageModelV4 } from "ai/test";
+import type { ApprovedModel } from "../evals/supported.js";
 
 type Kind = "score" | "pscore" | "draft" | "judge";
 interface Call {
@@ -916,13 +917,12 @@ describe("evals:promote --pack residential-re", () => {
     });
     expect(res.pass).toBe(true);
     const entries = readApprovedBlock(readFileSync(file, "utf8"));
-    const resEntry = entries.find((e) => e.provider === "minimax" && e.pack === "residential-re")!;
+    const isPromoted = (e: ApprovedModel) => e.provider === "minimax" && e.model === "MiniMax-M3" && e.pack === "residential-re";
+    const resEntry = entries.find(isPromoted)!;
     expect(resEntry.verified).toBe(true);
     expect(resEntry.resultFile).toMatch(/residential-draft\.v1@[0-9a-f]{8}\.json$/);
     expect(resEntry.evidence).toMatch(/\(residential-re\)/);
-    expect(entries.find((e) => e.provider === "minimax" && e.pack === "b2b-sdr")).toEqual(
-      APPROVED_MODELS.find((e) => e.provider === "minimax"),
-    );
+    expect(entries.filter((e) => !isPromoted(e))).toEqual(readApprovedBlock(seed).filter((e) => !isPromoted(e)));
     expect(lines.join("\n")).toMatch(/PROMOTED: minimax\/MiniMax-M3 \[residential-re\]/);
   });
 

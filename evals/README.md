@@ -64,6 +64,20 @@ checks four kinds of result:
 
 ## Approval: `supported.ts`
 
+`minimax/MiniMax-M3.1-Flash-Preview` is verified for `residential-re` by the
+[2026-10-08 keyed result](results/2026-10-08-minimax-MiniMax-M3.1-Flash-Preview-residential-draft.v1@a183ee83-3.json):
+all 29 fixtures passed each of three runs (87/87 outcomes), and all 21 draft
+judgments passed their per-fixture minimums with grounded content and no
+hallucinated facts (mean 4.95). The accompanying
+[source-bound review](results/2026-10-08-residential-minimax31-property-fit-gate-review.json)
+verifies the original fixture IDs, prompt identities, repeats, returned judgments
+and unchanged source. Earlier failures remain unchanged. This approval covers
+the residential scoring/drafting suite; it does not establish inbound prompt
+quality, county data terms, a brokerage license, or live CRM/send acceptance.
+Select this exact model explicitly: the provider default remains `MiniMax-M3`.
+Reported tokens are actual usage; this model's USD estimate uses the existing
+unknown-model fallback, not verified subscription billing or model pricing.
+
 For `MiniMax-M3.1-Flash-Preview`, native calls now forward an explicitly requested
 seam effort through the OpenAI-compatible `reasoning_effort` field: scoring uses
 `low` and drafting uses `medium`. Calls without an effort setting, including the
@@ -101,7 +115,7 @@ qualifies an ungated model. No product code may call it, and a test enforces tha
 ```bash
 export ANTHROPIC_API_KEY=...            # or via scripts/sops-env
 pnpm run evals:promote --provider anthropic --model claude-sonnet-5-5                         # b2b-sdr
-pnpm run evals:promote --provider minimax --model MiniMax-M3 --pack residential-re --judge   # residential
+pnpm run evals:promote --provider minimax --model MiniMax-M3.1-Flash-Preview --pack residential-re --judge
 # on PASS: commit evals/results/<record>.json + evals/supported.ts
 # to switch the default, edit DEFAULT_MODEL in pipeline_core/providers.ts by hand (the script prints the line)
 ```
