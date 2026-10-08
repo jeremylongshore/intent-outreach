@@ -57,13 +57,13 @@ const KEY_ENV: Record<ProviderName, string[]> = {
   minimax: ["MINIMAX_API_KEY"],
 };
 
-/** Anthropic effort levels the seams use (thinking depth + overall token spend). */
+/** Thinking-depth levels the seams use for models with explicit effort support. */
 export type Effort = "low" | "medium" | "high";
 
 /**
  * Per-call bounds. All optional so stubs and older callers keep compiling.
- * `effort` is forwarded ONLY to Anthropic models that accept it (see
- * `supportsEffort`); other providers ignore it.
+ * `effort` is forwarded to supported Anthropic models (see `supportsEffort`)
+ * and MiniMax-M3.1-Flash-Preview. Other models retain their endpoint defaults.
  */
 export interface GenerateOptions {
   /** Hard ceiling on generated tokens. On thinking models, thinking counts toward it. */
@@ -296,9 +296,13 @@ async function createProvider(opts: GetProviderOptions, gated: boolean): Promise
       args: GenerateObjectArgs<S>,
     ): Promise<{ object: z.infer<S>; usage: Usage }> {
       const opts = args.options ?? {};
-      const providerOptions =
+      // Anchor the option bag to the installed SDK; inferred union keys include
+      // undefined values that its JSON provider-options type does not accept.
+      const providerOptions: Parameters<typeof generateText>[0]["providerOptions"] =
         name === "anthropic" && opts.effort && supportsEffort(model)
           ? { anthropic: { effort: opts.effort } }
+          : name === "minimax" && model === "MiniMax-M3.1-Flash-Preview" && opts.effort
+            ? { minimax: { reasoningEffort: opts.effort } }
           : undefined;
       const attempt = async (): Promise<{ object: z.infer<S>; usage: Usage }> => {
         const res = await generateText({

@@ -77235,7 +77235,7 @@ async function createProvider(opts, gated) {
     ...gated ? { assertPackApproved: (pack) => assertModelSupported(name31, model, pack) } : {},
     async generateObject(args) {
       const opts2 = args.options ?? {};
-      const providerOptions = name31 === "anthropic" && opts2.effort && supportsEffort(model) ? { anthropic: { effort: opts2.effort } } : void 0;
+      const providerOptions = name31 === "anthropic" && opts2.effort && supportsEffort(model) ? { anthropic: { effort: opts2.effort } } : name31 === "minimax" && model === "MiniMax-M3.1-Flash-Preview" && opts2.effort ? { minimax: { reasoningEffort: opts2.effort } } : void 0;
       const attempt = async () => {
         const res = await generateText({
           model: languageModel,

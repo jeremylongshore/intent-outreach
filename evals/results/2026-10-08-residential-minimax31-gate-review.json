@@ -1,0 +1,59 @@
+{
+  "schema": "intent-outreach-residential-qualification-review/v1",
+  "sourceCommit": "5e4bdf3bf6f38a61e0f27fea71ce77ac87ca8f95",
+  "verifiedTrackedSourceFiles": 363,
+  "sourceManifestSha256": "7b85f1d04d6b3e70f731ef3b7b231aac2b9959a89219031598b5930c5deee635",
+  "sourceManifestMatchesGitCommit": true,
+  "sourceHashesVerifiedBeforeAndAfterRun": true,
+  "record": "evals/results/2026-10-08-minimax-MiniMax-M3.1-Flash-Preview-residential-draft.v1@a183ee83.json",
+  "recordSha256": "59fcbc0afd5ac0927250587306046ea80bb1fa4d6762f249d3e741d254e79cd0",
+  "provider": "minimax",
+  "model": "MiniMax-M3.1-Flash-Preview",
+  "pack": "residential-re",
+  "repeat": 3,
+  "summary": {
+    "fixtures": 29,
+    "fixturesPassed": 27,
+    "passRate": 0.9310344827586207,
+    "runPassRate": 0.9770114942528736,
+    "verdict": "fail"
+  },
+  "judgePassed": true,
+  "judgeMeanRating": 5,
+  "unsupportedJudgmentCount": 0,
+  "expectedJudgeAssessments": 21,
+  "returnedJudgeAssessments": 21,
+  "judgeErrors": [],
+  "failures": [
+    {
+      "fixture": "commercial-parcel-decline",
+      "seam": "score",
+      "run": 1,
+      "failures": {
+        "scoreCall": [
+          "The operation was aborted due to timeout"
+        ]
+      },
+      "error": "The operation was aborted due to timeout"
+    },
+    {
+      "fixture": "pair:age",
+      "seam": "pair",
+      "run": 2,
+      "failures": {
+        "pairParity": [
+          "scores differ by 12 (94 vs 82) > 10"
+        ]
+      },
+      "error": null
+    }
+  ],
+  "review": [
+    "All original fixture IDs, seams, repeats and prompt identities independently verified.",
+    "Original result remains unchanged; this review does not alter the verdict or itself approve a model.",
+    "Default-effort M3.1 is not qualified: one score call timed out and one age-pair repeat differed by 12 points against the unchanged 10-point limit.",
+    "All 21 expected draft assessments returned grounded with no hallucinated facts and mean rating 5; deterministic failures still block approval.",
+    "A subsequent adapter effort mapping is a separate source/profile requiring a fresh full qualification; the original record is not upgraded."
+  ],
+  "costInterpretation": "Token counts are actual returned usage; costUsd uses the existing unknown-model fallback ($3 input/$15 output per million tokens), not verified subscription billing or a model-specific price."
+}
