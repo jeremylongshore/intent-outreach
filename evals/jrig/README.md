@@ -421,3 +421,12 @@ or persistence; the skill uses a three-question batch with the unchanged wait
 decision. This is one case only. The naked baseline also passes, J-Rig reports
 `obsolete_review`, and repeat/regression, remaining cases, model variance and
 rollout acceptance are not established by this receipt.
+
+`glm53-scope-regression-pass-2026-10-08.json` retains a fresh real scope
+repeat with actual prior-receipt regression enabled. Source/model/mode/budget
+match the prior passing case, skill/baseline sessions are fresh, and the five
+prior votes exactly produce the regression input bound by the portable digest.
+All five applicable criteria and twelve judge samples pass again; regression
+reports no regressions. Baseline also passes and promotion stays ineligible
+(`obsolete_review`). This proves scope repeat/regression only, without campaign
+or whole-suite acceptance.
