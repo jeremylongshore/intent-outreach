@@ -78,6 +78,15 @@ Select this exact model explicitly: the provider default remains `MiniMax-M3`.
 Reported tokens are actual usage; this model's USD estimate uses the existing
 unknown-model fallback, not verified subscription billing or model pricing.
 
+A separate [native inbound observation](results/2026-10-08-native-inbound-minimax31-observation.json)
+used the production provider gate with three synthetic email inquiries. Two
+validated replies completed in 2,809 ms and 3,735 ms, an injected link was omitted,
+and an unrelated sales pitch was declined. The
+[observation review](results/2026-10-08-native-inbound-minimax31-observation-review.json)
+records unchanged source, actual usage and manual output review. These samples
+are not inbound qualification, a latency guarantee or forms-api/ERPNext/Buzz
+acceptance; no message was sent or persisted.
+
 For `MiniMax-M3.1-Flash-Preview`, native calls now forward an explicitly requested
 seam effort through the OpenAI-compatible `reasoning_effort` field: scoring uses
 `low` and drafting uses `medium`. Calls without an effort setting, including the
