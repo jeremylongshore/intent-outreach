@@ -514,3 +514,11 @@ coding control, with original votes and separate no-campaign-effect audits.
 snapshot: five original terminal passes, all ten required IDs and the five still
 unverified cases. It records the current source/spec/model/budget cohort, without
 substituting historical receipts or implying completed regression or acceptance.
+
+`deepseek41-fetch-failed-2026-10-08.json` preserves the fresh actual DeepSeek 4.1
+Flash prospect attempt at the corrected runtime. Inventory verification passed,
+but the recorded provider failure is `fetch failed`, with no retained HTTP status,
+completed usage or judgments. Both hosts closed without tools or persistence;
+missing workflow assertions are unexercised requirements rather than model-quality
+findings. The original case remains incomplete, cannot seed regression, and does
+not establish a quality comparison. No specific timeout cause is inferred.
