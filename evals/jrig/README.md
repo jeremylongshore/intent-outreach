@@ -355,3 +355,11 @@ baseline executions were incomplete, with zero judgments. The baseline stored on
 that failed the independent audit. The original provider diagnostic was an internal-server
 error; its HTTP status was not retained. This attempt establishes neither a clean behavioral
 pass nor production model approval. Original private receipts remain unchanged.
+
+`lightning35-phase120-r2-unsuccessful-2026-10-08.json` retains the fresh real
+Lightning default run with explicit 120-second phase allocation. The skill
+completed and saved one synthetic run but failed independent checkpoint-order
+and saved-model assertions; its drafter evidence was unverifiable. The baseline
+then hit the unchanged 300-second root timeout. The original receipt remains
+incomplete with zero judgments. Longer phase allocation did not establish
+behavioral acceptance. Source, CLI and trace digests were reverified at export.
