@@ -86,7 +86,17 @@
   ],
   "review": [
     "Original receipts only; no corrected historical verdict substitutions.",
-    "Missing cases, matching repeats/regression, campaign and model-variance/rollout review remain required."
+    "Matching research-only regression is retained separately from initial case coverage. Remaining cases, required repeats/regression, campaign and model-variance/rollout review remain incomplete."
   ],
-  "currentResultsIncludeFailure": true
+  "currentResultsIncludeFailure": true,
+  "matchingRegressionCases": [
+    {
+      "caseId": "build-lead-list",
+      "receiptSha256": "776dc13be8fe5abe04f41d64acb02019c96b4ed4e346de15e478bd72959fc14a",
+      "priorReceiptSha256": "e11feabea3d72ff0e53fd2c520fdb01531193ccc16840922231d85a6c5f36954",
+      "result": "no-regressions",
+      "artifact": "glm53-research-routing-regression-pass-2026-10-08.json",
+      "scope": "research-only"
+    }
+  ]
 }

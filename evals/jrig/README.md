@@ -530,3 +530,14 @@ both structural audits pass, with fourteen yes and one no skill-side samples
 (no-prompt-leakage). This dissent and the failed case remain unchanged. The partial
 suite snapshot now contains six original terminal cases: five pass, one fails,
 four remain unverified. No routing label or criterion is weakened to force a pass.
+
+`glm53-research-routing-regression-pass-2026-10-08.json` retains the fresh real
+research-only repeat under the corrected spec. Source/model/mode/budget match its
+new-spec prior passing receipt, all four skill/baseline sessions are distinct,
+and the exact seven prior votes form the actual regression input. Its digest
+matches both CLI and portable enabled/no-regressions metadata. All seven
+aggregated criteria pass again with seventeen yes and one no truthful-receipt
+sample. Actual `research_domain` events and positive nested usage are retained;
+the baseline still fails preflight ordering. This establishes research-only
+regression, not campaign or whole-suite acceptance, and does not add an extra
+original case to the coverage count.
