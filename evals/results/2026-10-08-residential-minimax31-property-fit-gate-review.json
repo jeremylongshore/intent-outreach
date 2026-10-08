@@ -1,0 +1,33 @@
+{
+  "schema": "intent-outreach-residential-qualification-review/v1",
+  "sourceCommit": "a5e8788eb94cbea48f5f1112d4a2f0a94ca6503f",
+  "verifiedTrackedSourceFiles": 368,
+  "sourceManifestSha256": "abecdf8ad7956cfe0306a7cbbe2e6a216fdf41dab98ef6c5b3e7174e95b90ad0",
+  "sourceManifestMatchesGitCommit": true,
+  "sourceHashesVerifiedBeforeAndAfterRun": true,
+  "record": "evals/results/2026-10-08-minimax-MiniMax-M3.1-Flash-Preview-residential-draft.v1@a183ee83-3.json",
+  "recordSha256": "3ac55b10684fcf81e8799bedd8b7b5692b13a8c7e2829f47ef40d79dda4871a9",
+  "provider": "minimax",
+  "model": "MiniMax-M3.1-Flash-Preview",
+  "pack": "residential-re",
+  "repeat": 3,
+  "summary": {
+    "fixtures": 29,
+    "fixturesPassed": 29,
+    "passRate": 1,
+    "runPassRate": 1,
+    "verdict": "pass"
+  },
+  "judgePassed": true,
+  "judgeMeanRating": 4.9523809523809526,
+  "unsupportedJudgmentCount": 0,
+  "expectedJudgeAssessments": 21,
+  "returnedJudgeAssessments": 21,
+  "judgeErrors": [],
+  "failures": [],
+  "review": [
+    "All original fixture IDs, seams, repeats and prompt identities independently verified.",
+    "Original result remains unchanged; this review does not alter the verdict or itself approve a model."
+  ],
+  "costInterpretation": "Token counts are actual returned usage; costUsd uses the existing unknown-model fallback ($3 input/$15 output per million tokens), not verified subscription billing or a model-specific price."
+}
