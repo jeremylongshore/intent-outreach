@@ -412,3 +412,12 @@ Fresh inventory listed the model, but execution returned HTTP 404/model-not-foun
 Skill and baseline performed no root tool calls or persistence; the original case
 is incomplete with zero judgments. Inventory presence does not prove hosted
 availability. This is unavailable-endpoint evidence, not model-quality evidence.
+
+`glm53-scope-checkpoint-pass-2026-10-08.json` retains a fresh real passing
+scope-confirmation case at the corrected checkpoint runtime: all five applicable
+criteria pass, all twelve judge samples are yes, trigger routing passes and
+package checks are 12/12. Skill and baseline independently perform no research
+or persistence; the skill uses a three-question batch with the unchanged wait
+decision. This is one case only. The naked baseline also passes, J-Rig reports
+`obsolete_review`, and repeat/regression, remaining cases, model variance and
+rollout acceptance are not established by this receipt.
