@@ -550,3 +550,15 @@ closed-skill diagnostic. Its baseline saved an unapproved synthetic run and time
 out. Those original failures remain visible; a successful skill-side audit cannot
 upgrade the whole case or seed regression. The partial suite snapshot retains this incomplete original case separately
 from passing and failed cases.
+
+`glm53-thin-data-routing-incomplete-2026-10-08.json` retains the original
+thin-data case with zero judgments after execution timeouts. Both hosts closed,
+recorded no persisted runs and failed structural completeness. Correct observed
+routing cannot upgrade the incomplete case or supply a regression seed.
+
+`glm53flash-default-prospect-incomplete-2026-10-08.json` retains the actual
+GLM 5.3 Flash prospect comparison at endpoint-default reasoning. Routing completed
+correctly, but both execution phases timed out; no functional judgments exist.
+Private artifacts and closed host traces were independently verified. This is
+an incomplete attempt, not a model-quality comparison. Default reasoning and the
+GLM 5.3 cohort's explicit low reasoning are different execution profiles.
