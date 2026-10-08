@@ -385,6 +385,23 @@ describe("--judge", () => {
     expect(JSON.parse(readFileSync(p.recordPath!, "utf8")).judge.pass).toBe(false);
   });
 
+  it.each([
+    { grounded: false, hallucinatedFacts: [] },
+    { grounded: true, hallucinatedFacts: ["invented buyer relationship"] },
+  ])("fails a high-rated unsupported judgment: %j", async (unsupported) => {
+    let judged = 0;
+    mock.respond = (c) => {
+      if (c.kind !== "judge" || judged++ !== 0) return goodModel(c);
+      return { ...unsupported, hasCta: true, rating: 5, rationale: "Unsupported despite high rating" };
+    };
+    const p = (await keyed({ repeat: 3, judge: true })).providers[0]!;
+    expect(p.judge?.meanRating).toBe(5);
+    expect(p.judge?.perFixture.filter((f) => !f.pass)).toHaveLength(1);
+    expect(p.judge?.pass).toBe(false);
+    expect(p.supported).toBe(false);
+    expect(JSON.parse(readFileSync(p.recordPath!, "utf8")).judge.pass).toBe(false);
+  });
+
   it("judges each fixture against its own judgeMin (thin/weak 3, strong 4)", async () => {
     // "Generic but not false" (3) on the thin and weak-fit leads, 4 on strong-fit.
     const thinOrWeak = (p: string) => p.includes("Quiet Labs") || p.includes("Harbor Freight Coffee Roasters");
@@ -850,6 +867,19 @@ describe("residential-re keyed gate", () => {
       c.kind === "judge" ? { grounded: true, hasCta: true, hallucinatedFacts: [], rating: 3, rationale: "generic" } : goodModel(c);
     const p = (await residential({ repeat: 1, judge: true })).providers[0]!;
     expect(p.judge!.pass).toBe(false);
+    expect(p.supported).toBe(false);
+  });
+
+  it("--judge rejects a high-rated invented buyer claim in a residential draft", async () => {
+    let judged = 0;
+    mock.respond = (c) => {
+      if (c.kind !== "judge" || judged++ !== 0) return goodModel(c);
+      return { grounded: false, hasCta: true, hallucinatedFacts: ["my buyers regularly ask about"], rating: 5, rationale: "Invented buyers" };
+    };
+    const p = (await residential({ repeat: 3, judge: true })).providers[0]!;
+    expect(p.fixtures.every((f) => f.pass)).toBe(true);
+    expect(p.judge?.meanRating).toBe(5);
+    expect(p.judge?.pass).toBe(false);
     expect(p.supported).toBe(false);
   });
 });

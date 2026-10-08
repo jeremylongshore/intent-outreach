@@ -26,7 +26,8 @@ import {
   residentialDraftRules,
   residentialScoreBand,
 } from "../evals/residential.js";
-import type { PropertyDraftContext } from "../pipeline_core/property-seam.js";
+import { scoreProperty, type PropertyDraftContext } from "../pipeline_core/property-seam.js";
+import type { LLMProvider } from "../pipeline_core/providers.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "..", "evals", "fixtures");
 const all = loadResidentialFixtures(FIXTURES);
@@ -145,6 +146,47 @@ describe("reasonGrounding", () => {
   });
   it("passes grounded property reasons", () => {
     expect(reasonGrounding(["Ownership recorded in 2004."], []).pass).toBe(true);
+  });
+});
+
+describe("property score state grounding", () => {
+  const provider = (reasons: string[]): LLMProvider => ({
+    name: "minimax",
+    model: "synthetic-grounding-regression",
+    async generateObject({ schema }) {
+      return { object: schema.parse({ score: 75, band: "hot", reasons }), usage: { inputTokens: 0, outputTokens: 0, costUsd: 0 } };
+    },
+  });
+
+  it("keeps the recorded AL and GA state names while dropping an absent state", async () => {
+    const reasons = [
+      "Out-of-state owner with Atlanta, GA mailing address versus an Alabama property",
+      "Out-of-state owner (Georgia) of a coastal Alabama single-family home",
+      "Property is in Nevada",
+    ];
+    const result = await scoreProperty(provider(reasons), prepared("pair-origin-a").scoreCtx!);
+    expect(result.object.reasons).toEqual(reasons.slice(0, 2));
+    expect(result.droppedReasons.map((item) => item.angle)).toEqual([reasons[2]]);
+  });
+
+  it("does not infer a state name from a code in an entity name", async () => {
+    const ctx = structuredClone(prepared("pair-origin-a").scoreCtx!);
+    ctx.owner.name = "OR Holdings LLC";
+    const reason = "Owner is in Oregon";
+    const result = await scoreProperty(provider([reason]), ctx);
+    expect(result.object.reasons).toEqual([]);
+    expect(result.droppedReasons.map((item) => item.angle)).toEqual([reason]);
+  });
+
+  it("does not infer address states when the addresses are missing", async () => {
+    const ctx = structuredClone(prepared("pair-origin-a").scoreCtx!);
+    ctx.icp = "Listing agent for homes";
+    ctx.property.address = undefined;
+    ctx.owner.mailingAddress = undefined;
+    const reasons = ["Property is in Alabama", "Owner is in Georgia"];
+    const result = await scoreProperty(provider(reasons), ctx);
+    expect(result.object.reasons).toEqual([]);
+    expect(result.droppedReasons.map((item) => item.angle)).toEqual(reasons);
   });
 });
 

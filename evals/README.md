@@ -25,7 +25,9 @@ Every fixture must pass **every** one of k runs (`--repeat`, default 3 when keye
   mutual connections, and "I noticed" claims with nothing grounded behind them. A draft the product
   guard rejects counts as a failed run.
 - **`--judge`** (optional, costs more) asks the same model to rate each draft from 1 to 5. The mean
-  rating must reach `--judge-floor` (default 4). A judge error counts as a fail.
+  rating must reach `--judge-floor` (default 4). Every judged draft must also have
+  `grounded: true` and an empty `hallucinatedFacts` list; a high rating cannot override
+  an unsupported claim. A judge error counts as a fail.
 
 ## The residential-re suite (`--pack residential-re`)
 
@@ -57,7 +59,8 @@ checks four kinds of result:
   the fair-housing rule. The age pair must also build byte-identical prompts.
 - **`--judge`** uses a residential rubric: about the property and the numbers on record, plain and
   restrained, with one low-pressure ask. Pitchy or urgent letters rate 2, and any reference to the
-  owner as a person rates 1. Fixtures set their own `judgeMin`.
+  owner as a person rates 1. Fixtures set their own `judgeMin`; every judged draft must
+  also be grounded with no hallucinated facts, regardless of its numeric rating.
 
 ## Approval: `supported.ts`
 

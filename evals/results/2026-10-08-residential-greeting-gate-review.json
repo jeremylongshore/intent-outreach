@@ -1,0 +1,30 @@
+{
+  "schema": "intent-outreach-residential-qualification-review/v1",
+  "sourceCommit": "52ae4a849578f56e392fa2e84d2e0c80f7de83eb",
+  "verifiedTrackedSourceFiles": 356,
+  "sourceManifestSha256": "a33c742eef38ac2a401f2aefcaf8cb52594ca6a8bb418aabdfe1be400f80eca5",
+  "sourceHashesVerifiedBeforeAndAfterRun": true,
+  "record": "evals/results/2026-10-08-minimax-MiniMax-M3-residential-draft.v1@b7defdda.json",
+  "recordSha256": "09f9451dad079a66c4960aad8ab8dd0e43befc4c839e0c3676f544d9b5da2d23",
+  "provider": "minimax",
+  "model": "MiniMax-M3",
+  "pack": "residential-re",
+  "repeat": 3,
+  "summary": {
+    "fixtures": 29,
+    "fixturesPassed": 27,
+    "passRate": 0.9310344827586207,
+    "runPassRate": 0.9770114942528736,
+    "verdict": "fail"
+  },
+  "originalJudgePassed": true,
+  "judgeMeanRating": 4.809523809523809,
+  "unsupportedJudgmentCount": 1,
+  "review": [
+    "Original keyed result remains failed and unchanged; model not promoted.",
+    "The two score failures expand recorded address states AL and GA to their canonical full names, but the original score grounding corpus contains only codes.",
+    "The original judge reports an unsupported buyer claim despite a passing rating. This cannot establish grounded qualification.",
+    "Corrections and any subsequent gate run have separate source identities and receipts."
+  ],
+  "sourceManifestMatchesGitCommit": true
+}
