@@ -190,6 +190,14 @@ judge calls across the initial and regression runs, fresh skill/baseline session
 retained failed receipts and a real cancellation that leaves no owned process
 group. Its checked-in receipt is component evidence only.
 
+`failed-attempt-summary-2026-10-07.json` exports selected metadata from four
+unsuccessful observed model attempts, including original receipt, configuration,
+CLI and source digests, failure classes and independent audits. Source digests
+describe each historical attempt. The separate corrected auditor diagnostic for
+Nemotron r3 remains distinct from its original incomplete case receipt. The
+summary contains no prompts, model outputs, raw tool data or local paths, and
+claims no suite acceptance or production approval.
+
 ## Behavioral acceptance contract
 
 `skills/intent-outreach/eval-spec.yaml` follows the current skill and preserves
