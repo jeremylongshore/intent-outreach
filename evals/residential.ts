@@ -325,7 +325,9 @@ export function residentialDraftGrounding(ctx: PropertyDraftContext, out: DraftT
   return findings.length === 0 ? ok() : fail(...findings);
 }
 
-const GREETING_RE = /^\s*(?:dear|hi|hello|good (?:morning|afternoon|evening))\b[\s,]*([^,\n.:!]*)/i;
+// A spaced em dash separates an addressee from the letter, like a comma.
+// Keep unspaced dashes inside names rather than treating them as separators.
+const GREETING_RE = /^\s*(?:dear|hi|hello|good (?:morning|afternoon|evening))\b[\s,]*([^,\n.:!]*?)(?=\s+—\s+|[,\n.:!]|$)/i;
 const HONORIFIC_RE = /\b(?:mr|mrs|ms|miss|mx|sir|madam)\.?\s/i;
 const GENERIC_ADDRESSEE = /^(?:(?:property |home)?owners?|homeowner|neighbor|there|friend)?$/i;
 

@@ -217,6 +217,14 @@ describe("entityRecipient", () => {
     expect(entityRecipient(ctx(), letter(`Dear John Smith, ${PLAIN}`)).pass).toBe(false);
     expect(entityRecipient(ctx(), letter(`Dear Mr. Pass, ${PLAIN}`)).pass).toBe(false);
   });
+  it("recognizes an em-dash-separated entity greeting without accepting guessed recipients", () => {
+    expect(entityRecipient(ctx(), letter(`Dear Perdido Pass Holdings LLC — ${PLAIN}`)).pass).toBe(true);
+    expect(entityRecipient(ctx(), letter(`Dear Owner — ${PLAIN}`)).pass).toBe(true);
+    expect(entityRecipient(ctx(), letter(`Dear John Smith — ${PLAIN}`)).pass).toBe(false);
+    expect(entityRecipient(ctx(), letter(`Dear Perdido Pass Holdings LLC and John Smith — ${PLAIN}`)).pass).toBe(false);
+    expect(entityRecipient(ctx(), letter(`Dear Mr. Pass — ${PLAIN}`)).pass).toBe(false);
+    expect(entityRecipient(ctx(), letter(`Dear Perdido—John Holdings LLC, ${PLAIN}`)).pass).toBe(false);
+  });
 });
 
 describe("pairParity", () => {
