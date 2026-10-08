@@ -528,8 +528,8 @@ fabrication case: original `should_trigger` expectation, actual no skill selecte
 and a verified routing false negative. All six aggregated functional criteria and
 both structural audits pass, with fourteen yes and one no skill-side samples
 (no-prompt-leakage). This dissent and the failed case remain unchanged. The partial
-suite snapshot now contains six original terminal cases: five pass, one fails,
-four remain unverified. No routing label or criterion is weakened to force a pass.
+suite snapshot retains this failed original case alongside passing cases and
+remaining unverified coverage. No routing label or criterion is weakened to force a pass.
 
 `glm53-research-routing-regression-pass-2026-10-08.json` retains the fresh real
 research-only repeat under the corrected spec. Source/model/mode/budget match its
@@ -548,6 +548,5 @@ research/enrichment/drafting and two separate authored checkpoints, then rejecte
 without saving; its independent structural audit passes and matches the earlier
 closed-skill diagnostic. Its baseline saved an unapproved synthetic run and timed
 out. Those original failures remain visible; a successful skill-side audit cannot
-upgrade the whole case or seed regression. The partial suite snapshot contains
-seven original terminal cases: five pass, one fails, one is incomplete, and three
-remain unverified.
+upgrade the whole case or seed regression. The partial suite snapshot retains this incomplete original case separately
+from passing and failed cases.
