@@ -314,6 +314,32 @@
   "review": [
     "Original unsuccessful case; source, CLI, private trigger/execution artifacts and both closed host traces independently digest-verified.",
     "All original sample votes are retained, including dissent.",
-    "Functional votes or successful partial phases cannot upgrade an original incomplete case or seed passing regression. No campaign, complete-suite or production qualification follows."
-  ]
+    "Functional votes or successful partial phases cannot upgrade an original incomplete case or seed passing regression. No campaign, complete-suite or production qualification follows.",
+    "The first skill save actually persisted an enriched run with zero messages and one rejected draft. The second changed contactKey and overwrote that same run with one message; no intervening checkpoint exists. This is not merely a transport retry or evidence of changed draft prose."
+  ],
+  "observedSkillPersistence": {
+    "sameRunId": true,
+    "attempts": [
+      {
+        "sequence": 37,
+        "saved": true,
+        "status": "enriched",
+        "persistedMessageCount": 0,
+        "rejectedDraftCount": 1,
+        "overwrite": false
+      },
+      {
+        "sequence": 39,
+        "saved": true,
+        "status": "complete",
+        "persistedMessageCount": 1,
+        "rejectedDraftCount": 0,
+        "overwrite": true
+      }
+    ],
+    "changedMessageFields": [
+      "contactKey"
+    ],
+    "checkpointBetweenSaves": false
+  }
 }

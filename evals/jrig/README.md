@@ -603,3 +603,10 @@ and drafter evidence cannot be parsed. The skill stored one synthetic run; the
 baseline stored none and also returned tool errors. The original case remains
 incomplete despite favorable judge votes. This cannot seed passing regression or
 qualify the campaign. Actual nested usage and all original uncertainty are retained.
+
+A deeper review of that medium trace confirms two actual skill-side writes to the
+same run: first an enriched run with zero messages and one rejected draft, then
+an overwrite with one message after changing `contactKey`. No checkpoint occurs
+between those writes, although the shipped skill requires asking before overwrite.
+The draft body, subject and CTA were retained. This is an observed persistence and
+approval defect, rather than proof of changed draft prose or a transport retry.
