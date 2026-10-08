@@ -562,3 +562,14 @@ correctly, but both execution phases timed out; no functional judgments exist.
 Private artifacts and closed host traces were independently verified. This is
 an incomplete attempt, not a model-quality comparison. Default reasoning and the
 GLM 5.3 cohort's explicit low reasoning are different execution profiles.
+
+`minimax-m3-prospect-incomplete-2026-10-08.json` retains the owner-authorized
+paid MiniMax-M3 prospect attempt. Execution and judge both use MiniMax-M3 at
+endpoint-default reasoning; judge identity differs from the NVIDIA cohort.
+Routing passes and all seven functional criteria have original sampled votes,
+but grounding and approval aggregate unsure. The skill executes three phases,
+two authored checkpoints and a save; it omits the canonical draft-prompt Read
+and the save's messages argument. Both independent audits fail, so the original
+case stays incomplete despite a zero CLI exit. The synthetic stored runs,
+positive root/nested usage and original uncertainty are retained; no passing
+regression seed or campaign qualification follows.
