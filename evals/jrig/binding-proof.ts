@@ -1,3 +1,4 @@
+import { phaseTimeoutMsSchema } from "./agent-host.js";
 import { reasoningEffortSchema, type ReasoningEffort } from "./agent-model.js";
 /** Scripted real-CLI association proof; no model-quality judgment or paid calls. */
 import assert from "node:assert/strict";
@@ -13,7 +14,7 @@ import { bindScenarioEvidence } from "./bind-evidence.js";
 import { scenarioConfig } from "./scenario-host.js";
 import { scenarios } from "./scenarios.js";
 
-export async function runBindingProof(jrigCli: string, executionReasoningEffort?: ReasoningEffort) {
+export async function runBindingProof(jrigCli: string, executionReasoningEffort?: ReasoningEffort, phaseTimeoutMs?: number) {
   assert(isAbsolute(jrigCli), "absolute built J-Rig CLI required");
   const root = resolve(import.meta.dirname, "../..");
   const home = await mkdtemp(join(tmpdir(), "outreach-binding-proof-"));
@@ -75,7 +76,7 @@ export async function runBindingProof(jrigCli: string, executionReasoningEffort?
     const baseUrl = `http://127.0.0.1:${address.port}/v1`;
     const hostConfig = join(home, "scenario.json");
     await writeFile(hostConfig, JSON.stringify(scenarioConfig.parse({ caseId: "build-lead-list", evidenceDir: hostsDir,
-      provider: "openai", model: "fixture-model", baseUrl, executionReasoningEffort, checkpoints: scenarios["build-lead-list"]?.checkpoints })), { mode: 0o600 });
+      provider: "openai", model: "fixture-model", baseUrl, executionReasoningEffort, phaseTimeoutMs, checkpoints: scenarios["build-lead-list"]?.checkpoints })), { mode: 0o600 });
     const mcpConfigPath = join(home, "mcp.json");
     await writeFile(mcpConfigPath, JSON.stringify({ judgeObservations: true, servers: { outreach: { command: process.execPath,
       args: ["--import", "tsx", join(root, "evals/jrig/scenario-host.ts"), hostConfig], cwd: root,
@@ -94,15 +95,18 @@ export async function runBindingProof(jrigCli: string, executionReasoningEffort?
     assert.deepEqual(failures, []);
     assert.equal(rootRequests, 8);
     assert.equal(nestedRequests, 4);
-    const result = await bindScenarioEvidence({ dbPath, hostsDir, mcpConfigPath, caseId: "build-lead-list", provider: "openai", model: "fixture-model", serverName: "outreach", baseline: true, executionReasoningEffort });
+    const input = { dbPath, hostsDir, mcpConfigPath, caseId: "build-lead-list", provider: "openai", model: "fixture-model", serverName: "outreach", baseline: true, executionReasoningEffort, phaseTimeoutMs };
+    const result = await bindScenarioEvidence(input);
+    await assert.rejects(bindScenarioEvidence({ ...input, phaseTimeoutMs: phaseTimeoutMs === 120000 ? 60000 : 120000 }), /host phase timeout mismatch/);
     assert(result.bindings.every((entry) => entry.passed && entry.judgeContext?.session_id === entry.sessionId));
     assert(result.bindings.every((entry) => entry.nestedUsage?.inputTokens === 22 && entry.nestedUsage.outputTokens === 10));
     const paths = ["bundle/server.mjs", "skills/intent-outreach/SKILL.md", "evals/jrig/bind-evidence.ts", "evals/jrig/binding-proof.ts", "evals/jrig/scenario-host.ts", "evals/jrig/agent-host.ts", "evals/jrig/agent-model.ts", "evals/jrig/audit-scenario.ts", "evals/jrig/fixture-fetch.mjs"];
     const sha256 = Object.fromEntries(await Promise.all(paths.map(async (path) => [path, createHash("sha256").update(await readFile(join(root, path))).digest("hex")])));
     return { schema: "intent-outreach-jrig-binding-proof/v1", observedAt: new Date().toISOString(), scope: "scripted_loopback_real_cli_and_nested_bundle",
       ...(executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: executionReasoningEffort } } : {}),
+      ...(phaseTimeoutMs !== undefined ? { phaseTimeoutMs } : {}),
       behavioralVerdict: null, tier3bPassed: false, paidModelCalls: 0, vendorNetworkCalls: 0, messagesSent: 0,
-      rootRequests, nestedRequests, bindings: result.bindings.map(({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext }) => ({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext })),
+      rootRequests, nestedRequests, bindings: result.bindings.map(({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext, phaseTimeoutMs: boundPhaseTimeoutMs }) => ({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext, ...(boundPhaseTimeoutMs !== undefined ? { phaseTimeoutMs: boundPhaseTimeoutMs } : {}) })),
       sha256: { ...sha256, jrigCli: createHash("sha256").update(await readFile(jrigCli)).digest("hex") },
     };
   } finally {
@@ -116,7 +120,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const cli = process.argv[2];
   const output = process.argv[3];
   assert(cli && output, "Usage: tsx evals/jrig/binding-proof.ts /absolute/jrig/dist/index.js /new/receipt.json");
-  const receipt = await runBindingProof(cli, reasoningEffortSchema.optional().parse(process.argv[4]));
+  const receipt = await runBindingProof(cli, reasoningEffortSchema.optional().parse(process.argv[4] === "default" ? undefined : process.argv[4]),
+    phaseTimeoutMsSchema.optional().parse(process.argv[5] === undefined ? undefined : Number(process.argv[5])));
   await writeFile(output, JSON.stringify(receipt, null, 2) + "\n", { flag: "wx", mode: 0o600 });
   process.stdout.write(JSON.stringify(receipt) + "\n");
 }

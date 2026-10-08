@@ -10,6 +10,7 @@ import { z } from "zod";
 import { bindScenarioEvidence, bindTriggerEvidence } from "./bind-evidence.js";
 import { createAgentModel, reasoningEffortSchema } from "./agent-model.js";
 import { scenarios } from "./scenarios.js";
+import { phaseTimeoutMsSchema } from "./agent-host.js";
 
 const hash = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 const absolute = z.string().refine((path) => isAbsolute(path) && resolve(path) === path, "normalized absolute path required");
@@ -19,6 +20,7 @@ export const caseRunConfig = z.object({
   provider: z.enum(["openai", "groq", "nvidia", "deepseek", "kimi", "openrouter", "minimax"]),
   model: z.string().trim().min(1), judgeModel: z.string().trim().min(1), baseUrl: z.string().url(),
   executionReasoningEffort: reasoningEffortSchema.optional(),
+  phaseTimeoutMs: phaseTimeoutMsSchema.optional(),
   evidenceKind: z.enum(["component-test", "behavioral-evaluation"]),
   priorReceipt: absolute.optional(),
 }).strict();
@@ -126,7 +128,9 @@ export async function runCase(raw: unknown, apiKey: string) {
     const bytes = await readFile(config.priorReceipt);
     const previous = z.object({ schema: z.literal("intent-outreach-case-run/v1"), caseResult: z.literal("pass"), caseId: z.literal(config.caseId),
       inputSpecSha256: z.literal(hash(source)), evidenceKind: z.literal(config.evidenceKind), judgments: z.array(vote),
+      phaseTimeoutMs: phaseTimeoutMsSchema.optional(),
     }).parse(JSON.parse(bytes.toString()));
+    assert.equal(previous.phaseTimeoutMs, config.phaseTimeoutMs, "regression phase timeout mismatch");
     regression = inspectCaseVotes(previous.judgments, expected, config.caseId).map(({ criterion_id, verdict }) => ({ criterion_id, verdict }));
     priorReceiptSha256 = hash(bytes);
   }
@@ -139,6 +143,7 @@ export async function runCase(raw: unknown, apiKey: string) {
   await write("spec.json", spec);
   await write("scenario.json", { caseId: config.caseId, evidenceDir: hostsDir, provider: config.provider, model: config.model,
     ...(config.executionReasoningEffort !== undefined ? { executionReasoningEffort: config.executionReasoningEffort } : {}),
+    ...(config.phaseTimeoutMs !== undefined ? { phaseTimeoutMs: config.phaseTimeoutMs } : {}),
     baseUrl: config.baseUrl, checkpoints: scenarios[config.caseId]?.checkpoints });
   const mcpConfigPath = join(config.outputDir, "mcp.json");
   await write("mcp.json", { judgeObservations: true, servers: { outreach: { command: process.execPath,
@@ -174,7 +179,7 @@ export async function runCase(raw: unknown, apiKey: string) {
     assert(jrigResult.judge_model === config.judgeModel && jrigResult.judge_provider === config.provider, "judge_identity_mismatch");
     const executionParameters = config.executionReasoningEffort !== undefined ? { reasoning_effort: config.executionReasoningEffort } : undefined;
     assert.deepEqual(jrigResult.execution_parameters, executionParameters, "root reasoning effort mismatch");
-    evidence = await bindScenarioEvidence({ dbPath, hostsDir, mcpConfigPath, caseId: config.caseId, provider: config.provider, model: config.model, serverName: "outreach", baseline: true, executionReasoningEffort: config.executionReasoningEffort });
+    evidence = await bindScenarioEvidence({ dbPath, hostsDir, mcpConfigPath, caseId: config.caseId, provider: config.provider, model: config.model, serverName: "outreach", baseline: true, executionReasoningEffort: config.executionReasoningEffort, phaseTimeoutMs: config.phaseTimeoutMs });
     const bundles = z.array(z.object({ predicate: z.object({ gate_decision: z.string(), metadata: z.record(z.string(), z.unknown()) }).passthrough() })).length(1).parse(JSON.parse(await readFile(join(config.outputDir, "bundle.json"), "utf8")));
     const predicate = bundles[0]?.predicate;
     assert(predicate, "gate_evidence_missing");
@@ -202,6 +207,7 @@ export async function runCase(raw: unknown, apiKey: string) {
     caseResult, tier3bPassed: false, scope: "one_case_requires_suite_regression_variance_and_review", inputSpecSha256: hash(source),
     provider: config.provider, model: config.model, judgeModel: config.judgeModel, processResult, priorReceiptSha256,
     ...(config.executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: config.executionReasoningEffort } } : {}),
+    ...(config.phaseTimeoutMs !== undefined ? { phaseTimeoutMs: config.phaseTimeoutMs } : {}),
     judgments, trigger, evidence, evidenceError, jrigResult, sourceHashes: before,
     usageScope: "jrigResult.cost covers trigger, root execution and judgment; evidence.bindings nestedUsage is additional",
   };

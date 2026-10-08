@@ -6,6 +6,9 @@ import { readFile, realpath } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { z } from "zod";
 
+/** Optional per-invocation evaluation budget; the parent root deadline still applies. */
+export const phaseTimeoutMsSchema = z.number().int().min(1).max(120000);
+
 const roles = ["outreach-researcher", "outreach-enricher", "outreach-drafter"] as const;
 type Role = typeof roles[number];
 const roleTools: Record<Role, string[]> = {

@@ -7,6 +7,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import { auditScenario } from "./audit-scenario.js";
+import { phaseTimeoutMsSchema } from "./agent-host.js";
 
 const hash = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 const object = z.record(z.string(), z.unknown());
@@ -40,8 +41,9 @@ async function privateFile(path: string, root: string, limit: number) {
 /** Requires a fresh single-case database and a directory containing only its host homes. */
 export async function bindScenarioEvidence(input: {
   dbPath: string; hostsDir: string; mcpConfigPath: string; caseId: string;
-  provider: string; model: string; serverName: string; baseline: boolean; executionReasoningEffort?: ReasoningEffort;
+  provider: string; model: string; serverName: string; baseline: boolean; executionReasoningEffort?: ReasoningEffort; phaseTimeoutMs?: number;
 }) {
+  const phaseTimeoutMs = phaseTimeoutMsSchema.optional().parse(input.phaseTimeoutMs);
   const root = dirname(input.dbPath);
   await privateFile(input.dbPath, root, 67108864);
   const configBytes = await privateFile(input.mcpConfigPath, root, 65536);
@@ -60,6 +62,7 @@ export async function bindScenarioEvidence(input: {
     assert(start?.kind === "started" && start.data.caseId === input.caseId && start.data.home === home, "wrong host case or home");
     assert(start.data.provider === input.provider && start.data.model === input.model, "host model identity mismatch");
     assert.equal(start.data.executionReasoningEffort, input.executionReasoningEffort, "host reasoning effort mismatch");
+    assert.equal(start.data.phaseTimeoutMs, phaseTimeoutMs, "host phase timeout mismatch");
     const sessionId = z.uuid().parse(start.data.executionSessionId);
     return { home, events, sessionId, traceSha256: hash(bytes) };
   }));
@@ -153,6 +156,7 @@ export async function bindScenarioEvidence(input: {
       receiptSha256: record.sha256, traceSha256: trace.traceSha256, status: observed.status,
       output: observed.output.text, nestedUsage, audit, judgeContext,
       ...(receipt.execution_parameters ? { executionParameters: receipt.execution_parameters } : {}),
+      ...(phaseTimeoutMs !== undefined ? { phaseTimeoutMs } : {}),
       passed: observed.status === "completed" && tools.every((tool) => tool.status === "completed") && audit.passed,
     });
   }

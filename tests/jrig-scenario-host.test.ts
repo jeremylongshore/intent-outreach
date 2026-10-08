@@ -37,7 +37,7 @@ async function loopback(reply: (body: Record<string, unknown>) => unknown) {
       const body = JSON.parse(Buffer.concat(chunks).toString());
       requests.push(body);
       response.setHeader("content-type", "application/json");
-      response.end(JSON.stringify(reply(body)));
+      response.end(JSON.stringify(await reply(body)));
     } catch (error) { errors.push(error); response.writeHead(500).end("fixture failed"); }
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
@@ -47,10 +47,10 @@ async function loopback(reply: (body: Record<string, unknown>) => unknown) {
     close: async () => { server.closeAllConnections(); await new Promise<void>((done) => server.close(() => done())); },
   };
 }
-async function start(evidence: string, baseUrl: string, suffix: string, checkpoints: string[][]) {
+async function start(evidence: string, baseUrl: string, suffix: string, checkpoints: string[][], phaseTimeoutMs?: number) {
   const config = join(evidence, suffix + ".json");
   await writeFile(config, JSON.stringify(scenarioConfig.parse({ caseId: suffix, evidenceDir: evidence,
-    provider: "scripted-loopback", model: "fixture-model", baseUrl, checkpoints })), { mode: 0o600 });
+    provider: "scripted-loopback", model: "fixture-model", baseUrl, checkpoints, phaseTimeoutMs })), { mode: 0o600 });
   const transport = new StdioClientTransport({ command: process.execPath,
     args: ["--import", "tsx", join(root, "evals/jrig/scenario-host.ts"), config], cwd: root, stderr: "pipe",
     env: { PATH: process.env.PATH ?? "", HOME: evidence, JRIG_AGENT_API_KEY: "fixture-only", APOLLO_API_KEY: "must-not-reach-bundle",
@@ -71,6 +71,29 @@ async function events(home: string) {
 }
 
 describe("scenario MCP host", () => {
+  it("applies the explicit phase deadline and retains its cancellation evidence", async () => {
+    const evidence = await mkdtemp(join(tmpdir(), "jrig-phase-deadline-"));
+    const fixture = await loopback(async () => {
+      await new Promise((done) => setTimeout(done, 150));
+      return completion("bounded fixture response");
+    });
+    let short: Awaited<ReturnType<typeof start>> | undefined;
+    let long: Awaited<ReturnType<typeof start>> | undefined;
+    try {
+      short = await start(evidence, fixture.baseUrl, "budget-short", [], 25);
+      expect((await short.client.callTool({ name: "Agent", arguments: { subagent_type: "outreach-researcher", prompt: "fixture deadline" } }) as { isError?: boolean }).isError).toBe(true);
+      await short.client.close();
+      const failed = await events(short.home);
+      expect(failed[0].data.phaseTimeoutMs).toBe(25);
+      expect(failed.some((event) => event.kind === "agent_event" && event.data.kind === "failed" && event.data.data.aborted === true)).toBe(true);
+      long = await start(evidence, fixture.baseUrl, "budget-long", [], 3000);
+      expect(plain(await long.call("Agent", { subagent_type: "outreach-researcher", prompt: "fixture deadline" })).output).toBe("bounded fixture response");
+      await long.client.close();
+      expect((await events(long.home))[0].data.phaseTimeoutMs).toBe(3000);
+      expect(fixture.errors).toEqual([]);
+    } finally { await short?.client.close(); await long?.client.close(); await fixture.close(); await rm(evidence, { recursive: true, force: true }); }
+  }, 20000);
+
   it.each([{ label: "omitted messages", args: { drafts: [] }, rejected: false, storedRuns: 1 },
     { label: "invalid messages", args: { messages: "invalid" }, rejected: true, storedRuns: 0 }])("retains $label save evidence without discarding the independent audit", async ({ args, rejected, storedRuns }) => {
     const evidence = await mkdtemp(join(tmpdir(), "outreach-malformed-save-"));

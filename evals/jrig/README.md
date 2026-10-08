@@ -158,6 +158,37 @@ The completed baseline still has independent preflight/order failures and an
 unparseable drafter response. These remain incomplete evidence, not a passing
 case or regression seed. Model comparisons must retain this unsuccessful attempt.
 
+`lightning35-default-r1-timeout-2026-10-08.json` retains the separate Nemotron
+3.5 Lightning attempt with endpoint-default reasoning. It also ended incomplete
+with an MCP timeout and no judgments. Its drafter attempts exhausted the original
+phase deadline while reading reviewed resources. No failed attempt is a passing
+case, a regression seed or production model approval.
+
+The optional case/scenario config field `phaseTimeoutMs` explicitly sets the
+deadline for each Agent invocation to a positive integer up to 120,000 ms.
+Omission retains the original 60,000 ms default. The root MCP deadline remains
+300,000 ms, and its cancellation still applies to every nested invocation. This
+allocates time within that existing root budget; it does not change the skill,
+agent bodies, tools, checkpoint decisions, criteria, sampling or persistence
+checks. The phase setting is recorded in host starts, joined evidence and case
+receipts. A changed, missing or unexpected setting fails the evidence join.
+Regression requires the same explicit phase setting as the prior passing receipt.
+Model comparisons must report any budget differences rather than hide them.
+
+The CLI component-proof helpers accept optional reasoning mode (`default` means
+omitted) followed by the phase timeout, for example:
+
+```sh
+pnpm exec tsx evals/jrig/binding-proof.ts /absolute/jrig/dist/index.js /new/binding.json default 120000
+pnpm exec tsx evals/jrig/case-runner-proof.ts /absolute/jrig/dist/index.js /new/case-proof.json default 120000
+```
+
+`phase-budget-component-proof-2026-10-08.json` retains fresh actual-CLI proofs for
+omitted and explicit 120-second phase budgets. Scripted tests verify configured
+cancellation, unchanged root timeout, identity binding and refusal of regression
+across different phase settings. These remain component evidence; the new budget
+requires a fresh real execution and never changes an earlier failed receipt.
+
 The stdio integration test uses a scripted loopback model to exercise all three
 phase agents, actual connector normalization, reviewed drafting resources,
 checkpoint replies and encrypted save. A second launch verifies store isolation;

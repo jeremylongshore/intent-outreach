@@ -53,6 +53,19 @@ async function fixture(observations = false) {
 }
 
 describe("private execution evidence binding", () => {
+  it.each(["match", "changed", "missing", "unexpected"])("binds the explicit phase timeout: %s", async (mode) => {
+    const f = await fixture();
+    try {
+      for (const trace of f.traces) trace[0]!.data.phaseTimeoutMs = 120000;
+      if (mode === "changed") f.traces[0]![0]!.data.phaseTimeoutMs = 60000;
+      if (mode === "missing") delete f.traces[0]![0]!.data.phaseTimeoutMs;
+      await f.save();
+      const input = { ...f.input, ...(mode === "unexpected" ? {} : { phaseTimeoutMs: 120000 }) };
+      if (mode === "match") expect((await bindScenarioEvidence(input)).bindings.map((b) => b.phaseTimeoutMs)).toEqual([120000, 120000]);
+      else await expect(bindScenarioEvidence(input)).rejects.toThrow("host phase timeout mismatch");
+    } finally { await f.close(); }
+  });
+
   it.each(["match", "host-mismatch", "receipt-mismatch", "missing-receipt", "unexpected-receipt"])("binds the selected root and nested reasoning mode: %s", async (mode) => {
     const f = await fixture();
     try {

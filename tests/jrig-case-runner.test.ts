@@ -41,6 +41,8 @@ describe("single-case spec and judgment boundaries", () => {
     const config = { jrigCli: "/tmp/cli.js", jrigSha256: "a".repeat(64), outputDir: "/tmp/new-case", caseId: "scope-checkpoint",
       provider: "groq", model: "execution", judgeModel: "judge", baseUrl: "https://example.test/v1", evidenceKind: "behavioral-evaluation" };
     expect(caseRunConfig.safeParse(config).success).toBe(true);
+    expect(caseRunConfig.safeParse({ ...config, phaseTimeoutMs: 120000 }).success).toBe(true);
+    for (const phaseTimeoutMs of [0, -1, 1.5, 120001]) expect(caseRunConfig.safeParse({ ...config, phaseTimeoutMs }).success).toBe(false);
     expect(caseRunConfig.safeParse({ ...config, executionReasoningEffort: "none" }).success).toBe(true);
     expect(caseRunConfig.safeParse({ ...config, executionReasoningEffort: "unreviewed" }).success).toBe(false);
     expect(caseRunConfig.safeParse({ ...config, apiKey: "not-in-config" }).success).toBe(false);

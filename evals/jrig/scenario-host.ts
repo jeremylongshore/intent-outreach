@@ -11,7 +11,7 @@ import { appendFile, mkdir, mkdtemp, readFile, realpath, stat, writeFile } from 
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import { createAgentHost, loadAgentResources, type HostTool } from "./agent-host.js";
+import { createAgentHost, loadAgentResources, phaseTimeoutMsSchema, type HostTool } from "./agent-host.js";
 import { createAgentModel, reasoningEffortSchema } from "./agent-model.js";
 
 export const scenarioConfig = z.object({
@@ -19,6 +19,7 @@ export const scenarioConfig = z.object({
   evidenceDir: z.string().refine(isAbsolute, "absolute evidence directory required"),
   provider: z.string().min(1), model: z.string().min(1), baseUrl: z.string().url(),
   executionReasoningEffort: reasoningEffortSchema.optional(),
+  phaseTimeoutMs: phaseTimeoutMsSchema.optional(),
   /** One authored answer per question, one batch per checkpoint. No implicit yes. */
   checkpoints: z.array(z.array(z.string().min(1).max(2000)).min(1).max(4)).max(8),
 }).strict();
@@ -80,7 +81,8 @@ export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
     await client.connect(transport);
     const bundlePid = transport.pid;
     const listed = (await client.listTools()).tools;
-    const phase = await createAgentHost({ root, model, bundle: {
+    const phase = await createAgentHost({ root, model,
+      ...(config.phaseTimeoutMs !== undefined ? { limits: { timeoutMs: config.phaseTimeoutMs } } : {}), bundle: {
       tools: listed.map((tool) => ({ ...tool, description: tool.description ?? "" })),
       call: (name, args, signal) => client.callTool({ name, arguments: args }, undefined, { signal }),
     } });
@@ -103,6 +105,7 @@ export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
     await record("started", { caseId: config.caseId, home, bundlePid, provider: config.provider, model: config.model,
       executionSessionId: process.env.JRIG_EXECUTION_SESSION_ID ?? null,
       ...(config.executionReasoningEffort !== undefined ? { executionReasoningEffort: config.executionReasoningEffort } : {}),
+      ...(config.phaseTimeoutMs !== undefined ? { phaseTimeoutMs: config.phaseTimeoutMs } : {}),
       fixtureOnly: true, checkpoints: config.checkpoints, tools: tools.map((tool) => tool.name),
       sha256: { skill: sha(skillBytes), bundle: sha(await readFile(bundle)), fixture: sha(await readFile(fixture)),
         host: sha(await readFile(fileURLToPath(import.meta.url))), agentHost: sha(await readFile(join(root, "evals/jrig/agent-host.ts"))),
