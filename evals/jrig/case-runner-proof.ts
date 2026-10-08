@@ -107,7 +107,7 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
     assert.equal(counts.judge, 36);
     assert(requests.filter((item) => item.phase === "judge").every((item) => item.model === "fixture-judge"));
     assert(requests.filter((item) => item.phase !== "judge").every((item) => item.model === "fixture-execution"));
-    const hashes = Object.fromEntries(await Promise.all(["run-case.ts", "case-runner-proof.ts", "bind-evidence.ts", "agent-host.ts", "scenario-host.ts"].map(async (name) => [name, createHash("sha256").update(await readFile(join(root, "evals/jrig", name))).digest("hex")])));
+    const hashes = Object.fromEntries(await Promise.all(["run-case.ts", "case-runner-proof.ts", "bind-evidence.ts", "agent-host.ts", "scenario-host.ts", "scenarios.ts", "audit-scenario.ts"].map(async (name) => [name, createHash("sha256").update(await readFile(join(root, "evals/jrig", name))).digest("hex")])));
     return { schema: "intent-outreach-case-runner-proof/v1", scope: "scripted_actual_cli_case_runner_only", observedAt: new Date().toISOString(),
       ...(executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: executionReasoningEffort } } : {}),
       ...(phaseTimeoutMs !== undefined ? { phaseTimeoutMs } : {}),

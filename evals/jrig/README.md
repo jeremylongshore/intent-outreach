@@ -375,6 +375,33 @@ remains incomplete. Source, CLI and trace digests were reverified at export.
 real-case receipts for the GLM low/120-second phase profile, with the complete
 ten-case coverage requirement and missing coverage left explicit. The initial
 export contains two terminal incomplete cases (prospect and scope confirmation),
-both with zero judgments. The remaining cases are still being collected. A
+both with zero judgments. The queue was subsequently stopped for the checkpoint
+cardinality defect described below, with a separate controlled-cancellation
+receipt for rejected-draft. Remaining cases need fresh execution. A
 narrow structural audit with no failed assertions cannot override failed root
 execution or establish a case pass. The export claims no suite acceptance.
+
+The checkpoint host now supports the full one-to-four-question tool schema.
+One authored decision applies unchanged to the whole question batch; explicit
+per-question replies still require an exact count. Traces retain the original
+`authoredReplies`, and the independent audit verifies every answer/header and
+the original decision, rejecting missing or changed broadcast evidence. No
+implicit approval, new authored policy, or changed draft/store assertion is
+introduced. Missing checkpoints and duplicate headers remain errors.
+
+The original scope baseline validly asked channel, contact-limit and scope
+questions together, but the previous host required exactly one question. Its
+original incomplete receipt remains unchanged. The owned queue was stopped and
+its active rejected-draft case cancelled before source edits. The separate
+`rejected-draft-controlled-cancellation-2026-10-08.json` preserves that original
+incomplete receipt's hashes and verifies process-group cleanup. New executions
+are required; corrected behavior cannot upgrade historical failures.
+
+`checkpoint-batch-component-proof-2026-10-08.json` embeds three fresh
+source-verified actual-CLI scripted proofs: three-question checkpoints with
+omitted reasoning/default phase budget and explicit low/120-second settings,
+plus the case runner repeat/regression/failure/cancellation proof. This is
+component evidence only, with zero paid or vendor model calls and no Tier 3B
+verdict. Actual host tests additionally cover unchanged exact draft persistence
+through batched lead-selection and approval questions, and altered-answer
+rejection.

@@ -1,4 +1,18 @@
 /** Authored synthetic human decisions. Never production approval or model judgment. */
+import assert from "node:assert/strict";
+
+/** A single authored decision applies to the whole checkpoint question batch. */
+export function authoredAnswers(replies: readonly string[] | undefined, headers: readonly string[]): Record<string, string> {
+  assert(replies?.length && headers.length >= 1 && headers.length <= 4, "no matching authored checkpoint");
+  assert.equal(new Set(headers).size, headers.length, "duplicate question header");
+  assert(replies.length === 1 || replies.length === headers.length, "no matching authored checkpoint");
+  return Object.fromEntries(headers.map((header, index) => {
+    const reply = replies[replies.length === 1 ? 0 : index];
+    assert(typeof reply === "string" && reply.length > 0, "missing authored checkpoint reply");
+    return [header, reply];
+  }));
+}
+
 const keep = ["Keep only example.test. Do not enrich or draft for other domains."];
 const approve = ["Approve saving only the exact drafts shown in this question. Do not approve sending."];
 const reject = ["Reject every draft. Do not save or approve any draft."];

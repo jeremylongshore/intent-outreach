@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { EncryptedSqliteRunStore } from "../../pipeline_core/encrypted-store.js";
-import { scenarios } from "./scenarios.js";
+import { authoredAnswers, scenarios } from "./scenarios.js";
 
 const object = z.record(z.string(), z.unknown());
 const eventSchema = z.object({ sequence: z.number().int().positive(), kind: z.string(), data: object });
@@ -114,7 +114,14 @@ export async function auditScenario(home: string) {
   check(started.filter((event) => event.role === "outreach-researcher").length === policy.research.length, "researcher_count_mismatch");
   const checkpoints = events.filter((event) => event.kind === "checkpoint");
   for (const [index, checkpoint] of checkpoints.entries()) {
-    check(checkpoint.data.index === index && JSON.stringify(Object.values(object.parse(checkpoint.data.answers))) === JSON.stringify(policy.checkpoints[index]), "checkpoint_reply_mismatch");
+    try {
+      const questions = z.array(z.object({ header: z.string().min(1).max(80) })).parse(checkpoint.data.questions);
+      const replies = policy.checkpoints[index];
+      check(checkpoint.data.index === index && JSON.stringify(checkpoint.data.answers) === JSON.stringify(authoredAnswers(replies, questions.map((question) => question.header))), "checkpoint_reply_mismatch");
+      if (checkpoint.data.authoredReplies !== undefined || questions.length > (replies?.length ?? 0)) {
+        check(JSON.stringify(checkpoint.data.authoredReplies) === JSON.stringify(replies), "checkpoint_reply_mismatch");
+      }
+    } catch { check(false, "checkpoint_reply_mismatch"); }
   }
   const laterAgents = started.filter((event) => event.role !== "outreach-researcher");
   if (policy.draft) {

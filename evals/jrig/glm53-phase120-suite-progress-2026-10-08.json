@@ -1,7 +1,7 @@
 {
   "schema": "intent-outreach-observed-suite-progress/v1",
   "scope": "partial_real_case_receipt_metadata_only",
-  "status": "collecting",
+  "status": "stopped_for_checkpoint_harness_correction",
   "suiteComplete": false,
   "allCaseResultsPass": false,
   "tier3bPassed": false,
@@ -201,5 +201,12 @@
       ]
     }
   ],
-  "interpretation": "Only terminal original receipts appear here. Missing cases remain unverified. Root or nested execution failures retain incomplete/no-verdict status even when a narrower structural audit reports no failed assertions. This partial export does not establish full-suite, repeat, regression, variance or rollout acceptance."
+  "interpretation": "Two original cases reached terminal receipts before the queue was stopped for a demonstrated checkpoint question-cardinality defect. A third case has its separate original controlled-cancellation receipt. Missing cases remain unverified. No receipt is retrospectively upgraded; fresh executions are required under corrected source. Narrow structural assertions cannot override failed execution. No suite/repeat/regression/variance/rollout acceptance is established.",
+  "controlledCancellation": {
+    "caseId": "rejected-draft",
+    "artifact": "rejected-draft-controlled-cancellation-2026-10-08.json",
+    "artifactSha256": "dfcf1d9f9fe581261922049fce643e2a3daf9cc75ffb3209a420d70c19f37ae7",
+    "caseResult": "incomplete",
+    "judgmentCount": 0
+  }
 }

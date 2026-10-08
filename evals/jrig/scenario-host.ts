@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { createAgentHost, loadAgentResources, phaseTimeoutMsSchema, type HostTool } from "./agent-host.js";
 import { createAgentModel, reasoningEffortSchema } from "./agent-model.js";
+import { authoredAnswers } from "./scenarios.js";
 
 export const scenarioConfig = z.object({
   caseId: z.string().regex(/^[a-z0-9-]{1,64}$/),
@@ -20,7 +21,7 @@ export const scenarioConfig = z.object({
   provider: z.string().min(1), model: z.string().min(1), baseUrl: z.string().url(),
   executionReasoningEffort: reasoningEffortSchema.optional(),
   phaseTimeoutMs: phaseTimeoutMsSchema.optional(),
-  /** One authored answer per question, one batch per checkpoint. No implicit yes. */
+  /** One decision for the whole batch, or explicit per-question replies. No implicit yes. */
   checkpoints: z.array(z.array(z.string().min(1).max(2000)).min(1).max(4)).max(8),
 }).strict();
 const agentArgs = z.object({
@@ -143,11 +144,9 @@ export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
         } else if (name === "AskUserQuestion") {
           const { questions } = questionArgs.parse(args);
           const replies = config.checkpoints[checkpoint];
-          assert(replies && replies.length === questions.length, "no matching authored checkpoint");
-          assert.equal(new Set(questions.map((q) => q.header)).size, questions.length, "duplicate question header");
+          const answers = authoredAnswers(replies, questions.map((question) => question.header));
           const index = checkpoint++;
-          const answers = Object.fromEntries(questions.map((question, i) => [question.header, replies[i]]));
-          await record("checkpoint", { index, questions, answers, fixtureOnly: true });
+          await record("checkpoint", { index, questions, answers, authoredReplies: replies, fixtureOnly: true });
           output = result({ answers, fixtureOnly: true });
         } else {
           assert(name !== "save_run" || args.profile === undefined, "no Report Profile is configured for these fixtures");

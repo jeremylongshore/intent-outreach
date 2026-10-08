@@ -59,9 +59,17 @@ export async function runBindingProof(jrigCli: string, executionReasoningEffort?
         if (outputs.length) assert(!JSON.parse(outputs.at(-1)?.content ?? "null").isError);
         if (outputs.length === 0) result = completion("", "outreach__list_connectors", {}, "root-0");
         else if (outputs.length === 1) result = completion("", "outreach__Agent", { subagent_type: "outreach-researcher", prompt: "Research example.test for developer tools; return actual fixture companies and contacts." }, "root-1");
-        else if (outputs.length === 2) result = completion("", "outreach__AskUserQuestion", { questions: [{ header: "Leads", question: "Keep Example Fixture Labs and Riley Example for research-only results?" }] }, "root-2");
+        else if (outputs.length === 2) result = completion("", "outreach__AskUserQuestion", { questions: [
+          { header: "Leads", question: "Keep Example Fixture Labs and Riley Example for research-only results?" },
+          { header: "Contacts", question: "Which contacts should remain in the research results?" },
+          { header: "Scope", question: "Proceed beyond research?" },
+        ] }, "root-2");
         else {
           assert.equal(outputs.length, 3);
+          const response = JSON.parse(outputs[2]?.content ?? "null");
+          const decision = scenarios["build-lead-list"]?.checkpoints[0]?.[0];
+          assert(decision);
+          assert.deepEqual(JSON.parse(response.content[0].text).answers, { Leads: decision, Contacts: decision, Scope: decision });
           result = completion("BINDING_COMPONENT_ONLY: Example Fixture Labs and Riley Example researched. No enrichment, drafts or saves.");
         }
       }
@@ -100,12 +108,13 @@ export async function runBindingProof(jrigCli: string, executionReasoningEffort?
     await assert.rejects(bindScenarioEvidence({ ...input, phaseTimeoutMs: phaseTimeoutMs === 120000 ? 60000 : 120000 }), /host phase timeout mismatch/);
     assert(result.bindings.every((entry) => entry.passed && entry.judgeContext?.session_id === entry.sessionId));
     assert(result.bindings.every((entry) => entry.nestedUsage?.inputTokens === 22 && entry.nestedUsage.outputTokens === 10));
-    const paths = ["bundle/server.mjs", "skills/intent-outreach/SKILL.md", "evals/jrig/bind-evidence.ts", "evals/jrig/binding-proof.ts", "evals/jrig/scenario-host.ts", "evals/jrig/agent-host.ts", "evals/jrig/agent-model.ts", "evals/jrig/audit-scenario.ts", "evals/jrig/fixture-fetch.mjs"];
+    const paths = ["bundle/server.mjs", "skills/intent-outreach/SKILL.md", "evals/jrig/bind-evidence.ts", "evals/jrig/binding-proof.ts", "evals/jrig/scenario-host.ts", "evals/jrig/scenarios.ts", "evals/jrig/agent-host.ts", "evals/jrig/agent-model.ts", "evals/jrig/audit-scenario.ts", "evals/jrig/fixture-fetch.mjs"];
     const sha256 = Object.fromEntries(await Promise.all(paths.map(async (path) => [path, createHash("sha256").update(await readFile(join(root, path))).digest("hex")])));
     return { schema: "intent-outreach-jrig-binding-proof/v1", observedAt: new Date().toISOString(), scope: "scripted_loopback_real_cli_and_nested_bundle",
       ...(executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: executionReasoningEffort } } : {}),
       ...(phaseTimeoutMs !== undefined ? { phaseTimeoutMs } : {}),
       behavioralVerdict: null, tier3bPassed: false, paidModelCalls: 0, vendorNetworkCalls: 0, messagesSent: 0,
+      checkpointQuestions: 3, authoredDecisionPreserved: true,
       rootRequests, nestedRequests, bindings: result.bindings.map(({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext, phaseTimeoutMs: boundPhaseTimeoutMs }) => ({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext, ...(boundPhaseTimeoutMs !== undefined ? { phaseTimeoutMs: boundPhaseTimeoutMs } : {}) })),
       sha256: { ...sha256, jrigCli: createHash("sha256").update(await readFile(jrigCli)).digest("hex") },
     };

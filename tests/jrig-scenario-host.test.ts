@@ -71,6 +71,64 @@ async function events(home: string) {
 }
 
 describe("scenario MCP host", () => {
+  it("answers a multi-question scope checkpoint with the unchanged authored wait decision", async () => {
+    const evidence = await mkdtemp(join(tmpdir(), "jrig-question-batch-"));
+    const fixture = await loopback(() => { throw new Error("scope wait must not invoke a model"); });
+    const host = await start(evidence, fixture.baseUrl, "scope-checkpoint", scenarios["scope-checkpoint"]!.checkpoints);
+    try {
+      const questions = [
+        { header: "Channel", question: "Which channel?" },
+        { header: "Contacts", question: "How many contacts per company?" },
+        { header: "Scope", question: "Is the research scope confirmed?" },
+      ];
+      const decision = scenarios["scope-checkpoint"]!.checkpoints[0]![0];
+      expect(plain(await host.call("AskUserQuestion", { questions })).answers).toEqual({ Channel: decision, Contacts: decision, Scope: decision });
+      await host.client.close();
+      const trace = await events(host.home);
+      expect(trace.filter((event) => event.kind === "checkpoint")).toHaveLength(1);
+      const checkpoint = trace.find((event) => event.kind === "checkpoint");
+      expect(checkpoint.data.authoredReplies).toEqual([decision]);
+      expect(await auditScenario(host.home)).toMatchObject({ passed: true, storedRuns: 0, failures: [], incomplete: [] });
+      expect(fixture.requests).toHaveLength(0);
+      const path = join(host.home, "host-events.jsonl");
+      for (const mutate of [
+        (data: typeof checkpoint.data) => { data.answers.Contacts = "Approve research now"; },
+        (data: typeof checkpoint.data) => { data.authoredReplies = ["Approve research now"]; },
+        (data: typeof checkpoint.data) => { delete data.authoredReplies; },
+        (data: typeof checkpoint.data) => { data.answers.Other = data.answers.Contacts; delete data.answers.Contacts; },
+      ]) {
+        const changed = structuredClone(trace);
+        mutate(changed.find((event) => event.kind === "checkpoint").data);
+        await writeFile(path, changed.map((event) => JSON.stringify(event)).join("\n") + "\n");
+        expect((await auditScenario(host.home)).failures).toContain("checkpoint_reply_mismatch");
+      }
+    } finally {
+      await host.client.close();
+      await fixture.close();
+      await rm(evidence, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves explicit per-question replies and refuses missing or ambiguous checkpoints", async () => {
+    const evidence = await mkdtemp(join(tmpdir(), "jrig-explicit-question-replies-"));
+    const fixture = await loopback(() => { throw new Error("no model call expected"); });
+    const host = await start(evidence, fixture.baseUrl, "explicit-checkpoint", [["Wait for channel", "Wait for contact limit"]]);
+    const questions = [{ header: "Channel", question: "Which channel?" }, { header: "Contacts", question: "Contact limit?" }];
+    try {
+      expect((await host.call("AskUserQuestion", { questions: [...questions, { header: "Scope", question: "Confirm scope?" }] })).isError).toBe(true);
+      expect((await host.call("AskUserQuestion", { questions: [questions[0], questions[0]] })).isError).toBe(true);
+      expect(plain(await host.call("AskUserQuestion", { questions })).answers).toEqual({ Channel: "Wait for channel", Contacts: "Wait for contact limit" });
+      expect((await host.call("AskUserQuestion", { questions })).isError).toBe(true);
+      await host.client.close();
+      expect((await events(host.home)).filter((event) => event.kind === "checkpoint")).toHaveLength(1);
+      expect(fixture.requests).toHaveLength(0);
+    } finally {
+      await host.client.close();
+      await fixture.close();
+      await rm(evidence, { recursive: true, force: true });
+    }
+  });
+
   it("applies the explicit phase deadline and retains its cancellation evidence", async () => {
     const evidence = await mkdtemp(join(tmpdir(), "jrig-phase-deadline-"));
     const fixture = await loopback(async () => {
@@ -161,13 +219,13 @@ describe("scenario MCP host", () => {
       expect(connectors.filter((item: { configured: boolean }) => item.configured).map((item: { name: string }) => item.name)).toEqual(["hunter"]);
       const research = JSON.parse(plain(await first.call("Agent", { subagent_type: "outreach-researcher", prompt: "example.test; developer tools", description: "Research one domain" })).output);
       expect(research.leads[0].companyName).toBe("Example Fixture Labs");
-      const keep = plain(await first.call("AskUserQuestion", { questions: [{ header: "Leads", question: "Keep Example Fixture Labs at example.test?" }] }));
+      const keep = plain(await first.call("AskUserQuestion", { questions: [{ header: "Leads", question: "Keep Example Fixture Labs at example.test?" }, { header: "Scope", question: "Which domains may proceed to enrichment?" }] }));
       expect(keep.answers.Leads).toBe(scenarios["prospect-and-draft"]!.checkpoints[0]![0]);
       const enrichment = JSON.parse(plain(await first.call("Agent", { subagent_type: "outreach-enricher", prompt: JSON.stringify({ lead: research.leads[0], contacts: research.contacts }) })).output);
       expect(enrichment.enrichments[0].verifiedEmail).toBe("riley@example.test");
       const written = JSON.parse(plain(await first.call("Agent", { subagent_type: "outreach-drafter", prompt: JSON.stringify({ lead: research.leads[0], contacts: research.contacts, enrichments: enrichment.enrichments, channel: "email", limit: 1 }) })).output);
       expect(written.messages).toEqual([draft]);
-      await first.call("AskUserQuestion", { questions: [{ header: "Draft", question: JSON.stringify(draft) }] });
+      await first.call("AskUserQuestion", { questions: [{ header: "Draft", question: JSON.stringify(draft) }, { header: "Persistence", question: "Save only the exact draft shown above? No sending." }] });
       const saved = plain(await first.call("save_run", { id: "scenario-proof", icp: "Developer tools", domains: ["example.test"], provider: "scripted-loopback", model: "fixture-model", leads: research.leads,
         contacts: research.contacts.map((contact: object) => ({ ...contact, email: "riley@example.test" })), enrichments: enrichment.enrichments, messages: written.messages }));
       expect(saved.saved).toBe("scenario-proof");
