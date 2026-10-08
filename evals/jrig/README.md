@@ -440,3 +440,17 @@ audit passes; the naked baseline independently fails research-before-preflight,
 even though prose judges can pass it. The original case has no regression
 baseline yet, and whole-suite/campaign/model-variance/rollout acceptance remains
 unverified.
+
+`glm53-research-regression-pass-2026-10-08.json` retains a fresh actual
+research-only repeat with matching source/model/mode/budget and new sessions.
+The seven prior aggregated votes exactly form the portable-digest-bound
+regression input; no regressions are reported. All seven aggregated criteria
+pass again, with seventeen yes and one no truthful-receipt sample. The baseline
+again fails preflight ordering. This is research-only regression evidence.
+
+`glm53-fabrication-adversary-routing-fail-2026-10-08.json` retains an original
+failed adversarial case: routing selected no skill where the unchanged spec
+requires the outreach skill. The six aggregated functional criteria and both
+structural audits pass, with fourteen yes and one no groundedness sample. No
+tools or persistence occurred. The routing failure remains a failure; no
+expectation is relabeled and no full-suite acceptance is claimed.
