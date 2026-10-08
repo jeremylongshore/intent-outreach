@@ -7,13 +7,14 @@ import { describe, expect, it } from "vitest";
 import { bindScenarioEvidence, bindTriggerEvidence } from "../evals/jrig/bind-evidence.js";
 
 const hash = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
-async function fixture() {
+async function fixture(observations = false) {
   const root = await mkdtemp(join(tmpdir(), "jrig-binding-test-"));
   const dbPath = join(root, "jrig.db");
   const hostsDir = join(root, "hosts");
   const mcpConfigPath = join(root, "mcp.json");
   await mkdir(hostsDir, { mode: 0o700 });
-  await writeFile(mcpConfigPath, "{}", { mode: 0o600 });
+  const mcp = JSON.stringify(observations ? { judgeObservations: true } : {});
+  await writeFile(mcpConfigPath, mcp, { mode: 0o600 });
   const db = new DatabaseSync(dbPath);
   db.exec("CREATE TABLE artifacts (run_id INTEGER, artifact_type TEXT, relative_path TEXT, sha256 TEXT, size_bytes INTEGER)");
   await chmod(dbPath, 0o600);
@@ -21,9 +22,11 @@ async function fixture() {
   const artifacts = (id: string) => [
     { filename: "tool-events.json", type: "text", content: "[]", size_bytes: 2 },
     { filename: "tool-session.json", type: "text", content: JSON.stringify({ schema: "jrig-tool-session/v1", session_id: id }), size_bytes: 0 },
+    ...(observations ? [{ filename: "tool-observations.json", type: "text", content: JSON.stringify({ schema: "jrig-tool-observations/v1", session_id: id, redaction: "known-environment-credentials-and-credential-fields/v1", calls: [] }), size_bytes: 0 }] : []),
   ].map((item) => ({ ...item, size_bytes: Buffer.byteLength(item.content) }));
   const receipts = sessions.map((id, index) => ({ schema: "jrig-tool-execution/v1", run_id: 1,
-    phase: index ? "baseline" : "skill", configuration_sha256: hash("{}"),
+    phase: index ? "baseline" : "skill", configuration_sha256: hash(mcp),
+    judge_contexts: observations ? [{ test_case_id: "unrelated-weather", session_id: id, sha256: "sha256:" + hash(artifacts(id)[2]!.content), size_bytes: artifacts(id)[2]!.size_bytes }] : undefined,
     cases: [{ test_case_id: "unrelated-weather", status: "completed", output: { text: "I cannot check current weather here.", tool_calls: 0, artifacts: artifacts(id) } }],
   }));
   const traces: { sequence: number; kind: string; data: Record<string, unknown> }[][] = sessions.map((id, index) => [
@@ -113,6 +116,44 @@ describe("private execution evidence binding", () => {
   });
 });
 
+
+describe("private observed judge context binding", () => {
+  it.each(["correct", "digest", "session", "size", "missing", "duplicate", "refs", "count", "limit"])("verifies or refuses %s context", async (defect) => {
+    const f = await fixture(true);
+    try {
+      const first = f.receipts[0]!;
+      const output = first.cases[0]!.output;
+      const observed = output.artifacts[2]!;
+      if (defect === "digest") { observed.content += " "; observed.size_bytes++; }
+      if (defect === "session") { const data = JSON.parse(observed.content); data.session_id = randomUUID(); observed.content = JSON.stringify(data); }
+      if (defect === "size") observed.size_bytes++;
+      if (defect === "missing") output.artifacts.pop();
+      if (defect === "duplicate") output.artifacts.push(observed);
+      if (defect === "refs") first.judge_contexts![0]!.sha256 = "sha256:" + "0".repeat(64);
+      if (defect === "count") { const data = JSON.parse(observed.content); data.calls.push({id:"extra",tool:"outreach__save_run",arguments:{},status:"completed",result:"{}"}); observed.content=JSON.stringify(data); observed.size_bytes=Buffer.byteLength(observed.content); }
+      if (defect === "limit") {
+        const config = JSON.stringify({judgeObservations: true, limits: {maxTotalBytes: 1}});
+        await writeFile(f.input.mcpConfigPath, config);
+        for (const receipt of f.receipts) receipt.configuration_sha256 = hash(config);
+      }
+      await f.save();
+      if (defect === "correct") {
+        const bound = await bindScenarioEvidence(f.input);
+        expect(bound.bindings[0]!.judgeContext).toEqual(first.judge_contexts![0]);
+        expect(bound.bindings[0]!.judgeContext?.session_id).not.toBe(bound.bindings[1]!.judgeContext?.session_id);
+      } else await expect(bindScenarioEvidence(f.input)).rejects.toThrow();
+    } finally { await f.close(); }
+  });
+  it("retains failed context without claiming it reached judges", async () => {
+    const f = await fixture(true);
+    try {
+      f.receipts[0]!.cases[0]!.status = "failed";
+      f.receipts[0]!.judge_contexts = [];
+      await f.save();
+      expect((await bindScenarioEvidence(f.input)).bindings[0]).toMatchObject({judgeContext: null, passed: false});
+    } finally { await f.close(); }
+  });
+});
 
 describe("private trigger evidence binding", () => {
   it.each(["correct", "incorrect", "digest", "metrics", "classification", "missing", "wrong-run", "bundle", "incomplete", "wrong-prompt", "unknown-skill"])("verifies actual routing and refuses corrupted evidence (%s)", async (defect) => {

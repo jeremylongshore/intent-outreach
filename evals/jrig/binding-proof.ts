@@ -75,7 +75,7 @@ export async function runBindingProof(jrigCli: string) {
     await writeFile(hostConfig, JSON.stringify(scenarioConfig.parse({ caseId: "build-lead-list", evidenceDir: hostsDir,
       provider: "openai", model: "fixture-model", baseUrl, checkpoints: scenarios["build-lead-list"]?.checkpoints })), { mode: 0o600 });
     const mcpConfigPath = join(home, "mcp.json");
-    await writeFile(mcpConfigPath, JSON.stringify({ servers: { outreach: { command: process.execPath,
+    await writeFile(mcpConfigPath, JSON.stringify({ judgeObservations: true, servers: { outreach: { command: process.execPath,
       args: ["--import", "tsx", join(root, "evals/jrig/scenario-host.ts"), hostConfig], cwd: root,
       env: ["JRIG_AGENT_API_KEY"], tools: ["Agent", "Read", "AskUserQuestion", "list_connectors", "save_run", "list_pending", "approve", "reject", "suppress", "list_runs", "underwrite"],
     } }, limits: { maxTurns: 6, maxCalls: 6, timeoutMs: 60000 } }), { mode: 0o600 });
@@ -93,13 +93,13 @@ export async function runBindingProof(jrigCli: string) {
     assert.equal(rootRequests, 8);
     assert.equal(nestedRequests, 4);
     const result = await bindScenarioEvidence({ dbPath, hostsDir, mcpConfigPath, caseId: "build-lead-list", provider: "openai", model: "fixture-model", serverName: "outreach", baseline: true });
-    assert(result.bindings.every((entry) => entry.passed));
+    assert(result.bindings.every((entry) => entry.passed && entry.judgeContext?.session_id === entry.sessionId));
     assert(result.bindings.every((entry) => entry.nestedUsage?.inputTokens === 22 && entry.nestedUsage.outputTokens === 10));
     const paths = ["bundle/server.mjs", "skills/intent-outreach/SKILL.md", "evals/jrig/bind-evidence.ts", "evals/jrig/binding-proof.ts", "evals/jrig/scenario-host.ts", "evals/jrig/agent-host.ts", "evals/jrig/agent-model.ts", "evals/jrig/audit-scenario.ts", "evals/jrig/fixture-fetch.mjs"];
     const sha256 = Object.fromEntries(await Promise.all(paths.map(async (path) => [path, createHash("sha256").update(await readFile(join(root, path))).digest("hex")])));
     return { schema: "intent-outreach-jrig-binding-proof/v1", observedAt: new Date().toISOString(), scope: "scripted_loopback_real_cli_and_nested_bundle",
       behavioralVerdict: null, tier3bPassed: false, paidModelCalls: 0, vendorNetworkCalls: 0, messagesSent: 0,
-      rootRequests, nestedRequests, bindings: result.bindings.map(({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed }) => ({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed })),
+      rootRequests, nestedRequests, bindings: result.bindings.map(({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext }) => ({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext })),
       sha256: { ...sha256, jrigCli: createHash("sha256").update(await readFile(jrigCli)).digest("hex") },
     };
   } finally {

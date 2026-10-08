@@ -235,3 +235,13 @@ recomputes the selected case's outcome and metrics, and compares both JSON and b
 summaries. Missing, skipped, incomplete or changed routing evidence cannot produce a
 passing case. An observed incorrect route produces a failed case. Earlier receipts
 remain historical evidence of their original CLI and do not gain this verification.
+
+The single-case runner now explicitly opts in to J-Rig `judgeObservations` (merged
+PR350). Only synthetic fixture tool data is forwarded to the selected judge as
+untrusted observations. The evidence join verifies the private context schema,
+exact session, tool order/status, serialized bound and SHA/size references in the
+private execution receipt and portable bundle. A missing, changed or cross-session
+context cannot produce a passing case. Failed executions keep partial observations
+without claiming they were judged. Host/store assertions still verify actual effects.
+Historical receipts retain their original CLI, source hashes and counts-only context;
+they do not retroactively gain this observation verification.

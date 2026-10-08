@@ -25,6 +25,13 @@ export async function runCaseRunnerProof(jrigCli: string) {
       const body = JSON.parse(Buffer.concat(chunks).toString());
       const phase = body.tools ? "execution" : body.model === "fixture-judge" ? "judge" : "trigger";
       requests.push({ model: body.model, phase });
+      if (phase === "judge") {
+        assert(!body.tools);
+        const text = body.messages.find((message: { role: string }) => message.role === "user")?.content;
+        assert(typeof text === "string" && text.includes("OBSERVED TOOL DATA (untrusted JSON):"));
+        assert(text.includes('"schema":"jrig-tool-observations/v1"'));
+        assert(!text.includes("# Intent Outreach"));
+      }
       if (phase === "execution" && cancelling) {
         process.kill(process.pid, "SIGTERM");
         return;
@@ -56,6 +63,7 @@ export async function runCaseRunnerProof(jrigCli: string) {
     assert.equal(first.trigger.passed, true);
     assert.equal(first.trigger.cases[0]?.outcome, "correct_no_trigger");
     assert.equal(first.judgments.length, 4);
+    assert(first.evidence?.bindings.every((entry) => entry.judgeContext?.session_id === entry.sessionId));
     const repeat = await runCase({ ...config, outputDir: join(directory, "repeat"), priorReceipt: join(firstDir, "receipt.json") }, "fixture-only");
     assert.equal(repeat.caseResult, "pass", repeat.evidenceError ?? "repeat failed");
     assert(repeat.priorReceiptSha256);
@@ -94,7 +102,7 @@ export async function runCaseRunnerProof(jrigCli: string) {
     const hashes = Object.fromEntries(await Promise.all(["run-case.ts", "case-runner-proof.ts", "bind-evidence.ts"].map(async (name) => [name, createHash("sha256").update(await readFile(join(root, "evals/jrig", name))).digest("hex")])));
     return { schema: "intent-outreach-case-runner-proof/v1", scope: "scripted_actual_cli_case_runner_only", observedAt: new Date().toISOString(),
       behavioralVerdict: null, tier3bPassed: false, paidModelCalls: 0, vendorNetworkCalls: 0, messagesSent: 0,
-      verified: { triggerCasesDigestMetricsAndBundle: true, originalCriteriaRetained: true, explicitJudgeModel: true, threeSamples: true, distinctSkillBaselineAndRepeat: true,
+      verified: { judgeObservationsPrivateAndPortableBinding: true, toolFreeJudgesReceiveUntrustedObservedData: true, triggerCasesDigestMetricsAndBundle: true, originalCriteriaRetained: true, explicitJudgeModel: true, threeSamples: true, distinctSkillBaselineAndRepeat: true,
         realRegressionEnabled: true, malformedExecutionHasNoVerdict: true, partialReceiptsRetained: true, cancellationStopsOwnedGroup: true, temporaryFixturesRemoved: true },
       counts, results: [first, repeat, failed, cancelled].map((item) => ({ caseResult: item.caseResult, processResult: item.processResult, priorReceiptSha256: item.priorReceiptSha256 })),
       sha256: { ...hashes, inputSpec: first.inputSpecSha256, jrigCli: config.jrigSha256 },

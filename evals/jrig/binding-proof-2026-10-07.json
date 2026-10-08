@@ -1,6 +1,6 @@
 {
   "schema": "intent-outreach-jrig-binding-proof/v1",
-  "observedAt": "2026-10-08T00:20:34.316Z",
+  "observedAt": "2026-10-08T00:48:19.482Z",
   "scope": "scripted_loopback_real_cli_and_nested_bundle",
   "behavioralVerdict": null,
   "tier3bPassed": false,
@@ -12,9 +12,9 @@
   "bindings": [
     {
       "phase": "skill",
-      "sessionId": "1f33face-3674-4cae-936f-0b6072dd6540",
-      "receiptSha256": "sha256:5a61ee095cee45687c4dad7feda2bfb979a6d8dc9f3b001ab4b1338f78bf680b",
-      "traceSha256": "86bc231876ea19308862437d501b04eedbdec22c6fa29c302273ea28a9033d11",
+      "sessionId": "9ca659bf-9101-4c15-a83f-3edb707be57f",
+      "receiptSha256": "sha256:d743ccf785ae3599625781fda58713eb5e64a536d55ce71414b94a1589b88b9b",
+      "traceSha256": "c1e9db5db6fa2c436e9b6804bbeab424d4751b9ae6d806fa815bc1463312fbf3",
       "nestedUsage": {
         "inputTokens": 22,
         "outputTokens": 10
@@ -27,16 +27,22 @@
         "passed": true,
         "failures": [],
         "incomplete": [],
-        "traceSha256": "86bc231876ea19308862437d501b04eedbdec22c6fa29c302273ea28a9033d11",
+        "traceSha256": "c1e9db5db6fa2c436e9b6804bbeab424d4751b9ae6d806fa815bc1463312fbf3",
         "storedRuns": 0
       },
-      "passed": true
+      "passed": true,
+      "judgeContext": {
+        "test_case_id": "build-lead-list",
+        "session_id": "9ca659bf-9101-4c15-a83f-3edb707be57f",
+        "sha256": "sha256:ccfce459d04a79af249b82b497d8deffc382a48b05288b4171e86f5560966e84",
+        "size_bytes": 5707
+      }
     },
     {
       "phase": "baseline",
-      "sessionId": "681c03de-214d-4671-b075-c6e9b4472bbd",
-      "receiptSha256": "sha256:692ee11935715a63f8068b8bde609c704700b6364f6886fcefbe75d25c6000c3",
-      "traceSha256": "d3fda3412f0f2682cac6ecf9319497297797251b7a5d4c32ba7556ed02e553f7",
+      "sessionId": "e4c0fa8c-66e0-4c9b-9992-d8243a7f4016",
+      "receiptSha256": "sha256:b838c8705f71fb8a411b7b8f4520c5f1b682955ccce92e424711965a1a1bcca4",
+      "traceSha256": "a3a80570f89a08e29ce9184576348f1bca62b807b2fffda5324b0ccf83ca0a61",
       "nestedUsage": {
         "inputTokens": 22,
         "outputTokens": 10
@@ -49,22 +55,28 @@
         "passed": true,
         "failures": [],
         "incomplete": [],
-        "traceSha256": "d3fda3412f0f2682cac6ecf9319497297797251b7a5d4c32ba7556ed02e553f7",
+        "traceSha256": "a3a80570f89a08e29ce9184576348f1bca62b807b2fffda5324b0ccf83ca0a61",
         "storedRuns": 0
       },
-      "passed": true
+      "passed": true,
+      "judgeContext": {
+        "test_case_id": "build-lead-list",
+        "session_id": "e4c0fa8c-66e0-4c9b-9992-d8243a7f4016",
+        "sha256": "sha256:5860dc315a61bdb682201b2d186bd8dabb792c6a0096f9fd85df73ccd10fa0f6",
+        "size_bytes": 5707
+      }
     }
   ],
   "sha256": {
     "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
     "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
-    "evals/jrig/bind-evidence.ts": "87290fe8090a6338e8992e629d9337b5bcacc075bfeb30dbcbbf834fa103d34f",
-    "evals/jrig/binding-proof.ts": "c7e5d76ac24d0ed66260a62e57dbd127c8daac57f950a881b40bc562960be5a6",
+    "evals/jrig/bind-evidence.ts": "2be4e1f0fc51bcf5de74c2c9fe23d00d65fa80904983fb20e7d81d0d3c96bb9a",
+    "evals/jrig/binding-proof.ts": "6b1cead7d48b1b8525030d23e7394edc658ff406cc3ce586118ea87ec4b1eaa8",
     "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
     "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
     "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
     "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",
     "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69",
-    "jrigCli": "643348ddb5ec6825987e367838c886cd025e62b0f84d882fe08c62ed2a139ca5"
+    "jrigCli": "57f7117bd5fcc8bde500c9f1af696d25e9ea20d4385df662b52bcfb00d59cbcc"
   }
 }

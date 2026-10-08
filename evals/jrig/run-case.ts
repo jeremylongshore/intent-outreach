@@ -139,7 +139,7 @@ export async function runCase(raw: unknown, apiKey: string) {
   await write("scenario.json", { caseId: config.caseId, evidenceDir: hostsDir, provider: config.provider, model: config.model,
     baseUrl: config.baseUrl, checkpoints: scenarios[config.caseId]?.checkpoints });
   const mcpConfigPath = join(config.outputDir, "mcp.json");
-  await write("mcp.json", { servers: { outreach: { command: process.execPath,
+  await write("mcp.json", { judgeObservations: true, servers: { outreach: { command: process.execPath,
     args: ["--import", "tsx", join(root, "evals/jrig/scenario-host.ts"), join(config.outputDir, "scenario.json")], cwd: root,
     env: ["JRIG_AGENT_API_KEY"], tools: ["Agent", "Read", "AskUserQuestion", "list_connectors", "save_run", "list_pending", "approve", "reject", "suppress", "list_runs", "underwrite"],
   } }, limits: { maxTurns: 24, maxCalls: 64, timeoutMs: 300000 } });
@@ -179,8 +179,12 @@ export async function runCase(raw: unknown, apiKey: string) {
       target: spec.skill_name, prompt: z.string().parse(spec.test_cases[0]?.prompt),
       siblings: z.array(z.object({ name: z.string() })).parse(z.record(z.string(), z.unknown()).parse(spec).siblings ?? []).map((item) => item.name), summary: jrigResult.trigger, bundleSummary: predicate.metadata.trigger });
     judgments = inspectCaseVotes(predicate.metadata.criteria, expected, config.caseId);
-    const references = z.object({ receipts: z.array(z.object({ phase: z.string(), sha256: z.string() })) }).parse(predicate.metadata.tool_execution).receipts;
+    const references = z.object({ configuration_sha256: z.literal(hash(await readFile(mcpConfigPath))), receipts: z.array(z.object({ phase: z.string(), sha256: z.string(), judge_contexts: z.array(z.unknown()) })) }).parse(predicate.metadata.tool_execution).receipts;
     assert.deepEqual(references.map((item) => [item.phase, item.sha256]).sort(), evidence.bindings.map((item) => [item.phase, item.receiptSha256]).sort(), "bundle_receipt_mismatch");
+    for (const binding of evidence.bindings) {
+      assert(binding.judgeContext, "missing observed judge context");
+      assert.deepEqual(references.find((item) => item.phase === binding.phase)?.judge_contexts, [binding.judgeContext], "portable judge context binding mismatch");
+    }
     if (evidence.bindings.some((item) => item.status !== "completed" || item.audit.incomplete.length)) throw new Error("execution_or_host_incomplete");
     caseResult = trigger.passed && evidence.bindings.find((item) => item.phase === "skill")?.passed && judgments.every((item) => item.verdict === "yes") ? "pass" : "fail";
   } catch {

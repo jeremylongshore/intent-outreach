@@ -1,13 +1,15 @@
 {
   "schema": "intent-outreach-case-runner-proof/v1",
   "scope": "scripted_actual_cli_case_runner_only",
-  "observedAt": "2026-10-08T00:20:24.551Z",
+  "observedAt": "2026-10-08T00:49:24.644Z",
   "behavioralVerdict": null,
   "tier3bPassed": false,
   "paidModelCalls": 0,
   "vendorNetworkCalls": 0,
   "messagesSent": 0,
   "verified": {
+    "judgeObservationsPrivateAndPortableBinding": true,
+    "toolFreeJudgesReceiveUntrustedObservedData": true,
     "triggerCasesDigestMetricsAndBundle": true,
     "originalCriteriaRetained": true,
     "explicitJudgeModel": true,
@@ -28,7 +30,7 @@
     {
       "caseResult": "pass",
       "processResult": {
-        "pid": 1140320,
+        "pid": 1288599,
         "code": 0,
         "signal": null,
         "timedOut": false,
@@ -39,18 +41,18 @@
     {
       "caseResult": "pass",
       "processResult": {
-        "pid": 1141248,
+        "pid": 1289424,
         "code": 0,
         "signal": null,
         "timedOut": false,
         "cancelled": false
       },
-      "priorReceiptSha256": "2440de914249f98fc3176e3b5c895a0b320e3c553c776dfae4a10498ab6f44e4"
+      "priorReceiptSha256": "2031edbf6d28073d09f9388d711bc5f4f9701c02860ca5f1c007b0fcab7babbc"
     },
     {
       "caseResult": "incomplete",
       "processResult": {
-        "pid": 1142182,
+        "pid": 1290193,
         "code": 2,
         "signal": null,
         "timedOut": false,
@@ -61,7 +63,7 @@
     {
       "caseResult": "incomplete",
       "processResult": {
-        "pid": 1143167,
+        "pid": 1290310,
         "code": null,
         "signal": "SIGTERM",
         "timedOut": false,
@@ -71,10 +73,10 @@
     }
   ],
   "sha256": {
-    "run-case.ts": "e7834abf0eb55a76730115ab98df2003cbaccc4528a41bc69f6fc7d3a06d6145",
-    "case-runner-proof.ts": "af47120aea5c788044aa504a17d3f0dd08feee6d051d7093b54d46fb711d3201",
-    "bind-evidence.ts": "87290fe8090a6338e8992e629d9337b5bcacc075bfeb30dbcbbf834fa103d34f",
+    "run-case.ts": "5a6448215610d4fc8cbdc5507e169cc0735d689f0db554f151945088f9073243",
+    "case-runner-proof.ts": "06f9721166070f0c5839e6403a8d4e07fc846c415c593e87176181d52c22db3d",
+    "bind-evidence.ts": "2be4e1f0fc51bcf5de74c2c9fe23d00d65fa80904983fb20e7d81d0d3c96bb9a",
     "inputSpec": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
-    "jrigCli": "643348ddb5ec6825987e367838c886cd025e62b0f84d882fe08c62ed2a139ca5"
+    "jrigCli": "57f7117bd5fcc8bde500c9f1af696d25e9ea20d4385df662b52bcfb00d59cbcc"
   }
 }

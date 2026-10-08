@@ -10,9 +10,11 @@ import { auditScenario } from "./audit-scenario.js";
 const hash = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 const object = z.record(z.string(), z.unknown());
 const artifactSchema = z.object({ filename: z.string(), type: z.literal("text"), content: z.string(), size_bytes: z.number().int().nonnegative() });
+const contextSchema = z.object({ test_case_id: z.string(), session_id: z.uuid(), sha256: z.string().regex(/^sha256:[a-f0-9]{64}$/), size_bytes: z.number().int().nonnegative() }).strict();
 const receiptSchema = z.object({
   schema: z.literal("jrig-tool-execution/v1"), run_id: z.number().int().positive(),
   phase: z.enum(["skill", "baseline"]), configuration_sha256: z.string(),
+  judge_contexts: z.array(contextSchema).optional(),
   cases: z.array(z.object({ test_case_id: z.string(), status: z.enum(["completed", "failed"]),
     output: z.object({ text: z.string(), tool_calls: z.number().int().nonnegative(), artifacts: z.array(artifactSchema) }),
   })).length(1),
@@ -40,7 +42,9 @@ export async function bindScenarioEvidence(input: {
 }) {
   const root = dirname(input.dbPath);
   await privateFile(input.dbPath, root, 67108864);
-  const configSha = hash(await privateFile(input.mcpConfigPath, root, 65536));
+  const configBytes = await privateFile(input.mcpConfigPath, root, 65536);
+  const configSha = hash(configBytes);
+  const config = z.object({ judgeObservations: z.boolean().optional(), limits: z.object({ maxTotalBytes: z.number().int().positive().max(4194304).optional() }).optional() }).parse(JSON.parse(configBytes.toString()));
   assert.equal(await realpath(input.hostsDir), input.hostsDir, "host directory contains a symlink");
   const hostInfo = await lstat(input.hostsDir);
   assert(hostInfo.isDirectory() && (hostInfo.mode & 0o077) === 0, "host directory must be private");
@@ -111,13 +115,39 @@ export async function bindScenarioEvidence(input: {
         assert.equal(tool.result_bytes, Buffer.byteLength(JSON.stringify(ended.data.result)), "host tool result size mismatch");
       }
     }
+    let judgeContext: z.infer<typeof contextSchema> | null = null;
+    const observationRecords = observed.output.artifacts.filter((item) => item.filename === "tool-observations.json");
+    if (config.judgeObservations) {
+      const context = z.object({ schema: z.literal("jrig-tool-observations/v1"), session_id: z.literal(identity.session_id),
+        redaction: z.literal("known-environment-credentials-and-credential-fields/v1"), calls: z.array(z.object({
+          id: z.string().min(1), tool: z.string(), arguments: object, status: z.enum(["started", "completed"]), result: z.string().optional(),
+        }).strict()).max(64),
+      }).strict().parse(artifact("tool-observations.json"));
+      const observation = observationRecords[0]; assert(observation);
+      assert(observation.size_bytes <= (config.limits?.maxTotalBytes ?? 1048576), "observation context exceeds bound");
+      assert.equal(context.calls.length, tools.length, "observation call count mismatch");
+      assert.equal(new Set(context.calls.map((call) => call.id)).size, context.calls.length, "duplicate observation call identity");
+      for (const [index, call] of context.calls.entries()) {
+        assert.equal(call.tool, tools[index]?.tool, "observation tool order mismatch");
+        assert.equal(call.status, tools[index]?.status, "observation tool status mismatch");
+        assert.equal(typeof call.result === "string", call.status === "completed", "observation response missing or uncompleted");
+      }
+      if (observed.status === "completed") {
+        assert(context.calls.every((call) => call.status === "completed"), "completed context contains partial call");
+        judgeContext = { test_case_id: input.caseId, session_id: identity.session_id, sha256: "sha256:" + hash(Buffer.from(observation.content)), size_bytes: observation.size_bytes };
+      }
+      assert.deepEqual(receipt.judge_contexts, judgeContext ? [judgeContext] : [], "private judge context binding mismatch");
+    } else {
+      assert.equal(observationRecords.length, 0, "observations retained without opt-in");
+      assert.equal(receipt.judge_contexts, undefined, "judge contexts retained without opt-in");
+    }
     const audit = await auditScenario(trace.home);
     assert.equal(audit.traceSha256, trace.traceSha256, "host trace changed during audit");
     const terminal = trace.events.at(-1);
     const nestedUsage = terminal?.kind === "closed" ? usageSchema.parse(terminal.data.agentUsage) : null;
     bindings.push({ phase: receipt.phase, sessionId: identity.session_id, home: trace.home,
       receiptSha256: record.sha256, traceSha256: trace.traceSha256, status: observed.status,
-      output: observed.output.text, nestedUsage, audit,
+      output: observed.output.text, nestedUsage, audit, judgeContext,
       passed: observed.status === "completed" && tools.every((tool) => tool.status === "completed") && audit.passed,
     });
   }
