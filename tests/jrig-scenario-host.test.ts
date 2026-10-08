@@ -280,6 +280,26 @@ ${JSON.stringify(payload, null, 2)}
         section(draft).replace("**declines[]**:", "**declines[]**")]) {
         expect(await auditOutput(output)).toMatchObject({ passed: true, failures: [], incomplete: [] });
       }
+      // The unchanged agent contract also permits a complete return object
+      // under an explicit heading, with explanatory sections outside it.
+      const returned = (payload: unknown) => `## Assessment\nFixture rationale.\n\n**Return value**\n\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\`\n\n### Compliance notes\nFixture notes.`;
+      const returnObject = { fitScore: 55, angles: [], messages: [draft], declines: [] };
+      for (const output of [returned(returnObject), returned(returnObject).replaceAll("\n", "\r\n"),
+        returned(returnObject).replace("**Return value**", "**Return value:**")]) {
+        expect(await auditOutput(output)).toMatchObject({ passed: true, failures: [], incomplete: [] });
+      }
+      for (const output of [returned(returnObject) + "\n**Return value**",
+        returned(returnObject) + "\n**messages[]**", returned(returnObject).replace("**Return value**", "Return value"),
+        returned(returnObject) + "\n```json\n{}\n```", returned(returnObject) + "\n```\n{}\n```",
+        returned(returnObject).replace("```json", "unexplained prose\n```json"),
+        returned(returnObject).replace("\n### Compliance notes", "\n```json\n{}\n```\n### Compliance notes"),
+        returned({ body: draft.body }), returned({ messages: "not an array" }),
+        returned({ messages: [{ ...draft, body: null }] }), returned([draft])]) {
+        expect((await auditOutput(output)).incomplete).toContain("unparseable_drafter_evidence");
+      }
+      for (const field of ["contactKey", "channel", "subject", "body", "cta"] as const) {
+        expect((await auditOutput(returned({ messages: [{ ...draft, [field]: "changed" }] }))).failures).toContain("saved_draft_changed_after_agent");
+      }
       for (const output of [section(draft) + "\n**messages[]**", section(draft) + "\n**messages[]:**",
         section(draft).replace("**messages[]**", "**messages[]:** unexplained prose"),
         section(draft).replace("**messages[]**", "Messages"),

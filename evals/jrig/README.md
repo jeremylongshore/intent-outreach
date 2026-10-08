@@ -610,3 +610,21 @@ an overwrite with one message after changing `contactKey`. No checkpoint occurs
 between those writes, although the shipped skill requires asking before overwrite.
 The draft body, subject and CTA were retained. This is an observed persistence and
 approval defect, rather than proof of changed draft prose or a transport retry.
+
+`minimax-m31flash-max-prospect-incomplete-2026-10-08.json` retains the subsequent
+maximum-reasoning comparison. All seven skill criteria and all original judge
+samples pass, but the original whole case is incomplete. The skill's only audit
+incompletion was its valid return object under an explicit **Return value**
+heading; the baseline's whole JSON draft lacks the contract's `messages` field.
+The narrow parser correction now accepts that explicit heading with exactly one
+fenced JSON object, while rejecting ambiguous headings, mixed sections, extra
+fences anywhere, malformed messages and changed approved fields. It does not infer
+a draft or change any expected label, rubric, agent definition or receipt.
+`minimax31-max-return-value-diagnostic-2026-10-08.json` verifies the original
+closed skill trace without changing a byte; this is a corrected structural
+diagnostic, not an upgrade of the original case or a passing regression seed.
+`return-value-parser-review-2026-10-08.json` retains fresh source-bound actual-CLI
+component checks (three samples, distinct sessions, regression, malformed and
+cancelled execution) and a separate tools-disabled M3.1 medium static review.
+The first M3 static review exhausted its token limit without a verdict and is
+not counted as a pass. New real qualification remains required.

@@ -19,6 +19,21 @@ function jsonOutput(value: unknown): unknown {
   const text = z.string().parse(value).trim().replace(/^```(?:json)?\s*\n/, "").replace(/\n```$/, "");
   return JSON.parse(text);
 }
+function explicitReturnValue(text: string) {
+  const lines = text.split(/\r?\n/);
+  const headings = lines.flatMap((line, index) => /^\s*\*\*Return value:?\*\*:?\s*$/.test(line) ? [index] : []);
+  const heading = headings[0];
+  if (heading === undefined) return undefined;
+  if (headings.length !== 1 || /\*\*messages\[\]:?\*\*:?/.test(text)) throw new Error("ambiguous return value section");
+  const fences = text.match(/^\s*```[^\r\n]*$/gm) ?? [];
+  if (fences.length !== 2 || fences[0]?.trim() !== "```json" || fences[1]?.trim() !== "```") throw new Error("ambiguous return value blocks");
+  const following = lines.slice(heading + 1);
+  const next = following.findIndex((line) => /^\s*(?:#{1,6}\s+|\*\*[A-Za-z][^*\n]*\*\*)/.test(line));
+  const section = (next < 0 ? following : following.slice(0, next)).join("\n").trim();
+  const block = /^```json\s*\n([\s\S]+)\n```$/.exec(section);
+  if (!block?.[1]) throw new Error("return value section must contain one JSON object");
+  return object.parse(JSON.parse(block[1]));
+}
 function draftedMessages(value: unknown) {
   const text = z.string().parse(value);
   let messages: unknown;
@@ -26,8 +41,11 @@ function draftedMessages(value: unknown) {
     messages = object.parse(jsonOutput(text)).messages;
   } catch {
     // The unchanged agent contract names messages[] but does not require a
-    // whole-response JSON wrapper. Accept only an explicit, unambiguous section;
+    // whole-response JSON wrapper. Accept only an explicit, unambiguous section
+    // for messages or a complete Return value object;
     // never extract arbitrary JSON from prose or infer a draft's contents.
+    const returned = explicitReturnValue(text);
+    if (returned) return z.array(draftSchema).parse(returned.messages);
     if ([...text.matchAll(/\*\*messages\[\]:?\*\*:?/g)].length !== 1) throw new Error("ambiguous messages section");
     const lines = text.split(/\r?\n/);
     const heading = lines.findIndex((line) => /^\s*\*\*messages\[\]:?\*\*:?\s*$/.test(line));
