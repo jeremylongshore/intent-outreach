@@ -193,10 +193,15 @@ ${JSON.stringify(payload, null, 2)}
         return auditScenario(first!.home);
       };
       for (const output of [section(draft), section([draft]), "```json\n" + JSON.stringify({ messages: [draft] }) + "\n```",
-        section(draft).replaceAll("\n", "\r\n")]) {
+        section(draft).replaceAll("\n", "\r\n"),
+        section(draft).replace("**messages[]**", "**messages[]:**").replace("**declines[]**:", "**declines[]:**"),
+        section(draft).replace("**messages[]**", "**messages[]**:"),
+        section(draft).replace("**declines[]**:", "**declines[]**")]) {
         expect(await auditOutput(output)).toMatchObject({ passed: true, failures: [], incomplete: [] });
       }
-      for (const output of [section(draft) + "\n**messages[]**", section(draft).replace("**messages[]**", "Messages"),
+      for (const output of [section(draft) + "\n**messages[]**", section(draft) + "\n**messages[]:**",
+        section(draft).replace("**messages[]**", "**messages[]:** unexplained prose"),
+        section(draft).replace("**messages[]**", "Messages"),
         section(draft).replace("```json", "unexplained prose\n```json"),
         section(draft).replace("\n**declines[]**", "\n```json\n{}\n```\n**declines[]**"),
         section({ ...draft, body: null }), section({ channel: "email" }), section({ messages: [draft] }),

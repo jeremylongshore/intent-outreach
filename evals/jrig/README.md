@@ -110,7 +110,9 @@ only, always `behavioralVerdict: null` and `tier3bPassed: false`.
 The unchanged drafter contract names `messages[]` without requiring a whole-response
 JSON wrapper. The auditor accepts either that wrapper or one fenced JSON object or
 array under a unique `**messages[]**` heading, ending at `**declines[]**` or end of
-output. Duplicate headings, extra section text, multiple blocks and malformed
+output. A colon may appear inside or immediately after either bold heading,
+including `**messages[]:**` and `**declines[]:**`. Duplicate headings, extra
+section text, multiple blocks and malformed
 message fields remain incomplete. Parsed drafts must still match the save arguments
 exactly; the checkpoint and encrypted-store checks also remain required.
 
@@ -134,6 +136,19 @@ premature persistence and concealed save failure. Only the description changed t
 distinguish observed completion/persistence from invented claims. The detailed
 judge prompt, blocker, seven criteria, ten cases and sampling/policies are unchanged.
 This diagnostic does not rerun the skill, revise old votes or establish Tier 3B.
+
+The fresh clarified-spec GLM low run is retained in
+`glm53-low-r3-unsuccessful-case-2026-10-08.json`: trigger routing and all seven
+applicable criteria passed, with three yes votes on each judge criterion, but
+the original auditor rejected the bold headings with colons. Its original case
+receipt remains incomplete. A separate source-hashed audit with the punctuation
+correction accepts the skill trace and retains the baseline's actual preflight,
+ordering and duplicate-save failures. Both original host traces remain
+unchanged; a fresh execution is required for a new case result.
+`drafter-colon-binding-proof-2026-10-08.json` records a fresh scripted CLI/session
+binding proof against the corrected auditor source. Actual-host regression cases
+cover both colon placements, unchanged plain headings, duplicate labels and
+unexplained heading text. These remain component evidence, not a behavioral pass.
 
 The stdio integration test uses a scripted loopback model to exercise all three
 phase agents, actual connector normalization, reviewed drafting resources,

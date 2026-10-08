@@ -28,12 +28,12 @@ function draftedMessages(value: unknown) {
     // The unchanged agent contract names messages[] but does not require a
     // whole-response JSON wrapper. Accept only an explicit, unambiguous section;
     // never extract arbitrary JSON from prose or infer a draft's contents.
-    if ([...text.matchAll(/\*\*messages\[\]\*\*/g)].length !== 1) throw new Error("ambiguous messages section");
+    if ([...text.matchAll(/\*\*messages\[\]:?\*\*:?/g)].length !== 1) throw new Error("ambiguous messages section");
     const lines = text.split(/\r?\n/);
-    const heading = lines.findIndex((line) => /^\s*\*\*messages\[\]\*\*\s*$/.test(line));
+    const heading = lines.findIndex((line) => /^\s*\*\*messages\[\]:?\*\*:?\s*$/.test(line));
     if (heading < 0) throw new Error("missing messages heading");
     const following = lines.slice(heading + 1);
-    const next = following.findIndex((line) => /^\s*\*\*declines\[\]\*\*/.test(line));
+    const next = following.findIndex((line) => /^\s*\*\*declines\[\]:?\*\*:?(?:\s|$)/.test(line));
     const section = (next < 0 ? following : following.slice(0, next)).join("\n").trim();
     const block = /^```json\s*\n([\s\S]+)\n```$/.exec(section);
     if (!block?.[1]) throw new Error("messages section must contain one JSON block");
