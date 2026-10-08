@@ -507,3 +507,10 @@ negative routing, both independent audits passing and no campaign tools or
 persistence. This control is not campaign acceptance. The research artifact also
 lists the trace-derived root tools and actual researcher `research_domain`
 start/completion events, without exposing tool arguments or model output.
+
+`glm53-coding-routing-pass-2026-10-08.json` retains the fresh corrected-spec
+coding control, with original votes and separate no-campaign-effect audits.
+`glm53-routing-suite-progress-2026-10-08.json` is an explicit partial coverage
+snapshot: five original terminal passes, all ten required IDs and the five still
+unverified cases. It records the current source/spec/model/budget cohort, without
+substituting historical receipts or implying completed regression or acceptance.
