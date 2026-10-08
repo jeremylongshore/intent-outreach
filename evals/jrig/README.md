@@ -485,3 +485,10 @@ hosts close with no campaign tool calls or persistence; package checks pass 12/1
 The original missing-expectation receipt stays incomplete. The naked baseline
 also passes and promotion remains `obsolete_review`; this is one case, without
 campaign/full-suite/regression acceptance.
+
+`glm53-scope-routing-pass-2026-10-08.json` retains the fresh scope-confirmation
+case under the corrected routing spec. All five criteria and trigger routing pass;
+both hosts close without research or persistence and package checks pass12/12.
+Old-spec scope regression is historical evidence; this new-spec initial pass has
+no supplied regression baseline. Campaign, complete suite and rollout acceptance
+remain unproved.
