@@ -69,6 +69,30 @@ async function events(home: string) {
 }
 
 describe("scenario MCP host", () => {
+  it.each([{ label: "omitted messages", args: { drafts: [] }, rejected: false, storedRuns: 1 },
+    { label: "invalid messages", args: { messages: "invalid" }, rejected: true, storedRuns: 0 }])("retains $label save evidence without discarding the independent audit", async ({ args, rejected, storedRuns }) => {
+    const evidence = await mkdtemp(join(tmpdir(), "outreach-malformed-save-"));
+    const fixture = await loopback(() => { throw new Error("no model call expected"); });
+    const host = await start(evidence, fixture.baseUrl, "prospect-and-draft", scenarios["prospect-and-draft"]!.checkpoints);
+    try {
+      const result = await host.call("save_run", { id: "malformed-attempt", icp: "Developer tools", domains: ["example.test"], provider: "scripted-loopback", model: "fixture-model", ...args });
+      expect((result as { isError?: boolean }).isError === true).toBe(rejected);
+      await host.client.close();
+      const audit = await auditScenario(host.home);
+      expect(audit).toMatchObject({ passed: false, storedRuns, behavioralVerdict: null, tier3bPassed: false });
+      expect(audit.incomplete).toContain("malformed_save_arguments");
+      if (rejected) {
+        expect(audit.incomplete).toContain("bundled_tool_error");
+        expect(audit.failures).toContain("unexpected_stored_run_count");
+      } else {
+        expect(audit.failures).toContain("save_without_prior_draft_approval");
+      }
+    } finally {
+      await host.client.close();
+      await fixture.close();
+      await rm(evidence, { recursive: true, force: true });
+    }
+  });
   it("runs real nested bundle tools, authored checkpoints and reviewed Read with fresh store isolation", async () => {
     const fixture = await loopback((body) => {
       expect(body.model).toBe("fixture-model");

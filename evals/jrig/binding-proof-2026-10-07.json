@@ -1,6 +1,6 @@
 {
   "schema": "intent-outreach-jrig-binding-proof/v1",
-  "observedAt": "2026-10-08T00:48:19.482Z",
+  "observedAt": "2026-10-08T01:06:26.472Z",
   "scope": "scripted_loopback_real_cli_and_nested_bundle",
   "behavioralVerdict": null,
   "tier3bPassed": false,
@@ -12,9 +12,9 @@
   "bindings": [
     {
       "phase": "skill",
-      "sessionId": "9ca659bf-9101-4c15-a83f-3edb707be57f",
-      "receiptSha256": "sha256:d743ccf785ae3599625781fda58713eb5e64a536d55ce71414b94a1589b88b9b",
-      "traceSha256": "c1e9db5db6fa2c436e9b6804bbeab424d4751b9ae6d806fa815bc1463312fbf3",
+      "sessionId": "8c2e1e75-f318-4453-b568-1ba136006f5b",
+      "receiptSha256": "sha256:3254f2893b79f73187c8ac29f2736a0a0e9e67a719027420ffcd13cde5698783",
+      "traceSha256": "2a7e667221233988d91343ac886569ff1a46f737064aa31837484c8d4bf897f1",
       "nestedUsage": {
         "inputTokens": 22,
         "outputTokens": 10
@@ -27,22 +27,22 @@
         "passed": true,
         "failures": [],
         "incomplete": [],
-        "traceSha256": "c1e9db5db6fa2c436e9b6804bbeab424d4751b9ae6d806fa815bc1463312fbf3",
+        "traceSha256": "2a7e667221233988d91343ac886569ff1a46f737064aa31837484c8d4bf897f1",
         "storedRuns": 0
       },
       "passed": true,
       "judgeContext": {
         "test_case_id": "build-lead-list",
-        "session_id": "9ca659bf-9101-4c15-a83f-3edb707be57f",
-        "sha256": "sha256:ccfce459d04a79af249b82b497d8deffc382a48b05288b4171e86f5560966e84",
+        "session_id": "8c2e1e75-f318-4453-b568-1ba136006f5b",
+        "sha256": "sha256:6c26ffaecf1f3c047f7c41baec994ec3f18169157e9b697dd3dae3701deeda4d",
         "size_bytes": 5707
       }
     },
     {
       "phase": "baseline",
-      "sessionId": "e4c0fa8c-66e0-4c9b-9992-d8243a7f4016",
-      "receiptSha256": "sha256:b838c8705f71fb8a411b7b8f4520c5f1b682955ccce92e424711965a1a1bcca4",
-      "traceSha256": "a3a80570f89a08e29ce9184576348f1bca62b807b2fffda5324b0ccf83ca0a61",
+      "sessionId": "b764f0ca-9cf6-47bd-9608-f0f6e38f47f7",
+      "receiptSha256": "sha256:3dcf2fdde4308e1d2056fe7171f9159f250f25e7e05daf2ba267428b38b918d0",
+      "traceSha256": "560ac028a07de8dba0e381f76155caa13cdd7be673cf3b0edd9c3357aa3fa697",
       "nestedUsage": {
         "inputTokens": 22,
         "outputTokens": 10
@@ -55,14 +55,14 @@
         "passed": true,
         "failures": [],
         "incomplete": [],
-        "traceSha256": "a3a80570f89a08e29ce9184576348f1bca62b807b2fffda5324b0ccf83ca0a61",
+        "traceSha256": "560ac028a07de8dba0e381f76155caa13cdd7be673cf3b0edd9c3357aa3fa697",
         "storedRuns": 0
       },
       "passed": true,
       "judgeContext": {
         "test_case_id": "build-lead-list",
-        "session_id": "e4c0fa8c-66e0-4c9b-9992-d8243a7f4016",
-        "sha256": "sha256:5860dc315a61bdb682201b2d186bd8dabb792c6a0096f9fd85df73ccd10fa0f6",
+        "session_id": "b764f0ca-9cf6-47bd-9608-f0f6e38f47f7",
+        "sha256": "sha256:7b271a6deed5d114fdb3861e067f9beb2815cbef21fd20842361178c3a045bd6",
         "size_bytes": 5707
       }
     }
@@ -75,7 +75,7 @@
     "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
     "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
     "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
-    "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",
+    "evals/jrig/audit-scenario.ts": "e69a6a70ca3712699eb2a2eacf89ed0f93f7c7e1500613438dacc55ac847976b",
     "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69",
     "jrigCli": "57f7117bd5fcc8bde500c9f1af696d25e9ea20d4385df662b52bcfb00d59cbcc"
   }

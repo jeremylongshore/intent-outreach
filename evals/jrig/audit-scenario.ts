@@ -128,7 +128,14 @@ export async function auditScenario(home: string) {
   for (const save of saves) {
     check(save.arguments.provider === start?.data.provider && save.arguments.model === start?.data.model, "saved_model_identity_mismatch");
     check(policy.save && (checkpoints[1]?.sequence ?? Infinity) < save.sequence, "save_without_prior_draft_approval");
-    const drafts = z.array(draftSchema).parse(save.arguments.messages);
+    const parsedDrafts = z.array(draftSchema).safeParse(save.arguments.messages);
+    if (!parsedDrafts.success) {
+      // Malformed recorded arguments are still observed evidence. Keep the
+      // case incomplete and continue checking later saves and real store effects.
+      incomplete.push("malformed_save_arguments");
+      continue;
+    }
+    const drafts = parsedDrafts.data;
     const questionText = JSON.stringify(checkpoints[1]?.data.questions ?? []);
     for (const message of drafts) {
       check([message.contactKey, message.body, message.cta, ...(message.subject ? [message.subject] : [])].every((text) => questionText.includes(JSON.stringify(text).slice(1, -1))), "saved_draft_not_shown_exactly");
