@@ -143,6 +143,19 @@ runner must retain the draft spec's reviewed criteria and case policies.
 
 ## Single-case runner
 
+An optional `executionReasoningEffort` in the case JSON selects `none`, `low`, `medium`,
+`high` or `max` for both root execution and every nested phase-agent request. Use a value
+supported by the chosen model and a built J-Rig descendant containing PR #354. The mode is
+recorded in the host trace, private execution receipts, portable evidence and case report;
+the binder rejects missing or different settings. Omitting it preserves existing defaults.
+Trigger and judge calls retain their defaults, and all original sampling, deadlines,
+criteria, skill bodies and failure checks remain in force. The two component-proof commands
+accept the optional mode as their final argument, after the output path.
+The retained [reasoning mode component proof](reasoning-mode-component-proof-2026-10-07.json)
+checks both omitted and `none` modes through the actual CLI and nested bundle, including
+three-sample judges, fresh baselines/repeats, regression, malformed execution and cancellation.
+It is scripted evidence and makes no behavioral acceptance or production approval claim.
+
 `run-case.ts` selects one case from the repository's actual YAML spec using the
 YAML parser in the explicitly selected J-Rig installation. It retains every
 criterion, case field, policy and draft/review tag, replacing only the case list

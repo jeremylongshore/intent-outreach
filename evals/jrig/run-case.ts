@@ -8,7 +8,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { bindScenarioEvidence, bindTriggerEvidence } from "./bind-evidence.js";
-import { createAgentModel } from "./agent-model.js";
+import { createAgentModel, reasoningEffortSchema } from "./agent-model.js";
 import { scenarios } from "./scenarios.js";
 
 const hash = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
@@ -18,6 +18,7 @@ export const caseRunConfig = z.object({
   caseId: z.string().refine((id) => Object.hasOwn(scenarios, id), "unknown reviewed case"),
   provider: z.enum(["openai", "groq", "nvidia", "deepseek", "kimi", "openrouter", "minimax"]),
   model: z.string().trim().min(1), judgeModel: z.string().trim().min(1), baseUrl: z.string().url(),
+  executionReasoningEffort: reasoningEffortSchema.optional(),
   evidenceKind: z.enum(["component-test", "behavioral-evaluation"]),
   priorReceipt: absolute.optional(),
 }).strict();
@@ -103,7 +104,7 @@ async function invoke(cli: string, args: string[], env: NodeJS.ProcessEnv, direc
 export async function runCase(raw: unknown, apiKey: string) {
   const config = caseRunConfig.parse(raw);
   assert(apiKey.trim().length >= 8, "JRIG_EVAL_API_KEY must explicitly supply the model credential");
-  createAgentModel({ ...config, apiKey }); // Validate the exact endpoint before any child/network activity.
+  createAgentModel({ ...config, apiKey, reasoningEffort: config.executionReasoningEffort }); // Validate the exact endpoint before any child/network activity.
   const root = resolve(import.meta.dirname, "../..");
   assert.equal(await realpath(config.jrigCli), config.jrigCli, "CLI path contains a symlink");
   assert.equal(hash(await readFile(config.jrigCli)), config.jrigSha256, "J-Rig CLI digest changed");
@@ -137,6 +138,7 @@ export async function runCase(raw: unknown, apiKey: string) {
   await write("config.json", config);
   await write("spec.json", spec);
   await write("scenario.json", { caseId: config.caseId, evidenceDir: hostsDir, provider: config.provider, model: config.model,
+    ...(config.executionReasoningEffort !== undefined ? { executionReasoningEffort: config.executionReasoningEffort } : {}),
     baseUrl: config.baseUrl, checkpoints: scenarios[config.caseId]?.checkpoints });
   const mcpConfigPath = join(config.outputDir, "mcp.json");
   await write("mcp.json", { judgeObservations: true, servers: { outreach: { command: process.execPath,
@@ -148,6 +150,7 @@ export async function runCase(raw: unknown, apiKey: string) {
   const args = ["eval", join(root, "skills/intent-outreach"), "--spec", join(config.outputDir, "spec.json"),
     "--provider", config.provider, "--models", config.model, "--judge-provider", config.provider, "--judge-model", config.judgeModel,
     "--samples", "3", "--baseline-check", "--mcp-config", mcpConfigPath, "--db", dbPath, "--emit-bundle", join(config.outputDir, "bundle.json"), "--json",
+    ...(config.executionReasoningEffort !== undefined ? ["--execution-reasoning-effort", config.executionReasoningEffort] : []),
     ...(regression ? ["--regression-baseline", join(config.outputDir, "regression.json")] : [])];
   await write("started.json", { config, inputSpecSha256: hash(source), sourceHashes: before, yamlParserSha256: hash(await readFile(require.resolve("yaml"))), priorReceiptSha256, args });
   const processResult = await invoke(config.jrigCli, args, { PATH: process.env.PATH, HOME: config.outputDir,
@@ -169,11 +172,15 @@ export async function runCase(raw: unknown, apiKey: string) {
     jrigResult = rows[config.model] ?? null;
     assert(jrigResult?.model === config.model && jrigResult.provider === config.provider && jrigResult.ground_truth === true, "execution_identity_mismatch");
     assert(jrigResult.judge_model === config.judgeModel && jrigResult.judge_provider === config.provider, "judge_identity_mismatch");
-    evidence = await bindScenarioEvidence({ dbPath, hostsDir, mcpConfigPath, caseId: config.caseId, provider: config.provider, model: config.model, serverName: "outreach", baseline: true });
-    assert(!jrigResult.evaluation_error && !jrigResult.functional_skipped && processResult.code !== 2, "J_Rig_evaluation_incomplete");
+    const executionParameters = config.executionReasoningEffort !== undefined ? { reasoning_effort: config.executionReasoningEffort } : undefined;
+    assert.deepEqual(jrigResult.execution_parameters, executionParameters, "root reasoning effort mismatch");
+    evidence = await bindScenarioEvidence({ dbPath, hostsDir, mcpConfigPath, caseId: config.caseId, provider: config.provider, model: config.model, serverName: "outreach", baseline: true, executionReasoningEffort: config.executionReasoningEffort });
     const bundles = z.array(z.object({ predicate: z.object({ gate_decision: z.string(), metadata: z.record(z.string(), z.unknown()) }).passthrough() })).length(1).parse(JSON.parse(await readFile(join(config.outputDir, "bundle.json"), "utf8")));
     const predicate = bundles[0]?.predicate;
-    assert(predicate && predicate.gate_decision !== "error", "gate_evidence_incomplete");
+    assert(predicate, "gate_evidence_missing");
+    assert.deepEqual(predicate.metadata.execution_parameters, executionParameters, "portable reasoning effort mismatch");
+    assert(!jrigResult.evaluation_error && !jrigResult.functional_skipped && processResult.code !== 2, "J_Rig_evaluation_incomplete");
+    assert(predicate.gate_decision !== "error", "gate_evidence_incomplete");
     const triggerExpectation = z.enum(["should_trigger", "should_not_trigger"]).parse(spec.test_cases[0]?.trigger_expectation);
     trigger = await bindTriggerEvidence({ dbPath, caseId: config.caseId, expected: triggerExpectation,
       target: spec.skill_name, prompt: z.string().parse(spec.test_cases[0]?.prompt),
@@ -194,6 +201,7 @@ export async function runCase(raw: unknown, apiKey: string) {
   const report = { schema: "intent-outreach-case-run/v1", caseId: config.caseId, evidenceKind: config.evidenceKind,
     caseResult, tier3bPassed: false, scope: "one_case_requires_suite_regression_variance_and_review", inputSpecSha256: hash(source),
     provider: config.provider, model: config.model, judgeModel: config.judgeModel, processResult, priorReceiptSha256,
+    ...(config.executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: config.executionReasoningEffort } } : {}),
     judgments, trigger, evidence, evidenceError, jrigResult, sourceHashes: before,
     usageScope: "jrigResult.cost covers trigger, root execution and judgment; evidence.bindings nestedUsage is additional",
   };

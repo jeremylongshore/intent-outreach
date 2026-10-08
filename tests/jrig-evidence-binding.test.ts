@@ -53,6 +53,23 @@ async function fixture(observations = false) {
 }
 
 describe("private execution evidence binding", () => {
+  it.each(["match", "host-mismatch", "receipt-mismatch", "missing-receipt", "unexpected-receipt"])("binds the selected root and nested reasoning mode: %s", async (mode) => {
+    const f = await fixture();
+    try {
+      for (const trace of f.traces) trace[0]!.data.executionReasoningEffort = "none";
+      for (const receipt of f.receipts) Object.assign(receipt, { execution_parameters: { reasoning_effort: "none" } });
+      if (mode === "host-mismatch") f.traces[0]![0]!.data.executionReasoningEffort = "high";
+      if (mode === "receipt-mismatch") Object.assign(f.receipts[0]!, { execution_parameters: { reasoning_effort: "high" } });
+      if (mode === "missing-receipt") Object.assign(f.receipts[0]!, { execution_parameters: undefined });
+      await f.save();
+      const input = { ...f.input, ...(mode === "unexpected-receipt" ? {} : { executionReasoningEffort: "none" as const }) };
+      if (mode === "match") {
+        const evidence = await bindScenarioEvidence(input);
+        expect(evidence.bindings.map((binding) => binding.executionParameters)).toEqual([{ reasoning_effort: "none" }, { reasoning_effort: "none" }]);
+      } else await expect(bindScenarioEvidence(input)).rejects.toThrow("reasoning effort mismatch");
+    } finally { await f.close(); }
+  });
+
   it("joins skill and baseline by distinct identity and keeps structural scope explicit", async () => {
     const f = await fixture();
     try {

@@ -12,12 +12,13 @@ import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { createAgentHost, loadAgentResources, type HostTool } from "./agent-host.js";
-import { createAgentModel } from "./agent-model.js";
+import { createAgentModel, reasoningEffortSchema } from "./agent-model.js";
 
 export const scenarioConfig = z.object({
   caseId: z.string().regex(/^[a-z0-9-]{1,64}$/),
   evidenceDir: z.string().refine(isAbsolute, "absolute evidence directory required"),
   provider: z.string().min(1), model: z.string().min(1), baseUrl: z.string().url(),
+  executionReasoningEffort: reasoningEffortSchema.optional(),
   /** One authored answer per question, one batch per checkpoint. No implicit yes. */
   checkpoints: z.array(z.array(z.string().min(1).max(2000)).min(1).max(4)).max(8),
 }).strict();
@@ -41,7 +42,7 @@ const result = (value: unknown) => ({ content: [{ type: "text" as const, text: J
 export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
   const config = scenarioConfig.parse(rawConfig);
   const root = resolve(import.meta.dirname, "../..");
-  const model = createAgentModel({ ...config, apiKey });
+  const model = createAgentModel({ ...config, apiKey, reasoningEffort: config.executionReasoningEffort });
   const skillBytes = await readFile(join(root, "skills/intent-outreach/SKILL.md"));
   const declared = /^allowed-tools:\n((?: {2}- [^\n]+\n)+)/m.exec(skillBytes.toString())?.[1]?.trim().split("\n").map((line) => line.trim().slice(2));
   const expected = ["Agent", "AskUserQuestion", "Read", ...rootTools.flatMap((name) => [
@@ -101,6 +102,7 @@ export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
     const validators = new Map(tools.map((tool) => [tool.name, validator.getValidator(tool.inputSchema)]));
     await record("started", { caseId: config.caseId, home, bundlePid, provider: config.provider, model: config.model,
       executionSessionId: process.env.JRIG_EXECUTION_SESSION_ID ?? null,
+      ...(config.executionReasoningEffort !== undefined ? { executionReasoningEffort: config.executionReasoningEffort } : {}),
       fixtureOnly: true, checkpoints: config.checkpoints, tools: tools.map((tool) => tool.name),
       sha256: { skill: sha(skillBytes), bundle: sha(await readFile(bundle)), fixture: sha(await readFile(fixture)),
         host: sha(await readFile(fileURLToPath(import.meta.url))), agentHost: sha(await readFile(join(root, "evals/jrig/agent-host.ts"))),

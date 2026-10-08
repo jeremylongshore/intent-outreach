@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { createServer } from "node:http";
@@ -215,6 +217,25 @@ describe("independent scenario evidence gate", () => {
 });
 
 describe("explicit nested model transport", () => {
+  it.each([undefined, "none", "low", "medium", "high", "max"] as const)("preserves explicit reasoning effort %s across nested turns", async (reasoningEffort) => {
+    const fixture = await loopback(() => completion("actual fixture response"));
+    try {
+      // A child uses Node's actual fetch while the parent keeps its hermetic network guard.
+      await promisify(execFile)(process.execPath, ["--import", "tsx", "--input-type=module", "-e",
+        'const { createAgentModel } = await import(process.argv[2]); const model = createAgentModel(JSON.parse(process.argv[1])); for (let turn = 0; turn < 2; turn++) await model.complete({ messages: [{ role: "user", content: "test" }], tools: [], signal: AbortSignal.timeout(3000) });',
+        JSON.stringify({ provider: "scripted", model: "fixture-model", baseUrl: fixture.baseUrl, apiKey: "fixture-only", reasoningEffort }), join(root, "evals/jrig/agent-model.ts")],
+      { timeout: 20000, env: { PATH: process.env.PATH } });
+      expect(fixture.requests).toHaveLength(2);
+      for (const request of fixture.requests) {
+        if (reasoningEffort === undefined) expect(request).not.toHaveProperty("reasoning_effort");
+        else expect(request.reasoning_effort).toBe(reasoningEffort);
+        expect(request.temperature).toBe(0);
+        expect(request.max_tokens).toBe(4096);
+      }
+      expect(fixture.errors).toEqual([]);
+    } finally { await fixture.close(); }
+  });
+
   it.each([
     { ...completion("truncated"), choices: [{ finish_reason: "length", message: { content: "truncated" } }] },
     { choices: completion("no usage").choices },

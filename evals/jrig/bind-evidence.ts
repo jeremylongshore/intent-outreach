@@ -1,3 +1,4 @@
+import { reasoningEffortSchema, type ReasoningEffort } from "./agent-model.js";
 /** Join private J-Rig receipts to observed host sessions. Correlation, not attestation. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -15,6 +16,7 @@ const receiptSchema = z.object({
   schema: z.literal("jrig-tool-execution/v1"), run_id: z.number().int().positive(),
   phase: z.enum(["skill", "baseline"]), configuration_sha256: z.string(),
   judge_contexts: z.array(contextSchema).optional(),
+  execution_parameters: z.object({ reasoning_effort: reasoningEffortSchema }).strict().optional(),
   cases: z.array(z.object({ test_case_id: z.string(), status: z.enum(["completed", "failed"]),
     output: z.object({ text: z.string(), tool_calls: z.number().int().nonnegative(), artifacts: z.array(artifactSchema) }),
   })).length(1),
@@ -38,7 +40,7 @@ async function privateFile(path: string, root: string, limit: number) {
 /** Requires a fresh single-case database and a directory containing only its host homes. */
 export async function bindScenarioEvidence(input: {
   dbPath: string; hostsDir: string; mcpConfigPath: string; caseId: string;
-  provider: string; model: string; serverName: string; baseline: boolean;
+  provider: string; model: string; serverName: string; baseline: boolean; executionReasoningEffort?: ReasoningEffort;
 }) {
   const root = dirname(input.dbPath);
   await privateFile(input.dbPath, root, 67108864);
@@ -57,6 +59,7 @@ export async function bindScenarioEvidence(input: {
     const start = events[0];
     assert(start?.kind === "started" && start.data.caseId === input.caseId && start.data.home === home, "wrong host case or home");
     assert(start.data.provider === input.provider && start.data.model === input.model, "host model identity mismatch");
+    assert.equal(start.data.executionReasoningEffort, input.executionReasoningEffort, "host reasoning effort mismatch");
     const sessionId = z.uuid().parse(start.data.executionSessionId);
     return { home, events, sessionId, traceSha256: hash(bytes) };
   }));
@@ -78,6 +81,7 @@ export async function bindScenarioEvidence(input: {
     assert.equal(record.size_bytes, bytes.length, "execution receipt size mismatch");
     const receipt = receiptSchema.parse(JSON.parse(bytes.toString()));
     assert.equal(receipt.run_id, record.run_id, "execution run identity mismatch");
+    assert.deepEqual(receipt.execution_parameters, input.executionReasoningEffort !== undefined ? { reasoning_effort: input.executionReasoningEffort } : undefined, "execution reasoning effort mismatch");
     assert.equal(receipt.configuration_sha256, configSha, "MCP configuration changed");
     assert(!phases.has(receipt.phase), "duplicate execution phase");
     phases.add(receipt.phase);
@@ -148,6 +152,7 @@ export async function bindScenarioEvidence(input: {
     bindings.push({ phase: receipt.phase, sessionId: identity.session_id, home: trace.home,
       receiptSha256: record.sha256, traceSha256: trace.traceSha256, status: observed.status,
       output: observed.output.text, nestedUsage, audit, judgeContext,
+      ...(receipt.execution_parameters ? { executionParameters: receipt.execution_parameters } : {}),
       passed: observed.status === "completed" && tools.every((tool) => tool.status === "completed") && audit.passed,
     });
   }

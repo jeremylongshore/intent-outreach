@@ -1,3 +1,4 @@
+import { reasoningEffortSchema, type ReasoningEffort } from "./agent-model.js";
 /** Scripted real-CLI association proof; no model-quality judgment or paid calls. */
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
@@ -12,7 +13,7 @@ import { bindScenarioEvidence } from "./bind-evidence.js";
 import { scenarioConfig } from "./scenario-host.js";
 import { scenarios } from "./scenarios.js";
 
-export async function runBindingProof(jrigCli: string) {
+export async function runBindingProof(jrigCli: string, executionReasoningEffort?: ReasoningEffort) {
   assert(isAbsolute(jrigCli), "absolute built J-Rig CLI required");
   const root = resolve(import.meta.dirname, "../..");
   const home = await mkdtemp(join(tmpdir(), "outreach-binding-proof-"));
@@ -34,6 +35,7 @@ export async function runBindingProof(jrigCli: string) {
       for await (const chunk of request) chunks.push(Buffer.from(chunk));
       const body = JSON.parse(Buffer.concat(chunks).toString());
       assert.equal(body.model, "fixture-model");
+      assert.equal(body.reasoning_effort, executionReasoningEffort);
       const tools = body.tools as { function: { name: string } }[];
       assert(tools?.length, "this component proof has no model judge or trigger calls");
       const messages = body.messages as { role: string; content: string }[];
@@ -73,7 +75,7 @@ export async function runBindingProof(jrigCli: string) {
     const baseUrl = `http://127.0.0.1:${address.port}/v1`;
     const hostConfig = join(home, "scenario.json");
     await writeFile(hostConfig, JSON.stringify(scenarioConfig.parse({ caseId: "build-lead-list", evidenceDir: hostsDir,
-      provider: "openai", model: "fixture-model", baseUrl, checkpoints: scenarios["build-lead-list"]?.checkpoints })), { mode: 0o600 });
+      provider: "openai", model: "fixture-model", baseUrl, executionReasoningEffort, checkpoints: scenarios["build-lead-list"]?.checkpoints })), { mode: 0o600 });
     const mcpConfigPath = join(home, "mcp.json");
     await writeFile(mcpConfigPath, JSON.stringify({ judgeObservations: true, servers: { outreach: { command: process.execPath,
       args: ["--import", "tsx", join(root, "evals/jrig/scenario-host.ts"), hostConfig], cwd: root,
@@ -87,17 +89,18 @@ export async function runBindingProof(jrigCli: string) {
     const dbPath = join(home, "jrig.db");
     // Apply the private umask only in the child; do not mutate the caller process.
     await promisify(execFile)(process.execPath, ["--input-type=module", "-e", "process.umask(0o077); process.argv = [process.execPath, ...process.argv.slice(1)]; await import(process.argv[1]);", jrigCli,
-      "eval", join(root, "skills/intent-outreach"), "--spec", spec, "--provider", "openai", "--models", "fixture-model", "--samples", "1", "--no-trigger", "--baseline-check", "--mcp-config", mcpConfigPath, "--db", dbPath, "--json"],
+      "eval", join(root, "skills/intent-outreach"), "--spec", spec, "--provider", "openai", "--models", "fixture-model", "--samples", "1", "--no-trigger", "--baseline-check", "--mcp-config", mcpConfigPath, "--db", dbPath, "--json", ...(executionReasoningEffort !== undefined ? ["--execution-reasoning-effort", executionReasoningEffort] : [])],
     { timeout: 150000, maxBuffer: 1048576, env: { PATH: process.env.PATH, HOME: home, OPENAI_API_KEY: "fixture-only", JRIG_AGENT_API_KEY: "fixture-only", LLM_BASE_URL: baseUrl, LLM_MODEL: "fixture-model" } });
     assert.deepEqual(failures, []);
     assert.equal(rootRequests, 8);
     assert.equal(nestedRequests, 4);
-    const result = await bindScenarioEvidence({ dbPath, hostsDir, mcpConfigPath, caseId: "build-lead-list", provider: "openai", model: "fixture-model", serverName: "outreach", baseline: true });
+    const result = await bindScenarioEvidence({ dbPath, hostsDir, mcpConfigPath, caseId: "build-lead-list", provider: "openai", model: "fixture-model", serverName: "outreach", baseline: true, executionReasoningEffort });
     assert(result.bindings.every((entry) => entry.passed && entry.judgeContext?.session_id === entry.sessionId));
     assert(result.bindings.every((entry) => entry.nestedUsage?.inputTokens === 22 && entry.nestedUsage.outputTokens === 10));
     const paths = ["bundle/server.mjs", "skills/intent-outreach/SKILL.md", "evals/jrig/bind-evidence.ts", "evals/jrig/binding-proof.ts", "evals/jrig/scenario-host.ts", "evals/jrig/agent-host.ts", "evals/jrig/agent-model.ts", "evals/jrig/audit-scenario.ts", "evals/jrig/fixture-fetch.mjs"];
     const sha256 = Object.fromEntries(await Promise.all(paths.map(async (path) => [path, createHash("sha256").update(await readFile(join(root, path))).digest("hex")])));
     return { schema: "intent-outreach-jrig-binding-proof/v1", observedAt: new Date().toISOString(), scope: "scripted_loopback_real_cli_and_nested_bundle",
+      ...(executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: executionReasoningEffort } } : {}),
       behavioralVerdict: null, tier3bPassed: false, paidModelCalls: 0, vendorNetworkCalls: 0, messagesSent: 0,
       rootRequests, nestedRequests, bindings: result.bindings.map(({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext }) => ({ phase, sessionId, receiptSha256, traceSha256, nestedUsage, audit, passed, judgeContext })),
       sha256: { ...sha256, jrigCli: createHash("sha256").update(await readFile(jrigCli)).digest("hex") },
@@ -113,7 +116,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const cli = process.argv[2];
   const output = process.argv[3];
   assert(cli && output, "Usage: tsx evals/jrig/binding-proof.ts /absolute/jrig/dist/index.js /new/receipt.json");
-  const receipt = await runBindingProof(cli);
+  const receipt = await runBindingProof(cli, reasoningEffortSchema.optional().parse(process.argv[4]));
   await writeFile(output, JSON.stringify(receipt, null, 2) + "\n", { flag: "wx", mode: 0o600 });
   process.stdout.write(JSON.stringify(receipt) + "\n");
 }

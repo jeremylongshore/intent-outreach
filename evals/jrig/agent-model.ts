@@ -2,6 +2,9 @@
 import { z } from "zod";
 import type { AgentMessage, AgentModel, AgentTurn } from "./agent-host.js";
 
+export const reasoningEffortSchema = z.enum(["none", "low", "medium", "high", "max"]);
+export type ReasoningEffort = z.infer<typeof reasoningEffortSchema>;
+
 const responseSchema = z.object({
   choices: z.array(z.object({
     finish_reason: z.enum(["stop", "tool_calls"]),
@@ -42,7 +45,8 @@ async function readBounded(response: Response): Promise<unknown> {
   } finally { await reader.cancel(); }
 }
 
-export function createAgentModel(config: { provider: string; model: string; baseUrl: string; apiKey: string }): AgentModel {
+export function createAgentModel(config: { provider: string; model: string; baseUrl: string; apiKey: string; reasoningEffort?: ReasoningEffort }): AgentModel {
+  const reasoningEffort = reasoningEffortSchema.optional().parse(config.reasoningEffort);
   const url = new URL(config.baseUrl);
   if (url.username || url.password || url.search || url.hash ||
       !(url.protocol === "https:" || (url.protocol === "http:" && ["127.0.0.1", "[::1]"].includes(url.hostname)))) {
@@ -60,6 +64,7 @@ export function createAgentModel(config: { provider: string; model: string; base
           method: "POST", redirect: "error", signal: request.signal,
           headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
           body: JSON.stringify({ model: config.model, temperature: 0, max_tokens: 4096, stream: false,
+            ...(reasoningEffort !== undefined ? { reasoning_effort: reasoningEffort } : {}),
             messages: request.messages.map(message), tools: request.tools.map((tool) => ({
               type: "function", function: { name: tool.name, description: tool.description, parameters: tool.inputSchema },
             })),

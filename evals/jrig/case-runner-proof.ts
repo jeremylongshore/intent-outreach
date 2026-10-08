@@ -1,3 +1,4 @@
+import { reasoningEffortSchema, type ReasoningEffort } from "./agent-model.js";
 /** Run the actual case runner against scripted HTTP models, including regression and failure. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -8,7 +9,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCase } from "./run-case.js";
 
-export async function runCaseRunnerProof(jrigCli: string) {
+export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffort?: ReasoningEffort) {
   assert(isAbsolute(jrigCli), "absolute built J-Rig CLI required");
   const root = resolve(import.meta.dirname, "../..");
   const directory = await mkdtemp(join(tmpdir(), "outreach-case-runner-proof-"));
@@ -24,6 +25,7 @@ export async function runCaseRunnerProof(jrigCli: string) {
       for await (const chunk of request) chunks.push(Buffer.from(chunk));
       const body = JSON.parse(Buffer.concat(chunks).toString());
       const phase = body.tools ? "execution" : body.model === "fixture-judge" ? "judge" : "trigger";
+      assert.equal(body.reasoning_effort, phase === "execution" ? executionReasoningEffort : undefined);
       requests.push({ model: body.model, phase });
       if (phase === "judge") {
         assert(!body.tools);
@@ -54,7 +56,7 @@ export async function runCaseRunnerProof(jrigCli: string) {
     assert(address && typeof address !== "string");
     const config = { jrigCli, jrigSha256: createHash("sha256").update(await readFile(jrigCli)).digest("hex"),
       caseId: "unrelated-weather", provider: "openai", model: "fixture-execution", judgeModel: "fixture-judge",
-      baseUrl: `http://127.0.0.1:${address.port}/v1`, evidenceKind: "component-test" };
+      executionReasoningEffort, baseUrl: `http://127.0.0.1:${address.port}/v1`, evidenceKind: "component-test" };
     const firstDir = join(directory, "first");
     const first = await runCase({ ...config, outputDir: firstDir }, "fixture-only");
     assert.equal(first.caseResult, "pass", first.evidenceError ?? "first run failed");
@@ -101,6 +103,7 @@ export async function runCaseRunnerProof(jrigCli: string) {
     assert(requests.filter((item) => item.phase !== "judge").every((item) => item.model === "fixture-execution"));
     const hashes = Object.fromEntries(await Promise.all(["run-case.ts", "case-runner-proof.ts", "bind-evidence.ts"].map(async (name) => [name, createHash("sha256").update(await readFile(join(root, "evals/jrig", name))).digest("hex")])));
     return { schema: "intent-outreach-case-runner-proof/v1", scope: "scripted_actual_cli_case_runner_only", observedAt: new Date().toISOString(),
+      ...(executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: executionReasoningEffort } } : {}),
       behavioralVerdict: null, tier3bPassed: false, paidModelCalls: 0, vendorNetworkCalls: 0, messagesSent: 0,
       verified: { judgeObservationsPrivateAndPortableBinding: true, toolFreeJudgesReceiveUntrustedObservedData: true, triggerCasesDigestMetricsAndBundle: true, originalCriteriaRetained: true, explicitJudgeModel: true, threeSamples: true, distinctSkillBaselineAndRepeat: true,
         realRegressionEnabled: true, malformedExecutionHasNoVerdict: true, partialReceiptsRetained: true, cancellationStopsOwnedGroup: true, temporaryFixturesRemoved: true },
@@ -117,7 +120,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const cli = process.argv[2];
   const output = process.argv[3];
   assert(cli && output, "Usage: tsx evals/jrig/case-runner-proof.ts /absolute/jrig/dist/index.js /new/receipt.json");
-  const result = await runCaseRunnerProof(cli);
+  const result = await runCaseRunnerProof(cli, reasoningEffortSchema.optional().parse(process.argv[4]));
   await writeFile(output, JSON.stringify(result, null, 2) + "\n", { flag: "wx", mode: 0o600 });
   process.stdout.write(JSON.stringify(result) + "\n");
 }
