@@ -363,3 +363,10 @@ and saved-model assertions; its drafter evidence was unverifiable. The baseline
 then hit the unchanged 300-second root timeout. The original receipt remains
 incomplete with zero judgments. Longer phase allocation did not establish
 behavioral acceptance. Source, CLI and trace digests were reverified at export.
+
+`glm53-phase120-r5-unsuccessful-2026-10-08.json` retains the fresh GLM low
+prospect attempt with explicit 120-second phase allocation. The skill completed
+and saved one synthetic run, but the guard rejected its draft for a banned stock
+phrase, leaving zero accepted messages; the drafter also skipped the canonical
+prompt read. The baseline hit the unchanged root timeout. The original receipt
+remains incomplete. Source, CLI and trace digests were reverified at export.
