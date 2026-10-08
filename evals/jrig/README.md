@@ -266,3 +266,10 @@ context cannot produce a passing case. Failed executions keep partial observatio
 without claiming they were judged. Host/store assertions still verify actual effects.
 Historical receipts retain their original CLI, source hashes and counts-only context;
 they do not retroactively gain this observation verification.
+
+The [Ultra none observed attempt](ultra-none-failed-attempt-2026-10-07.json) retains
+source-verified metadata for the first explicit-reasoning real prospect run. Both skill and
+baseline executions were incomplete, with zero judgments. The baseline stored one draft
+that failed the independent audit. The original provider diagnostic was an internal-server
+error; its HTTP status was not retained. This attempt establishes neither a clean behavioral
+pass nor production model approval. Original private receipts remain unchanged.
