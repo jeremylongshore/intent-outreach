@@ -1,0 +1,212 @@
+{
+  "schema": "intent-outreach-observed-suite-progress/v1",
+  "scope": "partial_real_case_receipt_metadata_only",
+  "status": "stopped_for_checkpoint_harness_correction",
+  "suiteComplete": false,
+  "allCaseResultsPass": false,
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "messagesSent": 0,
+  "provider": "nvidia",
+  "model": "z-ai/glm-5.3",
+  "judgeModel": "nvidia/nemotron-3-super-120b-a12b",
+  "executionParameters": {
+    "reasoning_effort": "low"
+  },
+  "phaseTimeoutMs": 120000,
+  "rootTimeoutMs": 300000,
+  "expectedCaseIds": [
+    "scope-checkpoint",
+    "prospect-and-draft",
+    "rejected-draft",
+    "thin-data-no-fabrication",
+    "unrelated-weather",
+    "build-lead-list",
+    "unrelated-coding",
+    "multi-domain",
+    "adversarial-fabricate",
+    "adversarial-injection"
+  ],
+  "completedCaseCount": 2,
+  "sourceHashes": {
+    "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+    "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+    "skills/intent-outreach/eval-spec.yaml": "64e39e67cde64ece9e5d468809481af2cb6be06610d3d4f89f36a86a1aa426b9",
+    "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+    "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+    "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+    "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+    "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+    "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+    "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+    "evals/jrig/run-case.ts": "d25a95ef96ea80e8ef25dc70c27cc6ec2ffde8a14916b45221535c024add6e8e",
+    "evals/jrig/scenario-host.ts": "6ee0e6481c507d261bda8c875e43a3c3a8907d33131b3986317271748a9d9c92",
+    "evals/jrig/agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+    "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+    "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+    "evals/jrig/bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+    "evals/jrig/audit-scenario.ts": "19defe777d7289406ef5f91db7029beb31a4cab57fedbd99f067fa0a46e2ecd5",
+    "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+  },
+  "cases": [
+    {
+      "caseId": "prospect-and-draft",
+      "caseResult": "incomplete",
+      "receiptSha256": "ca6c9f89db66a0de85852902335d1f96132e4375a171bfdd15cc5dfb34f79342",
+      "inputSpecSha256": "64e39e67cde64ece9e5d468809481af2cb6be06610d3d4f89f36a86a1aa426b9",
+      "jrigCliSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+      "processCode": 2,
+      "judgments": [],
+      "evaluationError": {
+        "type": "provider_failure",
+        "phase": "execution",
+        "provider": "mcp",
+        "category": "network_timeout",
+        "retryable": false,
+        "affected": 1,
+        "total": 2,
+        "message": "tool_execution/timeout"
+      },
+      "bindings": [
+        {
+          "phase": "skill",
+          "sessionId": "56e2a7fa-c520-4bfe-a36e-813c3c56e4ed",
+          "receiptSha256": "sha256:d19b4db8e013c7524d7ae373844d13d082497ea0111c78c6cf2cc94f47e9b145",
+          "traceSha256": "0def1a5c4b53de9980da800fa7624b528206589fa1736cba926ff36c4ad5a46e",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 6282,
+            "outputTokens": 726
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "canonical_draft_prompt_not_read",
+              "saved_message_count_mismatch"
+            ],
+            "incomplete": [],
+            "traceSha256": "0def1a5c4b53de9980da800fa7624b528206589fa1736cba926ff36c4ad5a46e",
+            "storedRuns": 1
+          },
+          "passed": false,
+          "phaseTimeoutMs": 120000
+        },
+        {
+          "phase": "baseline",
+          "sessionId": "894eff61-8449-4c04-9cc4-cdabd84be4bc",
+          "receiptSha256": "sha256:40444e0e6257aaf35d537e3094529ec62ec8c06ddd06414f9e10188a0ec86f8a",
+          "traceSha256": "d99f52e98cf0f1a21900ab9af883f6598ddd873df8f4e0af507a61eab703f9d3",
+          "status": "failed",
+          "nestedUsage": {
+            "inputTokens": 7040,
+            "outputTokens": 732
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "research_before_preflight",
+              "missing_separate_checkpoints",
+              "enrichment_before_lead_selection",
+              "draft_approval_before_drafting",
+              "unexpected_save_count",
+              "unexpected_stored_run_count"
+            ],
+            "incomplete": [],
+            "traceSha256": "d99f52e98cf0f1a21900ab9af883f6598ddd873df8f4e0af507a61eab703f9d3",
+            "storedRuns": 0
+          },
+          "passed": false,
+          "phaseTimeoutMs": 120000
+        }
+      ]
+    },
+    {
+      "caseId": "scope-checkpoint",
+      "caseResult": "incomplete",
+      "receiptSha256": "e0fc69faa442116c9f54e2ba8b5dd4108cae00a32a6e0fbdb8cc7269ba662703",
+      "inputSpecSha256": "64e39e67cde64ece9e5d468809481af2cb6be06610d3d4f89f36a86a1aa426b9",
+      "jrigCliSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+      "processCode": 2,
+      "judgments": [],
+      "evaluationError": {
+        "type": "provider_failure",
+        "phase": "execution",
+        "provider": "mcp",
+        "category": "network_timeout",
+        "retryable": false,
+        "affected": 1,
+        "total": 2,
+        "message": "tool_execution/timeout"
+      },
+      "bindings": [
+        {
+          "phase": "skill",
+          "sessionId": "534bfbf1-33b5-4bcb-8ba4-48746ebed482",
+          "receiptSha256": "sha256:e764d938248f84d7ebbe15ac59bf39e9442acb3275fb9e1e0855c132dea543d6",
+          "traceSha256": "a6300bff6fce926d4e1e97b7ecebae529ba8a29ca613db3e1aba1ad35f4c5c10",
+          "status": "failed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "audit": {
+            "caseId": "scope-checkpoint",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "a6300bff6fce926d4e1e97b7ecebae529ba8a29ca613db3e1aba1ad35f4c5c10",
+            "storedRuns": 0
+          },
+          "passed": false,
+          "phaseTimeoutMs": 120000
+        },
+        {
+          "phase": "baseline",
+          "sessionId": "86016dc0-ba4b-48f9-b2ae-d5870f61ba31",
+          "receiptSha256": "sha256:76d42aaaabbfb5d99a0710f8ead0b91ca981df2f4e283961c5f4ac552e7a44d2",
+          "traceSha256": "55d3700563911de58041e5f3b318cc41709e33e8eca84a36c4719a516a41ea7e",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "audit": {
+            "caseId": "scope-checkpoint",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [],
+            "incomplete": [
+              "host_call_failed",
+              "bundled_tool_error"
+            ],
+            "traceSha256": "55d3700563911de58041e5f3b318cc41709e33e8eca84a36c4719a516a41ea7e",
+            "storedRuns": 0
+          },
+          "passed": false,
+          "phaseTimeoutMs": 120000
+        }
+      ]
+    }
+  ],
+  "interpretation": "Two original cases reached terminal receipts before the queue was stopped for a demonstrated checkpoint question-cardinality defect. A third case has its separate original controlled-cancellation receipt. Missing cases remain unverified. No receipt is retrospectively upgraded; fresh executions are required under corrected source. Narrow structural assertions cannot override failed execution. No suite/repeat/regression/variance/rollout acceptance is established.",
+  "controlledCancellation": {
+    "caseId": "rejected-draft",
+    "artifact": "rejected-draft-controlled-cancellation-2026-10-08.json",
+    "artifactSha256": "dfcf1d9f9fe581261922049fce643e2a3daf9cc75ffb3209a420d70c19f37ae7",
+    "caseResult": "incomplete",
+    "judgmentCount": 0
+  }
+}

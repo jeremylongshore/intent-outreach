@@ -1,0 +1,90 @@
+{
+  "schema": "intent-outreach-return-value-parser-review/v1",
+  "tier3bPassed": false,
+  "originalCaseResult": "incomplete",
+  "originalReceiptSha256": "421f6eb623360e371d80be14df40e9b8b60b147472219ebc1c26c80aabf4e25b",
+  "component": {
+    "scope": "scripted_actual_cli_case_runner_only",
+    "observedAt": "2026-10-08T06:38:49.090Z",
+    "executionParameters": {
+      "reasoning_effort": "max"
+    },
+    "phaseTimeoutMs": 120000,
+    "behavioralVerdict": null,
+    "tier3bPassed": false,
+    "paidModelCalls": 0,
+    "vendorNetworkCalls": 0,
+    "messagesSent": 0,
+    "verified": {
+      "rootTimeoutPreserved": true,
+      "phaseTimeoutBound": true,
+      "differentPhaseBudgetCannotSeedRegression": true,
+      "judgeObservationsPrivateAndPortableBinding": true,
+      "toolFreeJudgesReceiveUntrustedObservedData": true,
+      "triggerCasesDigestMetricsAndBundle": true,
+      "originalCriteriaRetained": true,
+      "explicitJudgeModel": true,
+      "threeSamples": true,
+      "distinctSkillBaselineAndRepeat": true,
+      "realRegressionEnabled": true,
+      "malformedExecutionHasNoVerdict": true,
+      "partialReceiptsRetained": true,
+      "cancellationStopsOwnedGroup": true,
+      "temporaryFixturesRemoved": true
+    },
+    "counts": {
+      "trigger": 4,
+      "execution": 7,
+      "judge": 36
+    },
+    "sha256": {
+      "run-case.ts": "6e35761af0b97a69a495441a881f4bbcd0af40b58ee80da834fbd561a6e0fd4e",
+      "case-runner-proof.ts": "2b9446dc9c09f9af722db159f5166e1c398ed14c34e26c22a1bdbdfa706f9f70",
+      "bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+      "agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+      "scenario-host.ts": "a9b88be011032d10b475220b2288454291ed8c8f951eeae4834633139b72443b",
+      "scenarios.ts": "22d797d2e782f4dfc681d2b094879c044faccdc67a5db6597b764e8b9ec4e81a",
+      "audit-scenario.ts": "822a407e65df357fb2c43e2d7187290c08974e9d083566b52cba3f27f9c79219",
+      "inputSpec": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+      "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+    }
+  },
+  "privateComponentProofSha256": "d8487679a2c6f88c7761ad99d80886437d867c218ee299b555e6d51edcee0788",
+  "staticReview": {
+    "model": "MiniMax-M3.1-Flash-Preview",
+    "reasoningEffort": "medium",
+    "finishReason": "stop",
+    "reviewedPostimageSha256": {
+      "evals/jrig/audit-scenario.ts": "822a407e65df357fb2c43e2d7187290c08974e9d083566b52cba3f27f9c79219",
+      "tests/jrig-scenario-host.test.ts": "c9c5928d36537a09cddef8e42a56d889a1805788121709d492fcc91256f09890",
+      "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79"
+    },
+    "usage": {
+      "total_tokens": 5528,
+      "total_characters": 0,
+      "prompt_tokens": 3481,
+      "completion_tokens": 2047,
+      "completion_tokens_details": {
+        "reasoning_tokens": 1964
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 178
+      }
+    },
+    "review": {
+      "verdict": "pass",
+      "findings": [],
+      "limitations": [
+        "Static review only; the supplied code was not executed.",
+        "The implementation of auditOutput and the downstream exact approved-message comparison were not supplied, so their integration could not be independently inspected.",
+        "No unrelated redesign or canonical agent-contract changes are required by this patch."
+      ]
+    }
+  },
+  "privateStaticReviewSha256": "41476a2ea6513bd7a11488d9091b8e4b5ea153d1fac8f8026368d6e0911c0208",
+  "review": [
+    "Component proof is scripted actual-CLI wiring, not model quality.",
+    "Corrected read-only old skill trace passes; original whole case remains incomplete and cannot seed regression.",
+    "The preceding M3 static-review attempt exhausted its output budget without a verdict; it is not a review pass."
+  ]
+}

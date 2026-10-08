@@ -1,0 +1,23 @@
+{
+  "schema": "intent-outreach-read-only-diagnostic/v1",
+  "originalCaseResult": "incomplete",
+  "originalReceiptSha256": "421f6eb623360e371d80be14df40e9b8b60b147472219ebc1c26c80aabf4e25b",
+  "auditPostimageSha256": "822a407e65df357fb2c43e2d7187290c08974e9d083566b52cba3f27f9c79219",
+  "originalTraceUnchanged": true,
+  "correctedSkillAudit": {
+    "caseId": "prospect-and-draft",
+    "scope": "structural_host_and_store_assertions_only",
+    "behavioralVerdict": null,
+    "tier3bPassed": false,
+    "passed": true,
+    "failures": [],
+    "incomplete": [],
+    "traceSha256": "3d17dc513480cd63d8ddb320bf300f6eb148649b2fd762af82bfd1fbdaad28c5",
+    "storedRuns": 1
+  },
+  "review": [
+    "Only an explicit Return value heading with one valid JSON object is newly accepted.",
+    "This corrected structural diagnostic does not upgrade the original whole case, satisfy behavioral acceptance or seed regression.",
+    "The original baseline remains incomplete: its whole JSON draft output lacks the agent-contract messages field."
+  ]
+}
