@@ -430,3 +430,13 @@ All five applicable criteria and twelve judge samples pass again; regression
 reports no regressions. Baseline also passes and promotion stays ineligible
 (`obsolete_review`). This proves scope repeat/regression only, without campaign
 or whole-suite acceptance.
+
+`glm53-research-only-pass-2026-10-08.json` retains a fresh real research-only
+case: all seven aggregated criteria pass, with seventeen yes and one no judge
+sample (truthful receipt). The dissent remains visible; the judges were not
+unanimous. The unchanged researcher actually invokes `research_domain` with
+positive nested usage, with no enrichment, drafting or persistence. Its skill
+audit passes; the naked baseline independently fails research-before-preflight,
+even though prose judges can pass it. The original case has no regression
+baseline yet, and whole-suite/campaign/model-variance/rollout acceptance remains
+unverified.
