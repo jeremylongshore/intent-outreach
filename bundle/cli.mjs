@@ -63106,6 +63106,61 @@ function promptRef(name31) {
   return `${name31.replace(/\.md$/i, "")}@${sha256.slice(0, 8)}`;
 }
 
+// pipeline_core/state-names.ts
+var US_STATE_NAMES = {
+  AL: "Alabama",
+  AK: "Alaska",
+  AZ: "Arizona",
+  AR: "Arkansas",
+  CA: "California",
+  CO: "Colorado",
+  CT: "Connecticut",
+  DE: "Delaware",
+  DC: "District of Columbia",
+  FL: "Florida",
+  GA: "Georgia",
+  HI: "Hawaii",
+  ID: "Idaho",
+  IL: "Illinois",
+  IN: "Indiana",
+  IA: "Iowa",
+  KS: "Kansas",
+  KY: "Kentucky",
+  LA: "Louisiana",
+  ME: "Maine",
+  MD: "Maryland",
+  MA: "Massachusetts",
+  MI: "Michigan",
+  MN: "Minnesota",
+  MS: "Mississippi",
+  MO: "Missouri",
+  MT: "Montana",
+  NE: "Nebraska",
+  NV: "Nevada",
+  NH: "New Hampshire",
+  NJ: "New Jersey",
+  NM: "New Mexico",
+  NY: "New York",
+  NC: "North Carolina",
+  ND: "North Dakota",
+  OH: "Ohio",
+  OK: "Oklahoma",
+  OR: "Oregon",
+  PA: "Pennsylvania",
+  RI: "Rhode Island",
+  SC: "South Carolina",
+  SD: "South Dakota",
+  TN: "Tennessee",
+  TX: "Texas",
+  UT: "Utah",
+  VT: "Vermont",
+  VA: "Virginia",
+  WA: "Washington",
+  WV: "West Virginia",
+  WI: "Wisconsin",
+  WY: "Wyoming"
+};
+
 // pipeline_core/seam.ts
 var ScoreOutputSchema = external_exports.object({
   fitScore: external_exports.number().int().min(0).max(100),
@@ -63388,6 +63443,10 @@ function propertyFacts(ctx) {
   if (pv.address) out.push(pv.address);
   const ov = ownerView(ctx.owner);
   if (ov.mailingAddress) out.push(ov.mailingAddress);
+  for (const state of [ctx.property.address?.state, ctx.owner.mailingAddress?.state]) {
+    const name31 = state ? US_STATE_NAMES[state.trim().toUpperCase()] : void 0;
+    if (name31) out.push(name31);
+  }
   for (const [k, v] of Object.entries({ ...pv.attributes, ...ctx.signals })) out.push(`${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
   for (const u of ctx.underwriting ?? []) out.push(`${u.label}: ${u.value}`);
   return out;

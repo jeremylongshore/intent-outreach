@@ -56,6 +56,7 @@ import {
   type PropertyScoreOutput,
 } from "../pipeline_core/property-seam.js";
 import type { LLMProvider } from "../pipeline_core/providers.js";
+import { US_STATE_NAMES } from "../pipeline_core/state-names.js";
 import type { DraftText } from "../pipeline_core/seam.js";
 import type { JudgeOutput, ScoreResult } from "./scorers.js";
 
@@ -275,18 +276,6 @@ const STREET_ABBREVIATIONS: Readonly<Record<string, string>> = {
 function expandedAddresses(ctx: PropertyDraftContext): string[] {
   return allowedIdentifiers(ctx).map((a) => a.replace(/\b[A-Za-z]+\b/g, (w) => STREET_ABBREVIATIONS[w.toLowerCase()] ?? w));
 }
-
-/** USPS state codes: "Baldwin County, AL" on record grounds "the Alabama coast" in a letter. */
-const US_STATE_NAMES: Readonly<Record<string, string>> = {
-  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut",
-  DE: "Delaware", DC: "District of Columbia", FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois",
-  IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
-  MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana",
-  NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York",
-  NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania",
-  RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah",
-  VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
-};
 
 /** Full names of the state codes that appear in the facts (an extra fact, never a replacement). */
 export function expandedStates(facts: readonly string[]): string[] {

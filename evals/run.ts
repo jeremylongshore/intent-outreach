@@ -247,7 +247,7 @@ export interface JudgeSummary {
   /** Default minimum for fixtures without their own judgeMin. */
   floor: number;
   meanRating: number;
-  /** Per-fixture verdicts: the gate passes only if every judged fixture meets its own minimum. */
+  /** Each fixture must meet its rating minimum and every judged draft must be grounded. */
   perFixture: { fixture: string; min: number; meanRating: number; pass: boolean }[];
   ratings: { fixture: string; run: number; rating: number; grounded: boolean; hallucinatedFacts: string[] }[];
   errors: string[];
@@ -713,11 +713,12 @@ async function runJudge(
   const meanRating = mean(ratings.map((r) => r.rating));
   const perFixture = [...new Set(ratings.map((r) => r.fixture))].map((fixture) => {
     const min = mins.get(fixture) ?? floor;
-    const m = mean(ratings.filter((r) => r.fixture === fixture).map((r) => r.rating));
-    return { fixture, min, meanRating: m, pass: m >= min };
+    const judgments = ratings.filter((r) => r.fixture === fixture);
+    const m = mean(judgments.map((r) => r.rating));
+    return { fixture, min, meanRating: m, pass: m >= min && judgments.every((r) => r.grounded && r.hallucinatedFacts.length === 0) };
   });
   // Fail closed: a judge error or an empty judgment is not a pass; every judged
-  // fixture must meet its own minimum.
+  // fixture must meet its own minimum without any ungrounded judged draft.
   const pass = errors.length === 0 && ratings.length > 0 && perFixture.every((f) => f.pass);
   return { floor, meanRating, perFixture, ratings, errors, pass, costUsd };
 }
