@@ -150,6 +150,14 @@ binding proof against the corrected auditor source. Actual-host regression cases
 cover both colon placements, unchanged plain headings, duplicate labels and
 unexplained heading text. These remain component evidence, not a behavioral pass.
 
+`glm53-low-r4-timeout-2026-10-08.json` retains the next fresh run under the
+corrected parser. Its skill execution failed with `tool_execution/timeout`
+before draft approval or persistence; no criterion judgments were produced.
+The original five-minute root and one-minute phase limits remain unchanged.
+The completed baseline still has independent preflight/order failures and an
+unparseable drafter response. These remain incomplete evidence, not a passing
+case or regression seed. Model comparisons must retain this unsuccessful attempt.
+
 The stdio integration test uses a scripted loopback model to exercise all three
 phase agents, actual connector normalization, reviewed drafting resources,
 checkpoint replies and encrypted save. A second launch verifies store isolation;
