@@ -1,6 +1,6 @@
 # 033-AT-DECR — Social-intent pack: go/no-go, boundary and platform verdicts
 
-**Filed:** 2026-10-06 · **Status:** Proposed. Awaiting owner approval. No code.
+**Filed:** 2026-10-06 · **Status:** Adopted by the delegated council on 2026-10-10 (decision record `037`). Manual pilot approved; active build remains gated. No social-pack code shipped.
 **Beads:** epic `io-7vr` (children `.1`–`.7`) · **GitHub:** #84
 **Companion plan:** `034-AT-PLAN-social-intent-pack-plan.md`
 **Depends on:** the real-estate engine plan (epic `io-2yt`, decision record `031`, reserved):
@@ -22,11 +22,20 @@ replies? If so, where is the boundary, and which platforms can we legally read?
 
 ## 2. Decision
 
-**Conditional GO, in two gates.**
+**Conditional GO, in two gates; delegated council approval recorded in `037`.**
+
+**2026-10-10 amendment:** the user delegates these decisions to teams and the council.
+A staged tracking epic and linked GitHub issue may be created now; active build must wait
+for G0 and the G1 dependencies. This replaces the earlier prohibition on creating an
+epic before G0, without changing the pilot threshold. The chair’s majority/minority
+synthesis permits staged tracking while binding the CTO seat’s constraint that it must
+not imply active-build authorization. Council approval does not assert that the pilot has run or authorize a platform
+action: an authenticated operator must separately approve the exact text before posting
+it by hand from an account they are authorized to operate.
 
 | Gate | What it decides | Condition to pass |
 |---|---|---|
-| **G0: manual pilot (no code)** | Does the play convert for us at all? | 30 days on the cadence in `034` §7, with replies found by hand and drafted in Claude Code. Pass = the continue criterion in `034` §7.4. Fail = stop; the build epic is never created. |
+| **G0: manual pilot (no code)** | Does the play convert for us at all? | 30 days on the cadence in `034` §7, with replies found by hand and drafted in Claude Code. Pass = the continue criterion in `034` §7.4. Fail = stop; the staged build is not activated. |
 | **G1: build** | Build the `social-reply` pack on Pack v2 | G0 passed, **and** Pack v2 (`io-2yt.3`) and the approval queue (`io-2yt.8`) have shipped. Before that, the pack would need a second orchestration path or a hand-rolled approval state, and both are ruled out below. |
 
 Why a manual pilot first: the hard parts of this play are judgment and taste (is this friction, is the
@@ -71,8 +80,8 @@ secondary source and was not verified against the primary page.
 |---|---|---|---|---|
 | **Bluesky** | Public AppView (`app.bsky.feed.getPostThread`), no auth for public reads. | Developer Guidelines ban "automated or bulk interactions, including any that would cause a notification to a user like a message, follow, like or reply" and require honoring deletions. Human-posted replies are fine. | Free. Per-IP read limit ~3,000 req / 5 min (**unconfirmed**). | **Viable.** First connector. |
 | **GitHub Discussions** | GraphQL API on public repos. | AUP: API collection is not "scraping"; using information "for spamming purposes, including … sending unsolicited emails" is forbidden; "bulk distribution of promotions" and "automated inauthentic activity" are forbidden. | Free; 5,000 GraphQL points/hour. | **Viable with limits.** Seeds are tool repos, not creators. Strong fit for "failed setup" friction. |
-| **X** | Pay-per-use API; read a thread via search on `conversation_id` (recent search is a 7-day window). | Since 2026-02-23, *programmatic* replies via `POST /2/tweets` are restricted to authors who mention or quote you (does not apply to replies a human posts in the app, but it shows X treats LLM reply floods as spam). Developer Agreement bars using X content to train or fine-tune a foundation model (we do not). | $0.005 per post read, capped at 3M reads/month on pay-per-use. ~65k reads/month for 30 creators ≈ $325/month (estimate, `034` §3). | **Viable with limits, cost-gated.** Phase 3, only behind a hard spend cap. |
-| **YouTube** | Data API v3 `commentThreads.list`, 1 quota unit/call, 10,000 units/day default. | Developer Policies: non-authorized data may be stored "not longer than 30 calendar days"; "must not automate or trigger … comments … without the user's prior specific and express consent"; no spam or deception. | Free within quota. | **Viable with limits, owner call needed.** The API is a Google *data source*, not a Google runtime dependency (no Google SDK; plain `httpJson`), so invariant 2's import check passes, but its spirit ("zero Google dependency") is the owner's to rule on. Deferred to Phase 3. 30-day purge is mandatory. |
+| **X** | Pay-per-use API; read a thread via search on `conversation_id` (recent search is a 7-day window). | Since 2026-02-23, *programmatic* replies via `POST /2/tweets` are restricted to authors who mention or quote you (does not apply to replies a human posts in the app, but it shows X treats LLM reply floods as spam). Developer Agreement bars using X content to train or fine-tune a foundation model (we do not). | $0.005 per post read, capped at 3M reads/month on pay-per-use. ~65k reads/month for 30 creators ≈ $325/month (estimate, `034` §3). | **Deferred by council; current spend cap $0.** Any future Phase 3 activation requires a separately recorded access, terms and budget decision. |
+| **YouTube** | Data API v3 `commentThreads.list`, 1 quota unit/call, 10,000 units/day default. | Developer Policies: non-authorized data may be stored "not longer than 30 calendar days"; "must not automate or trigger … comments … without the user's prior specific and express consent"; no spam or deception. | Free within quota. | **Deferred by council; current spend cap $0.** No YouTube connector activation is approved. Compatibility with "zero Google dependency" remains to be decided before any future activation; the 30-day purge remains mandatory. |
 | **Reddit** | Data API after manual approval under the Responsible Builder Policy (updated 2025-11-11). | All Data API access now needs explicit approval; the free tier forbids commercial use; commercial use needs written approval and a contract. Prospecting is commercial. Many subreddits also ban self-promotion. | Free tier 100 QPM (non-commercial only); commercial by contract. | **Not viable for automated reads.** Manual paste only (a human copies a thread they read into the tool). |
 | **Hacker News** | Algolia HN Search API and the official Firebase API, free, no auth. | HN Guidelines: "Don't post generated text or AI-edited text. HN is for conversation between humans." and "Please don't use HN primarily for promotion." | Free; Algolia ~10,000 req/hour per IP (**unconfirmed**). | **Read for themes only. Never draft HN replies.** HN friction feeds the weekly public posts (`034` §7); the gate blocks any HN reply draft. |
 | **LinkedIn** | No API exposes comments on other members' posts; the Posts API covers your own posts and pages you administer. | User Agreement §8.2.2 (no "software, devices, scripts, robots … crawlers, browser plugins"), §8.2.4 (no copying information "obtained from the Services"), §8.2.13 (no "bots or other unauthorized automated methods"). | n/a | **Out**, including manual paste (§8.2.4 makes even copying into a tool doubtful). The operator may still read and reply on LinkedIn by hand, outside the tool. |
@@ -145,7 +154,7 @@ this by hand".
 | Platform terms drift (X changed reply rules in Feb 2026; Reddit gated access in Nov 2025) | High | Per-platform verdicts are data in the pack, reviewed every 90 days; a platform flips to "manual only" without a code change. |
 | LLM-drafted text where it is banned (HN) or unwelcome | Medium | HN replies are blocked at the gate; the human edits every draft into their own voice. |
 | Retention violations (YouTube 30-day rule; Bluesky delete honoring) | Medium | `Fact.licenseTerms` carries `maxRetentionDays`; a purge runs before every run and on `list`; deleted upstream items are dropped on refresh. |
-| Building it before the pilot proves it | Medium | Gate G0. The build epic is not created until G0 passes and the owner approves `034`. |
+| Building it before the pilot proves it | Medium | Gate G0. Council approval permits a staged tracking epic now; active build stays blocked until G0 passes and the G1 dependencies ship. |
 | Commenter profiling / privacy | Medium | No enrichment of commenters; store handle + quote only; suppression honored across channels. |
 | Dependency slip on Pack v2 / approval queue | Low | The pilot needs neither; the build waits. |
 

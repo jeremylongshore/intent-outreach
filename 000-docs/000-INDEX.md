@@ -26,6 +26,9 @@ The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR 
   the owner decisions, the stream plan and waves, and what shipped in each PR.
 - **`022-AA-AACR-hardening-after-action-review.md`** — after-action review of the hardening: what went
   well, what didn't, and the open follow-ups.
+- **`037-AT-DECR-delegated-outreach-council.md`** — adopted team decisions (2026-10-10):
+  seven-seat campaign review with eight exact revised hashes, pilot-first staged social tracking,
+  source restrictions, verified DNC lookup policy and bounded model diagnostics. Supersedes personal-owner decision waits.
 - **`036-AA-AUDT-appaudit-devops-playbook.md`** — **the handoff (2026-10-06): read this first.** Operator-grade
   analysis of the whole system and the real estate program: architecture, critical path, decision log, sharp edges,
   the #85–#105 PR ledger, implementation status, open owner decisions and the exact resume procedure.
@@ -38,9 +41,9 @@ The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR 
   unverified claims marked, and the contradictions the plan resolved.
 - **`033-AT-DECR-social-intent-pack-decision.md`** — go/no-go for a `social-reply` pack that turns public
   comment friction into human-approved replies: conditional GO behind a 30-day manual pilot, the
-  never-post boundary, and per-platform verdicts with sourced terms. Proposed.
+  never-post boundary, and per-platform verdicts with sourced terms. Pilot and staged tracking adopted by `037`; active build gated.
 - **`034-AT-PLAN-social-intent-pack-plan.md`** — the phased build on Pack v2: zod model sketch, scoring
-  rubric, gate and draft rules, the fail-closed test list, the 30-day cadence and kill criteria. Proposed.
+  rubric, gate and draft rules, the fail-closed test list, the 30-day cadence and kill criteria. Council-adopted pilot-first plan.
 - **`035-DR-DATA-residential-free-data-sources.md`** — the free public data behind the `residential-re` pack,
   verified live on 2026-10-06: parcel layers for Baldwin, Mobile, Escambia and Okaloosa (query URLs, field
   mappings, limits, terms), the FL DOR statewide roll, FEMA NFHL flood zones, the Census geocoder, and LLC-to-person

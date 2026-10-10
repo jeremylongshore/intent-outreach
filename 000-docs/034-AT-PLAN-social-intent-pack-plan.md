@@ -1,12 +1,17 @@
 # 034-AT-PLAN — Social-intent pack: phased build on Pack v2
 
-**Filed:** 2026-10-06 · **Status:** Proposed. Awaiting owner approval. No code; no build epic yet.
+**Filed:** 2026-10-06 · **Status:** Adopted by the delegated council on 2026-10-10 (decision record `037`). Manual pilot approved; staged tracking permitted, active build gated. No social-pack code shipped.
 **Decision record:** `033-AT-DECR-social-intent-pack-decision.md` (read first: the boundary and the
 platform verdicts live there).
 **Beads:** epic `io-7vr` · **GitHub:** #84
 **Plans against:** Pack v2 and schema v6 from the real-estate engine plan (epic `io-2yt`; decision
 record `031`, reserved). Nothing here forks those interfaces. Where this pack needs something they do
 not yet have, §9 lists it as an additive request.
+
+**2026-10-10 amendment:** staged tracking epic/issue creation is permitted before G0;
+this replaces the original no-epic-before-G0 wording. Active engineering build still
+requires genuine pilot results satisfying §7.4 and the Pack v2/approval-queue
+dependencies. The council decision and this amendment are not pilot completion evidence.
 
 ## 1. What gets built, in one paragraph
 
@@ -23,10 +28,10 @@ feeds 2–3 public posts a week.
 
 | Phase | Ships | Depends on | Exit criterion |
 |---|---|---|---|
-| **P0: manual pilot** (no code) | The 30-day cadence in §7, run by hand. Discovery by reading; drafting in Claude Code with the reply prompt from §6.3 pasted in; a spreadsheet log with the §7.3 metrics. | Nothing. | The continue criterion in §7.4 at day 30. Fail ⇒ stop; no build epic. |
+| **P0: manual pilot** (no code) | The 30-day cadence in §7, run by hand. Discovery by reading; drafting in Claude Code with the reply prompt from §6.3 pasted in; a spreadsheet log with the §7.3 metrics. | Nothing. | The continue criterion in §7.4 at day 30. Fail ⇒ stop; do not activate the staged build. |
 | **P1: pack skeleton + manual ingest + Bluesky** | Schemas (§4), the pack on Pack v2 (§6), the `manual-paste` connector (operator pastes a URL + the comment text), the Bluesky connector, the rubric (§5), the gate + draft rules with every fail-closed test in §8.2, the eval suite fixtures in §8.1, CI invariant #7 (no write path). | Pack v2 (`io-2yt.3`), schema v6 (`io-2yt.2`), approval queue (`io-2yt.8`), suppression `handle` kind + touch ledger (§9). | Offline evals green; the fail-closed test list green; one week of real use with zero gate escapes. |
 | **P2: GitHub Discussions + theme clustering** | GitHub Discussions connector (seeds = tool repos); weekly clustering of COLD/unanswered friction into post themes (§7.2); the `turn-into-post` action. | P1. | Theme clusters used for at least 4 weekly posts. |
-| **P3: paid / policy-gated sources** | X connector behind a hard monthly spend cap; YouTube connector **only if** the owner rules the YouTube Data API is compatible with "zero Google dependency"; the retention purge proven against YouTube's 30-day rule. | P2; owner calls in §10; provider-layer rate limits and budget (`io-2yt.4`). | Spend under cap for 30 days; purge test green. |
+| **P3: paid / policy-gated sources** | X and YouTube connectors deferred by the council, each with a current $0 spend cap; future activation requires a recorded access/terms/budget decision, YouTube compatibility with "zero Google dependency", and the retention purge proven against YouTube's 30-day rule. | P2; council decisions in §10; provider-layer rate limits and budget (`io-2yt.4`). | Spend under cap for 30 days; purge test green. |
 
 Reddit, Hacker News replies, LinkedIn and Threads are **not** in any phase (see `033` §4). Reddit and
 HN may enter only through `manual-paste`, and an HN reply draft is always blocked.
@@ -36,7 +41,8 @@ HN may enter only through `manual-paste`, and an HN reply draft is always blocke
 Assumptions: 30 creators × ~5 posts/week each, ~100 replies read per post, 4.3 weeks.
 30 × 5 × 100 × 4.3 ≈ 64,500 post reads/month × $0.005 ≈ **$322/month** at X pay-per-use pricing
 (`033` §4). Halving the creators on X or reading only the first 50 replies halves it. The connector
-refuses to run once the month's cap (owner-set; suggested $100 for the trial) is spent. Bluesky and
+refuses to run once the month's cap is spent. The council currently sets that cap to $0;
+this historical estimate does not authorize paid reads or a $100 trial. Bluesky and
 GitHub are free; LLM cost is metered by `CostMeter` as today, roughly the same per item as a b2b-sdr
 score+draft, and only for items that pass the deterministic pre-filter.
 
@@ -362,19 +368,46 @@ disclosure; one concrete next step; `skip` when the 24-hour test fails.
 | Retention purge keyed on `Fact.licenseTerms.maxRetentionDays` | core | new, small |
 | Per-connector spend cap and rate limits | `io-2yt.4` | blocking for P3 (X) |
 
-## 10. Open questions for the owner
+## 10. Delegated council decisions (2026-10-10)
 
-1. Approve the two-gate GO in `033` §2 (manual pilot first)?
-2. YouTube: is reading the YouTube Data API over plain HTTP compatible with "zero Google dependency"?
-3. X: the monthly spend cap for P3 (suggested $100 for the trial).
-4. Which account posts: Jeremy's personal handle, the company handle, or both? (Disclosure wording follows.)
-5. The ICP for seed selection: same as b2b-sdr's profile, or a separate social profile?
+The user delegates these choices to the teams/council; personal owner approval is no
+longer the decision prerequisite. Decision record `037` preserves the seat positions
+and the chair’s majority/minority synthesis.
 
-## 11. Proposed build epic (filed only after approval; not created)
+1. **Two-gate GO adopted:** run the manual pilot; reserve a staged tracking epic and
+   linked issue now. Active build requires genuine G0 evidence under §7.4 and the
+   Pack v2/schema/approval-queue dependencies. No active-build authorization is inferred
+   from creation of the tracking artifacts.
+2. **YouTube deferred:** current spend cap $0; no connector activation approved. A later
+   recorded decision must address access/terms, retention and compatibility with "zero
+   Google dependency" before activation.
+3. **Paid X deferred:** current monthly cap $0. No paid reads are authorized by this plan;
+   a later recorded budget/access/terms decision is required.
+4. **Company account is the default:** contingent on an existing authenticated operator
+   with authority for that account. Do not create account access or claim that authority
+   exists. Every public post/reply still requires an authorized human to approve the exact
+   text and post it manually in the platform’s native app. No autonomous posting, DMs,
+   reactions or other platform writes are permitted.
+5. **Same B2B ICP, separate social profile:** reuse the B2B buyer/industry fit for seed
+   selection, but retain a distinct social profile with public-reply rules, disclosure,
+   platform restrictions and shared suppression. No commenter enrichment is permitted.
+
+These are planning decisions, not evidence of authenticated platform access, completed
+pilot results or human approval of an individual reply. Original platform restrictions,
+§7.4 stop/continue criteria and no-write-path requirements remain binding.
+
+## 11. Staged build epic (creation approved; active build gated)
+
+The staged epic and linked issue track the approved pilot and future deliverables.
+Active engineering children must be blocked on G0 and their declared dependencies.
+Created tracking: epic `io-mcj`, children `io-mcj.1`–`io-mcj.10`, and
+[GitHub issue123](https://github.com/jeremylongshore/intent-outreach/issues/123).
+These artifacts record future work; the pilot has not passed and active build is gated.
 
 Title: "Build the social-reply pack on Pack v2 so public comment friction becomes human-approved
 replies." Children, one per phase deliverable: run the 30-day manual pilot; add the social schemas and
 the separate store file; add the suppression handle kind and the touch ledger; build the pack, gate
 and draft rules with the fail-closed tests; add the manual-paste and Bluesky connectors; add the
-no-write-path invariant; add the eval suite; add GitHub Discussions and theme clustering; add the X
-connector behind a spend cap; decide and, if approved, add the YouTube connector with the 30-day purge.
+no-write-path invariant; add the eval suite; add GitHub Discussions and theme clustering; reserve deferred X and YouTube
+children with current $0 caps; activate either only after a later recorded decision,
+with the YouTube 30-day purge proven before use.
