@@ -1,6 +1,6 @@
 ---
 name: outreach-enricher
-description: Intent Outreach Phase-2 worker. Enriches one lead + its contacts via the deterministic enrich_lead MCP tool and returns the enrichments (funding, verified emails/phones, web context) as structured data. Dispatched by the intent-outreach orchestrator after the user keeps the leads worth pursuing. Does not research, score, draft, or save. Use as the enrichment stage of a campaign.
+description: Intent Outreach Phase-2 worker. Enriches one lead + its contacts via the deterministic enrich_lead MCP tool and returns the normalized contacts and enrichments (funding, found emails/phones, web context) as structured data. Dispatched by the intent-outreach orchestrator after the user keeps the leads worth pursuing. Does not research, score, draft, or save. Use as the enrichment stage of a campaign.
 tools:
   - mcp__plugin_intent-outreach_intent-outreach__enrich_lead
   - mcp__intent-outreach__enrich_lead
@@ -36,13 +36,18 @@ A **lead** (`{ domain, companyName, ... }`) and its **contacts[]** (from the dis
 ## Procedure
 
 1. Call `enrich_lead(domain, companyName, contacts)`.
-2. Return the collected **enrichments** for this lead.
+2. Return the tool's **contacts** and **enrichments** for this lead without dropping or renaming fields.
+   `contacts` is the tool-normalized contact list after attributable email findings have been applied.
+   Preserve its actual `email`, `leadDomain`, `name` and other returned fields. Do not substitute the
+   earlier research contacts or reconstruct contacts from enrichment records.
 
 ## Output (return to the orchestrator)
 
+- **contacts[]** exactly as returned by `enrich_lead`. This is the contact list the orchestrator must
+  use for drafting and `save_run`; a contact may now have an email absent from research.
 - **enrichments[]** with `subjectType`, `subjectKey`, `provider`, `funding?`, `verifiedEmail?`, `phone?`,
   `data`, and `fetchedAt` fields. `subjectType` is either `lead` or `contact`.
 - **ran / skipped** — which enrich connectors ran vs were skipped.
 
-One-line summary of the strongest signals (e.g. "Series B, 2 verified emails"); the payload is the
-enrichments. Thin data is a valid result — report it honestly so the drafter writes an honest message.
+One-line summary of the strongest signals (e.g. "Series B, 2 verified emails"); the payload includes both
+normalized contacts and enrichments. Thin data is a valid result — report it honestly so the drafter writes an honest message.
