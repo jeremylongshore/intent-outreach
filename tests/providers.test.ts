@@ -1,10 +1,10 @@
 /**
- * tests/providers.test.ts — D4 "Claude-first, gate before run" invariants.
+ * tests/providers.test.ts — "MiniMax-first, gate before run" invariants.
  *
  * Guards:
  *   - provider eval-gate (assertSupported fires BEFORE resolveModel/getSecret)
  *   - INTENT_OUTREACH_ALLOW_UNGATED bypass path
- *   - detectProvider() preference order (anthropic → openai → xai)
+ *   - detectProvider() preference order (minimax → anthropic → openai)
  *   - Google is gone entirely (owner decision): no provider name, no key lookup
  *   - listProviderStatus() reporting (configured + supported flags)
  *
@@ -176,11 +176,11 @@ describe("anthropic provider (in SUPPORTED_PROVIDERS)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. detectProvider() — Claude-first preference order
+// 4. detectProvider() — MiniMax-first; Grok is explicit only
 // ---------------------------------------------------------------------------
 describe("detectProvider() preference order", () => {
-  it("returns 'anthropic' when no keys are set (safe default)", () => {
-    expect(detectProvider()).toBe("anthropic");
+  it("returns 'minimax' when no keys are set (default route)", () => {
+    expect(detectProvider()).toBe("minimax");
   });
 
   it("returns 'anthropic' when ANTHROPIC_API_KEY is set", () => {
@@ -200,15 +200,15 @@ describe("detectProvider() preference order", () => {
     expect(detectProvider()).toBe("openai");
   });
 
-  it("falls back to 'xai' when only XAI_API_KEY is present", () => {
+  it("ignores XAI_API_KEY for auto-detection", () => {
     process.env.XAI_API_KEY = "xai-test";
-    expect(detectProvider()).toBe("xai");
+    expect(detectProvider()).toBe("minimax");
   });
 
-  it("ignores Google key vars entirely (falls back to the anthropic default)", () => {
+  it("ignores Google key vars entirely (falls back to the MiniMax default)", () => {
     process.env.GEMINI_API_KEY = "gemini-test";
     process.env.GOOGLE_GENERATIVE_AI_API_KEY = "google-alt-test";
-    expect(detectProvider()).toBe("anthropic");
+    expect(detectProvider()).toBe("minimax");
   });
 
   it("openai beats xai (no anthropic key; Google vars ignored)", () => {
@@ -218,10 +218,10 @@ describe("detectProvider() preference order", () => {
     expect(detectProvider()).toBe("openai");
   });
 
-  it("xai wins when it is the only real key (Google vars ignored)", () => {
+  it("Grok is not auto-detected even when it is the only key", () => {
     process.env.XAI_API_KEY = "xai-test";
     process.env.GEMINI_API_KEY = "gemini-test";
-    expect(detectProvider()).toBe("xai");
+    expect(detectProvider()).toBe("minimax");
   });
 });
 

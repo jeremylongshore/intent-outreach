@@ -1,0 +1,54 @@
+{
+  "schema": "minimax-sops-activation/v1",
+  "observedAt": "2026-10-11T01:52:28.659216+00:00",
+  "provider": "minimax",
+  "model": "MiniMax-M3",
+  "baseUrl": "https://api.minimax.io/v1",
+  "credentialSource": "SOPS age minimax.key, decrypted in memory",
+  "grokInvocations": 0,
+  "sends": 0,
+  "scope": "availability_and_native_structured_output_only",
+  "availabilityAttempts": [
+    {
+      "httpStatus": 200,
+      "observedModel": "MiniMax-M3",
+      "passed": false,
+      "finishReason": "stop",
+      "promptTokens": 182,
+      "completionTokens": 15,
+      "reason": "Initial probe did not strip MiniMax reasoning tags; availability succeeded but answer comparison failed."
+    },
+    {
+      "httpStatus": 200,
+      "observedModel": "MiniMax-M3",
+      "passed": true,
+      "finishReason": "stop",
+      "promptTokens": 182,
+      "completionTokens": 15,
+      "reasoningTokens": 11,
+      "cachedTokens": 128
+    }
+  ],
+  "nativeProbe": {
+    "provider": "minimax",
+    "model": "MiniMax-M3",
+    "object": {
+      "status": "READY"
+    },
+    "usage": {
+      "inputTokens": 270,
+      "outputTokens": 22,
+      "costUsd": 7.284e-05,
+      "cacheReadTokens": 128
+    },
+    "passed": true
+  },
+  "qualifiedWorkflow": false,
+  "priorQualificationReceiptsChanged": false,
+  "credentialRouting": {
+    "sameMinimaxKeyAcrossNativeRootJudgeAndNested": true,
+    "model": "MiniMax-M3",
+    "provider": "minimax",
+    "grokCredentialPresent": false
+  }
+}

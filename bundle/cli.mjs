@@ -77116,18 +77116,18 @@ var KEY_ENV10 = {
   minimax: ["MINIMAX_API_KEY"]
 };
 var MINIMAX_BASE_URL = "https://api.minimax.io/v1";
-var DETECT_ORDER = ["anthropic", "openai", "minimax", "xai"];
+var DETECT_ORDER = ["minimax", "anthropic", "openai"];
 function detectProvider() {
   for (const p of DETECT_ORDER) {
     if (KEY_ENV10[p].some((k) => hasSecret(k))) return p;
   }
-  return "anthropic";
+  return "minimax";
 }
 function assertSupported(provider) {
   if (SUPPORTED_PROVIDERS.has(provider)) return;
   if (process.env.INTENT_OUTREACH_ALLOW_UNGATED === "1") return;
   throw new Error(
-    `provider "${provider}" has not passed the eval gate yet (D4: Claude-first). Run the eval harness to gate it, or set INTENT_OUTREACH_ALLOW_UNGATED=1 to override.`
+    `provider "${provider}" has not passed the eval gate yet (D4 model gate). Run the eval harness to gate it, or set INTENT_OUTREACH_ALLOW_UNGATED=1 to override.`
   );
 }
 function firstKey(provider) {
