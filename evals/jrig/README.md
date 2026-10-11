@@ -656,3 +656,23 @@ violation. Failed calls retain their full admission reservation; this is paygo
 cost accounting, not a subscription invoice. Original private receipts and source
 hashes remain unchanged. This cannot seed regression or qualify the suite.
 Follow-up diagnosis is tracked in io-k3l.2; no identical paid retry is scheduled.
+
+`minimax-m3-section-parser-diagnostic-2026-10-11.json` is a separate read-only
+structural diagnostic. The worker returned a valid explicit `messages` array and
+`declines` section; its contract does not require literal `[]` in Markdown labels.
+The parser accepts either explicit label form and ignores only one correctly
+closed leading reasoning block. Duplicate/mixed headings, extra JSON blocks,
+malformed reasoning delimiters and invalid typed fields are rejected. Exact
+recipient, channel, subject, body and CTA comparison is unchanged.
+
+The corrected audit parses the original skill response, but still fails
+`saved_draft_not_shown_exactly` and `saved_message_count_mismatch`. No original
+receipt, trace or budget sidecar is changed; no model calls are made. The original
+incomplete case is not upgraded and cannot seed regression. Native rejection of
+"quick question" remains a real failed draft, separate from the parser defect.
+
+Local scenario tests also encountered unrelated `GET /` traffic from a Go HTTP
+client on loopback. The fixture refuses unauthenticated root probes with 404
+before recording model traffic. Authenticated wrong-route requests and all model
+POST requests retain their route/auth assertions; a probe cannot produce a
+completion or pass a workflow. Requester process identity remains unproven.

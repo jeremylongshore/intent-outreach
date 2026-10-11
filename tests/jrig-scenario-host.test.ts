@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
 import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -29,6 +29,12 @@ async function loopback(reply: (body: Record<string, unknown>) => unknown) {
   const requests: Record<string, unknown>[] = [];
   const errors: unknown[] = [];
   const server = createServer(async (request, response) => {
+    // Local environment probes are not model traffic. Refuse them without
+    // producing a completion or poisoning the expected agent request evidence.
+    if (request.method === "GET" && request.url === "/" && request.headers.authorization === undefined) {
+      response.writeHead(404).end();
+      return;
+    }
     try {
       expect(request.url).toBe("/v1/chat/completions");
       expect(request.headers.authorization).toBe("Bearer fixture-only");
@@ -71,6 +77,26 @@ async function events(home: string) {
 }
 
 describe("scenario MCP host", () => {
+  it("refuses unauthenticated root probes while retaining model route assertions", async () => {
+    let completions = 0;
+    const fixture = await loopback(() => { completions++; return completion("unexpected"); });
+    const getRoot = (authorization?: string) => new Promise<number | undefined>((done, reject) => {
+      const request = httpRequest(fixture.baseUrl.replace(/\/v1$/, "/"), {
+        method: "GET", headers: authorization ? { authorization } : {},
+      }, (response) => { response.resume(); response.once("end", () => done(response.statusCode)); });
+      request.once("error", reject); request.end();
+    });
+    try {
+      expect(await getRoot()).toBe(404);
+      expect(completions).toBe(0);
+      expect(fixture.requests).toEqual([]);
+      expect(fixture.errors).toEqual([]);
+      expect(await getRoot("Bearer fixture-only")).toBe(500);
+      expect(fixture.errors).toHaveLength(1);
+      expect(completions).toBe(0);
+      expect(fixture.requests).toEqual([]);
+    } finally { await fixture.close(); }
+  });
   it("answers a multi-question scope checkpoint with the unchanged authored wait decision", async () => {
     const evidence = await mkdtemp(join(tmpdir(), "jrig-question-batch-"));
     const fixture = await loopback(() => { throw new Error("scope wait must not invoke a model"); });

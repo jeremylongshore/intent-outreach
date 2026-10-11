@@ -24,7 +24,7 @@ function explicitReturnValue(text: string) {
   const headings = lines.flatMap((line, index) => /^\s*\*\*Return value:?\*\*:?\s*$/.test(line) ? [index] : []);
   const heading = headings[0];
   if (heading === undefined) return undefined;
-  if (headings.length !== 1 || /\*\*messages\[\]:?\*\*:?/.test(text)) throw new Error("ambiguous return value section");
+  if (headings.length !== 1 || /\*\*messages(?:\[\])?:?\*\*:?/.test(text)) throw new Error("ambiguous return value section");
   const fences = text.match(/^\s*```[^\r\n]*$/gm) ?? [];
   if (fences.length !== 2 || fences[0]?.trim() !== "```json" || fences[1]?.trim() !== "```") throw new Error("ambiguous return value blocks");
   const following = lines.slice(heading + 1);
@@ -34,8 +34,17 @@ function explicitReturnValue(text: string) {
   if (!block?.[1]) throw new Error("return value section must contain one JSON object");
   return object.parse(JSON.parse(block[1]));
 }
-function draftedMessages(value: unknown) {
-  const text = z.string().parse(value);
+export function draftedMessages(value: unknown) {
+  let text = z.string().parse(value).trim();
+  // Explicit leading reasoning is not return evidence. Never take headings or
+  // JSON from it, and refuse unclosed/misplaced reasoning delimiters.
+  if (text.startsWith("<think>")) {
+    const end = text.indexOf("</think>");
+    if (end < 0) throw new Error("unterminated drafter reasoning");
+    if (/<\/?think>/.test(text.slice("<think>".length, end))) throw new Error("nested drafter reasoning");
+    text = text.slice(end + "</think>".length).trim();
+  }
+  if (/<\/?think>/.test(text)) throw new Error("ambiguous drafter reasoning");
   let messages: unknown;
   try {
     messages = object.parse(jsonOutput(text)).messages;
@@ -46,12 +55,14 @@ function draftedMessages(value: unknown) {
     // never extract arbitrary JSON from prose or infer a draft's contents.
     const returned = explicitReturnValue(text);
     if (returned) return z.array(draftSchema).parse(returned.messages);
-    if ([...text.matchAll(/\*\*messages\[\]:?\*\*:?/g)].length !== 1) throw new Error("ambiguous messages section");
+    if ([...text.matchAll(/\*\*messages(?:\[\])?:?\*\*:?/g)].length !== 1) throw new Error("ambiguous messages section");
+    const fences = text.match(/^\s*```[^\r\n]*$/gm) ?? [];
+    if (fences.length !== 2 || fences[0]?.trim() !== "```json" || fences[1]?.trim() !== "```") throw new Error("ambiguous messages blocks");
     const lines = text.split(/\r?\n/);
-    const heading = lines.findIndex((line) => /^\s*\*\*messages\[\]:?\*\*:?\s*$/.test(line));
+    const heading = lines.findIndex((line) => /^\s*\*\*messages(?:\[\])?:?\*\*:?\s*$/.test(line));
     if (heading < 0) throw new Error("missing messages heading");
     const following = lines.slice(heading + 1);
-    const next = following.findIndex((line) => /^\s*\*\*declines\[\]:?\*\*:?(?:\s|$)/.test(line));
+    const next = following.findIndex((line) => /^\s*\*\*declines(?:\[\])?:?\*\*:?(?:\s|$)/.test(line));
     const section = (next < 0 ? following : following.slice(0, next)).join("\n").trim();
     const block = /^```json\s*\n([\s\S]+)\n```$/.exec(section);
     if (!block?.[1]) throw new Error("messages section must contain one JSON block");
