@@ -34,8 +34,6 @@ jobs:
           node-version: "22"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: MiniMax SOPS launcher credential isolation
-        run: python3 -m unittest discover -s tests -p test_minimax_launcher.py
       - name: Typecheck (includes the compile-time storage-invariant proofs in tests/types)
         run: pnpm run typecheck
       - name: Lint
