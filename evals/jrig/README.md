@@ -638,3 +638,21 @@ messages because the message contact key did not match its supplied contacts;
 the baseline violates ordering, delegation and approval/persistence checks. The
 new output is not repaired by inferring a recipient or a draft. All original
 receipts, source/artifact digests and both closed traces remain verified.
+
+`minimax-m3-contact-handoff-review-2026-10-11.json` retains the fresh M3 trial on
+production `contact-handoff.v1` (PR126). The actual enriched contact survives
+through skill-side save, with no recipient foreign-key rejection. The native
+body guard instead rejects the approved phrase "quick question", so zero messages
+are saved. The original case is incomplete: independent checks also retain
+unparseable drafter evidence and saved-message mismatches. All seven aggregate
+judge votes and all eighteen skill-side samples are yes; they do not override
+those independent failures. The baseline has separate phase/tool/ordering failures
+and two upstream HTTP429 responses.
+
+The explicit [budget proxy](minimax-budget-proxy.md) accounts for root, nested and
+judge calls together: 64 admitted requests, 62 completed, $0.3002037 conservatively
+accounted against $0.50, zero remaining reservations and no provider bound
+violation. Failed calls retain their full admission reservation; this is paygo
+cost accounting, not a subscription invoice. Original private receipts and source
+hashes remain unchanged. This cannot seed regression or qualify the suite.
+Follow-up diagnosis is tracked in io-k3l.2; no identical paid retry is scheduled.
