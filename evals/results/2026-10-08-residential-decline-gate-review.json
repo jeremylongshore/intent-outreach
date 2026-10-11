@@ -1,0 +1,70 @@
+{
+  "schema": "intent-outreach-residential-qualification-review/v1",
+  "sourceCommit": "a1ed156e372c4eb191ab76968cf7b763a27cbd79",
+  "verifiedTrackedSourceFiles": 361,
+  "sourceManifestSha256": "491318f77200f2f425979ae442863569c0f0e651b223d9d0dd958059afe8432f",
+  "sourceManifestMatchesGitCommit": true,
+  "sourceHashesVerifiedBeforeAndAfterRun": true,
+  "record": "evals/results/2026-10-08-minimax-MiniMax-M3-residential-draft.v1@a183ee83.json",
+  "recordSha256": "f654cb4e70cf86b7e89abb1d041010bcc93a3499546edfc20a8abd22a1c8e0f3",
+  "provider": "minimax",
+  "model": "MiniMax-M3",
+  "pack": "residential-re",
+  "repeat": 3,
+  "summary": {
+    "fixtures": 29,
+    "fixturesPassed": 28,
+    "passRate": 0.9655172413793104,
+    "runPassRate": 0.9770114942528736,
+    "verdict": "fail"
+  },
+  "judgePassed": false,
+  "judgeMeanRating": 4.857142857142857,
+  "unsupportedJudgmentCount": 1,
+  "expectedJudgeAssessments": 21,
+  "returnedJudgeAssessments": 21,
+  "judgeErrors": [],
+  "failures": [
+    {
+      "fixture": "absentee-out-of-state",
+      "seam": "score",
+      "run": 1,
+      "failures": {
+        "reasonGrounding": [
+          "ungrounded reason dropped by groundAngles: \"Out-of-state absentee owner with mailing address in Nashville, TN \u2014 does not occupy the Gulf Shales property\" (name not in inputs (Shales))"
+        ]
+      },
+      "error": null
+    },
+    {
+      "fixture": "absentee-out-of-state",
+      "seam": "score",
+      "run": 2,
+      "failures": {
+        "reasonGrounding": [
+          "ungrounded reason dropped by groundAngles: \"Absentee, out-of-state owner (mailing address in Nashville, TN) does not occupy the Gulf Shales property\" (name not in inputs (Shales))"
+        ]
+      },
+      "error": null
+    }
+  ],
+  "review": [
+    "All original fixture IDs, seams, repeats and prompt identities independently verified.",
+    "Original result remains unchanged; this review does not alter the verdict or itself approve a model.",
+    "The ownership-date and contradictory-decline failures did not recur; all draft outcomes pass deterministic checks.",
+    "Two score explanations invent Gulf Shales, correctly rejected as an unsupported place name.",
+    "One draft invents current market activity. The strict grounding judge correctly fails despite a high overall and per-fixture mean.",
+    "MiniMax-M3 remains unqualified for residential-re; no prompt, fixture, threshold, guard or approval changed after this result."
+  ],
+  "unsupportedJudgments": [
+    {
+      "fixture": "pair-origin-b",
+      "run": 1,
+      "rating": 3,
+      "grounded": false,
+      "hallucinatedFacts": [
+        "the coastal Baldwin County market is active right now"
+      ]
+    }
+  ]
+}

@@ -79,7 +79,9 @@ server.registerTool(
     title: "Enrich a lead and its contacts",
     description:
       "Run every CONFIGURED enrich connector (in deterministic order) against a lead " +
-      "and its contacts; returns enrichments (funding, verified emails, phones, web context). " +
+      "and its contacts; returns normalized contacts with attributable email findings applied, " +
+      "plus enrichments (funding, found emails, phones, web context). Carry these returned contacts " +
+      "through drafting and save_run instead of the earlier research contacts. " +
       "Raw vendor payloads are omitted unless debug: true.",
     inputSchema: EnrichLeadInput,
   },

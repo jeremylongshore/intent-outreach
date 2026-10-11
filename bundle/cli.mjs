@@ -63106,6 +63106,61 @@ function promptRef(name31) {
   return `${name31.replace(/\.md$/i, "")}@${sha256.slice(0, 8)}`;
 }
 
+// pipeline_core/state-names.ts
+var US_STATE_NAMES = {
+  AL: "Alabama",
+  AK: "Alaska",
+  AZ: "Arizona",
+  AR: "Arkansas",
+  CA: "California",
+  CO: "Colorado",
+  CT: "Connecticut",
+  DE: "Delaware",
+  DC: "District of Columbia",
+  FL: "Florida",
+  GA: "Georgia",
+  HI: "Hawaii",
+  ID: "Idaho",
+  IL: "Illinois",
+  IN: "Indiana",
+  IA: "Iowa",
+  KS: "Kansas",
+  KY: "Kentucky",
+  LA: "Louisiana",
+  ME: "Maine",
+  MD: "Maryland",
+  MA: "Massachusetts",
+  MI: "Michigan",
+  MN: "Minnesota",
+  MS: "Mississippi",
+  MO: "Missouri",
+  MT: "Montana",
+  NE: "Nebraska",
+  NV: "Nevada",
+  NH: "New Hampshire",
+  NJ: "New Jersey",
+  NM: "New Mexico",
+  NY: "New York",
+  NC: "North Carolina",
+  ND: "North Dakota",
+  OH: "Ohio",
+  OK: "Oklahoma",
+  OR: "Oregon",
+  PA: "Pennsylvania",
+  RI: "Rhode Island",
+  SC: "South Carolina",
+  SD: "South Dakota",
+  TN: "Tennessee",
+  TX: "Texas",
+  UT: "Utah",
+  VT: "Vermont",
+  VA: "Virginia",
+  WA: "Washington",
+  WV: "West Virginia",
+  WI: "Wisconsin",
+  WY: "Wyoming"
+};
+
 // pipeline_core/seam.ts
 var ScoreOutputSchema = external_exports.object({
   fitScore: external_exports.number().int().min(0).max(100),
@@ -63388,6 +63443,10 @@ function propertyFacts(ctx) {
   if (pv.address) out.push(pv.address);
   const ov = ownerView(ctx.owner);
   if (ov.mailingAddress) out.push(ov.mailingAddress);
+  for (const state of [ctx.property.address?.state, ctx.owner.mailingAddress?.state]) {
+    const name31 = state ? US_STATE_NAMES[state.trim().toUpperCase()] : void 0;
+    if (name31) out.push(name31);
+  }
   for (const [k, v] of Object.entries({ ...pv.attributes, ...ctx.signals })) out.push(`${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
   for (const u of ctx.underwriting ?? []) out.push(`${u.label}: ${u.value}`);
   return out;
@@ -77023,6 +77082,14 @@ var APPROVED_MODELS = (
       "resultFile": "evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json",
       "verified": true,
       "evidence": "keyed eval gate passed: repeat 3, 10/10 fixtures in all runs, judge per-fixture minimums met (mean 4.00) (evals/results/2026-10-05-minimax-MiniMax-M3-outreach.v3@eb798ecb-4.json)"
+    },
+    {
+      "provider": "minimax",
+      "model": "MiniMax-M3.1-Flash-Preview",
+      "pack": "residential-re",
+      "resultFile": "evals/results/2026-10-08-minimax-MiniMax-M3.1-Flash-Preview-residential-draft.v1@a183ee83-3.json",
+      "verified": true,
+      "evidence": "keyed eval gate passed (residential-re): repeat 3, 29/29 fixtures in all runs (87/87 outcomes), 21/21 strict grounded judge assessments passed (mean 4.95); source a5e8788eb94cbea48f5f1112d4a2f0a94ca6503f (evals/results/2026-10-08-minimax-MiniMax-M3.1-Flash-Preview-residential-draft.v1@a183ee83-3.json)"
     }
   ]
 );
@@ -77049,18 +77116,18 @@ var KEY_ENV10 = {
   minimax: ["MINIMAX_API_KEY"]
 };
 var MINIMAX_BASE_URL = "https://api.minimax.io/v1";
-var DETECT_ORDER = ["anthropic", "openai", "minimax", "xai"];
+var DETECT_ORDER = ["minimax", "anthropic", "openai"];
 function detectProvider() {
   for (const p of DETECT_ORDER) {
     if (KEY_ENV10[p].some((k) => hasSecret(k))) return p;
   }
-  return "anthropic";
+  return "minimax";
 }
 function assertSupported(provider) {
   if (SUPPORTED_PROVIDERS.has(provider)) return;
   if (process.env.INTENT_OUTREACH_ALLOW_UNGATED === "1") return;
   throw new Error(
-    `provider "${provider}" has not passed the eval gate yet (D4: Claude-first). Run the eval harness to gate it, or set INTENT_OUTREACH_ALLOW_UNGATED=1 to override.`
+    `provider "${provider}" has not passed the eval gate yet (D4 model gate). Run the eval harness to gate it, or set INTENT_OUTREACH_ALLOW_UNGATED=1 to override.`
   );
 }
 function firstKey(provider) {
@@ -77176,7 +77243,7 @@ async function createProvider(opts, gated) {
     ...gated ? { assertPackApproved: (pack) => assertModelSupported(name31, model, pack) } : {},
     async generateObject(args) {
       const opts2 = args.options ?? {};
-      const providerOptions = name31 === "anthropic" && opts2.effort && supportsEffort(model) ? { anthropic: { effort: opts2.effort } } : void 0;
+      const providerOptions = name31 === "anthropic" && opts2.effort && supportsEffort(model) ? { anthropic: { effort: opts2.effort } } : name31 === "minimax" && model === "MiniMax-M3.1-Flash-Preview" && opts2.effort ? { minimax: { reasoningEffort: opts2.effort } } : void 0;
       const attempt = async () => {
         const res = await generateText({
           model: languageModel,

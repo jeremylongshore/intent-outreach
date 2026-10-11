@@ -25,6 +25,11 @@ OWNERSHIP FACTS only. A score that leans on who the owner might be is wrong even
 
 ## Bands
 
+First check the recorded property use against the agent's stated offer. If it clearly falls outside
+that offer (for example a commercial parcel for a residential-only listing offer), score it `cold`
+(0–39). Absentee status or long ownership does not turn an out-of-scope property into a hot fit.
+If the use is missing or ambiguous, do not invent a use or infer that it is out of scope.
+
 - `hot` (score 70–100): several concrete signals point to a likely sale soon, such as an absentee or
   out-of-state owner of a property they do not live in, combined with long ownership.
 - `warm` (40–69): one concrete signal.

@@ -5,8 +5,8 @@ Claude Code, with your own model.**
 
 Intent Outreach is a model-agnostic, Claude-Code-native SDR orchestrator. It researches companies,
 enriches the leads, and drafts personalized outreach — running **fully on your machine**, with **your
-own** data-provider and model keys, and **zero Google dependency**. Claude is the default model. OpenAI
-(gpt-4o) and MiniMax (MiniMax-M3, eval-gated in) are also enabled, and xAI (Grok) ships behind the eval gate until a keyed eval run approves a model.
+own** data-provider and model keys, and **zero Google dependency**. MiniMax M3 is the default model. OpenAI
+(gpt-4o) and Claude are also enabled; xAI requires explicit selection and a passing keyed model eval.
 It drafts and records; it **never sends** a message to anyone.
 
 As a Claude Code plugin, an **orchestrator skill** (`/intent-outreach`) dispatches **phase sub-agents**
@@ -109,6 +109,27 @@ error and exits with code **2** (runtime failures exit 1).
 `--profile` takes a path to a Report Profile JSON file, or a name looked up in `./profiles`, then
 `$INTENT_OUTREACH_HOME/profiles`, then the bundled `profiles/`. The profile's channel, minimum score and
 tone become defaults; explicit flags win. Its `sender` block drives the CAN-SPAM footer (below).
+
+## MiniMax M3 from SOPS
+
+MiniMax M3 is the default when its key is available; Grok/xAI is no longer
+auto-selected. The exact model/pack eval gate still applies. Use the existing
+SOPS/age file with `minimax.key` (default
+`~/.config/intentsolutions/api-providers.sops.json`):
+
+```sh
+python3 scripts/with-minimax.py --probe
+python3 scripts/with-minimax.py -- node bundle/cli.mjs providers
+python3 scripts/with-minimax.py -- node bundle/server.mjs
+```
+
+The launcher decrypts only in memory and passes the native MiniMax credential
+and OpenAI-compatible `LLM_*`, `JRIG_EVAL_API_KEY`, `JRIG_AGENT_API_KEY` variables
+to the explicit command. It fixes the endpoint to `https://api.minimax.io/v1`
+and model to `MiniMax-M3`; it never writes a plaintext token or invokes Grok.
+For J-Rig, use a case config with provider `minimax`, model and judgeModel
+`MiniMax-M3`, and that same base URL, then launch its `run-case.ts` through
+this wrapper. A probe establishes availability only; it is not an eval pass.
 
 ## Sender identity and CAN-SPAM
 
@@ -310,7 +331,7 @@ confirm commercial terms with the provider before a campaign.
 | `CLAY_API_KEY` + `CLAY_WEBHOOK_URL` | Clay — middleware (push-only)                            | paid             |
 | `CLEARBIT_API_KEY`                  | Clearbit — enrichment                                    | registry: legacy |
 | `ZOOMINFO_JWT`                      | ZoomInfo — enrichment                                    | enterprise       |
-| `ANTHROPIC_API_KEY`                 | Claude (default model)                                   | —                |
+| `ANTHROPIC_API_KEY`                 | Claude (explicit selection)                                   | —                |
 | `OPENAI_API_KEY`                    | OpenAI gpt-4o                                            | —                |
 | `MINIMAX_API_KEY`                   | MiniMax-M3 (OpenAI-compatible; keyed eval gate passed)   | —                |
 | `XAI_API_KEY`                       | Grok (adapter ready; gated until a keyed eval run passes) | —               |

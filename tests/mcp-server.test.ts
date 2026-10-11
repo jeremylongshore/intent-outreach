@@ -379,3 +379,42 @@ describe("research_domain / enrich_lead", () => {
     expect(list.some((c) => c.name === "apollo")).toBe(true);
   });
 });
+
+// Real handler chain: enrichment owns the recipient update, save owns the FK check.
+describe("enriched contact handoff", () => {
+  const finding: Connector = {
+    name: "attributed-email", displayName: "Attributed fixture", keyEnvVar: null, tier: "free", phases: ["enrich"],
+    isConfigured: () => true,
+    enrich: async () => ({ enrichments: [{ subjectType: "contact", subjectKey: "jane@acme.com",
+      contactName: "Jane Doe", verifiedEmail: "jane@acme.com", provider: "attributed-email", fetchedAt: FIXED, data: {} }] }),
+  };
+
+  it("persists a draft using actual tool-returned contacts, without reconstructing an email", async () => {
+    registerConnector(finding);
+    const enriched = body(await handleEnrichLead({ domain: "acme.com", contacts: [{ name: "Jane Doe" }] }));
+    expect(enriched.contacts[0].email).toBe("jane@acme.com");
+    const result = body(await handleSaveRun(baseArgs({ contacts: enriched.contacts, enrichments: enriched.enrichments }), { now: clock }));
+    expect(result.messages).toBe(1);
+    expect(result.rejectedDrafts).toEqual([]);
+    expect((await store().getRun("run-mcp-1"))?.contacts[0]?.email).toBe(enriched.contacts[0].email);
+  });
+
+  it("rejects an enrichment email when save still uses research contacts", async () => {
+    registerConnector(finding);
+    const researched = [{ name: "Jane Doe", leadDomain: "acme.com", source: "manual" }];
+    const enriched = body(await handleEnrichLead({ domain: "acme.com", contacts: researched }));
+    const result = body(await handleSaveRun(baseArgs({ contacts: researched, enrichments: enriched.enrichments }), { now: clock }));
+    expect(result.messages).toBe(0);
+    expect(result.rejectedDrafts[0].issues).toContain("contactKey: no matching contact in `contacts` (use the contact's email, or name@domain when it has none)");
+    expect((await store().getRun("run-mcp-1"))?.contacts[0]?.email).toBeUndefined();
+  });
+
+  it("does not map an unattributed email across multiple missing-email contacts", async () => {
+    registerConnector({ ...finding, name: "ambiguous-email", enrich: async () => ({ enrichments: [{
+      subjectType: "contact", subjectKey: "jane@acme.com", verifiedEmail: "jane@acme.com",
+      provider: "ambiguous-email", fetchedAt: FIXED, data: {},
+    }] }) });
+    const result = body(await handleEnrichLead({ domain: "acme.com", contacts: [{ name: "Jane Doe" }, { name: "Bob Roe" }] }));
+    expect(result.contacts.every((contact: { email?: string }) => contact.email === undefined)).toBe(true);
+  });
+});

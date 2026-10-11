@@ -28,6 +28,7 @@ import { groundAngles, guardDraft, QUANTITY_PROMPT_LINE, type DraftRule, type Dr
 import type { Address, Channel, Ownership, Party, Property } from "./models.js";
 import { loadPrompt, promptRef } from "./prompts.js";
 import type { LLMProvider } from "./providers.js";
+import { US_STATE_NAMES } from "./state-names.js";
 import {
   DECLINED_PREFIX,
   DraftOutputSchema,
@@ -144,6 +145,12 @@ export function propertyFacts(ctx: { icp: string; property: Property; owner: Par
   if (pv.address) out.push(pv.address);
   const ov = ownerView(ctx.owner);
   if (ov.mailingAddress) out.push(ov.mailingAddress);
+  // Expand only structured address states, never arbitrary two-letter tokens
+  // in names, attributes or third-party text (for example an LLC named OR).
+  for (const state of [ctx.property.address?.state, ctx.owner.mailingAddress?.state]) {
+    const name = state ? US_STATE_NAMES[state.trim().toUpperCase()] : undefined;
+    if (name) out.push(name);
+  }
   for (const [k, v] of Object.entries({ ...pv.attributes, ...ctx.signals })) out.push(`${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
   for (const u of ctx.underwriting ?? []) out.push(`${u.label}: ${u.value}`);
   return out;

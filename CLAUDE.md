@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A **model-agnostic, Claude-Code-native SDR orchestrator**: research → enrich → outreach over B2B data
 providers, drafting personalized cold outreach. It runs **fully on the user's machine**, with **their
-own** connector + model keys, and **zero Google dependency**. Claude is the default model. It drafts and
+own** connector + model keys, and **zero Google dependency**. MiniMax M3 is the default model. It drafts and
 records; it **never sends** a message to a prospect.
 
 Two surfaces, one core:

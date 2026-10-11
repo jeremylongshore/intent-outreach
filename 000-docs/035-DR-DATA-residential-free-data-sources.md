@@ -1,5 +1,16 @@
 # 035-DR-DATA — Residential pack: free public data sources, verified live
 
+> **2026-10-10 policy supersession:** [Council record037](037-AT-DECR-delegated-outreach-council.md)
+> replaces personal-owner decision waits and governs production use. Baldwin's vendor endpoint
+> stays disabled pending official programmatic-use evidence; Mobile tax-only/no-mailing data is
+> excluded from outreach and absentee inference; disputed Okaloosa use stays held pending primary
+> terms, while independently permitted FL DOR use remains separate. AL SOS is documented manual
+> lookup only. Skip OpenCorporates commercial/private-store use absent a subscriber contract:
+> [current terms](https://opencorporates.com/terms-of-use-2/) are stricter than this inventory's
+> historical free-tier summary. No purchase is authorized. Historical field/endpoint observations
+> below are retained; an accessible endpoint does not establish permitted reuse.
+
+
 **Type:** Data reference (research, no code)
 **Date verified:** 2026-10-06 (every endpoint below was hit with `curl` from the dev box on this date)
 **Author:** Jeremy Longshore (intentsolutions.io)

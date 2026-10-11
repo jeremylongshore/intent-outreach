@@ -23,6 +23,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MockLanguageModelV4 } from "ai/test";
+import type { ApprovedModel } from "../evals/supported.js";
 
 type Kind = "score" | "pscore" | "draft" | "judge";
 interface Call {
@@ -380,6 +381,23 @@ describe("--judge", () => {
     const r = await keyed({ repeat: 1, judge: true });
     const p = r.providers[0]!;
     expect(p.judge?.meanRating).toBe(2);
+    expect(p.judge?.pass).toBe(false);
+    expect(p.supported).toBe(false);
+    expect(JSON.parse(readFileSync(p.recordPath!, "utf8")).judge.pass).toBe(false);
+  });
+
+  it.each([
+    { grounded: false, hallucinatedFacts: [] },
+    { grounded: true, hallucinatedFacts: ["invented buyer relationship"] },
+  ])("fails a high-rated unsupported judgment: %j", async (unsupported) => {
+    let judged = 0;
+    mock.respond = (c) => {
+      if (c.kind !== "judge" || judged++ !== 0) return goodModel(c);
+      return { ...unsupported, hasCta: true, rating: 5, rationale: "Unsupported despite high rating" };
+    };
+    const p = (await keyed({ repeat: 3, judge: true })).providers[0]!;
+    expect(p.judge?.meanRating).toBe(5);
+    expect(p.judge?.perFixture.filter((f) => !f.pass)).toHaveLength(1);
     expect(p.judge?.pass).toBe(false);
     expect(p.supported).toBe(false);
     expect(JSON.parse(readFileSync(p.recordPath!, "utf8")).judge.pass).toBe(false);
@@ -852,6 +870,19 @@ describe("residential-re keyed gate", () => {
     expect(p.judge!.pass).toBe(false);
     expect(p.supported).toBe(false);
   });
+
+  it("--judge rejects a high-rated invented buyer claim in a residential draft", async () => {
+    let judged = 0;
+    mock.respond = (c) => {
+      if (c.kind !== "judge" || judged++ !== 0) return goodModel(c);
+      return { grounded: false, hasCta: true, hallucinatedFacts: ["my buyers regularly ask about"], rating: 5, rationale: "Invented buyers" };
+    };
+    const p = (await residential({ repeat: 3, judge: true })).providers[0]!;
+    expect(p.fixtures.every((f) => f.pass)).toBe(true);
+    expect(p.judge?.meanRating).toBe(5);
+    expect(p.judge?.pass).toBe(false);
+    expect(p.supported).toBe(false);
+  });
 });
 
 describe("evals:promote --pack residential-re", () => {
@@ -886,13 +917,12 @@ describe("evals:promote --pack residential-re", () => {
     });
     expect(res.pass).toBe(true);
     const entries = readApprovedBlock(readFileSync(file, "utf8"));
-    const resEntry = entries.find((e) => e.provider === "minimax" && e.pack === "residential-re")!;
+    const isPromoted = (e: ApprovedModel) => e.provider === "minimax" && e.model === "MiniMax-M3" && e.pack === "residential-re";
+    const resEntry = entries.find(isPromoted)!;
     expect(resEntry.verified).toBe(true);
     expect(resEntry.resultFile).toMatch(/residential-draft\.v1@[0-9a-f]{8}\.json$/);
     expect(resEntry.evidence).toMatch(/\(residential-re\)/);
-    expect(entries.find((e) => e.provider === "minimax" && e.pack === "b2b-sdr")).toEqual(
-      APPROVED_MODELS.find((e) => e.provider === "minimax"),
-    );
+    expect(entries.filter((e) => !isPromoted(e))).toEqual(readApprovedBlock(seed).filter((e) => !isPromoted(e)));
     expect(lines.join("\n")).toMatch(/PROMOTED: minimax\/MiniMax-M3 \[residential-re\]/);
   });
 

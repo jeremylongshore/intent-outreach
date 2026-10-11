@@ -25,7 +25,9 @@ Every fixture must pass **every** one of k runs (`--repeat`, default 3 when keye
   mutual connections, and "I noticed" claims with nothing grounded behind them. A draft the product
   guard rejects counts as a failed run.
 - **`--judge`** (optional, costs more) asks the same model to rate each draft from 1 to 5. The mean
-  rating must reach `--judge-floor` (default 4). A judge error counts as a fail.
+  rating must reach `--judge-floor` (default 4). Every judged draft must also have
+  `grounded: true` and an empty `hallucinatedFacts` list; a high rating cannot override
+  an unsupported claim. A judge error counts as a fail.
 
 ## The residential-re suite (`--pack residential-re`)
 
@@ -57,9 +59,44 @@ checks four kinds of result:
   the fair-housing rule. The age pair must also build byte-identical prompts.
 - **`--judge`** uses a residential rubric: about the property and the numbers on record, plain and
   restrained, with one low-pressure ask. Pitchy or urgent letters rate 2, and any reference to the
-  owner as a person rates 1. Fixtures set their own `judgeMin`.
+  owner as a person rates 1. Fixtures set their own `judgeMin`; every judged draft must
+  also be grounded with no hallucinated facts, regardless of its numeric rating.
 
 ## Approval: `supported.ts`
+
+`minimax/MiniMax-M3.1-Flash-Preview` is verified for `residential-re` by the
+[2026-10-08 keyed result](results/2026-10-08-minimax-MiniMax-M3.1-Flash-Preview-residential-draft.v1@a183ee83-3.json):
+all 29 fixtures passed each of three runs (87/87 outcomes), and all 21 draft
+judgments passed their per-fixture minimums with grounded content and no
+hallucinated facts (mean 4.95). The accompanying
+[source-bound review](results/2026-10-08-residential-minimax31-property-fit-gate-review.json)
+verifies the original fixture IDs, prompt identities, repeats, returned judgments
+and unchanged source. Earlier failures remain unchanged. This approval covers
+the residential scoring/drafting suite; it does not establish inbound prompt
+quality, county data terms, a brokerage license, or live CRM/send acceptance.
+Select this exact model explicitly: the provider default remains `MiniMax-M3`.
+Reported tokens are actual usage; this model's USD estimate uses the existing
+unknown-model fallback, not verified subscription billing or model pricing.
+
+A separate [native inbound observation](results/2026-10-08-native-inbound-minimax31-observation.json)
+used the production provider gate with three synthetic email inquiries. Two
+validated replies completed in 2,809 ms and 3,735 ms, an injected link was omitted,
+and an unrelated sales pitch was declined. The
+[observation review](results/2026-10-08-native-inbound-minimax31-observation-review.json)
+records unchanged source, actual usage and manual output review. These samples
+are not inbound qualification, a latency guarantee or forms-api/ERPNext/Buzz
+acceptance; no message was sent or persisted.
+
+For `MiniMax-M3.1-Flash-Preview`, native calls now forward an explicitly requested
+seam effort through the OpenAI-compatible `reasoning_effort` field: scoring uses
+`low` and drafting uses `medium`. Calls without an effort setting, including the
+judge, retain the endpoint default. This mapping applies only to that exact model;
+MiniMax-M3 and other models retain their existing behavior. The 60-second seam
+deadline, token limits, fixtures and qualification thresholds are unchanged.
+The shared effort type remains limited to `low`, `medium` and `high`.
+See [MiniMax's invocation documentation](https://platform.minimax.io/docs/guides/text-generation).
+Qualification records from before this mapping remain evidence for the prior
+profile, and a failed record is never upgraded by the change.
 
 `supported.ts` lists approved `{provider, model, pack}` records. A pass on one pack says nothing
 about another. Entries written before packs existed are `b2b-sdr`. `pipeline_core/providers.ts`
@@ -87,7 +124,7 @@ qualifies an ungated model. No product code may call it, and a test enforces tha
 ```bash
 export ANTHROPIC_API_KEY=...            # or via scripts/sops-env
 pnpm run evals:promote --provider anthropic --model claude-sonnet-5-5                         # b2b-sdr
-pnpm run evals:promote --provider minimax --model MiniMax-M3 --pack residential-re --judge   # residential
+pnpm run evals:promote --provider minimax --model MiniMax-M3.1-Flash-Preview --pack residential-re --judge
 # on PASS: commit evals/results/<record>.json + evals/supported.ts
 # to switch the default, edit DEFAULT_MODEL in pipeline_core/providers.ts by hand (the script prints the line)
 ```

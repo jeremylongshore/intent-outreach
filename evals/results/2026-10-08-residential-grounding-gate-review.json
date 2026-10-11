@@ -1,0 +1,31 @@
+{
+  "schema": "intent-outreach-residential-qualification-review/v1",
+  "sourceCommit": "b84aaa9f476826fdf6ca8d34fb8a3e6cc6b9e208",
+  "verifiedTrackedSourceFiles": 359,
+  "sourceManifestSha256": "1e24d10de16e67e9df5204b25335c592ada7a8ee8a9922431d0688b0915da72f",
+  "sourceHashesVerifiedBeforeAndAfterRun": true,
+  "sourceManifestMatchesGitCommit": true,
+  "record": "evals/results/2026-10-08-minimax-MiniMax-M3-residential-draft.v1@22c4d4c4.json",
+  "recordSha256": "4403068241d49161551dc134b0677869372efcdb045bac39b69d277577f7112c",
+  "provider": "minimax",
+  "model": "MiniMax-M3",
+  "pack": "residential-re",
+  "repeat": 3,
+  "summary": {
+    "fixtures": 29,
+    "fixturesPassed": 26,
+    "passRate": 0.896551724137931,
+    "runPassRate": 0.9655172413793104,
+    "verdict": "fail"
+  },
+  "judgePassed": true,
+  "judgeMeanRating": 4.684210526315789,
+  "unsupportedJudgmentCount": 0,
+  "review": [
+    "Original failed result remains unchanged; model not promoted.",
+    "All score fixtures now pass, including state-name grounding. Every returned judge assessment is grounded and has no reported hallucinated facts.",
+    "One draft turns a recorded ownership event year into a continuous held-since claim and is correctly rejected.",
+    "Another returns decline=true while its reason says the property fits and the draft proceeds. This false decline also fails the age-pair comparison.",
+    "Any prompt correction and subsequent qualification require a separate source identity and result."
+  ]
+}

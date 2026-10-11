@@ -69,7 +69,7 @@ describe("shipped CLI", () => {
   it("run with no keys fails fast with the friendly secret message and writes nothing", () => {
     const r = cli("run", "--icp", "Series A fintechs", "--domains", "example.com");
     expect(r.code).not.toBe(0);
-    expect(r.err).toContain("ANTHROPIC_API_KEY");
+    expect(r.err).toContain("MINIMAX_API_KEY");
     expect(r.err).toContain("environment variable");
     expect(r.err).not.toMatch(/\n\s+at /); // a message, not a stack trace
     expect(existsSync(join(home, "runs.sqlite"))).toBe(false);

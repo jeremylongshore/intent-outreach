@@ -9,7 +9,7 @@
  * Google was dropped entirely (owner decision, 2026-10): no adapter, no key
  * lookup, no optional dependency. Intent Outreach is zero-Google.
  *
- * D4 (Claude-first): B2B retains the SUPPORTED_PROVIDERS gate; other packs
+ * D4 eval gate (MiniMax-first owner override): B2B retains the SUPPORTED_PROVIDERS gate; other packs
  * require a verified approval for the exact provider/model/pack. Until then it throws —
  * "BYO any key with no gate" is the silent-quality trap Huyen warned about.
  * Keys come from getSecret (env | local file); non-Anthropic deps are optional
@@ -57,13 +57,13 @@ const KEY_ENV: Record<ProviderName, string[]> = {
   minimax: ["MINIMAX_API_KEY"],
 };
 
-/** Anthropic effort levels the seams use (thinking depth + overall token spend). */
+/** Thinking-depth levels the seams use for models with explicit effort support. */
 export type Effort = "low" | "medium" | "high";
 
 /**
  * Per-call bounds. All optional so stubs and older callers keep compiling.
- * `effort` is forwarded ONLY to Anthropic models that accept it (see
- * `supportsEffort`); other providers ignore it.
+ * `effort` is forwarded to supported Anthropic models (see `supportsEffort`)
+ * and MiniMax-M3.1-Flash-Preview. Other models retain their endpoint defaults.
  */
 export interface GenerateOptions {
   /** Hard ceiling on generated tokens. On thinking models, thinking counts toward it. */
@@ -93,26 +93,25 @@ export interface LLMProvider {
 /** MiniMax's OpenAI-compatible endpoint (override for a gateway with MINIMAX_BASE_URL). */
 export const MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 
-/**
- * Auto-detect preference order: Claude first (D4), then OpenAI, then MiniMax.
- * MiniMax sits after both, so adding a MINIMAX_API_KEY never displaces a
- * configured Anthropic/OpenAI key. Making it the default is an owner decision.
+/** MiniMax M3 is the default execution route (owner instruction, 2026-10-10).
+ * Grok/xAI requires explicit selection; it is no longer auto-detected.
+ * Exact model/pack qualification remains mandatory.
  */
-export const DETECT_ORDER: readonly ProviderName[] = ["anthropic", "openai", "minimax", "xai"];
+export const DETECT_ORDER: readonly ProviderName[] = ["minimax", "anthropic", "openai"];
 
-/** First provider with a configured key, in Claude-first preference order. */
+/** First configured provider; without credentials report the MiniMax default. */
 export function detectProvider(): ProviderName {
   for (const p of DETECT_ORDER) {
     if (KEY_ENV[p].some((k) => hasSecret(k))) return p;
   }
-  return "anthropic";
+  return "minimax";
 }
 
 function assertSupported(provider: ProviderName): void {
   if (SUPPORTED_PROVIDERS.has(provider)) return;
   if (process.env.INTENT_OUTREACH_ALLOW_UNGATED === "1") return;
   throw new Error(
-    `provider "${provider}" has not passed the eval gate yet (D4: Claude-first). ` +
+    `provider "${provider}" has not passed the eval gate yet (D4 model gate). ` +
       `Run the eval harness to gate it, or set INTENT_OUTREACH_ALLOW_UNGATED=1 to override.`,
   );
 }
@@ -296,9 +295,13 @@ async function createProvider(opts: GetProviderOptions, gated: boolean): Promise
       args: GenerateObjectArgs<S>,
     ): Promise<{ object: z.infer<S>; usage: Usage }> {
       const opts = args.options ?? {};
-      const providerOptions =
+      // Anchor the option bag to the installed SDK; inferred union keys include
+      // undefined values that its JSON provider-options type does not accept.
+      const providerOptions: Parameters<typeof generateText>[0]["providerOptions"] =
         name === "anthropic" && opts.effort && supportsEffort(model)
           ? { anthropic: { effort: opts.effort } }
+          : name === "minimax" && model === "MiniMax-M3.1-Flash-Preview" && opts.effort
+            ? { minimax: { reasoningEffort: opts.effort } }
           : undefined;
       const attempt = async (): Promise<{ object: z.infer<S>; usage: Usage }> => {
         const res = await generateText({

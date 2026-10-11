@@ -54,10 +54,14 @@ available.
 
 - **fitScore** + **fitReason**
 - **angles[]**
-- **messages[]** — `{ contactKey, channel, subject?, body, cta }` (the orchestrator passes them to
+- **messages[]** — `{ contactKey, channel, subject?, body, cta }`. Use the supplied normalized
+  contact's exact `email` as `contactKey`, or `name@leadDomain` when the contact has no email.
+  An enrichment's `verifiedEmail` is not a substitute for a missing `contacts[].email`; return an
+  incomplete-contact-handoff error rather than inventing or changing the supplied contact identity.
+  The orchestrator passes these messages to
   `save_run`, which stamps `createdAt`, re-runs compliance and the draft guard, appends the CAN-SPAM
   footer, and validates them; never add a footer, url, email, or phone number yourself unless it
-  appears in the supplied data)
+  appears in the supplied data.
 
 - **declines[]** — `{ contactKey, reason }` for each contact you declined to draft (off-ICP). The
   orchestrator records them in `save_run` as `rejectedDrafts` with issues `["declined: <reason>"]`, so
