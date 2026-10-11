@@ -223,11 +223,12 @@ describe("scenario MCP host", () => {
       expect(keep.answers.Leads).toBe(scenarios["prospect-and-draft"]!.checkpoints[0]![0]);
       const enrichment = JSON.parse(plain(await first.call("Agent", { subagent_type: "outreach-enricher", prompt: JSON.stringify({ lead: research.leads[0], contacts: research.contacts }) })).output);
       expect(enrichment.enrichments[0].verifiedEmail).toBe("riley@example.test");
-      const written = JSON.parse(plain(await first.call("Agent", { subagent_type: "outreach-drafter", prompt: JSON.stringify({ lead: research.leads[0], contacts: research.contacts, enrichments: enrichment.enrichments, channel: "email", limit: 1 }) })).output);
+      expect(enrichment.contacts[0].email).toBe("riley@example.test");
+      const written = JSON.parse(plain(await first.call("Agent", { subagent_type: "outreach-drafter", prompt: JSON.stringify({ lead: research.leads[0], contacts: enrichment.contacts, enrichments: enrichment.enrichments, channel: "email", limit: 1 }) })).output);
       expect(written.messages).toEqual([draft]);
       await first.call("AskUserQuestion", { questions: [{ header: "Draft", question: JSON.stringify(draft) }, { header: "Persistence", question: "Save only the exact draft shown above? No sending." }] });
       const saved = plain(await first.call("save_run", { id: "scenario-proof", icp: "Developer tools", domains: ["example.test"], provider: "scripted-loopback", model: "fixture-model", leads: research.leads,
-        contacts: research.contacts.map((contact: object) => ({ ...contact, email: "riley@example.test" })), enrichments: enrichment.enrichments, messages: written.messages }));
+        contacts: enrichment.contacts, enrichments: enrichment.enrichments, messages: written.messages }));
       expect(saved.saved).toBe("scenario-proof");
       expect(plain(await first.call("list_pending")).total).toBe(1);
       second = await start(evidence, fixture.baseUrl, "fresh-case", []);

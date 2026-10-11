@@ -1,5 +1,8 @@
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { caseRunConfig, inspectCaseVotes, selectCaseSpec } from "../evals/jrig/run-case.js";
+import { caseRunConfig, inspectCaseVotes, selectCaseSpec, invokeCaseProcess } from "../evals/jrig/run-case.js";
 import { scenarios } from "../evals/jrig/scenarios.js";
 
 const original = () => ({ spec_version: "1.0", skill_name: "intent-outreach", description: "retain the reviewed description",
@@ -61,4 +64,45 @@ describe("single-case spec and judgment boundaries", () => {
     expect(caseRunConfig.safeParse({ ...config, apiKey: "not-in-config" }).success).toBe(false);
     expect(caseRunConfig.safeParse({ ...config, provider: "stub" }).success).toBe(false);
   });
+});
+
+describe("owned case-process cancellation", () => {
+  it("does not spawn when setup was already cancelled", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "io-case-preabort-"));
+    try {
+      const controller = new AbortController(); controller.abort();
+      const result = await invokeCaseProcess("/does-not-exist.mjs", [], { PATH: process.env.PATH }, directory, controller.signal);
+      expect(result).toMatchObject({ pid: undefined, cancelled: true, timedOut: false });
+      expect((await readFile(join(directory, "jrig.stdout.json"))).length).toBe(0);
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  });
+  it("kills the owned root and nested process group after cancellation even when SIGTERM is ignored", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "io-case-abort-"));
+    let controller: AbortController | undefined;
+    try {
+      const fixture = join(directory, "fixture.mjs");
+      await writeFile(fixture, `import { spawn } from 'node:child_process';
+import { writeFile } from 'node:fs/promises';
+process.on('SIGTERM', () => {});
+const nested = spawn(process.execPath, ['--input-type=module', '-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { stdio: 'ignore' });
+await writeFile(process.argv[2], JSON.stringify({ root: process.pid, nested: nested.pid }));
+setInterval(()=>{},1000);
+`);
+      controller = new AbortController();
+      const job = invokeCaseProcess(fixture, [join(directory, "pids.json")], { PATH: process.env.PATH }, directory, controller.signal);
+      let pids: { root: number; nested: number } | undefined;
+      for (let n = 0; n < 100 && !pids; n++) {
+        try { pids = JSON.parse(await readFile(join(directory, "pids.json"), "utf8")); } catch { await new Promise((done) => setTimeout(done, 20)); }
+      }
+      expect(pids).toBeDefined();
+      controller.abort();
+      const result = await job;
+      expect(result).toMatchObject({ cancelled: true, timedOut: false, signal: "SIGKILL" });
+      expect(() => process.kill(pids!.root, 0)).toThrow();
+      // An adopted child can briefly remain a zombie; it must never be running.
+      let state = "gone";
+      try { state = (await readFile(`/proc/${pids!.nested}/stat`, "utf8")).split(") ")[1]!.charAt(0); } catch { /* Reaped. */ }
+      expect(["gone", "Z"]).toContain(state);
+    } finally { controller?.abort(); await rm(directory, { recursive: true, force: true }); }
+  }, 10000);
 });

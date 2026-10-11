@@ -62,10 +62,11 @@ export function inspectCaseVotes(raw: unknown, expected: ReturnType<typeof selec
   return votes;
 }
 
-async function invoke(cli: string, args: string[], env: NodeJS.ProcessEnv, directory: string) {
+export async function invokeCaseProcess(cli: string, args: string[], env: NodeJS.ProcessEnv, directory: string, signal?: AbortSignal) {
   const stdout = await open(join(directory, "jrig.stdout.json"), "wx", 0o600);
   const stderr = await open(join(directory, "jrig.stderr.log"), "wx", 0o600);
   try {
+    if (signal?.aborted) return { pid: undefined, code: null, signal: null, timedOut: false, cancelled: true };
     return await new Promise<{ pid: number | undefined; code: number | null; signal: NodeJS.Signals | null; timedOut: boolean; cancelled: boolean }>((done, reject) => {
       const child = spawn(process.execPath, ["--input-type=module", "-e",
         "process.umask(0o077); process.argv = [process.execPath, ...process.argv.slice(1)]; await import(process.argv[1]);", cli, ...args],
@@ -83,12 +84,14 @@ async function invoke(cli: string, args: string[], env: NodeJS.ProcessEnv, direc
         stop("SIGTERM");
         force ??= setTimeout(() => stop("SIGKILL"), 3000);
       };
+      signal?.addEventListener("abort", interrupt, { once: true });
       process.once("SIGTERM", interrupt);
       process.once("SIGINT", interrupt);
       const timer = setTimeout(() => { timedOut = true; interrupt(); }, 1800000);
       const release = () => {
         clearTimeout(timer);
         if (force) clearTimeout(force);
+        signal?.removeEventListener("abort", interrupt);
         process.removeListener("SIGTERM", interrupt);
         process.removeListener("SIGINT", interrupt);
       };
@@ -103,7 +106,7 @@ async function invoke(cli: string, args: string[], env: NodeJS.ProcessEnv, direc
   } finally { await stdout.close(); await stderr.close(); }
 }
 
-export async function runCase(raw: unknown, apiKey: string) {
+export async function runCase(raw: unknown, apiKey: string, signal?: AbortSignal) {
   const config = caseRunConfig.parse(raw);
   assert(apiKey.trim().length >= 8, "JRIG_EVAL_API_KEY must explicitly supply the model credential");
   createAgentModel({ ...config, apiKey, reasoningEffort: config.executionReasoningEffort }); // Validate the exact endpoint before any child/network activity.
@@ -158,8 +161,8 @@ export async function runCase(raw: unknown, apiKey: string) {
     ...(config.executionReasoningEffort !== undefined ? ["--execution-reasoning-effort", config.executionReasoningEffort] : []),
     ...(regression ? ["--regression-baseline", join(config.outputDir, "regression.json")] : [])];
   await write("started.json", { config, inputSpecSha256: hash(source), sourceHashes: before, yamlParserSha256: hash(await readFile(require.resolve("yaml"))), priorReceiptSha256, args });
-  const processResult = await invoke(config.jrigCli, args, { PATH: process.env.PATH, HOME: config.outputDir,
-    LLM_BASE_URL: config.baseUrl, LLM_API_KEY: apiKey, LLM_MODEL: config.model, JRIG_AGENT_API_KEY: apiKey }, config.outputDir);
+  const processResult = await invokeCaseProcess(config.jrigCli, args, { PATH: process.env.PATH, HOME: config.outputDir,
+    LLM_BASE_URL: config.baseUrl, LLM_API_KEY: apiKey, LLM_MODEL: config.model, JRIG_AGENT_API_KEY: apiKey }, config.outputDir, signal);
   let caseResult: "pass" | "fail" | "incomplete" = "incomplete";
   let evidence: Awaited<ReturnType<typeof bindScenarioEvidence>> | null = null;
   let trigger: Awaited<ReturnType<typeof bindTriggerEvidence>> | null = null;
