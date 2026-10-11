@@ -3,7 +3,7 @@
  *
  * Guards:
  *   - the provider resolves (gated in via evals/supported.ts) with default model MiniMax-M3
- *   - auto-detect order: anthropic → openai → minimax → xai (MiniMax never displaces Claude/OpenAI)
+ *   - auto-detect order: minimax → anthropic → openai (Grok requires explicit selection)
  *   - <think> stripping (terminated, multiple, unterminated) and fence unwrapping
  *   - "" → [] coercion only at schema-array paths, at the provider boundary only
  *   - the middleware end to end through generateText + Output.object on a mock model:
@@ -55,8 +55,8 @@ describe("minimax provider resolution", () => {
     expect(p.model).toBe("MiniMax-M3");
   });
 
-  it("auto-detect order puts minimax after anthropic and openai", () => {
-    expect(DETECT_ORDER).toEqual(["anthropic", "openai", "minimax", "xai"]);
+  it("auto-detect order puts minimax first and excludes Grok", () => {
+    expect(DETECT_ORDER).toEqual(["minimax", "anthropic", "openai"]);
   });
 
   it("detects minimax when it is the only key", () => {
@@ -64,12 +64,12 @@ describe("minimax provider resolution", () => {
     expect(detectProvider()).toBe("minimax");
   });
 
-  it("anthropic and openai both beat minimax", () => {
+  it("minimax wins even when other provider keys are present", () => {
     process.env.MINIMAX_API_KEY = "mm-test";
     process.env.OPENAI_API_KEY = "sk-openai-test";
-    expect(detectProvider()).toBe("openai");
+    expect(detectProvider()).toBe("minimax");
     process.env.ANTHROPIC_API_KEY = "sk-ant-test";
-    expect(detectProvider()).toBe("anthropic");
+    expect(detectProvider()).toBe("minimax");
   });
 
   it("minimax beats xai", () => {
@@ -78,8 +78,8 @@ describe("minimax provider resolution", () => {
     expect(detectProvider()).toBe("minimax");
   });
 
-  it("with no key at all the default is still anthropic", () => {
-    expect(detectProvider()).toBe("anthropic");
+  it("with no key the default is minimax", () => {
+    expect(detectProvider()).toBe("minimax");
   });
 });
 
