@@ -42652,7 +42652,9 @@ async function handleEnrichLead(args) {
   return asText(args.debug ? { ...normalized, raw } : normalized);
 }
 var AgentMessageSchema = external_exports.object({
-  contactKey: external_exports.string().min(1).max(400),
+  contactKey: external_exports.string().min(1).max(400).describe(
+    "Exact email of a supplied contacts entry, or name@leadDomain when that contact has no email. Use the normalized contacts returned by enrich_lead; an enrichment email alone is not a matching contact."
+  ),
   channel: external_exports.enum(["email", "linkedin"]),
   subject: external_exports.string().max(300).nullish(),
   body: external_exports.string().min(1).max(5e3),
@@ -42950,7 +42952,7 @@ server.registerTool(
   "enrich_lead",
   {
     title: "Enrich a lead and its contacts",
-    description: "Run every CONFIGURED enrich connector (in deterministic order) against a lead and its contacts; returns enrichments (funding, verified emails, phones, web context). Raw vendor payloads are omitted unless debug: true.",
+    description: "Run every CONFIGURED enrich connector (in deterministic order) against a lead and its contacts; returns normalized contacts with attributable email findings applied, plus enrichments (funding, found emails, phones, web context). Carry these returned contacts through drafting and save_run instead of the earlier research contacts. Raw vendor payloads are omitted unless debug: true.",
     inputSchema: EnrichLeadInput
   },
   async (args) => handleEnrichLead(args)

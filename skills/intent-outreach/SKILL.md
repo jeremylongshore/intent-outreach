@@ -72,9 +72,13 @@ runs before writing them to the local encrypted SQLite store.
    domain and ICP. Aggregate its returned leads, contacts, and connector status, then deduplicate by
    stable domain/email identifiers. Show the results and use AskUserQuestion to ask which leads to keep.
 4. **Enrich.** Dispatch `outreach-enricher` once per kept lead with that lead and its contacts. Preserve
-   the returned provider attribution and timestamps. Show the new signals; empty or partial output is
-   valid.
-5. **Score and draft.** Dispatch `outreach-drafter` once per kept lead with the ICP, lead, contacts,
+   the returned provider attribution and timestamps. Require the worker's tool-normalized `contacts`
+   alongside `enrichments`: use these returned contacts in place of the earlier research contact list
+   for this kept lead. Do not infer an email from an enrichment or merge it yourself. If the worker
+   omits the tool's contact list, report an incomplete handoff and stop that lead before drafting.
+   Show the new signals; empty or partial provider findings are valid.
+5. **Score and draft.** Dispatch `outreach-drafter` once per kept lead with the ICP, lead, the
+   tool-normalized contacts returned by enrichment,
    enrichments, channel, limit, and applicable style override. Require every claim to be supported by
    the supplied data. Show every draft and ask the user to approve, edit, reject, or stop.
 6. **Save only after approval.** Assemble the `save_run` input: `id`, `icp`, `domains`, `provider`,
@@ -82,7 +86,10 @@ runs before writing them to the local encrypted SQLite store.
    `failedConnectors`, `errors`, `pack`, and `profile` (the Report Profile path or name whose `sender`
    identity supplies the CAN-SPAM footer). Each message needs `contactKey` (the contact's email, or
    `name@domain` when it has none, matching an entry in `contacts`), `channel`, `body`, and `cta`;
-   `subject`, `fitScore`, and `promptVersion` are optional. Pass every drafter decline (a lead clearly
+   `subject`, `fitScore`, and `promptVersion` are optional. Keep the same tool-normalized contacts
+   supplied to the drafter; never switch back to research contacts when assembling `save_run`.
+   Check that each draft key matches that contact list before showing it for approval; do not repair
+   a recipient or approved message during persistence. Pass every drafter decline (a lead clearly
    outside the ICP) as a `rejectedDrafts` entry `{ contactKey, issues: ["declined: <reason>"] }`, so the
    decision is recorded rather than dropped. The server stamps `createdAt`, derives the
    status, re-applies the suppression list and the pack's compliance gate, runs the send-safety draft

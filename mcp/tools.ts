@@ -171,7 +171,10 @@ export async function handleEnrichLead(args: {
 
 /** An agent-written draft. createdAt is server-stamped; model/promptVersion are caller-claimed. */
 export const AgentMessageSchema = z.object({
-  contactKey: z.string().min(1).max(400),
+  contactKey: z.string().min(1).max(400).describe(
+    "Exact email of a supplied contacts entry, or name@leadDomain when that contact has no email. " +
+    "Use the normalized contacts returned by enrich_lead; an enrichment email alone is not a matching contact.",
+  ),
   channel: z.enum(["email", "linkedin"]),
   subject: z.string().max(300).nullish(),
   body: z.string().min(1).max(5_000),
