@@ -37,4 +37,18 @@ BatchData hosts a Streamable HTTP MCP server at `https://mcp.batchdata.com`. It 
 
 ## Validation
 
-Run `python3 -m unittest discover -s demos/batchdata-sandbox -p 'test_*.py' -v`. Four offline boundary tests cover disabled/unconfirmed credentials, preview isolation, cross-origin rejection, the request cap, secret redaction, invalid inputs and provider-error sanitization without retries. Desktop and 390px mobile browser checks rendered three sandbox records, with no JavaScript errors or horizontal overflow.
+Run `python3 -m unittest discover -s demos/batchdata-sandbox -p 'test_*.py' -v`. Seven offline boundary tests cover disabled/unconfirmed credentials, preview isolation, cross-origin rejection, the request cap, secret redaction, invalid inputs and provider-error sanitization without retries, cached responses, atomic admission and a restart-safe public budget. Desktop and 390px mobile browser checks rendered three sandbox records, with no JavaScript errors or horizontal overflow.
+
+## Public deployment
+
+Run `bash demos/batchdata-sandbox/deploy_public.sh` on the existing Intent Demos workstation after committing and reviewing the demo sources. It installs an immutable revision under `~/.local/lib/intentsolutions/batchdata-demo/releases/`, enables the `intent-batchdata-demo` user service on loopback port 8767, copies only `/batchdata/index.html`, and adds one scoped reverse-proxy handler to the existing Caddy demo host. The script validates Caddy before replacing its configuration, saves a timestamped prior configuration, and preserves every other demo directory and host route. It requires the existing SOPS sandbox field and noninteractive sudo for Caddy operations.
+
+The public route is https://demos.intentsolutions.io/batchdata/. The key is decrypted into service memory. Same-origin POSTs are required, property search remains limited to five records, and a private SQLite admission counter caps all visitors together at 40 upstream requests per UTC day, including failures and across service restarts. Successful responses are cached in memory for ten minutes for identical requests, with explicit cached-response labels. No model calls or provider responses are persisted; SQLite stores only dates and request counts. Other origins, redirects, arbitrary destinations and extra API routes are refused.
+
+Verify `systemctl --user status intent-batchdata-demo`, the public `/batchdata/api/status` route and an actual browser search. For rollback, stop the new service and restore the saved `Caddyfile.before-batchdata-*` after validation, or repoint the private `current` symlink to the prior reviewed release and restart the service. Never delete the admission counter to bypass the quota. User services require the host's existing user-manager startup/linger configuration to run after reboot.
+
+## MCP alternatives assessed
+
+The official hosted server is not the only possible integration. [Zellerhaus](https://github.com/zellerhaus/batchdata-mcp-real-estate) is an MIT-licensed, self-hosted stdio wrapper with eight registered tools, including boundary searches and address autocomplete. Its source uses `/property/search/sync`; compatibility with the current endpoint contract needs validation before adopting it. [Pipeworx](https://github.com/pipeworx-io/mcp-batchdata) is an MIT-licensed three-tool adapter for lookup, search and skip tracing; its `_apiKey` argument should be replaced with server-side credential injection in this environment. Neither was executed with our credential.
+
+The official [MIT-licensed MCP demo app](https://github.com/batchdataco/batchdata-mcp-demo) adds chat, streaming progress, investment analysis and property comparison on top of the hosted MCP. It is a client/workflow layer, not a replacement server. The hosted MCP exposed 21 tools in our authenticated discovery check; no wrapper can grant datasets or permissions the BatchData account does not have.

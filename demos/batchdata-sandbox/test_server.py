@@ -1,18 +1,20 @@
 """Verify credential and request boundaries without contacting BatchData."""
 import io
 import json
+import sqlite3
 import threading
+import tempfile
 import unittest
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 
-from server import ENDPOINT, make_handler
+from server import DailyBudget, ENDPOINT, make_handler
 
 
 class BoundaryTests(unittest.TestCase):
-    def start(self, key='', confirmed=False, transport=None):
-        server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(key, confirmed, transport))
+    def start(self, key='', confirmed=False, transport=None, **options):
+        server = ThreadingHTTPServer(('127.0.0.1', 0), make_handler(key, confirmed, transport, **options))
         threading.Thread(target=server.serve_forever, daemon=True).start()
         self.addCleanup(server.server_close)
         self.addCleanup(server.shutdown)
@@ -72,6 +74,50 @@ class BoundaryTests(unittest.TestCase):
         for invalid in [[], None, {'query': 'x'}, {'query': 'Daphne', 'quicklist': []}]:
             self.assertEqual(self.post(invalid)[0], 400)
         self.assertEqual(len(calls), 1)
+
+    def test_public_origin_cache_and_restart_safe_budget(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        path = temp.name + '/counts.sqlite'
+        calls = []
+        def fake(request, timeout):
+            calls.append(request)
+            return io.BytesIO(b'{"results":{"properties":[]}}')
+        origin = 'https://demos.intentsolutions.io'
+        self.start('test-secret', True, fake, public_origin=origin, budget=DailyBudget(path, 1))
+        self.assertEqual(self.post({'query': 'Daphne, AL'})[0], 403)
+        code, first = self.post({'query': 'Daphne, AL'}, origin=origin)
+        self.assertEqual(code, 200)
+        self.assertFalse(first['cached'])
+        code, second = self.post({'query': 'Daphne, AL'}, origin=origin)
+        self.assertEqual(code, 200)
+        self.assertTrue(second['cached'])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(self.post({'query': 'Mobile, AL'}, origin=origin)[0], 429)
+        self.assertFalse(DailyBudget(path, 1).admit())
+
+    def test_budget_admission_is_atomic_across_workers(self):
+        with tempfile.TemporaryDirectory() as temp:
+            budget = DailyBudget(temp + '/counts.sqlite', 3)
+            results = []
+            workers = [threading.Thread(target=lambda: results.append(budget.admit())) for _ in range(12)]
+            for worker in workers:
+                worker.start()
+            for worker in workers:
+                worker.join()
+            self.assertEqual(sum(results), 3)
+
+    def test_public_budget_failure_blocks_network(self):
+        class BrokenBudget:
+            limit = 40
+            def admit(self):
+                raise sqlite3.OperationalError('private-state-location')
+        origin = 'https://demos.intentsolutions.io'
+        self.start('test-secret', True, lambda *args, **kwargs: self.fail('Network called'),
+                   public_origin=origin, budget=BrokenBudget())
+        code, result = self.post({'query': 'Daphne, AL'}, origin=origin)
+        self.assertEqual(code, 503)
+        self.assertNotIn('private-state-location', json.dumps(result))
 
 
 if __name__ == '__main__':
