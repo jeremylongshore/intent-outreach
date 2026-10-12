@@ -26,7 +26,7 @@ Explanation:
 
 Exploration action: **Shape your workflow**.
 
-Inquiry action: **Build around my business**, linked to the existing [Intent Solutions outcome inquiry](https://intentsolutions.io/contact/?door=outcome).
+Inquiry action: **Send my workflow brief**, using the inline form on the [showcase](https://demos.intentsolutions.io/batchdata/#pilot). The shared domain contact service routes the submitted brief and reply details to the private Buzz `leads` channel.
 
 This is a custom implementation offer. A designed example is not a production feature or a guarantee that every requested connection can be delivered. Avoid turning the main message into a list of caveats; place precise evidence labels beside the demonstration they describe.
 

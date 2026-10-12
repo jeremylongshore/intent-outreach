@@ -80,7 +80,44 @@ def main():
                 expect(page.locator('#request')).to_contain_text('POST https://api.batchdata.com')
                 assert all(url.startswith(base) for url in requests), requests
                 assert not any('/api/search' in url for url in requests)
-                assert page.locator('#contactCta').get_attribute('href') == 'https://intentsolutions.io/contact/?door=outcome'
+                # Capture is explicit, preserves edits, and never claims success on an error.
+                captured = []
+                mode = {'status': 503, 'body': '{"error":"unavailable"}'}
+                def intake(route):
+                    captured.append(route.request.post_data_json)
+                    route.fulfill(status=mode['status'], content_type='application/json', body=mode['body'])
+                page.route('**/api/forms/contact', intake)
+                page.locator('#contactCta').click()
+                assert not captured  # Required name/email prevent a request.
+                page.locator('#inquiryName').fill('Example Visitor')
+                page.locator('#inquiryEmail').fill('visitor@example.com')
+                page.locator('#inquiryCompany').fill('Example Team')
+                page.locator('#inquiryBrief').fill('My edited scope <script>alert(1)</script>')
+                page.locator('#contactCta').click()
+                expect(page.locator('#inquiryStatus')).to_contain_text('could not confirm receipt')
+                expect(page.locator('#inquiryBrief')).to_have_value('My edited scope <script>alert(1)</script>')
+                assert captured[-1]['message'].endswith('My edited scope <script>alert(1)</script>')
+                assert 'https://demos.intentsolutions.io/batchdata/' in captured[-1]['message']
+                assert captured[-1]['projectType'] == 'workflow-automation'
+                assert captured[-1]['website'] == ''
+                mode.update(status=429, body='{"error":"rate limit"}')
+                page.locator('#contactCta').click()
+                expect(page.locator('#inquiryStatus')).to_contain_text('Too many requests')
+                mode.update(status=200, body='{"unexpected":true}')
+                page.locator('#contactCta').click()
+                expect(page.locator('#inquiryStatus')).to_contain_text('could not confirm receipt')
+                mode.update(status=200, body='{"status":"ok"}')
+                page.locator('#contactCta').click()
+                expect(page.locator('#inquiryStatus')).to_contain_text('has been received')
+                sent_count = len(captured)
+                page.locator('#contactCta').click()
+                expect(page.locator('#inquiryStatus')).to_contain_text('already been received')
+                assert len(captured) == sent_count
+                expect(page.locator('#inquiryName')).to_have_value('Example Visitor')
+                page.locator('#inquiryBrief').fill('界' * 3000)
+                page.locator('#contactCta').click()
+                expect(page.locator('#inquiryStatus')).to_contain_text('too long')
+                assert len(captured) == sent_count
                 for path in ('mandy-design-audition/', 'scott-porter-automation/'):
                     assert page.locator(f'a[href$="/{path}"]').count() > 0
                 page.locator('#personaSelect').focus()
@@ -89,7 +126,7 @@ def main():
                 assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
                 assert not errors, errors
                 context.close()
-                print(f'PASS {width}px: six workflows, preserved edits, clipboard, buy-box boundaries, local-only inputs, layout')
+                print(f'PASS {width}px: six workflows, preserved edits, clipboard, buy-box boundaries, local-only exploration, capture success/failure/duplicate/size boundaries, layout')
             browser.close()
     finally:
         server.shutdown()
