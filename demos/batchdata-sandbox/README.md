@@ -1,6 +1,19 @@
-# BatchData sandbox property desk
+# Intent Outreach real estate showcase and BatchData sandbox
 
-A local browser demo that builds a property search, displays actual returned records and lets you inspect each record. No fictional lead results, model inference, sending, CRM writes or production qualification are introduced. Contact enrichment is optional and uses the search endpoint's documented `options.skipTrace` flag.
+A public workflow showcase for commercial real estate, flex and industrial teams,
+residential operators and business development. Four selectable examples use
+explicitly fictional records to explain the research brief and review handoff.
+They run locally in the browser and make no provider or model calls.
+
+A separate BatchData sandbox module builds a property search, displays actual
+returned sandbox records and lets visitors inspect each record. Its records are
+never mixed with the fictional workflow examples. No sending, CRM writes or
+production qualification are introduced. Contact enrichment is optional and uses
+the search endpoint's documented `options.skipTrace` flag.
+
+Project identity starts at [brand/README.md](../../brand/README.md). The scoped
+capability inventory and next pilot are documented in
+[the CRE showcase scope](../../000-docs/038-PP-PLAN-cre-outreach-showcase.md).
 
 ## Run
 
@@ -37,7 +50,7 @@ BatchData hosts a Streamable HTTP MCP server at `https://mcp.batchdata.com`. It 
 
 ## Validation
 
-Run `python3 -m unittest discover -s demos/batchdata-sandbox -p 'test_*.py' -v`. Seven offline boundary tests cover disabled/unconfirmed credentials, preview isolation, cross-origin rejection, the request cap, secret redaction, invalid inputs and provider-error sanitization without retries, cached responses, atomic admission and a restart-safe public budget. Desktop and 390px mobile browser checks rendered three sandbox records, with no JavaScript errors or horizontal overflow.
+Run `python3 -m unittest discover -s demos/batchdata-sandbox -p 'test_*.py' -v`. Seven offline boundary tests cover disabled/unconfirmed credentials, preview isolation, cross-origin rejection, the request cap, secret redaction, invalid inputs and provider-error sanitization without retries, cached responses, atomic admission and a restart-safe public budget. The original live desktop and 390px mobile checks rendered three sandbox records. The expanded showcase was checked at 1440px, 768px and 390px for layout and keyboard scenario selection. Browser checks with intercepted API responses verified sample/provider separation, editable clipboard briefs, request preview, cached responses, warning summaries, empty results and quota errors without provider calls. No JavaScript exceptions or horizontal overflow were observed.
 
 ## Public deployment
 

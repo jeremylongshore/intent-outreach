@@ -1,6 +1,6 @@
 # 000-INDEX — Intent Outreach Documentation Index
 
-**Last Updated:** 2026-10-06
+**Last Updated:** 2026-10-11
 **Purpose:** Map of the docs in this directory. Current docs are `017`–`022` and `031` onward. Everything in `001`–`016`
 and `023`–`030` predates the rebuild and describes the retired Gemini-on-Vertex "PipelinePilot" system;
 it is kept for history only, and each of those files carries a "Historical (pre-rebuild)" banner.
@@ -8,6 +8,10 @@ it is kept for history only, and each of those files carries a "Historical (pre-
 ---
 
 ## Current (the rebuild)
+
+Project brand and public messaging start at [brand/README.md](../brand/README.md).
+The [CRE showcase scope](038-PP-PLAN-cre-outreach-showcase.md) inventories current
+capabilities, demonstrable workflows and the next bounded pilot.
 
 The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR orchestrator
 (TypeScript/Node, zero Google dependency, local-only, BYO keys). Start here:

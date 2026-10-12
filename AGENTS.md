@@ -1,5 +1,15 @@
 # Agent Instructions
 
+## Project brand and public experience
+
+Start project marketing, demo and copy work at [brand/README.md](brand/README.md),
+then use the local voice and positioning documents it links. Intent Outreach owns
+its identity and audience guidance here, aligned with the Intent Solutions family.
+Global skills supply reusable methods; do not search global skill directories for
+this project's brand, deliverables or prior work. Consult local source, `000-docs/`
+and Beads for those. Update brand artifacts here when the project direction changes;
+keep durable task status and session memory in Beads.
+
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
 > **Architecture in one line:** Issues live in a local Dolt database

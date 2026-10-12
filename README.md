@@ -1,5 +1,11 @@
 # Intent Outreach
 
+**Explore the project:** [real estate workflow showcase](https://demos.intentsolutions.io/batchdata/)
+· [project voice and positioning](brand/README.md)
+· [CRE capability inventory and pilot scope](000-docs/038-PP-PLAN-cre-outreach-showcase.md).
+The showcase distinguishes illustrative commercial workflows from the working sandbox.
+The technical engine documentation follows.
+
 **AI outbound prospecting for founders who do their own selling — research → enrich → outreach, in
 Claude Code, with your own model.**
 
