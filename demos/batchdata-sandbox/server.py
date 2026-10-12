@@ -3,8 +3,11 @@
 import argparse
 import json
 import os
+import sqlite3
 import subprocess
 import threading
+import time
+from datetime import datetime, timezone
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -59,11 +62,33 @@ def load_key(args):
     return os.environ.get('BATCHDATA_SANDBOX_KEY', '').strip()
 
 
-def make_handler(key, sandbox_confirmed, transport=None):
+class DailyBudget:
+    """Persist admission before network I/O, including failed provider requests."""
+    def __init__(self, path, limit):
+        self.path, self.limit = path, limit
+        with sqlite3.connect(path) as db:
+            db.execute('CREATE TABLE IF NOT EXISTS admissions (day TEXT PRIMARY KEY, calls INTEGER NOT NULL)')
+
+    def admit(self):
+        day = datetime.now(timezone.utc).date().isoformat()
+        with sqlite3.connect(self.path, timeout=5) as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT calls FROM admissions WHERE day=?', (day,)).fetchone()
+            used = row[0] if row else 0
+            if used >= self.limit:
+                return False
+            db.execute('INSERT INTO admissions VALUES (?,1) ON CONFLICT(day) DO UPDATE SET calls=calls+1', (day,))
+            return True
+
+
+def make_handler(key, sandbox_confirmed, transport=None, public_origin=None, budget=None):
+    if public_origin and budget is None:
+        raise ValueError('Public serving requires a persistent admission budget.')
     opener = urllib.request.build_opener(NoRedirect())
     transport = transport or opener.open
     lock = threading.Lock()
     admitted = 0
+    cache = {}
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_):
@@ -88,7 +113,10 @@ def make_handler(key, sandbox_confirmed, transport=None):
                 return self.reply(403, {'error': 'Use the local 127.0.0.1 URL.'})
             if self.path == '/api/status':
                 return self.reply(200, {'keyLoaded': bool(key), 'sandboxConfirmed': sandbox_confirmed,
-                    'ready': bool(key) and sandbox_confirmed, 'maxRequests': 10, 'maxRecordsPerRequest': 5})
+                    'ready': bool(key) and sandbox_confirmed,
+                    'maxRequests': budget.limit if budget else 10,
+                    'limitWindow': 'UTC day, shared across visitors' if budget else 'process',
+                    'maxRecordsPerRequest': 5})
             if self.path != '/':
                 return self.reply(404, {'error': 'Unknown route.'})
             self.send_response(200)
@@ -100,9 +128,9 @@ def make_handler(key, sandbox_confirmed, transport=None):
 
         def do_POST(self):
             nonlocal admitted
-            origin = f'http://127.0.0.1:{self.server.server_port}'
+            origin = public_origin or f'http://127.0.0.1:{self.server.server_port}'
             if not self.valid_host() or self.headers.get('Origin') != origin:
-                return self.reply(403, {'error': 'Local same-origin requests only.'})
+                return self.reply(403, {'error': 'Same-origin requests only.'})
             if self.path not in ('/api/preview', '/api/search'):
                 return self.reply(404, {'error': 'Unknown route.'})
             try:
@@ -116,9 +144,21 @@ def make_handler(key, sandbox_confirmed, transport=None):
             if self.path == '/api/preview':
                 return self.reply(200, {'endpoint': ENDPOINT, 'method': 'POST', 'body': request_body, 'apiCalls': 0})
             if not key or not sandbox_confirmed:
-                return self.reply(503, {'error': 'Sandbox key is not configured and verified. Request preview is available; no provider call was made.'})
+                return self.reply(503, {'error': 'Sandbox credential is not configured and confirmed. Request preview is available; no provider call was made.'})
+            cache_id = json.dumps(request_body, sort_keys=True)
             with lock:
-                if admitted >= 10:
+                if public_origin:
+                    saved = cache.get(cache_id)
+                    if saved and time.monotonic() - saved[0] < 600:
+                        return self.reply(200, {**saved[1], 'cached': True})
+                if budget:
+                    try:
+                        allowed = budget.admit()
+                    except sqlite3.Error:
+                        return self.reply(503, {'error': 'Sandbox admission is unavailable. No provider call was made.'})
+                    if not allowed:
+                        return self.reply(429, {'error': 'Shared sandbox daily limit reached. Request preview remains available; try again tomorrow (UTC). No provider call was made.'})
+                elif admitted >= 10:
                     return self.reply(429, {'error': 'Demo limit of 10 requests reached. No provider call was made.'})
                 admitted += 1
             req = urllib.request.Request(ENDPOINT, data=json.dumps(request_body).encode(), method='POST',
@@ -129,8 +169,14 @@ def make_handler(key, sandbox_confirmed, transport=None):
                     if len(raw) > 2_000_000:
                         raise ValueError('Response too large.')
                     result = json.loads(raw)
-                return self.reply(200, {'source': 'BatchData API', 'credentialMode': 'operator-confirmed sandbox key',
-                    'requestNumber': admitted, 'data': result})
+                body = {'source': 'BatchData API', 'credentialMode': 'operator-confirmed sandbox key',
+                    'requestNumber': admitted, 'cached': False, 'data': result}
+                if public_origin:
+                    with lock:
+                        if len(cache) >= 100:
+                            cache.pop(next(iter(cache)))
+                        cache[cache_id] = (time.monotonic(), body)
+                return self.reply(200, body)
             except urllib.error.HTTPError as error:
                 return self.reply(502, {'error': f'BatchData returned HTTP {error.code}. Check sandbox permissions. No retry was made.'})
             except Exception:
@@ -144,9 +190,16 @@ def main():
     parser.add_argument('--sops-file')
     parser.add_argument('--key-path', help='Dot-separated SOPS field, e.g. batchdata.sandbox_key')
     parser.add_argument('--confirmed-sandbox', action='store_true', help='Use only after verifying that the credential is a sandbox token.')
+    parser.add_argument('--public-origin', choices=['https://demos.intentsolutions.io'], help='Allow same-origin public requests through the loopback reverse proxy.')
+    parser.add_argument('--counter-file', help='Private SQLite file containing daily admission counts only.')
+    parser.add_argument('--daily-limit', type=int, default=40)
     args = parser.parse_args()
+    if args.public_origin and (not args.counter_file or not 1 <= args.daily_limit <= 40):
+        parser.error('Public serving requires a persistent counter and a daily limit of 1–40.')
     key = load_key(args)
-    server = ThreadingHTTPServer(('127.0.0.1', args.port), make_handler(key, args.confirmed_sandbox))
+    budget = DailyBudget(args.counter_file, args.daily_limit) if args.public_origin else None
+    server = ThreadingHTTPServer(('127.0.0.1', args.port), make_handler(key, args.confirmed_sandbox,
+                                  public_origin=args.public_origin, budget=budget))
     print(f'BatchData demo: http://127.0.0.1:{server.server_port}', flush=True)
     print('Sandbox calls enabled.' if key and args.confirmed_sandbox else 'Request preview only; sandbox key not configured/confirmed.', flush=True)
     try:
