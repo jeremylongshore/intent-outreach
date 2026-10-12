@@ -1,8 +1,11 @@
 # 039: Real estate workflow market and custom implementation scope
 
-**Date:** 2026-10-11  
-**Research mode:** current primary product, feature and help pages; read-only research.  
-**Purpose:** broaden the public offer from a property-data demonstration to workflows built around different real estate businesses.  
+**Date:** 2026-10-11
+
+**Research mode:** current primary product, feature and help pages; read-only research.
+
+**Purpose:** broaden the public offer from a property-data demonstration to workflows built around different real estate businesses.
+
 **Tracking:** io-5m2. This is a research and scope artifact, not a task-status ledger.
 
 ## Finding
