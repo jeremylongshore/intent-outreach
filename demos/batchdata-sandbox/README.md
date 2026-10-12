@@ -11,8 +11,8 @@ sorts eligible records by asking price. It does not rank investment quality.
 The builder and buy-box example run locally without provider or model calls.
 Entered criteria stay in the page. Editable inquiry briefs preserve manual edits
 until the visitor explicitly replaces them with the current configured scope.
-Copying is local; the contact link opens the existing inquiry page without
-submitting these fields. Related Mandy and Scott links distinguish published work
+Copying is local. The explicit inquiry form sends the reviewed brief, name, reply
+email and optional company through the existing domain contact service. Related Mandy and Scott links distinguish published work
 from historical workflow/design concepts.
 
 A separate BatchData sandbox module builds a property search, displays actual
@@ -90,3 +90,35 @@ Verify `systemctl --user status intent-batchdata-demo`, the public `/batchdata/a
 The official hosted server is not the only possible integration. [Zellerhaus](https://github.com/zellerhaus/batchdata-mcp-real-estate) is an MIT-licensed, self-hosted stdio wrapper with eight registered tools, including boundary searches and address autocomplete. Its source uses `/property/search/sync`; compatibility with the current endpoint contract needs validation before adopting it. [Pipeworx](https://github.com/pipeworx-io/mcp-batchdata) is an MIT-licensed three-tool adapter for lookup, search and skip tracing; its `_apiKey` argument should be replaced with server-side credential injection in this environment. Neither was executed with our credential.
 
 The official [MIT-licensed MCP demo app](https://github.com/batchdataco/batchdata-mcp-demo) adds chat, streaming progress, investment analysis and property comparison on top of the hosted MCP. It is a client/workflow layer, not a replacement server. The hosted MCP exposed 21 tools in our authenticated discovery check; no wrapper can grant datasets or permissions the BatchData account does not have.
+
+
+## Workflow inquiry capture
+
+The browser posts JSON to the same-origin `/api/forms/contact`, outside the
+`/batchdata/` sandbox proxy. Existing demo-host Caddy forwards this route to
+`intentsolutions.io`, whose VPS `forms-api.service` delivers to private Buzz `leads`.
+There is no separate demo-domain channel configured. The message includes the
+canonical showcase URL and the exact edited brief; `interest=consulting` and
+`projectType=workflow-automation` use the shared service contract.
+
+Name, reply email and a brief are required; company is optional. Exploration does
+not submit data. No newsletter subscription, customer email or CRM write is triggered
+by this contact endpoint. The page preserves all entered text on success and failure,
+prevents concurrent submissions and suppresses resending the identical accepted
+payload within the page session. This is not server-side idempotency across reloads.
+The browser checks the UTF-8 serialized request against the service's 8 KiB limit,
+requires an explicit `status: ok` response, and handles rate limits and timeouts.
+
+The shared service validates fields, uses a honeypot and limits contact/partner
+requests to three per IP per hour. Buzz transport failure writes a private business
+dead letter at `/srv/forms-api/data/business-leads.ndjson`; recovery is an operator
+procedure, not automatic replay for contact submissions. A success means accepted
+by Buzz or saved for recovery, not that a person has read or answered the inquiry.
+If both fail, the service returns 503. Canonical backend source and recovery runbook:
+`intent-os/ops/host/services/forms-api/`.
+
+The browser smoke intercepts all intake requests and checks required fields, exact
+edited-brief/source transfer, success, server/rate-limit/malformed-response failures,
+retained text, repeated-click protection and multibyte request size at three widths.
+One clearly labeled production test should be verified against the private Buzz
+channel, not solely HTTP 200. Never put customer payloads or relay keys in Git.
