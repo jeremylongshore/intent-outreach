@@ -164,7 +164,9 @@ committed. Stack: TypeScript/Node (ESM), zod, Vercel AI SDK (`ai` + `@ai-sdk/*`)
 
 For project identity, audience and public copy, start at `brand/README.md` and its
 local voice and positioning documents. Global skills are methods, not a store for
-Intent Outreach project work. The CRE showcase scope is `000-docs/038-PP-PLAN-cre-outreach-showcase.md`.
+Intent Outreach project work. The initial CRE showcase scope is `000-docs/038-PP-PLAN-cre-outreach-showcase.md`;
+current broader offer research is `000-docs/039-RA-ANLY-real-estate-workflow-market.md`
+and `000-docs/040-RA-ANLY-estate-real-estate-workflows.md`.
 
 Docs live in `000-docs/` under `NNN-CC-ABCD-description.md`; start at `000-docs/000-INDEX.md`. **Picking this repo
 up cold? Read `036-AA-AUDT-appaudit-devops-playbook.md` first** (current state, PR ledger, owner decisions, resume

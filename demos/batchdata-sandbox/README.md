@@ -1,9 +1,19 @@
 # Intent Outreach real estate showcase and BatchData sandbox
 
-A public workflow showcase for commercial real estate, flex and industrial teams,
-residential operators and business development. Four selectable examples use
-explicitly fictional records to explain the research brief and review handoff.
-They run locally in the browser and make no provider or model calls.
+A public custom-workflow showcase for local/coastal agents, metro teams, buy-box
+investors, prospectors, referral connectors and CRE/flex operators. Visitors can
+choose a starting point, market, criteria, custom request and output destination.
+Six distinct fictional examples illustrate client packs, queues, shortlists,
+introductions and property/business research. A separate fictional buy-box example
+actually filters six records by asset type and price, excludes unknown prices and
+sorts eligible records by asking price. It does not rank investment quality.
+
+The builder and buy-box example run locally without provider or model calls.
+Entered criteria stay in the page. Editable inquiry briefs preserve manual edits
+until the visitor explicitly replaces them with the current configured scope.
+Copying is local; the contact link opens the existing inquiry page without
+submitting these fields. Related Mandy and Scott links distinguish published work
+from historical workflow/design concepts.
 
 A separate BatchData sandbox module builds a property search, displays actual
 returned sandbox records and lets visitors inspect each record. Its records are
@@ -12,8 +22,11 @@ production qualification are introduced. Contact enrichment is optional and uses
 the search endpoint's documented `options.skipTrace` flag.
 
 Project identity starts at [brand/README.md](../../brand/README.md). The scoped
-capability inventory and next pilot are documented in
+capability inventory and initial pilot are documented in
 [the CRE showcase scope](../../000-docs/038-PP-PLAN-cre-outreach-showcase.md).
+[Market research](../../000-docs/039-RA-ANLY-real-estate-workflow-market.md) and
+[related estate workflows](../../000-docs/040-RA-ANLY-estate-real-estate-workflows.md)
+explain the broader custom offer.
 
 ## Run
 
@@ -53,6 +66,18 @@ BatchData hosts a Streamable HTTP MCP server at `https://mcp.batchdata.com`. It 
 Run `python3 -m unittest discover -s demos/batchdata-sandbox -p 'test_*.py' -v`. Seven offline boundary tests cover disabled/unconfirmed credentials, preview isolation, cross-origin rejection, the request cap, secret redaction, invalid inputs and provider-error sanitization without retries, cached responses, atomic admission and a restart-safe public budget. The original live desktop and 390px mobile checks rendered three sandbox records. The expanded showcase was checked at 1440px, 768px and 390px for layout and keyboard scenario selection. Browser checks with intercepted API responses verified sample/provider separation, editable clipboard briefs, request preview, cached responses, warning summaries, empty results and quota errors without provider calls. No JavaScript exceptions or horizontal overflow were observed.
 
 ## Public deployment
+
+The optional browser regression check requires Python Playwright and Chromium:
+
+```sh
+python3 demos/batchdata-sandbox/browser_smoke.py
+```
+
+Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` when using an existing Chromium installation.
+The check starts its own keyless server and verifies six personas, custom fields,
+preserved edits, clipboard behavior, buy-box inclusion/exclusion boundaries,
+unknown and invalid prices, request isolation, safe text rendering and responsive
+layouts at 1440, 768 and 390 pixels. It makes no provider calls.
 
 Run `bash demos/batchdata-sandbox/deploy_public.sh` on the existing Intent Demos workstation after committing and reviewing the demo sources. It installs an immutable revision under `~/.local/lib/intentsolutions/batchdata-demo/releases/`, enables the `intent-batchdata-demo` user service on loopback port 8767, copies only `/batchdata/index.html`, and adds one scoped reverse-proxy handler to the existing Caddy demo host. The script validates Caddy before replacing its configuration, saves a timestamped prior configuration, and preserves every other demo directory and host route. It requires the existing SOPS sandbox field and noninteractive sudo for Caddy operations.
 

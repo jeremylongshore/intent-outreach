@@ -4,14 +4,15 @@ Last updated: 2026-10-11
 
 ## Voice in one paragraph
 
-Intent Outreach sounds like a research partner who understands the difference between a property, its owner and the business using it. We explain what the record says, why it may matter and what still needs checking. The voice is practical, clear and confident about demonstrated work. It treats an operator's decision as the purpose of the workflow.
+Intent Outreach sounds like a practical partner who first asks how you do business. We understand that a local agent, an investor, a team managing incoming leads and a person making introductions need different things. We explain how their records, the right sources and their rules can become something useful to work from. The voice is approachable, specific and confident about demonstrated work.
 
 This is the product's voice, aligned with Intent Solutions' evidence standards. It is not a transcription of the founder's conversational style or a generic AI consultancy voice.
 
 ## Voice principles
 
-- **Start with the job.** Name the work: reviewing an acquisition target, researching a business, checking a contact role or preparing a handoff.
-- **Make the output tangible.** Describe a property brief, company profile, source record, review step or draft. Explain what a person can do with it.
+- **Start with their business.** Name a familiar job: remembering who needs a call, sorting inquiries, comparing properties, finding a relevant business or preparing an introduction.
+- **Show room to make it theirs.** Explain which inputs, rules, outputs and tools can change. Examples are starting points, not a fixed menu of products.
+- **Make the output tangible.** Describe a daily desk, comparison, action queue, contact note, introduction packet or draft. Explain what a person can do with it.
 - **Keep uncertainty useful.** Say which fact is missing and what it affects. Avoid a wall of generic caveats.
 - **Show the source of confidence.** A provider returned a record; a reviewer confirmed a relationship; a test checked a behavior. Those are different statements.
 - **Respect the reader's expertise.** Use familiar real estate terms when they clarify the job. Explain software concepts only when they help the reader make a decision.
@@ -26,7 +27,7 @@ This is the product's voice, aligned with Intent Solutions' evidence standards. 
 | Technical depth | Operational language first; implementation details in inspectable supporting material. |
 | Point of view | Company copy uses "we"; address the operator as "you" or "your team." |
 
-Use: property record, owner of record, company, relevant role, source, criteria, review, brief, draft, handoff, workflow, next step.
+Use: your market, your records, people you know, criteria, follow-up, introduction, comparison, source, next action, review, workflow. Use property record, owner of record and business role when the particular job needs that precision.
 
 Use with precision: verified, live, approved, contactable, qualified, automated, tenant, owner, decision-maker. State what was verified or approved and by whom when the distinction matters.
 
@@ -57,19 +58,19 @@ Write connected sentences with varied length. Keep paragraphs focused. Do not fo
 
 ### Showcase hero
 
-**Turn property research into a next step your team can review.**
+**Your market. Your relationships. Your way of working.**
 
-We build research and outreach workflows for commercial real estate, flex and industrial teams, and residential operators. Explore how property records, business contacts and your own criteria can come together in a clear handoff.
+We build custom real estate workflows around the work you need done. Find opportunities, organize follow-up, compare properties or prepare an introduction using your records, the right data sources and your criteria.
 
 ### Workflow explanation
 
-Start with the kinds of businesses your flex or industrial space could serve. A useful prospect brief brings together business activity, relevant roles and the questions your broker still needs to confirm. A company address alone does not tell you whether that business occupies the property or plans to move.
+You know your town and the people you work with. Start with those relationships, the inquiries coming in and the next steps you want to keep track of. We can scope a daily desk around that work, with property research where it helps and your own review process built in.
 
 ### Inquiry invitation
 
-Tell us your market, the work your team does today and the result you need. We will scope the data sources, review steps and system handoff, then define how to test the result.
+Tell us what you want to find, organize or act on. Show us the tools and records you already use. We will shape a workflow and an example output around your needs, then define what it takes to build and test it.
 
-These samples establish the working voice. They are not customer quotes, observed performance or proof that the illustrated CRE workflow is operational.
+These samples establish the working voice. They are not customer quotes, observed performance or proof that the illustrated custom workflows are operational.
 
 ## Adaptation by surface
 
@@ -82,3 +83,16 @@ These samples establish the working voice. They are not customer quotes, observe
 | Educational content | A specific research problem and how to reason through it. | Apply the method or inspect an example. |
 
 Keep actual outreach drafts separate from showcase copy. Drafts must follow the relevant pack, sender identity, source restrictions and review rules; this voice document does not authorize delivery.
+
+## Different jobs need different language
+
+| Reader | Speak about | Do not assume |
+| --- | --- | --- |
+| Small-town or coastal agent | People they know, local questions, buyer preferences, follow-up and a useful week. | That every contact is a cold lead or every agent wants investor deal sourcing. |
+| Metro agent or team | Incoming inquiries, ownership of the next task, routing, context and consistent handling. | That volume alone is success or a suggested assignment is a completed CRM update. |
+| Investor | Buy box, fit, comparison, explicit assumptions and diligence questions. | That an estimate is a valuation or a scenario is a guaranteed return. |
+| Prospector | Target profile, contact role, useful research, review queue and next step. | That a found email establishes consent or an actual buying need. |
+| Relationship connector | Requested help, relevant introductions, known relationships and agreed follow-up. | That knowing two people gives permission to share either person's details. |
+| CRE or flex operator | Asset, owner, occupier, business activity and requirements to confirm. | That property ownership and business occupancy are interchangeable. |
+
+Avoid making every use case end with the same research brief. Let the output reflect the job. Explain what a person can change before discussing provider names or internal architecture.

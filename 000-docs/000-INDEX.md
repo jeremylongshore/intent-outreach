@@ -10,8 +10,11 @@ it is kept for history only, and each of those files carries a "Historical (pre-
 ## Current (the rebuild)
 
 Project brand and public messaging start at [brand/README.md](../brand/README.md).
-The [CRE showcase scope](038-PP-PLAN-cre-outreach-showcase.md) inventories current
-capabilities, demonstrable workflows and the next bounded pilot.
+The [market research](039-RA-ANLY-real-estate-workflow-market.md) and
+[estate workflow inventory](040-RA-ANLY-estate-real-estate-workflows.md) expand the
+custom-workflow offer across agents, investors, prospectors and relationship-led
+businesses. The [initial CRE showcase scope](038-PP-PLAN-cre-outreach-showcase.md)
+retains the implementation inventory and first bounded pilot.
 
 The product is **Intent Outreach** — a model-agnostic, Claude-Code-native SDR orchestrator
 (TypeScript/Node, zero Google dependency, local-only, BYO keys). Start here:

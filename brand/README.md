@@ -10,6 +10,11 @@ This directory is the first source for Intent Outreach positioning, voice and pu
 2. [Voice](voice.md): language, examples and adaptations for each audience.
 3. The implementation or evidence relevant to the claim being written.
 
+Research behind the custom-workflow offer lives in this project:
+[market comparison](../000-docs/039-RA-ANLY-real-estate-workflow-market.md) and
+[related estate workflows](../000-docs/040-RA-ANLY-estate-real-estate-workflows.md).
+These expand the offer beyond the initial four CRE research examples.
+
 These are brand deliverables, not task lists or agent memory. Project work and follow-up remain in Beads. Do not move project positioning into global skills or rely on a global skill as the source of product truth.
 
 ## Relationship to Intent Solutions

@@ -4,101 +4,89 @@ Last updated: 2026-10-11
 
 ## Product and offer
 
-Intent Outreach is a research and outreach-preparation engine. It brings together source data, contact research, checks and drafts for review. Intent Solutions can scope implementations around a team's market, criteria and operating tools.
+**Real estate workflows built around how you do business.**
 
-The public showcase demonstrates specific behavior and explains possible workflows. It is not a promise of a turnkey CRE platform, live nationwide commercial inventory, automatic tenant matching or a campaign that runs unattended.
+Intent Outreach is the foundation for custom research, relationship and outreach-preparation workflows. Intent Solutions scopes the work around the customer's market, records, criteria and operating tools. The useful result might be a daily follow-up desk, a property comparison, an investor shortlist, a referral handoff, a prospect queue or a CRM update.
 
-**Primary positioning:** turn property and business research into a reviewable next step.
+The implementation pattern is **established sources + your own records + your rules → a decision or action**. Sources and integrations are selected and verified for the actual job. Access to every provider, field or market is not assumed.
 
-**Headline direction:** Turn property research into a next step your team can review.
+The user requested this broader custom direction after reviewing the first CRE-centered showcase. It supersedes the narrow marketing audience and brief-only output framing in [038](../000-docs/038-PP-PLAN-cre-outreach-showcase.md). The factual implementation constraints in that document remain relevant. [039](../000-docs/039-RA-ANLY-real-estate-workflow-market.md) records the broader research and scope rationale.
 
-**Offer:** scope and build a research workflow around the customer's work, data access, review process and system handoff.
+## Simple public message
 
-## Audience
+Headline: **Your market. Your relationships. Your way of working.**
 
-| Audience | Starting problem | Output to explain |
+Supporting copy:
+
+> We build custom real estate workflows around the work you need done. Find opportunities, organize follow-up, compare properties or prepare an introduction using your records, the right data sources and your criteria.
+
+Explanation:
+
+> Start with a familiar example, then make it yours. Choose the inputs, the rules and the result your team needs. We scope the connections and checks needed to turn that design into a working system.
+
+Exploration action: **Shape your workflow**.
+
+Inquiry action: **Build around my business**, linked to the existing [Intent Solutions outcome inquiry](https://intentsolutions.io/contact/?door=outcome).
+
+This is a custom implementation offer. A designed example is not a production feature or a guarantee that every requested connection can be delivered. Avoid turning the main message into a list of caveats; place precise evidence labels beside the demonstration they describe.
+
+## Six starting points, not six fixed products
+
+| Starting point | Job to understand | Example output | What the customer can change |
+| --- | --- | --- | --- |
+| Small-town or coastal agent | Keep local knowledge, past-client context and new inquiries useful throughout the week. | A relationship follow-up desk, buyer-needs summary or local market note draft. | Towns served, known contacts, client preferences, local sources, tone, cadence and next-step rules. |
+| Metro agent or team | Organize a higher volume of inquiries across agents and neighborhoods. | An intake and assignment board with duplicate flags, context and next actions. | Territories, lead sources, team roles, routing rules, review steps and CRM destination. |
+| Investor with a buy box | Compare opportunities against an explicit strategy. | A shortlist with fit reasons, rejection reasons and financial scenarios using stated assumptions. | Asset type, geography, property criteria, expense assumptions, thresholds and review format. |
+| Prospector | Turn a target profile or existing list into research and a deliberate next step. | A sourced prospect queue, account notes and reviewable draft material. | Target businesses or owners, source order, contact roles, exclusions, budget and output fields. |
+| Relationship or referral connector | Keep track of who needs what and prepare relevant introductions. | An introduction board with the reason for each proposed connection, owner and follow-up status. | Known relationships, requested help, geography, service specialty, sharing permissions and handoff format. |
+| CRE or flex-industrial operator | Connect asset, ownership and business research to an acquisition or leasing question. | An ownership research map, occupier brief, property comparison or acquisition review packet. | Asset or business criteria, verified requirements, entity rules, evidence sources and review destination. |
+
+These are recommended starting points for the showcase, not proven customer segments or completed integrations. A visitor can combine them or describe another workflow. Small-town agents should not be forced into an investor vocabulary; relationship businesses should not be reduced to cold prospecting.
+
+## What custom means
+
+The offer must make these choices visible:
+
+- **Inputs:** provider data, authorized public records, client-owned lists, inquiries, notes or existing CRM records.
+- **Rules:** fit criteria, priorities, exclusions, record matching, review boundaries, refresh cadence and spend limits.
+- **Outputs:** research briefs, comparison tables, action queues, draft content, referral handoffs, exports or scoped CRM updates.
+- **Operation:** who reviews, where the result goes, what triggers another run and how failures are handled.
+
+An illustrative configurator can preview these choices locally. It must not claim to have searched, matched, calculated, sent or synchronized anything that it did not execute.
+
+## Engagement deliverables
+
+The commercial offer can be scoped in three parts:
+
+1. **Workflow design:** a documented input-to-output map, representative sample, data-fit assessment and acceptance criteria.
+2. **Bounded implementation:** selected adapters, the rules and review experience, a tested destination and an operating handoff.
+3. **Ongoing operation, if agreed:** monitoring, source refreshes, connector maintenance and evaluated changes.
+
+These are service possibilities, not published packages or existing service-level commitments. Price, data subscriptions, timeline and support scope belong in the particular proposal. Revenue should attach to the delivered implementation and operation, not invented promises of closings or referral earnings.
+
+## Evidence and source roles
+
+| Component | Supported description | Boundary |
 | --- | --- | --- |
-| CRE acquisition principals and brokers | Property facts, ownership records and research notes are spread across sources. | A property brief with sources, criteria and unresolved relationships. |
-| Flex and industrial leasing teams | A business list does not establish fit, occupancy or relocation need. | A business prospect brief with relevant roles and explicit fit questions. |
-| Residential operators | An address, owner record or inquiry needs a consistent review process. | A property-to-owner handoff and a reviewable draft where permitted. |
-| Commercial service sales teams | A company name does not identify the appropriate business contact. | A sourced account brief and relevant roles for review. |
+| BatchData demo | Actual bounded property-search sandbox. | Test records and account warnings do not establish live market coverage. |
+| Apollo and Hunter | Existing company/contact enrichment and business-email discovery adapters. | Their presence does not prove a particular account's access or a completed customer run. Do not claim Hunter email verification without an implemented verifier path. |
+| DealMachine | Property/owner source proposed for workflow integration. | A credential or provider catalog is not an implemented and validated binding. |
+| Residential and B2B packs | Existing engine foundations for research and drafting. | Model qualification, source coverage and client handoffs need evidence for the relevant workflow. |
+| CRE, relationship boards and broader custom outputs | Workflows to design and prove. | The examples do not establish shipped packs, matching accuracy or live CRM synchronization. |
+| Customer records and preferred tools | Inputs and destinations to assess during scoping. | Access, field meaning, permissions and synchronization behavior must be established. |
 
-These are the audiences selected for this showcase, not validated claims of customer demand. Evaluate the direction through qualified inquiries and observed workflow use.
+Use **Sandbox demonstration**, **Illustrative workflow**, **Implemented connector**, **Proposed connection** and **Verified workflow** for their exact meanings. A verified workflow needs evidence for its input, operations, output and limits. Keep fictional examples separate from actual responses.
 
-## Message architecture
+The engine drafts and records; it does not send messages. Broader follow-up and delivery workflows involve separately scoped client systems and review boundaries. Describing an action queue does not claim that action has occurred.
 
-1. **Lead with the work.** Explain the research problem in property and business terms.
-2. **Show the handoff.** Make the output visible: record, relevance, source, unknowns and next step.
-3. **Distinguish the proof.** Label observed sandbox behavior, illustrative examples and proposed implementation separately.
-4. **Explain source roles.** Introduce providers after the visitor understands the workflow.
-5. **Offer a concrete next step.** Invite the visitor to describe the process they want improved.
+## Relationship and claim boundaries
 
-Primary exploration action: **Explore the workflows**.
+A parcel owner, business occupant, employee, buyer, referrer and authorized representative are different relationships. Preserve that distinction. A contact match is not evidence of relocation intent, willingness to sell, representation or permission to share another person's details.
 
-Primary inquiry action: **Plan my outreach workflow**, linked to the existing [Intent Solutions outcome inquiry](https://intentsolutions.io/contact/?door=outcome).
+Do not claim universal access, unique customization, guaranteed leads, accurate valuations or returns, automatic LLC resolution, autonomous closings or a ready-made platform for every scenario. Do not present testimonials, conversion numbers or customer results without supporting evidence.
 
-Inquiry prompts: market, asset or business type, geography, current tools, manual research step and desired result. Do not invent a booking calendar, fixed package, delivery date or price.
+Competitors already provide configurable workflows, relationship follow-up, AI research and source-linked outputs. Our position is a specific implementation service whose work visitors can understand and inspect. [The research](../000-docs/039-RA-ANLY-real-estate-workflow-market.md) supports that choice; it does not establish an exclusive market gap.
 
-## Showcase paths
+## What the page should accomplish
 
-### Research an acquisition target
-
-Start with a property or market. Bring ownership records and available property facts into a brief the acquisitions team can inspect. Keep unresolved ownership links visible before selecting a person to approach.
-
-This is a CRE workflow to scope. The BatchData sandbox proves a bounded request and response, not commercial coverage or a completed acquisition workflow.
-
-### Build a flex or industrial prospect brief
-
-Start with business types that may fit the operator's criteria. Research companies and relevant roles, then present the questions a broker must confirm about space needs and suitability.
-
-Existing B2B research is a foundation. Do not infer occupancy, a lease expiration, a move or a space requirement from a company contact record.
-
-### Prepare a residential owner review
-
-Start with an address or incoming inquiry. Organize the available property and owner information, sources and review steps before preparing a response where permitted.
-
-A residential pack exists in code. That fact alone does not qualify a model, prove a client integration or authorize sending.
-
-### Research commercial service accounts
-
-Start with a company list. Identify relevant business roles and prepare a sourced account brief for the team's review.
-
-Company contact discovery is distinct from finding the person authorized to act for a specific property owner.
-
-## What each provider contributes
-
-| Provider | Role in the story | Claim boundary |
-| --- | --- | --- |
-| BatchData | Property-data sandbox visitors can inspect. | The current demo calls property search; provider catalog features are not all wired into it. Sandbox fixtures do not establish live coverage. |
-| DealMachine | A property research source to qualify for the intended workflow. | An API key or vendor feature list does not establish that an Intent Outreach integration has completed a successful run. |
-| Apollo | Existing company and business-contact connector. | A company role does not establish ownership, occupancy or decision authority over a particular property. |
-| Hunter | Existing domain search and email-finding connector. | Do not claim a separate email-verification step runs unless the actual path demonstrates it. |
-| Customer records | Market criteria, known relationships and operating decisions. | Import, synchronization and CRM delivery require an implemented and tested handoff. |
-
-## Evidence labels
-
-- **Sandbox demonstration:** an actual request with a sandbox credential. Describe the returned result and provider warnings accurately.
-- **Illustrative workflow:** a designed example of an output or process. It must not resemble a completed customer run without a visible label.
-- **Implemented connector:** code exists for the stated operation. Account access, quotas and successful live execution remain separate facts.
-- **Proposed workflow:** work to scope and prove. A narrative or mockup does not promote it to live capability.
-- **Verified workflow:** use only with evidence covering the named input, operations, result and limits.
-
-Keep fictional examples visibly fictional. Keep actual provider results labeled with their real source and mode. Do not mix illustrative fields into a returned record.
-
-## Prohibited claims
-
-Do not claim universal property coverage, automatic LLC resolution, guaranteed contact accuracy, motivated sellers, active relocation intent, lease expiry knowledge, qualified deal flow or financial returns without evidence for the exact claim.
-
-Do not equate a property owner, occupant, business contact and authorized representative. Do not equate an API permission, email result or DNC lookup with permission to contact a person. Do not describe the engine as a sender: it drafts and records.
-
-Do not present proposed commercial packs, account settings, credentials, passing unit tests or a successful provider connection as proof of an end-to-end production workflow. Do not invent customer endorsements, conversion metrics or approved wording.
-
-## Competitive context
-
-The direction is informed by a 2026-10-11 review of primary provider pages. [DealMachine](https://www.dealmachine.com/) describes connected property and owner research. [Apollo](https://www.apollo.io/) describes company data and sales execution. [Hunter](https://hunter.io/) describes contact discovery and email enrichment. [Reonomy](https://www.reonomy.com/) focuses on commercial property and ownership intelligence.
-
-Those offerings mean that broad claims about connecting tools or using AI are not unique. Intent Outreach should earn consideration through specific workflows, visible source relationships, honest unknowns and evidence of the work performed. Provider descriptions establish their positioning, not our integration status.
-
-## Success signal
-
-The showcase should help a visitor identify a relevant workflow, understand what is demonstrated and describe a concrete implementation need. Track workflow exploration, completed demo interactions and qualified inquiries. Pageviews alone do not validate the offer or establish buying intent.
+A visitor should recognize their kind of work, change an example to fit their needs, understand what the output could be and bring a concrete brief to a conversation. Follow configuration choices, completed demo interactions and qualified inquiries. Pageviews alone do not establish product-market fit.
