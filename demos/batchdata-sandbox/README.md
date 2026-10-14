@@ -79,11 +79,11 @@ preserved edits, clipboard behavior, buy-box inclusion/exclusion boundaries,
 unknown and invalid prices, request isolation, safe text rendering and responsive
 layouts at 1440, 768 and 390 pixels. It makes no provider calls.
 
-Run `bash demos/batchdata-sandbox/deploy_public.sh` on the existing Intent Demos workstation after committing and reviewing the demo sources. It installs an immutable revision under `~/.local/lib/intentsolutions/batchdata-demo/releases/`, enables the `intent-batchdata-demo` user service on loopback port 8767, copies only `/batchdata/index.html`, and adds one scoped reverse-proxy handler to the existing Caddy demo host. The script validates Caddy before replacing its configuration, saves a timestamped prior configuration, and preserves every other demo directory and host route. It requires the existing SOPS sandbox field and noninteractive sudo for Caddy operations.
+Run `bash demos/batchdata-sandbox/deploy_public.sh` on the existing Intent Demos workstation after committing and reviewing the demo sources. It installs an immutable revision under `~/.local/lib/intentsolutions/batchdata-demo/releases/`, enables the `intent-batchdata-demo` user service on loopback port 8767, copies only `/intentoutreach/index.html`, and adds one scoped reverse-proxy handler to the existing Caddy demo host. The script validates Caddy before replacing its configuration, saves a timestamped prior configuration, and preserves every other demo directory and host route. It requires the existing SOPS sandbox field and noninteractive sudo for Caddy operations.
 
-The public route is https://demos.intentsolutions.io/batchdata/. The key is decrypted into service memory. Same-origin POSTs are required, property search remains limited to five records, and a private SQLite admission counter caps all visitors together at 40 upstream requests per UTC day, including failures and across service restarts. Successful responses are cached in memory for ten minutes for identical requests, with explicit cached-response labels. No model calls or provider responses are persisted; SQLite stores only dates and request counts. Other origins, redirects, arbitrary destinations and extra API routes are refused.
+The public route is https://demos.intentsolutions.io/intentoutreach/. The key is decrypted into service memory. Same-origin POSTs are required, property search remains limited to five records, and a private SQLite admission counter caps all visitors together at 40 upstream requests per UTC day, including failures and across service restarts. Successful responses are cached in memory for ten minutes for identical requests, with explicit cached-response labels. No model calls or provider responses are persisted; SQLite stores only dates and request counts. Other origins, redirects, arbitrary destinations and extra API routes are refused.
 
-Verify `systemctl --user status intent-batchdata-demo`, the public `/batchdata/api/status` route and an actual browser search. For rollback, stop the new service and restore the saved `Caddyfile.before-batchdata-*` after validation, or repoint the private `current` symlink to the prior reviewed release and restart the service. Never delete the admission counter to bypass the quota. User services require the host's existing user-manager startup/linger configuration to run after reboot.
+Verify `systemctl --user status intent-batchdata-demo`, the public `/intentoutreach/api/status` route and an actual browser search. For rollback, stop the new service and restore the saved `Caddyfile.before-batchdata-*` after validation, or repoint the private `current` symlink to the prior reviewed release and restart the service. Never delete the admission counter to bypass the quota. User services require the host's existing user-manager startup/linger configuration to run after reboot.
 
 ## MCP alternatives assessed
 
@@ -95,7 +95,7 @@ The official [MIT-licensed MCP demo app](https://github.com/batchdataco/batchdat
 ## Workflow inquiry capture
 
 The browser posts JSON to the same-origin `/api/forms/contact`, outside the
-`/batchdata/` sandbox proxy. Existing demo-host Caddy forwards this route to
+`/intentoutreach/` sandbox proxy. Existing demo-host Caddy forwards this route to
 `intentsolutions.io`, whose VPS `forms-api.service` delivers to private Buzz `leads`.
 There is no separate demo-domain channel configured. The message includes the
 canonical showcase URL and the exact edited brief; `interest=consulting` and
@@ -122,3 +122,16 @@ edited-brief/source transfer, success, server/rate-limit/malformed-response fail
 retained text, repeated-click protection and multibyte request size at three widths.
 One clearly labeled production test should be verified against the private Buzz
 channel, not solely HTTP 200. Never put customer payloads or relay keys in Git.
+
+
+## Product name and discovery
+
+The public product is **Intent Outreach**, at `/intentoutreach/`. BatchData is one
+provider inside that experience, not its product name. `/batchdata` and `/batchdata/`
+redirect permanently to the product route. The legacy `/batchdata/api/*` proxy is
+retained for already-open browser sessions. `/intent-outreach/` remains a secondary
+technical-background page, not a second catalog product.
+
+Keep discovery simple: company homepage → featured Intent Outreach or all demos →
+one product entry → try a relevant workflow → send the reviewed brief. The catalog
+is a curated selection, not an inventory of every deployed folder in the estate.

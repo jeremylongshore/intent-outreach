@@ -52,9 +52,9 @@ done
 curl --silent --fail http://127.0.0.1:8767/api/status | python3 -c 'import sys,json; assert json.load(sys.stdin)["ready"]'
 
 # Only this new static route is copied; the rest of the demo host is preserved.
-mkdir -p "$HOME/demos/batchdata"
-chmod 755 "$HOME/demos/batchdata"
-install -m 644 "$demo_source/index.html" "$HOME/demos/batchdata/index.html"
+mkdir -p "$HOME/demos/intentoutreach"
+chmod 755 "$HOME/demos/intentoutreach"
+install -m 644 "$demo_source/index.html" "$HOME/demos/intentoutreach/index.html"
 
 candidate="$(mktemp)"
 trap 'rm -f "$candidate"' EXIT
@@ -64,7 +64,7 @@ import sys
 path = Path('/etc/caddy/Caddyfile')
 text = path.read_text()
 marker = '    # BEGIN Intent BatchData sandbox demo\n'
-block = '''    # BEGIN Intent BatchData sandbox demo
+legacy_block = '''    # BEGIN Intent BatchData sandbox demo
     redir /batchdata /batchdata/ 308
     handle_path /batchdata/* {
         reverse_proxy 127.0.0.1:8767 {
@@ -74,11 +74,24 @@ block = '''    # BEGIN Intent BatchData sandbox demo
     # END Intent BatchData sandbox demo
 
 '''
+block = legacy_block.replace(
+    '    redir /batchdata /batchdata/ 308\n',
+    '    redir /intentoutreach /intentoutreach/ 308\n'
+    '    redir /batchdata /intentoutreach/ 308\n'
+    '    redir /batchdata/ /intentoutreach/ 308\n'
+    '    handle_path /intentoutreach/* {\n'
+    '        reverse_proxy 127.0.0.1:8767 {\n'
+    '            header_up Host 127.0.0.1:8767\n'
+    '        }\n'
+    '    }\n'
+)
 anchor = '    # Contact/lead forms on demo pages ping Slack the same way the main site does:\n'
 if marker not in text:
     if text.count(anchor) != 1:
         raise SystemExit('Expected Caddy insertion point missing or ambiguous; no configuration changed.')
     text = text.replace(anchor, block + anchor, 1)
+elif legacy_block in text:
+    text = text.replace(legacy_block, block, 1)
 elif block not in text:
     raise SystemExit('Existing BatchData route differs; reconcile before deployment.')
 Path(sys.argv[1]).write_text(text)
@@ -89,4 +102,4 @@ if ! cmp -s "$candidate" /etc/caddy/Caddyfile; then
   sudo -n install -m 644 "$candidate" /etc/caddy/Caddyfile
   sudo -n systemctl reload caddy
 fi
-echo "Published https://demos.intentsolutions.io/batchdata/ from $revision"
+echo "Published https://demos.intentsolutions.io/intentoutreach/ from $revision"

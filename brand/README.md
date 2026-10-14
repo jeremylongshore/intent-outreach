@@ -17,6 +17,17 @@ These expand the offer beyond the initial four CRE research examples.
 
 These are brand deliverables, not task lists or agent memory. Project work and follow-up remain in Beads. Do not move project positioning into global skills or rely on a global skill as the source of product truth.
 
+## Public name and visitor path
+
+Use **Intent Outreach** as the display name and
+[**/intentoutreach/**](https://demos.intentsolutions.io/intentoutreach/) as the
+canonical product URL. Provider names belong inside capability descriptions.
+The company homepage features the product; the demo catalog carries one primary
+entry, with technical background as a secondary link.
+
+Keep the visitor path simple: understand the job, try an example, send a useful
+brief. Use familiar navigation labels and one main destination per product.
+
 ## Relationship to Intent Solutions
 
 Intent Outreach has its own practical voice for property research, business contacts and outreach preparation. Intent Solutions is the company that builds and operates the work. The product inherits the company's commitment to specific outcomes, inspectable evidence and clear operating responsibility. It does not inherit a generic company homepage pitch as its product explanation.
