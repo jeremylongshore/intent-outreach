@@ -97,7 +97,7 @@ def main():
                 expect(page.locator('#inquiryStatus')).to_contain_text('could not confirm receipt')
                 expect(page.locator('#inquiryBrief')).to_have_value('My edited scope <script>alert(1)</script>')
                 assert captured[-1]['message'].endswith('My edited scope <script>alert(1)</script>')
-                assert 'https://demos.intentsolutions.io/batchdata/' in captured[-1]['message']
+                assert 'https://demos.intentsolutions.io/intentoutreach/' in captured[-1]['message']
                 assert captured[-1]['projectType'] == 'workflow-automation'
                 assert captured[-1]['website'] == ''
                 mode.update(status=429, body='{"error":"rate limit"}')

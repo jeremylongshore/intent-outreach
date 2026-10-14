@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="canonical" href="https://demos.intentsolutions.io/batchdata/">
+<link rel="canonical" href="https://demos.intentsolutions.io/intentoutreach/">
 <meta name="description" content="Custom research and prospecting workflows for local agents, metro teams, investors, deal prospectors and relationship builders. Shape a sample workflow and try a fictional buy-box filter.">
 <meta name="theme-color" content="#153f57">
 <meta property="og:title" content="Intent Outreach · Your market. Your criteria. Your way of working.">
@@ -127,7 +127,7 @@ el('inquiryForm').addEventListener('submit',async event=>{
   const status=el('inquiryStatus'),button=el('contactCta');
   const name=el('inquiryName').value.trim(),email=el('inquiryEmail').value.trim(),brief=el('inquiryBrief').value.trim();
   if(!name||brief.length<10){status.textContent='Add your name and at least 10 characters about your workflow.';status.focus();return;}
-  const payload={name,email,company:el('inquiryCompany').value.trim(),interest:'consulting',projectType:'workflow-automation',message:'Intent Outreach workflow inquiry\nSource: https://demos.intentsolutions.io/batchdata/\n\n'+brief,website:el('inquiryWebsite').value};
+  const payload={name,email,company:el('inquiryCompany').value.trim(),interest:'consulting',projectType:'workflow-automation',message:'Intent Outreach workflow inquiry\nSource: https://demos.intentsolutions.io/intentoutreach/\n\n'+brief,website:el('inquiryWebsite').value};
   const serialized=JSON.stringify(payload);
   if(new TextEncoder().encode(serialized).length>8000){status.textContent='Your brief is too long to send. Shorten it or copy it and email us.';status.focus();return;}
   if(serialized===lastSubmittedInquiry){status.textContent='This brief has already been received. We will use the email you provided to respond about your project.';status.focus();return;}
