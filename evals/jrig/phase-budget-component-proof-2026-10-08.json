@@ -1,0 +1,377 @@
+{
+  "schema": "intent-outreach-phase-budget-proof/v1",
+  "scope": "scripted_actual_cli_and_nested_phase_budget_binding_only",
+  "behavioralVerdict": null,
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "paidModelCalls": 0,
+  "vendorNetworkCalls": 0,
+  "messagesSent": 0,
+  "realCaseRootTimeoutMs": 300000,
+  "defaultPhaseTimeoutMs": 60000,
+  "selectedPhaseTimeoutMs": 120000,
+  "runs": [
+    {
+      "phaseBudget": "default",
+      "kind": "binding",
+      "receiptSha256": "f8059c1932b33284741d01e07117f4aa6bbce39cd1a5e64762c62e093cfb2619",
+      "receipt": {
+        "schema": "intent-outreach-jrig-binding-proof/v1",
+        "observedAt": "2026-10-08T03:08:56.862Z",
+        "scope": "scripted_loopback_real_cli_and_nested_bundle",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "paidModelCalls": 0,
+        "vendorNetworkCalls": 0,
+        "messagesSent": 0,
+        "rootRequests": 8,
+        "nestedRequests": 4,
+        "bindings": [
+          {
+            "phase": "skill",
+            "sessionId": "d42affcc-3bb6-489f-b13c-29b2ce1e94ad",
+            "receiptSha256": "sha256:d5c523d008fba82c66ae09340ad68af1487a4fa6c1a0e6967ca2235365d7d1ac",
+            "traceSha256": "b3cd6de3674111cbdb7f4c0064d37eaec11d606cbb7c74d1c9dabf33462e9cbf",
+            "nestedUsage": {
+              "inputTokens": 22,
+              "outputTokens": 10
+            },
+            "audit": {
+              "caseId": "build-lead-list",
+              "scope": "structural_host_and_store_assertions_only",
+              "behavioralVerdict": null,
+              "tier3bPassed": false,
+              "passed": true,
+              "failures": [],
+              "incomplete": [],
+              "traceSha256": "b3cd6de3674111cbdb7f4c0064d37eaec11d606cbb7c74d1c9dabf33462e9cbf",
+              "storedRuns": 0
+            },
+            "passed": true,
+            "judgeContext": {
+              "test_case_id": "build-lead-list",
+              "session_id": "d42affcc-3bb6-489f-b13c-29b2ce1e94ad",
+              "sha256": "sha256:2586205ae7f7b0f4d6340281dc508c6cd88eaec4750fa38086f6fe0c5b78e0a7",
+              "size_bytes": 5707
+            }
+          },
+          {
+            "phase": "baseline",
+            "sessionId": "e9b9b513-6683-4ad8-8241-818ca376eb13",
+            "receiptSha256": "sha256:d8c77dfd7fb3d7ac080eff55322c3b52076d6c1035d6b16a1e03942d9f763f97",
+            "traceSha256": "654c60ad9277db7935900026ae9d042ac731ccd6a2f6eca46e5b07de913d5b04",
+            "nestedUsage": {
+              "inputTokens": 22,
+              "outputTokens": 10
+            },
+            "audit": {
+              "caseId": "build-lead-list",
+              "scope": "structural_host_and_store_assertions_only",
+              "behavioralVerdict": null,
+              "tier3bPassed": false,
+              "passed": true,
+              "failures": [],
+              "incomplete": [],
+              "traceSha256": "654c60ad9277db7935900026ae9d042ac731ccd6a2f6eca46e5b07de913d5b04",
+              "storedRuns": 0
+            },
+            "passed": true,
+            "judgeContext": {
+              "test_case_id": "build-lead-list",
+              "session_id": "e9b9b513-6683-4ad8-8241-818ca376eb13",
+              "sha256": "sha256:f684a04a1d73f510eb7290f1a0aaac2170ef0a4ffc0044c448f9bcebc955c18b",
+              "size_bytes": 5707
+            }
+          }
+        ],
+        "sha256": {
+          "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+          "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+          "evals/jrig/bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+          "evals/jrig/binding-proof.ts": "db4c7f9d770fea56c1fb122c235bd1c181947ab77e405a9d12be566e5ee14e2c",
+          "evals/jrig/scenario-host.ts": "6ee0e6481c507d261bda8c875e43a3c3a8907d33131b3986317271748a9d9c92",
+          "evals/jrig/agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+          "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+          "evals/jrig/audit-scenario.ts": "19defe777d7289406ef5f91db7029beb31a4cab57fedbd99f067fa0a46e2ecd5",
+          "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69",
+          "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+        }
+      }
+    },
+    {
+      "phaseBudget": "default",
+      "kind": "case",
+      "receiptSha256": "35c823fd108274e1bc05a8d3f91c9339db37153240dd6e7040705aa6718ce959",
+      "receipt": {
+        "schema": "intent-outreach-case-runner-proof/v1",
+        "scope": "scripted_actual_cli_case_runner_only",
+        "observedAt": "2026-10-08T03:09:59.948Z",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "paidModelCalls": 0,
+        "vendorNetworkCalls": 0,
+        "messagesSent": 0,
+        "verified": {
+          "rootTimeoutPreserved": true,
+          "phaseTimeoutBound": true,
+          "differentPhaseBudgetCannotSeedRegression": true,
+          "judgeObservationsPrivateAndPortableBinding": true,
+          "toolFreeJudgesReceiveUntrustedObservedData": true,
+          "triggerCasesDigestMetricsAndBundle": true,
+          "originalCriteriaRetained": true,
+          "explicitJudgeModel": true,
+          "threeSamples": true,
+          "distinctSkillBaselineAndRepeat": true,
+          "realRegressionEnabled": true,
+          "malformedExecutionHasNoVerdict": true,
+          "partialReceiptsRetained": true,
+          "cancellationStopsOwnedGroup": true,
+          "temporaryFixturesRemoved": true
+        },
+        "counts": {
+          "trigger": 4,
+          "execution": 7,
+          "judge": 36
+        },
+        "results": [
+          {
+            "caseResult": "pass",
+            "processResult": {
+              "pid": 1938486,
+              "code": 0,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": null
+          },
+          {
+            "caseResult": "pass",
+            "processResult": {
+              "pid": 1940931,
+              "code": 0,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": "55a350b55b2dad0522834af9dfd35022d1f57d6162a062b38ce1f0112d7a0945"
+          },
+          {
+            "caseResult": "incomplete",
+            "processResult": {
+              "pid": 1942342,
+              "code": 2,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": null
+          },
+          {
+            "caseResult": "incomplete",
+            "processResult": {
+              "pid": 1943563,
+              "code": null,
+              "signal": "SIGTERM",
+              "timedOut": false,
+              "cancelled": true
+            },
+            "priorReceiptSha256": null
+          }
+        ],
+        "sha256": {
+          "run-case.ts": "d25a95ef96ea80e8ef25dc70c27cc6ec2ffde8a14916b45221535c024add6e8e",
+          "case-runner-proof.ts": "4c98b42884e86137e89350dc0769d97f34de473d15eaab71201fd45d6afbbd97",
+          "bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+          "agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+          "scenario-host.ts": "6ee0e6481c507d261bda8c875e43a3c3a8907d33131b3986317271748a9d9c92",
+          "inputSpec": "64e39e67cde64ece9e5d468809481af2cb6be06610d3d4f89f36a86a1aa426b9",
+          "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+        }
+      }
+    },
+    {
+      "phaseBudget": "120",
+      "kind": "binding",
+      "receiptSha256": "5e8dfc12c47ba58f9d3da5c6732782cc10fe1bd33c562fc62672a988b18de107",
+      "receipt": {
+        "schema": "intent-outreach-jrig-binding-proof/v1",
+        "observedAt": "2026-10-08T03:09:25.935Z",
+        "scope": "scripted_loopback_real_cli_and_nested_bundle",
+        "phaseTimeoutMs": 120000,
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "paidModelCalls": 0,
+        "vendorNetworkCalls": 0,
+        "messagesSent": 0,
+        "rootRequests": 8,
+        "nestedRequests": 4,
+        "bindings": [
+          {
+            "phase": "skill",
+            "sessionId": "daa4943b-4af8-4de2-9fbe-0c89444cdb2b",
+            "receiptSha256": "sha256:6c3965d335eff96c7eb9fa6d7b7c85ef59be5679aa8b2362477aa1c562f0f63b",
+            "traceSha256": "00a0a31148de84386ac2b53fd6fd1fc31f97002a267d0cede34ba4ae4e60012e",
+            "nestedUsage": {
+              "inputTokens": 22,
+              "outputTokens": 10
+            },
+            "audit": {
+              "caseId": "build-lead-list",
+              "scope": "structural_host_and_store_assertions_only",
+              "behavioralVerdict": null,
+              "tier3bPassed": false,
+              "passed": true,
+              "failures": [],
+              "incomplete": [],
+              "traceSha256": "00a0a31148de84386ac2b53fd6fd1fc31f97002a267d0cede34ba4ae4e60012e",
+              "storedRuns": 0
+            },
+            "passed": true,
+            "judgeContext": {
+              "test_case_id": "build-lead-list",
+              "session_id": "daa4943b-4af8-4de2-9fbe-0c89444cdb2b",
+              "sha256": "sha256:50c87d83cbf16ed53e10c13cba1fbfa7fb8482e1e8286272aa5b1ff5f6c7a68e",
+              "size_bytes": 5707
+            },
+            "phaseTimeoutMs": 120000
+          },
+          {
+            "phase": "baseline",
+            "sessionId": "39e16e31-f51a-4906-b490-42e5cfdd1ed7",
+            "receiptSha256": "sha256:e5895d1fde557cba92f23b17781de5138b9a0faf7d388ec5aa50609f2c9a0a50",
+            "traceSha256": "cfcd5f98a2a779aa023f3342be87500a82231ea1254fced32e529e5ae0fa6bab",
+            "nestedUsage": {
+              "inputTokens": 22,
+              "outputTokens": 10
+            },
+            "audit": {
+              "caseId": "build-lead-list",
+              "scope": "structural_host_and_store_assertions_only",
+              "behavioralVerdict": null,
+              "tier3bPassed": false,
+              "passed": true,
+              "failures": [],
+              "incomplete": [],
+              "traceSha256": "cfcd5f98a2a779aa023f3342be87500a82231ea1254fced32e529e5ae0fa6bab",
+              "storedRuns": 0
+            },
+            "passed": true,
+            "judgeContext": {
+              "test_case_id": "build-lead-list",
+              "session_id": "39e16e31-f51a-4906-b490-42e5cfdd1ed7",
+              "sha256": "sha256:941825b76c214f5cd4b25c503f2b05ad3b4dab0dcb11919d74da30ec5c837cd8",
+              "size_bytes": 5707
+            },
+            "phaseTimeoutMs": 120000
+          }
+        ],
+        "sha256": {
+          "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+          "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+          "evals/jrig/bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+          "evals/jrig/binding-proof.ts": "db4c7f9d770fea56c1fb122c235bd1c181947ab77e405a9d12be566e5ee14e2c",
+          "evals/jrig/scenario-host.ts": "6ee0e6481c507d261bda8c875e43a3c3a8907d33131b3986317271748a9d9c92",
+          "evals/jrig/agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+          "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+          "evals/jrig/audit-scenario.ts": "19defe777d7289406ef5f91db7029beb31a4cab57fedbd99f067fa0a46e2ecd5",
+          "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69",
+          "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+        }
+      }
+    },
+    {
+      "phaseBudget": "120",
+      "kind": "case",
+      "receiptSha256": "6c64440ace0183adb955204f4acc7bc822fefbaba6f8c27e88f7b524d5ce76e0",
+      "receipt": {
+        "schema": "intent-outreach-case-runner-proof/v1",
+        "scope": "scripted_actual_cli_case_runner_only",
+        "observedAt": "2026-10-08T03:11:11.623Z",
+        "phaseTimeoutMs": 120000,
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "paidModelCalls": 0,
+        "vendorNetworkCalls": 0,
+        "messagesSent": 0,
+        "verified": {
+          "rootTimeoutPreserved": true,
+          "phaseTimeoutBound": true,
+          "differentPhaseBudgetCannotSeedRegression": true,
+          "judgeObservationsPrivateAndPortableBinding": true,
+          "toolFreeJudgesReceiveUntrustedObservedData": true,
+          "triggerCasesDigestMetricsAndBundle": true,
+          "originalCriteriaRetained": true,
+          "explicitJudgeModel": true,
+          "threeSamples": true,
+          "distinctSkillBaselineAndRepeat": true,
+          "realRegressionEnabled": true,
+          "malformedExecutionHasNoVerdict": true,
+          "partialReceiptsRetained": true,
+          "cancellationStopsOwnedGroup": true,
+          "temporaryFixturesRemoved": true
+        },
+        "counts": {
+          "trigger": 4,
+          "execution": 7,
+          "judge": 36
+        },
+        "results": [
+          {
+            "caseResult": "pass",
+            "processResult": {
+              "pid": 1944614,
+              "code": 0,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": null
+          },
+          {
+            "caseResult": "pass",
+            "processResult": {
+              "pid": 1947675,
+              "code": 0,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": "bd00f8b1c5b2d8d15a608a923d14196f3ce3de20a3a6d7abc7093fef261e0869"
+          },
+          {
+            "caseResult": "incomplete",
+            "processResult": {
+              "pid": 1949423,
+              "code": 2,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": null
+          },
+          {
+            "caseResult": "incomplete",
+            "processResult": {
+              "pid": 1950462,
+              "code": null,
+              "signal": "SIGTERM",
+              "timedOut": false,
+              "cancelled": true
+            },
+            "priorReceiptSha256": null
+          }
+        ],
+        "sha256": {
+          "run-case.ts": "d25a95ef96ea80e8ef25dc70c27cc6ec2ffde8a14916b45221535c024add6e8e",
+          "case-runner-proof.ts": "4c98b42884e86137e89350dc0769d97f34de473d15eaab71201fd45d6afbbd97",
+          "bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+          "agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+          "scenario-host.ts": "6ee0e6481c507d261bda8c875e43a3c3a8907d33131b3986317271748a9d9c92",
+          "inputSpec": "64e39e67cde64ece9e5d468809481af2cb6be06610d3d4f89f36a86a1aa426b9",
+          "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+        }
+      }
+    }
+  ]
+}

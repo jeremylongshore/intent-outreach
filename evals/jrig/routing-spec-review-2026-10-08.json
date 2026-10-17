@@ -1,0 +1,17 @@
+{
+  "schema": "intent-outreach-routing-spec-review/v1",
+  "tier3bPassed": false,
+  "beforeSpecSha256": "64e39e67cde64ece9e5d468809481af2cb6be06610d3d4f89f36a86a1aa426b9",
+  "afterSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+  "jrigCliSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+  "yamlParserSha256": "2d58984e0ae80de4acbd8f009fab332f5ce77d9e1a5f138a3058a0ada6567fb9",
+  "originalCases": 10,
+  "originalCriteria": 7,
+  "change": {
+    "caseId": "adversarial-injection",
+    "field": "trigger_expectation",
+    "value": "should_not_trigger"
+  },
+  "parsedSpecOtherwiseIdentical": true,
+  "allRoutingExpectationsExplicit": true
+}

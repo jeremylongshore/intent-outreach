@@ -1,0 +1,29 @@
+{
+  "schema": "intent-outreach-parser-diagnostic/v1",
+  "originalCaseResult": "incomplete",
+  "originalReceiptUnchanged": true,
+  "originalReceiptSha256": "02ff6e7eab685c1b8375e5b410b2288140dcde6f0cffc1ad322eb7d44edef86e",
+  "originalTraceUnchanged": true,
+  "traceSha256": "60ce695f35154b947c2cd5c80d550488a67760aa79e9627d4f08e9720bc87311",
+  "budgetSidecarUnchanged": true,
+  "parserSourceSha256": "56748e00395950ec8d1e288353b4bce35d38b93d7c8acb0486a97b678b97fa27",
+  "rawDrafterOutputSha256": "2ff116d8486423a6ff451cb9a196ff885e0d0f74156f3c6bfa3570297436bd19",
+  "scope": "read_only_structural_diagnostic_not_qualification",
+  "correctedAudit": {
+    "caseId": "prospect-and-draft",
+    "scope": "structural_host_and_store_assertions_only",
+    "behavioralVerdict": null,
+    "tier3bPassed": false,
+    "passed": false,
+    "failures": [
+      "saved_draft_not_shown_exactly",
+      "saved_message_count_mismatch"
+    ],
+    "incomplete": [],
+    "traceSha256": "60ce695f35154b947c2cd5c80d550488a67760aa79e9627d4f08e9720bc87311",
+    "storedRuns": 1
+  },
+  "originalVerdictUpgraded": false,
+  "providerCalls": 0,
+  "sends": 0
+}
