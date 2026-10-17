@@ -94,6 +94,21 @@ The official [MIT-licensed MCP demo app](https://github.com/batchdataco/batchdat
 
 ## Workflow inquiry capture
 
+The page uses the existing Demos Umami property for pageviews and the aggregate
+`outreach_inquiry` event. Its only custom property is `stage`, with fixed values
+`started`, `submitted`, `accepted`, or `failed`. No brief, name, email, market,
+provider record or free-text value is sent in event properties. Analytics failure
+does not block the form. CSP allows only the existing analytics host in addition
+to the prior same-origin connections. Browser tests intercept the collector and
+form endpoint, including CSP loading and failure/retry cases.
+
+`accepted` is the contact API acknowledgement, not confirmed Buzz delivery.
+Browser timeouts remain unconfirmed; do not count them as server rejections.
+Use private forms-service delivery logs and the existing failure spool to audit
+Buzz receipt separately. Historical visits cannot be backfilled from these new
+events, and the separate company/Demos properties do not identify one visitor
+across both sites.
+
 The browser posts JSON to the same-origin `/api/forms/contact`, outside the
 `/intentoutreach/` sandbox proxy. Existing demo-host Caddy forwards this route to
 `intentsolutions.io`, whose VPS `forms-api.service` delivers to private Buzz `leads`.

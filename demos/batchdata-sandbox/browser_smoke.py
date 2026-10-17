@@ -30,11 +30,15 @@ def main():
                     viewport={'width': width, 'height': 1000},
                     permissions=['clipboard-read', 'clipboard-write'],
                 )
+                # Never send test traffic to the production analytics collector.
+                context.route('https://analytics.intentsolutions.io/**', lambda route: route.fulfill(status=200, content_type='application/javascript', body='window.analyticsRuntimeLoaded=true;'))
+                context.add_init_script('window.measured=[]; window.umami={track:(name,data)=>window.measured.push({name,data})};')
                 page = context.new_page()
                 errors, requests = [], []
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.on('request', lambda request: requests.append(request.url))
                 page.goto(base, wait_until='networkidle')
+                assert page.evaluate('window.analyticsRuntimeLoaded === true'), 'CSP blocked analytics script'
                 page.locator('#marketInput').fill('Example market <img src=x onerror=alert(1)>')
                 page.locator('#criteriaInput').fill('My own criteria')
                 page.locator('#customWorkflow').fill('Weekly client packs from my approved records')
@@ -78,7 +82,7 @@ def main():
 
                 page.locator('#preview').click()
                 expect(page.locator('#request')).to_contain_text('POST https://api.batchdata.com')
-                assert all(url.startswith(base) for url in requests), requests
+                assert all(url.startswith(base) or url.startswith('https://analytics.intentsolutions.io/') for url in requests), requests
                 assert not any('/api/search' in url for url in requests)
                 # Capture is explicit, preserves edits, and never claims success on an error.
                 captured = []
@@ -109,6 +113,13 @@ def main():
                 mode.update(status=200, body='{"status":"ok"}')
                 page.locator('#contactCta').click()
                 expect(page.locator('#inquiryStatus')).to_contain_text('has been received')
+                events = page.evaluate('window.measured')
+                assert events == [
+                    {'name': 'outreach_inquiry', 'data': {'stage': stage}}
+                    for stage in ('started','submitted','failed','submitted','failed','submitted','failed','submitted','accepted')
+                ], events
+                # Analytics failure must not break intake or expose form data.
+                page.evaluate('() => {window.umami.track=()=>{throw new Error("blocked")};}')
                 sent_count = len(captured)
                 page.locator('#contactCta').click()
                 expect(page.locator('#inquiryStatus')).to_contain_text('already been received')
@@ -118,6 +129,10 @@ def main():
                 page.locator('#contactCta').click()
                 expect(page.locator('#inquiryStatus')).to_contain_text('too long')
                 assert len(captured) == sent_count
+                page.locator('#inquiryBrief').fill('Another valid brief while analytics is blocked')
+                page.locator('#contactCta').click()
+                expect(page.locator('#inquiryStatus')).to_contain_text('has been received')
+                assert len(captured) == sent_count + 1
                 for path in ('mandy-design-audition/', 'scott-porter-automation/'):
                     assert page.locator(f'a[href$="/{path}"]').count() > 0
                 page.locator('#personaSelect').focus()
