@@ -122,7 +122,7 @@ def make_handler(key, sandbox_confirmed, transport=None, public_origin=None, bud
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Cache-Control', 'no-store')
-            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
+            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'unsafe-inline' https://analytics.intentsolutions.io; style-src 'unsafe-inline'; connect-src 'self' https://analytics.intentsolutions.io; img-src 'self' data:; frame-ancestors 'none'")
             self.end_headers()
             self.wfile.write(PAGE.read_bytes())
 
