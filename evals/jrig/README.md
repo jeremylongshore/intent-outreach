@@ -676,3 +676,18 @@ client on loopback. The fixture refuses unauthenticated root probes with 404
 before recording model traffic. Authenticated wrong-route requests and all model
 POST requests retain their route/auth assertions; a probe cannot produce a
 completion or pass a workflow. Requester process identity remains unproven.
+
+`draft-review-cohort-review-2026-10-20.json` preserves two real trials after
+production PR152. M3 declined on missing firmographics and attempted an empty
+save. M3.1 Flash Preview with medium reasoning saved a reviewed draft, but its
+handoff promoted the ICP to company evidence, invented an offer, and returned
+prose outside the required JSON object. Both original receipts are incomplete;
+favorable judge votes do not override these findings. Neither is a regression
+seed. Production corrections are tracked by io-k3l.5 and require fresh runs.
+
+The owner authorized MiniMax evaluation spending without a total cap on
+2026-10-19. Per-run time, turn, and call limits and complete usage accounting still
+apply. The M3-only proxy remains an optional $0.50 per-run transport; explicitly
+configured MiniMax M3.1 trials use `run-case.ts` directly. This authorization does
+not approve other providers, production models, sending, or weaker evaluation
+gates.
