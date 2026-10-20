@@ -80,9 +80,12 @@ sender's role.
 
 ## Procedure
 
-1. **Score fit** 0–100 against the ICP using only the lead + enrichment data; give a one-sentence reason.
-2. **Pick angles** — up to 3 specific, grounded talking points tied to concrete signals.
-3. **Draft** one message per target contact:
+1. **Read the canonical prompt.** Your first action in every invocation must be a `Read` tool call
+   with `file_path: "prompts/outreach.v3.md"`. Wait for its successful result. The no-offer fallback
+   and familiar wording do not exempt this step; do not score or return a draft from memory.
+2. **Score fit** 0–100 against the ICP using only the lead + enrichment data; give a one-sentence reason.
+3. **Pick angles** — up to 3 specific, grounded talking points tied to concrete signals.
+4. **Draft** one message per target contact:
    - Short — email body ≤ ~90 words, LinkedIn ≤ ~60. One idea, one ask.
    - Open on a specific grounded angle, not a generic compliment. Plain language; no "hope this finds
      you well"; no emoji unless asked. Email needs a ≤7-word subject; LinkedIn has none.
