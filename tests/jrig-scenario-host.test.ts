@@ -202,6 +202,29 @@ describe("scenario MCP host", () => {
       await rm(evidence, { recursive: true, force: true });
     }
   });
+  it("advertises no active profile while retaining profile rejection and no-verdict evidence", async () => {
+    const evidence = await mkdtemp(join(tmpdir(), "outreach-inactive-profile-"));
+    const fixture = await loopback(() => { throw new Error("no model call expected"); });
+    const host = await start(evidence, fixture.baseUrl, "prospect-and-draft", scenarios["prospect-and-draft"]!.checkpoints);
+    try {
+      const listed = (await host.client.listTools()).tools;
+      expect(listed.find((tool) => tool.name === "save_run")?.description).toContain("No Report Profile is configured for this session");
+      const result = await host.call("save_run", { id: "inactive-profile", icp: "Developer tools", domains: ["example.test"],
+        provider: "scripted-loopback", model: "fixture-model", profile: "tech-founder-cold-outreach",
+        leads: [], contacts: [], enrichments: [], messages: [] });
+      expect((result as { isError?: boolean }).isError).toBe(true);
+      await host.client.close();
+      const audit = await auditScenario(host.home);
+      expect(audit).toMatchObject({ passed: false, storedRuns: 0, behavioralVerdict: null, tier3bPassed: false });
+      expect(audit.incomplete).toContain("host_call_failed");
+      expect(audit.incomplete).toContain("bundled_tool_error");
+      expect(fixture.requests).toHaveLength(0);
+    } finally {
+      await host.client.close();
+      await fixture.close();
+      await rm(evidence, { recursive: true, force: true });
+    }
+  });
   it("runs real nested bundle tools, authored checkpoints and reviewed Read with fresh store isolation", async () => {
     const fixture = await loopback((body) => {
       expect(body.model).toBe("fixture-model");

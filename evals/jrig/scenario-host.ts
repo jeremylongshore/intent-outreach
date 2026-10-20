@@ -95,9 +95,9 @@ export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
       ...rootTools.map((name) => {
         const tool = listed.find((candidate) => candidate.name === name);
         assert(tool, "missing root tool");
-        // Runtime attribution is host context, not a fact the model can infer
-        // from its API-visible messages. Supply it equally to skill/baseline.
-        const identity = name === "save_run" ? ` Current execution identity: provider=${JSON.stringify(config.provider)}, model=${JSON.stringify(config.model)}. Record this identity in provider/model.` : "";
+        // Runtime identity and active configuration are host context, not facts
+        // to infer from starter examples. Supply them equally to skill/baseline.
+        const identity = name === "save_run" ? ` Current execution identity: provider=${JSON.stringify(config.provider)}, model=${JSON.stringify(config.model)}. Record this identity in provider/model. No Report Profile is configured for this session; leave the optional profile field unset. Starter profiles listed in references are examples, not an active configuration.` : "";
         return { ...tool, description: (tool.description ?? "") + identity };
       }),
     ];

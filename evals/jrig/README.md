@@ -722,3 +722,13 @@ separates the canonical writing persona from verified sender facts, requires
 neutral no-offer subjects and factual angles, and reiterates lead selection.
 The original scope pass remains valid only for its bound source and profile;
 none of these receipts can seed regression on the revised source.
+
+The scenario's shared `save_run` description now states that no Report Profile is
+active, alongside the existing execution identity. Starter names in the reviewed
+profile reference are examples, not a configured session profile. This environment
+fact is identical for skill and naked baseline; it supplies no workflow decisions.
+The host still rejects every supplied `profile`, records the failed call, preserves
+no-verdict evidence, and writes nothing. An integration test verifies that behavior.
+`profile-context-binding-proof-2026-10-20.json` binds the updated host to the actual
+CLI regression, failure and cancellation component checks. Earlier receipts remain
+unchanged, and the changed host hash requires a fresh behavioral cohort.
