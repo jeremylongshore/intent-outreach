@@ -1,96 +1,58 @@
-# Agent Instructions
+# Repository Guidelines
 
-This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
+## Project Structure & Module Organization
 
-> **Architecture in one line:** Issues live in a local Dolt database
-> (`.beads/dolt/`); cross-machine sync uses `bd dolt push/pull` (a
-> git-compatible protocol), stored under `refs/dolt/data` on your git
-> remote — separate from `refs/heads/*` where your code lives.
-> `.beads/issues.jsonl` is a passive export, not the wire protocol.
->
-> See [SYNC_CONCEPTS.md](https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md)
-> for the one-screen overview and anti-patterns (don't treat JSONL as the
-> source of truth; don't `bd import` during normal operation; don't
-> reach for third-party Dolt hosting before trying the default).
+`pipeline_core/` contains validation, connectors, compliance, storage, and rendering;
+`mcp/` exposes tools; `cli.ts` provides the CLI. Shared financial calculations live
+in `packages/deal-math/`. `prompts/`, `profiles/`, `agents/`, and `skills/` configure
+workflows. Tests and fixtures live in `tests/`; model evaluations in `evals/`.
+`bundle/` contains committed distributables; `dist/` is build output. Public demos
+live in `demos/`; project records in `000-docs/`.
 
-## Quick Reference
+## Build, Test, and Development Commands
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work atomically
-bd close <id>         # Complete work
-bd dolt push          # Push beads data to remote
-```
+Use Node.js 22.16+ and pnpm 10.8.1.
 
-## Non-Interactive Shell Commands
+- `pnpm install --frozen-lockfile`: install pinned dependencies.
+- `pnpm run mcp`: run the TypeScript MCP server locally.
+- `pnpm run typecheck` / `pnpm run lint`: check types and Biome rules.
+- `pnpm test`: run Vitest; `pnpm run test:watch`: watch tests.
+- `pnpm run test:e2e`: exercise the shipped CLI and MCP server.
+- `pnpm run bundle`: regenerate committed bundles after source changes.
+- `pnpm run build`: compile to `dist/` and copy prompts.
+- `pnpm exec tsx evals/run.ts --offline`: check deterministic evaluation wiring.
 
-**ALWAYS use non-interactive flags** with file operations to avoid hanging on confirmation prompts.
+## Coding Style & Naming Conventions
 
-Shell commands like `cp`, `mv`, and `rm` may be aliased to include `-i` (interactive) mode on some systems, causing the agent to hang indefinitely waiting for y/n input.
+Use strict TypeScript, ESM, two-space indentation, LF endings, and final newlines.
+Match adjacent code: camelCase functions, PascalCase types, double quotes, semicolons,
+and `.js` relative imports. Follow `.editorconfig`; Biome linting is enabled,
+automatic formatting is disabled.
 
-**Use these forms instead:**
-```bash
-# Force overwrite without prompting
-cp -f source dest           # NOT: cp source dest
-mv -f source dest           # NOT: mv source dest
-rm -f file                  # NOT: rm file
+## Testing Guidelines
 
-# For recursive operations
-rm -rf directory            # NOT: rm -r directory
-cp -rf source dest          # NOT: cp -r source dest
-```
+Name tests `tests/**/*.test.ts`; keep fixtures in `tests/fixtures/`. Cover behavior
+changes and failure paths. `pnpm run test:coverage` enforces V8 minimums: statements
+88%, branches 79%, functions 89%, lines 90%. Never lower thresholds. Offline evals
+prove wiring, not model quality.
 
-**Other commands that may prompt:**
-- `scp` - use `-o BatchMode=yes` for non-interactive
-- `ssh` - use `-o BatchMode=yes` to fail instead of prompting
-- `apt-get` - use `-y` flag
-- `brew` - use `HOMEBREW_NO_AUTO_UPDATE=1` env var
+## Commit & Pull Request Guidelines
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
-## Beads Issue Tracker
+Branch from `main`; never commit directly to it. Use subjects such as
+`docs: clarify contributor setup` or `fix(mcp): preserve contacts`. Follow the PR
+template: explain behavior and rationale, link the `io-*` bead, report validation,
+and preserve policy invariants. Architecture changes require sign-off; see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+## Brand, Security & Agent Workflow
 
-### Quick Reference
+Start marketing work at [brand/README.md](brand/README.md). Keep project identity
+and research local; global skills supply methods only. Never commit secrets or
+personal data. Use an absolute scratch `INTENT_OUTREACH_HOME` for testing.
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
-
-### Rules
-
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
-
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
-
-## Session Completion
-
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->
+Use `bd prime`, claim work with `bd update <id> --claim`, and record durable memory
+with `bd remember`; no Markdown task lists. Dolt is authoritative; JSONL is an export.
+Use non-interactive shell commands and preserve unrelated work. Before handoff,
+record follow-ups, run relevant checks, close finished beads, commit, synchronize
+with `git pull --rebase` from a clean worktree, run `bd dolt push`, push the branch,
+and verify remote status. Never discard others' stashes or bypass branch protection.

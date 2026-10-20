@@ -1,0 +1,126 @@
+{
+  "schema": "cre-public-source-validation/v1",
+  "packetSha256": "aadc2e8b0ae382f0f887056886e34b2bfe9427a47217f5bfa7bab01dda347213",
+  "checkedAt": "2026-10-17",
+  "result": "pass",
+  "checks": [
+    {
+      "companyId": "air-solutions-daphne",
+      "sourceId": "air-about",
+      "token": "Air Solutions Heating & Cooling",
+      "present": true
+    },
+    {
+      "companyId": "air-solutions-daphne",
+      "sourceId": "air-about",
+      "token": "Reaves Nelson",
+      "present": true
+    },
+    {
+      "companyId": "air-solutions-daphne",
+      "sourceId": "air-about",
+      "token": "founded",
+      "present": true
+    },
+    {
+      "companyId": "air-solutions-daphne",
+      "sourceId": "air-about",
+      "token": "commercial HVAC",
+      "present": true
+    },
+    {
+      "companyId": "air-solutions-daphne",
+      "sourceId": "air-contact",
+      "token": "1410 US Highway 98, Suite N",
+      "present": true
+    },
+    {
+      "companyId": "air-solutions-daphne",
+      "sourceId": "air-contact",
+      "token": "Daphne",
+      "present": true
+    },
+    {
+      "companyId": "air-solutions-daphne",
+      "sourceId": "air-contact",
+      "token": "AL 36526",
+      "present": true
+    },
+    {
+      "companyId": "air-solutions-daphne",
+      "sourceId": "air-contact",
+      "token": "Office",
+      "present": true
+    },
+    {
+      "companyId": "ingersoll-fairhope",
+      "sourceId": "ingersoll-about",
+      "token": "Ingersoll's Air Conditioning and Heating Inc.",
+      "present": true
+    },
+    {
+      "companyId": "ingersoll-fairhope",
+      "sourceId": "ingersoll-about",
+      "token": "Fairhope",
+      "present": true
+    },
+    {
+      "companyId": "ingersoll-fairhope",
+      "sourceId": "ingersoll-services",
+      "token": "762 Nichols Ave",
+      "present": true
+    },
+    {
+      "companyId": "ingersoll-fairhope",
+      "sourceId": "ingersoll-services",
+      "token": "Fairhope, AL 36532",
+      "present": true
+    },
+    {
+      "companyId": "ingersoll-fairhope",
+      "sourceId": "ingersoll-services",
+      "token": "commercial or residential location",
+      "present": true
+    },
+    {
+      "companyId": "hellmich-foley",
+      "sourceId": "hellmich-chamber",
+      "token": "Hellmich Electric",
+      "present": true
+    },
+    {
+      "companyId": "hellmich-foley",
+      "sourceId": "hellmich-chamber",
+      "token": "Contractors - Electrical",
+      "present": true
+    },
+    {
+      "companyId": "hellmich-foley",
+      "sourceId": "hellmich-chamber",
+      "token": "903 W. Laurel Ave.",
+      "present": true
+    },
+    {
+      "companyId": "hellmich-foley",
+      "sourceId": "hellmich-chamber",
+      "token": "Foley",
+      "present": true
+    },
+    {
+      "companyId": "hellmich-foley",
+      "sourceId": "hellmich-chamber",
+      "token": "36535",
+      "present": true
+    },
+    {
+      "companyId": "hellmich-foley",
+      "sourceId": "hellmich-chamber",
+      "token": "Gary Hellmich Owner",
+      "present": true
+    }
+  ],
+  "limits": [
+    "Checks show selected tokens occur in the retrieved source, not that all source assertions are independently true.",
+    "Unknown relationship and contact boundaries checked mechanically; no model, property match, live provider enrichment or sending qualification."
+  ]
+}

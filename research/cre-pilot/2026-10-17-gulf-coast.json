@@ -1,0 +1,392 @@
+{
+  "schema": "cre-public-research-pilot/v1",
+  "asOf": "2026-10-17",
+  "status": "public_evidence_only_not_model_qualified",
+  "sourceCodeRevision": "1efc0a4f",
+  "scope": {
+    "cities": [
+      "Daphne",
+      "Fairhope",
+      "Foley"
+    ],
+    "state": "AL",
+    "profile": "Trade/service businesses with a source-published address in one of the three towns.",
+    "sampleSize": 3,
+    "sampling": "Purposive coverage sample, one business per town; not a market census, ranking or space-demand shortlist.",
+    "rationale": "Trade/service operations make useful examples for asking about storage, vehicles and work areas. Those are research questions, not inferred needs."
+  },
+  "execution": {
+    "paidProviderCalls": 0,
+    "modelCalls": 0,
+    "contactMessages": 0,
+    "campaignStoreWrites": 0,
+    "publicPropertyRecordLookups": 0
+  },
+  "sources": [
+    {
+      "id": "air-about",
+      "url": "https://airsolutionspros.com/about-us/",
+      "finalUrl": "https://airsolutionspros.com/about-us/",
+      "retrievedAt": "2026-10-17T11:42:21.247906+00:00",
+      "httpStatus": 200,
+      "htmlSha256": "72651cfc8c3860e31121e5d6a25f1820db3ed11fa958011c36bbbd762bddd0c4",
+      "sourceType": "company_website",
+      "contentDate": null,
+      "authorityLimit": "A current retrieval establishes what this source published, not independent truth, current officer status, land title or occupancy."
+    },
+    {
+      "id": "air-contact",
+      "url": "https://airsolutionspros.com/contact-us/",
+      "finalUrl": "https://airsolutionspros.com/contact-us/",
+      "retrievedAt": "2026-10-17T11:42:21.408355+00:00",
+      "httpStatus": 200,
+      "htmlSha256": "6c000aadccaecd0b031e51c91bb5c961175e3915110ea5b501d9a4c87a69158c",
+      "sourceType": "company_website",
+      "contentDate": null,
+      "authorityLimit": "A current retrieval establishes what this source published, not independent truth, current officer status, land title or occupancy."
+    },
+    {
+      "id": "ingersoll-services",
+      "url": "https://ingersollac.com/services/",
+      "finalUrl": "https://ingersollac.com/services/",
+      "retrievedAt": "2026-10-17T11:42:21.543175+00:00",
+      "httpStatus": 200,
+      "htmlSha256": "0213e670e11756150c67ef132ed290659a76dc05b45f2d5b5b16e1fb8d199606",
+      "sourceType": "company_website",
+      "contentDate": null,
+      "authorityLimit": "A current retrieval establishes what this source published, not independent truth, current officer status, land title or occupancy."
+    },
+    {
+      "id": "ingersoll-about",
+      "url": "https://ingersollac.com/about-us/",
+      "finalUrl": "https://ingersollac.com/about-us/",
+      "retrievedAt": "2026-10-17T11:42:21.603598+00:00",
+      "httpStatus": 200,
+      "htmlSha256": "4afe44d81806f686ddf79a06166ff1ac1cc925ea208c8674d665067d706f33cf",
+      "sourceType": "company_website",
+      "contentDate": null,
+      "authorityLimit": "A current retrieval establishes what this source published, not independent truth, current officer status, land title or occupancy."
+    },
+    {
+      "id": "hellmich-chamber",
+      "url": "https://business.southbaldwinchamber.com/list/Details/hellmich-electric-4615555",
+      "finalUrl": "https://business.southbaldwinchamber.com/list/Details/hellmich-electric-4615555",
+      "retrievedAt": "2026-10-17T11:42:21.827352+00:00",
+      "httpStatus": 200,
+      "htmlSha256": "0f7801bc0592bd31fd52c623a51c43f8a3f4abd9883cebe50624d1693a19a609",
+      "sourceType": "local_chamber_member_listing",
+      "contentDate": null,
+      "authorityLimit": "A current retrieval establishes what this source published, not independent truth, current officer status, land title or occupancy."
+    }
+  ],
+  "companies": [
+    {
+      "id": "air-solutions-daphne",
+      "company": {
+        "value": "Air Solutions Heating & Cooling",
+        "sourceIds": [
+          "air-about"
+        ]
+      },
+      "domain": {
+        "value": "airsolutionspros.com",
+        "sourceIds": [
+          "air-about"
+        ]
+      },
+      "businessActivity": {
+        "value": "HVAC installation, repair and maintenance, including commercial HVAC.",
+        "sourceIds": [
+          "air-about"
+        ]
+      },
+      "publishedAddress": {
+        "value": "1410 US Highway 98, Suite N, Daphne, AL 36526",
+        "city": "Daphne",
+        "relationship": "company_advertised_office",
+        "sourceIds": [
+          "air-contact"
+        ]
+      },
+      "publicProfessionalRole": {
+        "status": "source_asserted",
+        "name": "Reaves Nelson",
+        "role": "Founder",
+        "sourceIds": [
+          "air-about"
+        ],
+        "limit": "Founder of the business; not evidence of parcel ownership or authority over a real-estate decision."
+      },
+      "sourceChecks": [
+        {
+          "sourceId": "air-about",
+          "tokens": [
+            "Air Solutions Heating & Cooling",
+            "Reaves Nelson",
+            "founded",
+            "commercial HVAC"
+          ]
+        },
+        {
+          "sourceId": "air-contact",
+          "tokens": [
+            "1410 US Highway 98, Suite N",
+            "Daphne",
+            "AL 36526",
+            "Office"
+          ]
+        }
+      ],
+      "nextResearchQuestion": "Is the advertised office also a place used for equipment or stock, and is any different space actually wanted?",
+      "legalEntityStatus": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "propertyOwner": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "occupancyTenure": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "spaceNeed": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "relocationIntent": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "decisionAuthority": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "buildingFit": {
+        "status": "not_assessed",
+        "value": null,
+        "sourceIds": []
+      },
+      "contactCheck": {
+        "emailCollected": false,
+        "phoneCollected": false,
+        "providerEnrichmentRun": false,
+        "deliverabilityVerified": false,
+        "consentEstablished": false,
+        "suppressionChecked": false,
+        "sendingAuthorized": false
+      }
+    },
+    {
+      "id": "ingersoll-fairhope",
+      "company": {
+        "value": "Ingersoll's Air Conditioning and Heating Inc.",
+        "sourceIds": [
+          "ingersoll-about"
+        ]
+      },
+      "domain": {
+        "value": "ingersollac.com",
+        "sourceIds": [
+          "ingersoll-about"
+        ]
+      },
+      "businessActivity": {
+        "value": "Heating and AC services, with commercial and residential maintenance described.",
+        "sourceIds": [
+          "ingersoll-services"
+        ]
+      },
+      "publishedAddress": {
+        "value": "762 Nichols Ave, Fairhope, AL 36532",
+        "city": "Fairhope",
+        "relationship": "company_published_contact_address",
+        "sourceIds": [
+          "ingersoll-services"
+        ]
+      },
+      "publicProfessionalRole": {
+        "status": "unknown",
+        "name": null,
+        "role": null,
+        "sourceIds": [
+          "ingersoll-about",
+          "ingersoll-services"
+        ],
+        "limit": "No named management role established by the reviewed pages; do not infer a person from an email handle."
+      },
+      "sourceChecks": [
+        {
+          "sourceId": "ingersoll-about",
+          "tokens": [
+            "Ingersoll's Air Conditioning and Heating Inc.",
+            "Fairhope"
+          ]
+        },
+        {
+          "sourceId": "ingersoll-services",
+          "tokens": [
+            "762 Nichols Ave",
+            "Fairhope, AL 36532",
+            "commercial or residential location"
+          ]
+        }
+      ],
+      "nextResearchQuestion": "Who can provide operational space requirements, if any? Confirm that role before any future contact enrichment.",
+      "legalEntityStatus": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "propertyOwner": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "occupancyTenure": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "spaceNeed": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "relocationIntent": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "decisionAuthority": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "buildingFit": {
+        "status": "not_assessed",
+        "value": null,
+        "sourceIds": []
+      },
+      "contactCheck": {
+        "emailCollected": false,
+        "phoneCollected": false,
+        "providerEnrichmentRun": false,
+        "deliverabilityVerified": false,
+        "consentEstablished": false,
+        "suppressionChecked": false,
+        "sendingAuthorized": false
+      }
+    },
+    {
+      "id": "hellmich-foley",
+      "company": {
+        "value": "Hellmich Electric",
+        "sourceIds": [
+          "hellmich-chamber"
+        ]
+      },
+      "domain": {
+        "value": "hellmichelectricinc.com",
+        "sourceIds": [
+          "hellmich-chamber"
+        ],
+        "status": "chamber_listed_not_live_verified"
+      },
+      "businessActivity": {
+        "value": "Electrical contractor listed by the South Baldwin Chamber.",
+        "sourceIds": [
+          "hellmich-chamber"
+        ]
+      },
+      "publishedAddress": {
+        "value": "903 W. Laurel Ave., Foley, AL 36535",
+        "city": "Foley",
+        "relationship": "chamber_listed_business_address",
+        "sourceIds": [
+          "hellmich-chamber"
+        ]
+      },
+      "publicProfessionalRole": {
+        "status": "source_asserted",
+        "name": "Gary Hellmich",
+        "role": "Owner",
+        "sourceIds": [
+          "hellmich-chamber"
+        ],
+        "limit": "Chamber-listed business role only. Current role and property ownership are unconfirmed."
+      },
+      "sourceChecks": [
+        {
+          "sourceId": "hellmich-chamber",
+          "tokens": [
+            "Hellmich Electric",
+            "Contractors - Electrical",
+            "903 W. Laurel Ave.",
+            "Foley",
+            "36535",
+            "Gary Hellmich Owner"
+          ]
+        }
+      ],
+      "nextResearchQuestion": "Confirm the current business domain, address and management role before treating this directory entry as a current operating record.",
+      "legalEntityStatus": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "propertyOwner": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "occupancyTenure": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "spaceNeed": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "relocationIntent": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "decisionAuthority": {
+        "status": "unknown",
+        "value": null,
+        "sourceIds": []
+      },
+      "buildingFit": {
+        "status": "not_assessed",
+        "value": null,
+        "sourceIds": []
+      },
+      "contactCheck": {
+        "emailCollected": false,
+        "phoneCollected": false,
+        "providerEnrichmentRun": false,
+        "deliverabilityVerified": false,
+        "consentEstablished": false,
+        "suppressionChecked": false,
+        "sendingAuthorized": false
+      }
+    }
+  ],
+  "qualification": {
+    "status": "not_qualified_for_cre_flex",
+    "reason": "No CRE/flex runtime pack, fixture suite or keyed qualification receipt exists at the inspected source revision.",
+    "existingB2BModel": "minimax/MiniMax-M3",
+    "existingResidentialModel": "minimax/MiniMax-M3.1-Flash-Preview",
+    "gateTransferAllowed": false
+  }
+}

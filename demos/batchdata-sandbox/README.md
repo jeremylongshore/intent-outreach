@@ -1,0 +1,152 @@
+# Intent Outreach real estate showcase and BatchData sandbox
+
+A public custom-workflow showcase for local/coastal agents, metro teams, buy-box
+investors, prospectors, referral connectors and CRE/flex operators. Visitors can
+choose a starting point, market, criteria, custom request and output destination.
+Six distinct fictional examples illustrate client packs, queues, shortlists,
+introductions and property/business research. A separate fictional buy-box example
+actually filters six records by asset type and price, excludes unknown prices and
+sorts eligible records by asking price. It does not rank investment quality.
+
+The builder and buy-box example run locally without provider or model calls.
+Entered criteria stay in the page. Editable inquiry briefs preserve manual edits
+until the visitor explicitly replaces them with the current configured scope.
+Copying is local. The explicit inquiry form sends the reviewed brief, name, reply
+email and optional company through the existing domain contact service. Related Mandy and Scott links distinguish published work
+from historical workflow/design concepts.
+
+A separate BatchData sandbox module builds a property search, displays actual
+returned sandbox records and lets visitors inspect each record. Its records are
+never mixed with the fictional workflow examples. No sending, CRM writes or
+production qualification are introduced. Contact enrichment is optional and uses
+the search endpoint's documented `options.skipTrace` flag.
+
+Project identity starts at [brand/README.md](../../brand/README.md). The scoped
+capability inventory and initial pilot are documented in
+[the CRE showcase scope](../../000-docs/038-PP-PLAN-cre-outreach-showcase.md).
+[Market research](../../000-docs/039-RA-ANLY-real-estate-workflow-market.md) and
+[related estate workflows](../../000-docs/040-RA-ANLY-estate-real-estate-workflows.md)
+explain the broader custom offer.
+
+## Run
+
+```sh
+python3 demos/batchdata-sandbox/server.py
+```
+
+Open http://127.0.0.1:8765. Request previews work without a key; provider searches remain disabled.
+
+The credential must be confirmed as a sandbox token in the BatchData account. This code cannot verify token mode from its name or value. Once its storage location and sandbox permissions are known:
+
+```sh
+python3 demos/batchdata-sandbox/server.py \
+  --sops-file /absolute/path/to/providers.sops.json \
+  --key-path batchdata.sandbox_key --confirmed-sandbox
+```
+
+The shared workstation now has the encrypted credential at `/home/jeremy/.config/intentsolutions/api-providers.sops.json`, field `batchdata.sandbox_key`; use that file in the command above. Credentials are not included in this repository. Alternatively supply `BATCHDATA_SANDBOX_KEY` through an existing secure launcher, then run with `--confirmed-sandbox`. Never paste keys into the browser, shell arguments or source. SOPS decryption goes directly to server memory.
+
+The demo forwards only to `https://api.batchdata.com/api/v1/property/search`, using the detailed endpoint contract (`searchCriteria`, `options.take`, `options.skip`, `options.datasets`). Five records per request and ten admitted requests per process. No retries or redirects, saved provider payloads, billing purchases, monitoring subscriptions or async callbacks. A sandbox token does not necessarily expose every dataset or prove real-world match rates. Nothing here treats DNC data as consent or approves outreach.
+
+## Official references
+
+- [LLM overview](https://developer.batchdata.com/docs/batchdata/llms-overview#quick-api-examples)
+- [Detailed Property Search contract](https://developer.batchdata.com/docs/batchdata/batchdata-v1/operations/create-a-property-search)
+- [Capabilities and monitoring](https://developer.batchdata.com/docs/batchdata/welcome-to-batchdata)
+- [Official MCP tools, including comparables and phone checks](https://github.com/batchdataco/batchdata-mcp-server#available-tools)
+
+The LLM overview abbreviates paths and pagination. The detailed operation specifies the versioned path and `options` wrapper used here. The broader API includes lookup, comps, skip/reverse tracing, address services, phone/DNC/TCPA checks, search sessions and property monitoring; this demo calls only property search. A bounded sandbox search returned HTTP 200 with three property records and `dataset_not_allowed` warnings. The response contained synthetic placeholder warning text; do not interpret returned records as verified Daphne leads. MCP initialization also returned HTTP 200, and `tools/list` discovered 21 tools without invoking property tools. OAuth dataset settings in the account UI govern OAuth MCP tokens, and do not prove this sandbox token has the same permissions.
+
+## MCP connection
+
+BatchData hosts a Streamable HTTP MCP server at `https://mcp.batchdata.com`. It supports OAuth or an `Authorization: Bearer` header supplied by a secure credential launcher. The official setup guide linked above covers client configuration. The demo uses REST property search; MCP initialization and tool discovery are separate checks, not calls to paid property tools. Do not put the token into a committed MCP configuration.
+
+## Validation
+
+Run `python3 -m unittest discover -s demos/batchdata-sandbox -p 'test_*.py' -v`. Seven offline boundary tests cover disabled/unconfirmed credentials, preview isolation, cross-origin rejection, the request cap, secret redaction, invalid inputs and provider-error sanitization without retries, cached responses, atomic admission and a restart-safe public budget. The original live desktop and 390px mobile checks rendered three sandbox records. The expanded showcase was checked at 1440px, 768px and 390px for layout and keyboard scenario selection. Browser checks with intercepted API responses verified sample/provider separation, editable clipboard briefs, request preview, cached responses, warning summaries, empty results and quota errors without provider calls. No JavaScript exceptions or horizontal overflow were observed.
+
+## Public deployment
+
+The optional browser regression check requires Python Playwright and Chromium:
+
+```sh
+python3 demos/batchdata-sandbox/browser_smoke.py
+```
+
+Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` when using an existing Chromium installation.
+The check starts its own keyless server and verifies six personas, custom fields,
+preserved edits, clipboard behavior, buy-box inclusion/exclusion boundaries,
+unknown and invalid prices, request isolation, safe text rendering and responsive
+layouts at 1440, 768 and 390 pixels. It makes no provider calls.
+
+Run `bash demos/batchdata-sandbox/deploy_public.sh` on the existing Intent Demos workstation after committing and reviewing the demo sources. It installs an immutable revision under `~/.local/lib/intentsolutions/batchdata-demo/releases/`, enables the `intent-batchdata-demo` user service on loopback port 8767, copies only `/intentoutreach/index.html`, and adds one scoped reverse-proxy handler to the existing Caddy demo host. The script validates Caddy before replacing its configuration, saves a timestamped prior configuration, and preserves every other demo directory and host route. It requires the existing SOPS sandbox field and noninteractive sudo for Caddy operations.
+
+The public route is https://demos.intentsolutions.io/intentoutreach/. The key is decrypted into service memory. Same-origin POSTs are required, property search remains limited to five records, and a private SQLite admission counter caps all visitors together at 40 upstream requests per UTC day, including failures and across service restarts. Successful responses are cached in memory for ten minutes for identical requests, with explicit cached-response labels. No model calls or provider responses are persisted; SQLite stores only dates and request counts. Other origins, redirects, arbitrary destinations and extra API routes are refused.
+
+Verify `systemctl --user status intent-batchdata-demo`, the public `/intentoutreach/api/status` route and an actual browser search. For rollback, stop the new service and restore the saved `Caddyfile.before-batchdata-*` after validation, or repoint the private `current` symlink to the prior reviewed release and restart the service. Never delete the admission counter to bypass the quota. User services require the host's existing user-manager startup/linger configuration to run after reboot.
+
+## MCP alternatives assessed
+
+The official hosted server is not the only possible integration. [Zellerhaus](https://github.com/zellerhaus/batchdata-mcp-real-estate) is an MIT-licensed, self-hosted stdio wrapper with eight registered tools, including boundary searches and address autocomplete. Its source uses `/property/search/sync`; compatibility with the current endpoint contract needs validation before adopting it. [Pipeworx](https://github.com/pipeworx-io/mcp-batchdata) is an MIT-licensed three-tool adapter for lookup, search and skip tracing; its `_apiKey` argument should be replaced with server-side credential injection in this environment. Neither was executed with our credential.
+
+The official [MIT-licensed MCP demo app](https://github.com/batchdataco/batchdata-mcp-demo) adds chat, streaming progress, investment analysis and property comparison on top of the hosted MCP. It is a client/workflow layer, not a replacement server. The hosted MCP exposed 21 tools in our authenticated discovery check; no wrapper can grant datasets or permissions the BatchData account does not have.
+
+
+## Workflow inquiry capture
+
+The page uses the existing Demos Umami property for pageviews and the aggregate
+`outreach_inquiry` event. Its only custom property is `stage`, with fixed values
+`started`, `submitted`, `accepted`, or `failed`. No brief, name, email, market,
+provider record or free-text value is sent in event properties. Analytics failure
+does not block the form. CSP allows only the existing analytics host in addition
+to the prior same-origin connections. Browser tests intercept the collector and
+form endpoint, including CSP loading and failure/retry cases.
+
+`accepted` is the contact API acknowledgement, not confirmed Buzz delivery.
+Browser timeouts remain unconfirmed; do not count them as server rejections.
+Use private forms-service delivery logs and the existing failure spool to audit
+Buzz receipt separately. Historical visits cannot be backfilled from these new
+events, and the separate company/Demos properties do not identify one visitor
+across both sites.
+
+The browser posts JSON to the same-origin `/api/forms/contact`, outside the
+`/intentoutreach/` sandbox proxy. Existing demo-host Caddy forwards this route to
+`intentsolutions.io`, whose VPS `forms-api.service` delivers to private Buzz `leads`.
+There is no separate demo-domain channel configured. The message includes the
+canonical showcase URL and the exact edited brief; `interest=consulting` and
+`projectType=workflow-automation` use the shared service contract.
+
+Name, reply email and a brief are required; company is optional. Exploration does
+not submit data. No newsletter subscription, customer email or CRM write is triggered
+by this contact endpoint. The page preserves all entered text on success and failure,
+prevents concurrent submissions and suppresses resending the identical accepted
+payload within the page session. This is not server-side idempotency across reloads.
+The browser checks the UTF-8 serialized request against the service's 8 KiB limit,
+requires an explicit `status: ok` response, and handles rate limits and timeouts.
+
+The shared service validates fields, uses a honeypot and limits contact/partner
+requests to three per IP per hour. Buzz transport failure writes a private business
+dead letter at `/srv/forms-api/data/business-leads.ndjson`; recovery is an operator
+procedure, not automatic replay for contact submissions. A success means accepted
+by Buzz or saved for recovery, not that a person has read or answered the inquiry.
+If both fail, the service returns 503. Canonical backend source and recovery runbook:
+`intent-os/ops/host/services/forms-api/`.
+
+The browser smoke intercepts all intake requests and checks required fields, exact
+edited-brief/source transfer, success, server/rate-limit/malformed-response failures,
+retained text, repeated-click protection and multibyte request size at three widths.
+One clearly labeled production test should be verified against the private Buzz
+channel, not solely HTTP 200. Never put customer payloads or relay keys in Git.
+
+
+## Product name and discovery
+
+The public product is **Intent Outreach**, at `/intentoutreach/`. BatchData is one
+provider inside that experience, not its product name. `/batchdata` and `/batchdata/`
+redirect permanently to the product route. The legacy `/batchdata/api/*` proxy is
+retained for already-open browser sessions. `/intent-outreach/` remains a secondary
+technical-background page, not a second catalog product.
+
+Keep discovery simple: company homepage → featured Intent Outreach or all demos →
+one product entry → try a relevant workflow → send the reviewed brief. The catalog
+is a curated selection, not an inventory of every deployed folder in the estate.
