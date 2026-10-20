@@ -68,8 +68,9 @@ claims about the prospect or sender. If no offer was supplied, say so; never inv
 outcome, customer experience, or reason to buy. Missing firmographics mean unknown fit, not a mismatch.
 Do not tell the drafter to decline solely because evidence is thin: an honest introduction or question
 can avoid both fabricated personalization and an invented sales offer.
-Preserve the confirmed ICP verbatim in each dispatch. Do not add a stage, industry, size, or other
-constraint from examples or assumptions; "developer-tool founders" does not imply "seed-stage".
+Preserve the confirmed ICP verbatim in each dispatch and saved run. Take its value from the active
+user request or explicit scope confirmation, never from this document's usage examples. Do not add
+a stage, industry, size, or other constraint that the user did not supply.
 
 Every `Agent` call must include `subagent_type` with the exact phase role name and
 `prompt` with its task input. For example:
@@ -197,7 +198,9 @@ Return a compact campaign receipt containing:
 
 ## Examples
 
-> **User:** `/intent-outreach — ICP: seed-stage developer-tool founders; domains: example.com; email; one contact`
+Usage template (replace placeholders with the user's confirmed values):
+
+`/intent-outreach — ICP: <confirmed ICP>; domains: <confirmed domains>; <channel>; <contact limit>`
 
 Call `list_connectors`, confirm scope, research the domain, pause for lead selection, enrich retained
 leads, draft from returned evidence, pause for message approval, then call `save_run`. If the connector
