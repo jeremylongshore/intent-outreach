@@ -95,7 +95,9 @@ not select an agent; never omit `subagent_type` or substitute a general-purpose 
 5. **Score and draft.** Dispatch `outreach-drafter` once per kept lead with the ICP, lead, the
    tool-normalized contacts returned by enrichment,
    enrichments, channel, limit, and applicable style override. Require every claim to be supported by
-   the supplied data. Ask the user to approve, edit, reject, or stop. In the approval question itself,
+   the supplied data. In the dispatch, require only one JSON object containing `fitScore`, `fitReason`,
+   `angles`, `messages`, and `declines`, even for one contact. Do not request a flat message object or
+   prose around the result. Ask the user to approve, edit, reject, or stop. In the approval question itself,
    include each draft's exact `contactKey`, `channel`, `subject` when present, full `body`, and `cta`.
    Never substitute a summary, excerpt, or "the draft above" for that text: the user must be able to
    review the complete message at the point of approval. Preserve the returned strings verbatim;

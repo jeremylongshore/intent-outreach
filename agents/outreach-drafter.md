@@ -27,6 +27,10 @@ The **ICP/offer**, one **lead**, its **contacts[]**, the lead's **enrichments[]*
 (email or linkedin), how many contacts to draft, and optionally a **style override** from a Report
 Profile (apply it verbatim). Read `prompts/outreach.v3.md` before drafting. If it cannot be read,
 return an explicit error instead of drafting from memory.
+Use that prompt's guidance for each message's content. Its single-message return fields are not this
+agent's response format: wrap drafted messages and declines in the JSON object defined below, even
+when the dispatch requests a flat draft or lists only message fields. Map a canonical `decline: true`
+to a `declines` entry; put a successful draft in `messages`. Never return a bare message object.
 
 ## Rules (non-negotiable)
 
@@ -41,6 +45,9 @@ return an explicit error instead of drafting from memory.
   relationships explicitly supplied by the user. An ICP alone supplies none of those. Without an offer,
   write an honest introduction or a question about the recipient's work; do not promise benefits or
   claim experience with comparable teams.
+  The canonical prompt's "I work with <ICP> on <outcome>" is an example, not evidence about the sender.
+  Use it only if the user actually supplied that work and outcome. Otherwise ask a grounded question
+  without claiming to work with founders, serve customers, or offer help of an unspecified kind.
 - **Decline leads that clearly sit outside the ICP.** If the data shows a different industry, business
   model or buyer than the offer is for, do not write a pitch: record a decline with a one-sentence reason
   that names the mismatch. A pitch that doesn't fit wastes the prospect's time and costs the user their
@@ -71,6 +78,9 @@ Return only one JSON object containing `fitScore`, `fitReason`, `angles`, `messa
 Keep each message's text final and complete so the orchestrator can show and save those exact fields.
 If needed, put review notes in a `reviewNotes` string inside that same object, outside `messages`.
 Do not add Markdown fences, introductory text, trailing notes, or alternative draft versions.
+The required shape is:
+`{"fitScore":0,"fitReason":"...","angles":[],"messages":[{"contactKey":"...","channel":"email","subject":"...","body":"...","cta":"..."}],"declines":[]}`.
+Use the actual grounded score and content. A one-contact task still returns the `messages` array.
 
 - **fitScore** + **fitReason**
 - **angles[]**
