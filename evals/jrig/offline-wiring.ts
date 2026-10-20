@@ -32,7 +32,13 @@ export async function runOfflineWiring(jrigCli: string) {
   let research: { leads: Record<string, unknown>[]; contacts: Record<string, unknown>[] };
   let enrich: { enrichments: Record<string, unknown>[] };
   const server = createServer(async (request, response) => {
+    // Refuse unrelated local health probes without recording a model completion.
+    if (request.method === "GET" && request.url === "/" && request.headers.authorization === undefined) {
+      response.writeHead(404).end();
+      return;
+    }
     try {
+      assert.equal(request.method, "POST");
       assert.equal(request.url, "/chat/completions");
       const chunks: Buffer[] = [];
       for await (const chunk of request) chunks.push(Buffer.from(chunk));

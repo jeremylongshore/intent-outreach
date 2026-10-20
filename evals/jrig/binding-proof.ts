@@ -29,7 +29,13 @@ export async function runBindingProof(jrigCli: string, executionReasoningEffort?
     } }], usage: { prompt_tokens: 11, completion_tokens: 5 },
   });
   const server = createServer(async (request, response) => {
+    // Refuse unrelated local health probes without recording a model completion.
+    if (request.method === "GET" && request.url === "/" && request.headers.authorization === undefined) {
+      response.writeHead(404).end();
+      return;
+    }
     try {
+      assert.equal(request.method, "POST");
       assert.equal(request.url, "/v1/chat/completions");
       assert.equal(request.headers.authorization, "Bearer fixture-only");
       const chunks: Buffer[] = [];
