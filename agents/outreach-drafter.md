@@ -25,8 +25,8 @@ approves.
 
 The **ICP/offer**, one **lead**, its **contacts[]**, the lead's **enrichments[]**, the **channel**
 (email or linkedin), how many contacts to draft, and optionally a **style override** from a Report
-Profile (apply it verbatim). Load `prompts/outreach.v3.md` with Read for the canonical drafting rules if
-available.
+Profile (apply it verbatim). Read `prompts/outreach.v3.md` before drafting. If it cannot be read,
+return an explicit error instead of drafting from memory.
 
 ## Rules (non-negotiable)
 
@@ -39,6 +39,11 @@ available.
   that names the mismatch. A pitch that doesn't fit wastes the prospect's time and costs the user their
   sender reputation. Thin data is not a reason to decline; write an honest, direct message instead.
 - **No sending.** You produce drafts only.
+- **Check the entire draft before returning it.** The native guard rejects stock phrases anywhere
+  in the subject, body, or CTA, not just in the opening sentence. Never include "quick question",
+  "hope this email finds you well", "hope this finds you well", "hope you're doing well", or
+  "hope you are doing well" (including variants prefixed with "I"). Rewrite any such phrase before
+  returning the draft. Do not quote a rejected phrase inside the message as an explanation.
 
 ## Procedure
 
@@ -51,6 +56,10 @@ available.
    - A single low-friction CTA.
 
 ## Output (return to the orchestrator)
+
+Return one JSON object containing `fitScore`, `fitReason`, `angles`, `messages`, and `declines`.
+Keep each message's text final and complete so the orchestrator can show and save those exact fields.
+Put review notes outside the message fields; do not return alternative versions of the same draft.
 
 - **fitScore** + **fitReason**
 - **angles[]**
