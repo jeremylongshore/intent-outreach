@@ -68,6 +68,8 @@ claims about the prospect or sender. If no offer was supplied, say so; never inv
 outcome, customer experience, or reason to buy. Missing firmographics mean unknown fit, not a mismatch.
 Do not tell the drafter to decline solely because evidence is thin: an honest introduction or question
 can avoid both fabricated personalization and an invented sales offer.
+Preserve the confirmed ICP verbatim in each dispatch. Do not add a stage, industry, size, or other
+constraint from examples or assumptions; "developer-tool founders" does not imply "seed-stage".
 
 Every `Agent` call must include `subagent_type` with the exact phase role name and
 `prompt` with its task input. For example:
@@ -104,6 +106,22 @@ not select an agent; never omit `subagent_type` or substitute a general-purpose 
    edits require a new complete draft review before saving.
    If no message was produced, say so and stop at that decision. Approval of draft text cannot authorize
    saving an empty campaign or a decline record; recording a decline requires its own explicit request.
+   Construct the approval tool's `questions[].question` from each returned message using the template
+   below. Replace placeholders with the exact strings, including line breaks; put the template inside
+   the question itself, even if you already displayed the draft in an assistant message. Omit the
+   subject line only when the message has no subject. If any draft field is absent from the question,
+   do not call `save_run`.
+
+   ```text
+   contactKey: <exact contactKey>
+   channel: <exact channel>
+   subject: <exact subject>
+   body:
+   <full body, verbatim>
+   cta: <full CTA, verbatim>
+
+   Approve saving this exact draft, edit it, reject it, or stop? Saving sends nothing.
+   ```
 6. **Save only after approval.** Assemble the `save_run` input: `id`, `icp`, `domains`, `provider`,
    `model`, `leads`, `contacts`, `enrichments`, `messages`, `skippedConnectors`, and, when known,
    `failedConnectors`, `errors`, `pack`, and `profile` (the Report Profile path or name whose `sender`

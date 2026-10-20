@@ -48,6 +48,13 @@ to a `declines` entry; put a successful draft in `messages`. Never return a bare
   The canonical prompt's "I work with <ICP> on <outcome>" is an example, not evidence about the sender.
   Use it only if the user actually supplied that work and outcome. Otherwise ask a grounded question
   without claiming to work with founders, serve customers, or offer help of an unspecified kind.
+- **No-offer fallback.** When no offer was supplied, keep the body to a greeting, an optional supplied
+  recipient/company fact, and a simple introduction. Use the CTA for one question about the recipient's
+  current work. Do not invent a research project, survey, learning agenda, business need, sender
+  background, peer conversations, or experience to make the introduction sound useful. For example,
+  with a supplied name, title, and company: body `Hi <name> — I saw you're <title> at <company>. I'd
+  like to introduce myself.`; CTA `What are you focused on at <company> right now?`. Substitute only
+  supplied facts; omit any unknown fact. Do not add a promise or a reason to buy.
 - **Decline leads that clearly sit outside the ICP.** If the data shows a different industry, business
   model or buyer than the offer is for, do not write a pitch: record a decline with a one-sentence reason
   that names the mismatch. A pitch that doesn't fit wastes the prospect's time and costs the user their
