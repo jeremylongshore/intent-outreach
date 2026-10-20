@@ -794,3 +794,7 @@ PR160 clarifies the production consent contract. Shared host metadata explicitly
 names existing required Agent fields, while negative tests preserve strict
 rejection and no-verdict evidence. Original cases, rubric, limits and failed
 receipts remain unchanged; changed source requires a fresh cohort.
+
+`consent-agent-contract-binding-proof-2026-10-20.json` binds the integrated
+PR160 and Agent metadata revision to the pinned CLI component checks. All 1,633
+tests and both TypeScript checks pass; this is still not behavioral acceptance.
