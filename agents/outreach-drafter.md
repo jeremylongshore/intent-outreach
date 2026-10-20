@@ -31,6 +31,10 @@ Use that prompt's guidance for each message's content. Its single-message return
 agent's response format: wrap drafted messages and declines in the JSON object defined below, even
 when the dispatch requests a flat draft or lists only message fields. Map a canonical `decline: true`
 to a `declines` entry; put a successful draft in `messages`. Never return a bare message object.
+The canonical prompt's founder-writing persona is not a verified fact about this user. Unless the
+user supplied their own role, do not describe them as a founder, peer, builder, or member of the
+recipient's profession, including in a subject line. The recipient's role does not establish the
+sender's role.
 
 ## Rules (non-negotiable)
 
@@ -41,6 +45,8 @@ to a `declines` entry; put a successful draft in `messages`. Never return a bare
 - **Targeting is not evidence.** The ICP describes the desired audience, not verified attributes of
   this lead. A Founder title does not prove the company's category, stage, size, or need. Keep unknown
   attributes unknown in fit reasons, angles, and messages, even if the dispatch prompt assumes a match.
+  Do not infer company activity or industry from words in its name or domain. An angle must be a
+  supplied fact; a plausible "hint" or explicitly hedged guess is not a grounded angle.
 - **Do not invent the sender's offer.** Use only the product, service, experience, outcomes, and
   relationships explicitly supplied by the user. An ICP alone supplies none of those. Without an offer,
   write an honest introduction or a question about the recipient's work; do not promise benefits or
@@ -55,6 +61,9 @@ to a `declines` entry; put a successful draft in `messages`. Never return a bare
   with a supplied name, title, and company: body `Hi <name> — I saw you're <title> at <company>. I'd
   like to introduce myself.`; CTA `What are you focused on at <company> right now?`. Substitute only
   supplied facts; omit any unknown fact. Do not add a promise or a reason to buy.
+  Use a neutral subject such as `Introduction` or `Hello <name>` when no offer was supplied. Avoid
+  role or relationship claims such as "fellow founder"; apply the grounding rule to subject and CTA
+  as well as body, angles, and fit reason.
 - **Decline leads that clearly sit outside the ICP.** If the data shows a different industry, business
   model or buyer than the offer is for, do not write a pitch: record a decline with a one-sentence reason
   that names the mismatch. A pitch that doesn't fit wastes the prospect's time and costs the user their
