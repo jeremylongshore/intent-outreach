@@ -99,6 +99,8 @@ server.registerTool(
       "must pass the send-safety guard (failures go to rejectedDrafts), and email drafts get " +
       "the CAN-SPAM footer from the profile's sender identity (or are flagged " +
       "needsSenderIdentity). The whole record is schema-validated before it is persisted. " +
+      "Call only after the user approves saving the exact reviewed text. Saving does not send " +
+      "or record permission to send; save-only consent does not authorize calling approve. " +
       "Returns the saved run id + path, or an error describing what to fix.",
     inputSchema: SaveRunInput,
   },
@@ -108,9 +110,9 @@ server.registerTool(
 server.registerTool(
   "list_pending",
   {
-    title: "List drafts waiting for approval",
+    title: "List saved drafts waiting for send approval",
     description:
-      "List drafted messages in the LOCAL run store that no person has approved or rejected yet, with " +
+      "List saved messages in the LOCAL run store that no person has approved for sending or rejected yet, with " +
       "the full text and a digest. Nothing may be sent until a person approves the exact text. Show the " +
       "drafts to the user; never approve on your own judgment.",
     inputSchema: ListPendingInput,
@@ -121,11 +123,14 @@ server.registerTool(
 server.registerTool(
   "approve",
   {
-    title: "Record a person's approval of one draft",
+    title: "Record a person's permission to send one saved draft",
     description:
-      "Record that the USER approved one exact draft (runId + contactKey + the digest list_pending showed). " +
-      "Call this only after the user has read that draft and explicitly said to approve it. Editing a draft " +
-      "afterwards voids the approval. Approving does not send anything.",
+      "Record the USER's explicit permission to SEND one exact saved draft " +
+      "(runId + contactKey + the digest list_pending showed). Approval to save, review, or edit a draft " +
+      "is not send permission and must not trigger this tool. Call only after the user reviews the " +
+      "saved text and explicitly authorizes sending it. Do not call for a draft flagged needsSenderIdentity: " +
+      "configure the sender, re-save with its footer, then review the new text and digest first. " +
+      "Editing a draft voids its approval. Recording permission still does not send anything.",
     inputSchema: DecideInput,
   },
   async (args) => handleApprove(args),
@@ -134,9 +139,11 @@ server.registerTool(
 server.registerTool(
   "reject",
   {
-    title: "Record a rejection of one draft",
+    title: "Record a rejection of one saved draft",
     description:
-      "Record that the user rejected one draft (runId + contactKey). It cannot pass the send-time check unless a " +
+      "Record that the user rejected one saved draft (runId + contactKey). If a draft is rejected before " +
+      "saving, leave it unsaved; do not create a run or call this tool just to record that rejection. " +
+      "A rejected saved draft cannot pass the send-time check unless a " +
       "person later approves that exact text again (the latest decision wins).",
     inputSchema: DecideInput,
   },

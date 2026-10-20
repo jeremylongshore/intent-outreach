@@ -14,6 +14,16 @@ The bundled MCP server exposes four phase-level tools:
 `save_run` does not send email or LinkedIn messages. Its default path is
 `~/.intent-outreach/runs.sqlite`; setting `INTENT_OUTREACH_HOME` changes the parent directory.
 
+## Consent boundaries
+
+Permission to save reviewed copy authorizes `save_run` only. `approve` records
+separate, explicit permission to send one saved draft, bound to the exact text and
+digest returned by `list_pending`; the tool itself never sends. Reviewing, editing,
+or saving a draft is not that permission. A `needsSenderIdentity` draft must first
+be re-saved with the configured sender footer, then reviewed at its new digest.
+Rejecting a draft before saving leaves it unsaved; `reject` is for existing saved
+drafts and must not cause a new run to be created.
+
 ## Credential boundary
 
 The server uses bring-your-own credentials from environment variables. `configured` means only that

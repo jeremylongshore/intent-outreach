@@ -155,7 +155,8 @@ not select an agent; never omit `subagent_type` or substitute a general-purpose 
 7. **Report the receipt.** Return the run id, status, local path, record counts, connector failures, and
    confirmation that nothing was sent.
 8. **Record send decisions only on the user's word.** Saved drafts wait in an approval queue; nothing may
-   be sent until a person approves the exact text. When the user wants to review, call `list_pending` and
+   be sent until a person approves the exact text. Approval to save, review, or edit is not permission to
+   send and does not authorize calling `approve`. When the user wants to review, call `list_pending` and
    show each draft in full with its digest. Call `approve` (with that digest) only for a draft the user
    explicitly approved, and `reject` for one they rejected. Never approve on your own judgment, and never
    approve a draft flagged `needsSenderIdentity`. Approving still sends nothing.
