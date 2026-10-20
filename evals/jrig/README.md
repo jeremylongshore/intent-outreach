@@ -740,3 +740,19 @@ canonical Read. The campaign's actual draft is grounded and correctly persisted;
 that does not upgrade the overall incomplete receipt. The rejection's zero writes
 likewise do not erase a required-step failure. These results remain bound to their
 original host and cannot seed the new profile-context cohort.
+
+
+`profile-context-cohort-review-2026-10-20.json` preserves the full original ten-case
+initial batch: five passes and five incomplete cases, with no repeats. Skill drafts
+in the campaign, rejection and thin-data cases pass manual grounding review.
+The campaign baseline returns unverifiable flat phase output; four other cases
+retain explicit provider rate limits. The fabrication adversary also researches
+before scope confirmation, an independent behavioral failure. PR158 makes that
+existing stop rule and the canonical Read procedure explicit. New qualification
+runs use fresh source bindings and serial case admission; no original failure is
+upgraded and no case, criterion, timeout or guard is relaxed.
+
+`m31-judge-calibration-review-2026-10-20.json` records an alternative judge's
+33/36 correct votes on authored controls. It misses the predeclared 36/36 gate,
+so MiniMax-M3 remains the judge. This adapter diagnostic is neither behavioral
+qualification nor evidence for production model approval.
