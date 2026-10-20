@@ -691,3 +691,13 @@ apply. The M3-only proxy remains an optional $0.50 per-run transport; explicitly
 configured MiniMax M3.1 trials use `run-case.ts` directly. This authorization does
 not approve other providers, production models, sending, or weaker evaluation
 gates.
+
+`grounded-handoff-and-dispatch-review-2026-10-20.json` retains the next three
+unsuccessful trials. M3.1 omitted the required enrichment role on two calls;
+production PR154 makes dispatch arguments explicit. M3 with low reasoning saved
+a grounded draft but omitted its text from the approval question. M3.1 on the
+dispatch revision selected every role and reviewed exact text, but returned a
+flat draft with surrounding prose and an unsupported sender-experience claim.
+Production PR155 aligns the root request and phase response envelope and restricts
+copying examples to supplied facts. All three original receipts stay incomplete;
+none can seed regression. Fresh source evaluation is still required.
