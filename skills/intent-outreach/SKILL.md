@@ -61,6 +61,14 @@ runs before writing them to the local encrypted SQLite store.
 
 ## Instructions
 
+Keep the user's targeting criteria and offer separate from retrieved evidence throughout the workflow.
+An ICP describes who the user wants to reach; it does not prove that a researched company has that
+industry, stage, size, or need. Pass the user's ICP and any supplied offer to each agent without adding
+claims about the prospect or sender. If no offer was supplied, say so; never invent a product, promised
+outcome, customer experience, or reason to buy. Missing firmographics mean unknown fit, not a mismatch.
+Do not tell the drafter to decline solely because evidence is thin: an honest introduction or question
+can avoid both fabricated personalization and an invented sales offer.
+
 1. **Preflight.** Call `list_connectors`. Show `displayName`, `tier`, `phases`, `keyEnvVar`,
    `configured`, and `note`. If no configured connector supports research, stop and name the relevant
    environment variables. Never print credential values.
@@ -85,6 +93,8 @@ runs before writing them to the local encrypted SQLite store.
    Never substitute a summary, excerpt, or "the draft above" for that text: the user must be able to
    review the complete message at the point of approval. Preserve the returned strings verbatim;
    edits require a new complete draft review before saving.
+   If no message was produced, say so and stop at that decision. Approval of draft text cannot authorize
+   saving an empty campaign or a decline record; recording a decline requires its own explicit request.
 6. **Save only after approval.** Assemble the `save_run` input: `id`, `icp`, `domains`, `provider`,
    `model`, `leads`, `contacts`, `enrichments`, `messages`, `skippedConnectors`, and, when known,
    `failedConnectors`, `errors`, `pack`, and `profile` (the Report Profile path or name whose `sender`
