@@ -798,3 +798,15 @@ receipts remain unchanged; changed source requires a fresh cohort.
 `consent-agent-contract-binding-proof-2026-10-20.json` binds the integrated
 PR160 and Agent metadata revision to the pinned CLI component checks. All 1,633
 tests and both TypeScript checks pass; this is still not behavioral acceptance.
+
+
+`consent-contract-m31-cohort-review-2026-10-20.json` retains the complete
+M3.1-Flash medium initial batch on the integrated consent/dispatch revision:
+seven passes and three incomplete cases. Thin-data execution both omits draft
+review and invents sender experience; all-yes aggregate judgments miss that
+grounding defect. Baselines still omit required Agent fields, and the fabrication
+skill repeats questions after an authored wait response until execution fails.
+This profile is rejected for suite qualification; no repeats or regression seeds
+are selected from it. A predeclared MiniMax-M2.7 comparison uses the identical
+frozen source, judge, original cases and limits. It is a distinct model trial,
+not a retry or regrading of these immutable failures.
