@@ -711,3 +711,14 @@ Production PR156 constrains no-offer introductions to supplied facts and a simpl
 question, preserves the confirmed ICP, and gives an exact review-question template.
 Qualification requires fresh runs and manual draft review, not only automatic
 case receipts or final-response judge votes.
+
+`honest-review-cohort-review-2026-10-20.json` retains five v5 trials. M3.1 passes
+the scope control; its campaign has a complete, grounded skill execution but an
+invalid baseline call leaves the case incomplete. Its rejection run skips lead
+selection and never reaches the authored rejection. M3 correctly executes both
+campaign/rejection checkpoints, but its campaign subject invents a sender role;
+baseline tool/worker errors also leave both cases incomplete. Production PR157
+separates the canonical writing persona from verified sender facts, requires
+neutral no-offer subjects and factual angles, and reiterates lead selection.
+The original scope pass remains valid only for its bound source and profile;
+none of these receipts can seed regression on the revised source.
