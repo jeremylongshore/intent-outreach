@@ -26,6 +26,15 @@ The MCP server derives timestamps and status, validates the full run through `Ca
 writes only validated data. Treat a returned validation error as a hard stop: correct the named input
 field and do not write around the MCP server.
 
+## Persistence metadata
+
+Copy `save_run.icp` verbatim from the user's confirmed targeting criteria. Do not
+add constraints from examples or inferred prospect attributes. Run-level `provider`
+and `model` identify the LLM execution that drafted the messages; they are caller
+claims, not server-verified provenance. Research/enrichment connector attribution
+stays in lead/contact `source`, enrichment `provider`, and connector-status fields.
+Do not use a connector name as the run's LLM provider.
+
 ## Contact handoff (`contact-handoff.v1`)
 
 `enrich_lead` returns both `contacts` and `enrichments`. The returned contact list is
