@@ -42667,9 +42667,13 @@ var AgentMessageSchema = external_exports.object({
 });
 var SaveRunInput = {
   id: external_exports.string().min(1).max(SHORT),
-  icp: external_exports.string().min(1).max(MEDIUM),
+  icp: external_exports.string().min(1).max(MEDIUM).describe(
+    "The user-confirmed ICP, verbatim. Do not add targeting constraints from examples or inferred company facts."
+  ),
   domains: external_exports.array(external_exports.string().min(1).max(253)).min(1).max(MAX_DOMAINS_PER_SAVE),
-  provider: external_exports.string().min(1).max(SHORT),
+  provider: external_exports.string().min(1).max(SHORT).describe(
+    "Caller-claimed LLM provider that drafted the messages. Use the current execution provider; research/enrichment connector names belong in their own source/provider fields, not here."
+  ),
   model: external_exports.string().min(1).max(SHORT).describe("Caller-claimed model id that drafted the messages"),
   pack: external_exports.string().min(1).max(SHORT).optional().describe('Vertical pack whose compliance gate applies (default "b2b-sdr")'),
   profile: external_exports.string().min(1).max(1e3).optional().describe(
