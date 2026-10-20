@@ -783,3 +783,14 @@ Real coverage uses the current advertised `MiniMax-M3.1-Flash` execution id and
 explicit M2.7-highspeed judge, serially, with all original cases and limits.
 The relationship between the current Flash id and the earlier Preview alias is
 unknown; a naming change alone is not evidence of a model improvement.
+
+
+`confirmed-metadata-cohort-review-2026-10-20.json` preserves all ten serial
+M3.1-Flash/M2.7-highspeed initial cases: six passes and four incomplete, no repeats.
+Baseline errors expose save/send consent, pre-save rejection, and required Agent
+argument ambiguities. The fabrication skill also repeats questions after an authored
+wait response and exhausts checkpoints; all-yes judges do not erase those errors.
+PR160 clarifies the production consent contract. Shared host metadata explicitly
+names existing required Agent fields, while negative tests preserve strict
+rejection and no-verdict evidence. Original cases, rubric, limits and failed
+receipts remain unchanged; changed source requires a fresh cohort.
