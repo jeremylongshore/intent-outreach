@@ -5,6 +5,38 @@ The current skill delegates to three phase agents and pauses for human decisions
 A completion that describes those steps, or a run that exercises only preflight,
 cannot establish a Tier 3B pass.
 
+## Current decision — 2026-10-20
+
+**Qualification rejected; PR #114 remains draft and `io-k3l` remains open.**
+[The seven-layer decision](qualification-decision-2026-10-20.json) records two
+complete original ten-case initial batches on identical runtime source, spec,
+pinned CLI, M2.7-highspeed judge, medium reasoning and original deadlines.
+
+| Execution model | Automatic pass | Fail | Incomplete | Manually accepted |
+| --- | ---: | ---: | ---: | ---: |
+| MiniMax-M3.1-Flash | 7 | 0 | 3 | 7 |
+| MiniMax-M2.7 | 5 | 2 | 3 | 4 |
+
+Detailed evidence: [M3.1 cohort](consent-contract-m31-cohort-review-2026-10-20.json)
+and [M2.7 cohort](consent-contract-m27-cohort-review-2026-10-20.json). Both retain
+original receipts, source/trace hashes, root and nested usage, judgments, baseline
+failures and manual findings. No failed receipt is regraded or used as a seed.
+
+Package checks and routing pass across all twenty evaluations. Functional failures
+include omitted checkpoints, invented sender experience, inaccurate receipt paths,
+invalid tool arguments and repeated questions after an authored wait response.
+Incomplete baseline evidence remains disqualifying. Neither profile advances to
+repeat/regression qualification; those requirements remain unmet, not N/A.
+The paired model observations do not establish statistical superiority.
+
+Authored judge calibration did not establish full-context reliability: reviewers
+found missed grounding/instruction-reproduction defects and negative votes without
+corresponding trace evidence. `io-k3l.15` tracks that audit. Original votes remain
+unchanged, and manual review cannot override a failing score into acceptance.
+No production model is approved and no outreach was sent. The integrated source
+passes 1,633 tests, both TypeScript checks and the pinned CLI component proof;
+those checks are distinct from the rejected behavioral qualification.
+
 ## Offline connection proof
 
 J-Rig PR #344 (`b1a2a28a1666bf6aeac454148857c6b3cbb0b3b0` on its main branch)
