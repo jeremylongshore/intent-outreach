@@ -88,6 +88,10 @@ not select an agent; never omit `subagent_type` or substitute a general-purpose 
 3. **Research.** Dispatch `outreach-researcher` once per domain. Give each agent only the confirmed
    domain and ICP. Aggregate its returned leads, contacts, and connector status, then deduplicate by
    stable domain/email identifiers. Show the results and use AskUserQuestion to ask which leads to keep.
+   This retained-lead checkpoint is required even for one known contact or a user who says they will
+   reject the final draft. Scope confirmation and an anticipated later decision do not select leads.
+   Wait for that checkpoint's reply before dispatching any enrichment or drafting agent; the later
+   draft review is a separate question after drafting finishes.
 4. **Enrich.** Dispatch `outreach-enricher` once per kept lead with that lead and its contacts. Preserve
    the returned provider attribution and timestamps. Require the worker's tool-normalized `contacts`
    alongside `enrichments`: use these returned contacts in place of the earlier research contact list
