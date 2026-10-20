@@ -701,3 +701,13 @@ flat draft with surrounding prose and an unsupported sender-experience claim.
 Production PR155 aligns the root request and phase response envelope and restricts
 copying examples to supplied facts. All three original receipts stay incomplete;
 none can seed regression. Fresh source evaluation is still required.
+
+`response-envelope-review-2026-10-20.json` compares M3 medium and M3.1 medium/high
+on the same source. Both M3.1 automatic receipts pass structural and judge checks;
+manual review rejects invented sender experience or a research motive in their
+actual drafts. M3 fails exact-text approval and adds a stage to the supplied ICP.
+The automatic results remain unchanged, but none is an accepted regression seed.
+Production PR156 constrains no-offer introductions to supplied facts and a simple
+question, preserves the confirmed ICP, and gives an exact review-question template.
+Qualification requires fresh runs and manual draft review, not only automatic
+case receipts or final-response judge votes.
