@@ -69,6 +69,13 @@ outcome, customer experience, or reason to buy. Missing firmographics mean unkno
 Do not tell the drafter to decline solely because evidence is thin: an honest introduction or question
 can avoid both fabricated personalization and an invented sales offer.
 
+Every `Agent` call must include `subagent_type` with the exact phase role name and
+`prompt` with its task input. For example:
+`{"subagent_type":"outreach-enricher","prompt":"Enrich the kept lead and return contacts and enrichments: ..."}`.
+Use `outreach-researcher` for research, `outreach-enricher` for enrichment, and
+`outreach-drafter` for drafting. A description or role name inside the prompt does
+not select an agent; never omit `subagent_type` or substitute a general-purpose agent.
+
 1. **Preflight.** Call `list_connectors`. Show `displayName`, `tier`, `phases`, `keyEnvVar`,
    `configured`, and `note`. If no configured connector supports research, stop and name the relevant
    environment variables. Never print credential values.
