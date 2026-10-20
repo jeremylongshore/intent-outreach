@@ -62,6 +62,25 @@ export function inspectCaseVotes(raw: unknown, expected: ReturnType<typeof selec
   return votes;
 }
 
+export function regressionVotes(raw: unknown, config: z.infer<typeof caseRunConfig>, inputSpecSha256: string,
+  sourceHashes: Record<string, string>, expected: ReturnType<typeof selectCaseSpec>["expected"]) {
+  const previous = z.object({
+    schema: z.literal("intent-outreach-case-run/v1"), caseResult: z.literal("pass"),
+    caseId: z.literal(config.caseId), evidenceKind: z.literal(config.evidenceKind),
+    inputSpecSha256: z.literal(inputSpecSha256), jrigSha256: z.literal(config.jrigSha256),
+    provider: z.literal(config.provider), model: z.literal(config.model), judgeModel: z.literal(config.judgeModel),
+    sourceHashes: z.record(z.string(), z.string()), judgments: z.array(vote),
+    phaseTimeoutMs: phaseTimeoutMsSchema.optional(),
+    executionParameters: z.object({ reasoning_effort: reasoningEffortSchema }).strict().optional(),
+  }).parse(raw);
+  assert.deepEqual(previous.sourceHashes, sourceHashes, "regression source mismatch");
+  assert.equal(previous.phaseTimeoutMs, config.phaseTimeoutMs, "regression phase timeout mismatch");
+  assert.deepEqual(previous.executionParameters,
+    config.executionReasoningEffort === undefined ? undefined : { reasoning_effort: config.executionReasoningEffort },
+    "regression reasoning profile mismatch");
+  return inspectCaseVotes(previous.judgments, expected, config.caseId).map(({ criterion_id, verdict }) => ({ criterion_id, verdict }));
+}
+
 export async function invokeCaseProcess(cli: string, args: string[], env: NodeJS.ProcessEnv, directory: string, signal?: AbortSignal) {
   const stdout = await open(join(directory, "jrig.stdout.json"), "wx", 0o600);
   const stderr = await open(join(directory, "jrig.stderr.log"), "wx", 0o600);
@@ -129,12 +148,7 @@ export async function runCase(raw: unknown, apiKey: string, signal?: AbortSignal
   let priorReceiptSha256: string | null = null;
   if (config.priorReceipt) {
     const bytes = await readFile(config.priorReceipt);
-    const previous = z.object({ schema: z.literal("intent-outreach-case-run/v1"), caseResult: z.literal("pass"), caseId: z.literal(config.caseId),
-      inputSpecSha256: z.literal(hash(source)), evidenceKind: z.literal(config.evidenceKind), judgments: z.array(vote),
-      phaseTimeoutMs: phaseTimeoutMsSchema.optional(),
-    }).parse(JSON.parse(bytes.toString()));
-    assert.equal(previous.phaseTimeoutMs, config.phaseTimeoutMs, "regression phase timeout mismatch");
-    regression = inspectCaseVotes(previous.judgments, expected, config.caseId).map(({ criterion_id, verdict }) => ({ criterion_id, verdict }));
+    regression = regressionVotes(JSON.parse(bytes.toString()), config, hash(source), before, expected);
     priorReceiptSha256 = hash(bytes);
   }
   await mkdir(config.outputDir, { mode: 0o700 }); // Exclusive fresh directory; never reuse prior fixtures.
@@ -208,7 +222,7 @@ export async function runCase(raw: unknown, apiKey: string, signal?: AbortSignal
   }
   const report = { schema: "intent-outreach-case-run/v1", caseId: config.caseId, evidenceKind: config.evidenceKind,
     caseResult, tier3bPassed: false, scope: "one_case_requires_suite_regression_variance_and_review", inputSpecSha256: hash(source),
-    provider: config.provider, model: config.model, judgeModel: config.judgeModel, processResult, priorReceiptSha256,
+    provider: config.provider, model: config.model, judgeModel: config.judgeModel, jrigSha256: config.jrigSha256, processResult, priorReceiptSha256,
     ...(config.executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: config.executionReasoningEffort } } : {}),
     ...(config.phaseTimeoutMs !== undefined ? { phaseTimeoutMs: config.phaseTimeoutMs } : {}),
     judgments, trigger, evidence, evidenceError, jrigResult, sourceHashes: before,

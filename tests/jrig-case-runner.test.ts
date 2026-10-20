@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { caseRunConfig, inspectCaseVotes, selectCaseSpec, invokeCaseProcess } from "../evals/jrig/run-case.js";
+import { caseRunConfig, inspectCaseVotes, selectCaseSpec, invokeCaseProcess, regressionVotes } from "../evals/jrig/run-case.js";
 import { scenarios } from "../evals/jrig/scenarios.js";
 
 const original = () => ({ spec_version: "1.0", skill_name: "intent-outreach", description: "retain the reviewed description",
@@ -63,6 +63,37 @@ describe("single-case spec and judgment boundaries", () => {
     expect(caseRunConfig.safeParse({ ...config, executionReasoningEffort: "unreviewed" }).success).toBe(false);
     expect(caseRunConfig.safeParse({ ...config, apiKey: "not-in-config" }).success).toBe(false);
     expect(caseRunConfig.safeParse({ ...config, provider: "stub" }).success).toBe(false);
+  });
+});
+
+describe("regression seed provenance", () => {
+  const config = caseRunConfig.parse({ jrigCli: "/tmp/cli.js", jrigSha256: "a".repeat(64), outputDir: "/tmp/new-case",
+    caseId: "scope-checkpoint", provider: "minimax", model: "MiniMax-M3", judgeModel: "MiniMax-M3",
+    baseUrl: "https://api.minimax.io/v1", evidenceKind: "behavioral-evaluation", phaseTimeoutMs: 120000 });
+  const sources = { "skills/intent-outreach/SKILL.md": "b".repeat(64), "bundle/server.mjs": "c".repeat(64) };
+  const { expected } = selectCaseSpec(original(), config.caseId, config.model);
+  const prior = () => ({ schema: "intent-outreach-case-run/v1", caseResult: "pass", caseId: config.caseId,
+    inputSpecSha256: "d".repeat(64), evidenceKind: config.evidenceKind, provider: config.provider, model: config.model,
+    judgeModel: config.judgeModel, jrigSha256: config.jrigSha256, phaseTimeoutMs: config.phaseTimeoutMs, sourceHashes: sources,
+    judgments: [
+      { criterion_id: "nonempty", test_case_id: config.caseId, method: "deterministic", verdict: "yes" },
+      { criterion_id: "grounded", test_case_id: config.caseId, method: "judge", verdict: "yes", samples: 3, sample_verdicts: ["yes", "yes", "yes"] },
+    ],
+  });
+  it("accepts only a matching passing cohort and keeps its actual votes", () => {
+    expect(regressionVotes(prior(), config, "d".repeat(64), sources, expected)).toEqual([
+      { criterion_id: "nonempty", verdict: "yes" }, { criterion_id: "grounded", verdict: "yes" },
+    ]);
+  });
+  it.each([
+    { caseResult: "incomplete" }, { caseResult: "fail" }, { evidenceKind: "component-test" },
+    { caseId: "prospect-and-draft" }, { inputSpecSha256: "e".repeat(64) }, { jrigSha256: "f".repeat(64) },
+    { provider: "groq" }, { model: "different-executor" }, { judgeModel: "different-judge" },
+    { phaseTimeoutMs: 60000 }, { executionParameters: { reasoning_effort: "low" } },
+    { sourceHashes: { ...sources, "bundle/server.mjs": "e".repeat(64) } }, { sourceHashes: {} },
+    { jrigSha256: undefined }, { judgments: [] },
+  ])("rejects mismatched or incomplete seed %j", (changed) => {
+    expect(() => regressionVotes({ ...prior(), ...changed }, config, "d".repeat(64), sources, expected)).toThrow();
   });
 });
 
