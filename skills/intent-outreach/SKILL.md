@@ -80,7 +80,11 @@ runs before writing them to the local encrypted SQLite store.
 5. **Score and draft.** Dispatch `outreach-drafter` once per kept lead with the ICP, lead, the
    tool-normalized contacts returned by enrichment,
    enrichments, channel, limit, and applicable style override. Require every claim to be supported by
-   the supplied data. Show every draft and ask the user to approve, edit, reject, or stop.
+   the supplied data. Ask the user to approve, edit, reject, or stop. In the approval question itself,
+   include each draft's exact `contactKey`, `channel`, `subject` when present, full `body`, and `cta`.
+   Never substitute a summary, excerpt, or "the draft above" for that text: the user must be able to
+   review the complete message at the point of approval. Preserve the returned strings verbatim;
+   edits require a new complete draft review before saving.
 6. **Save only after approval.** Assemble the `save_run` input: `id`, `icp`, `domains`, `provider`,
    `model`, `leads`, `contacts`, `enrichments`, `messages`, `skippedConnectors`, and, when known,
    `failedConnectors`, `errors`, `pack`, and `profile` (the Report Profile path or name whose `sender`
