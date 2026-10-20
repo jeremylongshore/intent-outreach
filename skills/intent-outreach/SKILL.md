@@ -68,8 +68,9 @@ claims about the prospect or sender. If no offer was supplied, say so; never inv
 outcome, customer experience, or reason to buy. Missing firmographics mean unknown fit, not a mismatch.
 Do not tell the drafter to decline solely because evidence is thin: an honest introduction or question
 can avoid both fabricated personalization and an invented sales offer.
-Preserve the confirmed ICP verbatim in each dispatch. Do not add a stage, industry, size, or other
-constraint from examples or assumptions; "developer-tool founders" does not imply "seed-stage".
+Preserve the confirmed ICP verbatim in each dispatch and saved run. Take its value from the active
+user request or explicit scope confirmation, never from this document's usage examples. Do not add
+a stage, industry, size, or other constraint that the user did not supply.
 
 Every `Agent` call must include `subagent_type` with the exact phase role name and
 `prompt` with its task input. For example:
@@ -134,7 +135,12 @@ not select an agent; never omit `subagent_type` or substitute a general-purpose 
 6. **Save only after approval.** Assemble the `save_run` input: `id`, `icp`, `domains`, `provider`,
    `model`, `leads`, `contacts`, `enrichments`, `messages`, `skippedConnectors`, and, when known,
    `failedConnectors`, `errors`, `pack`, and `profile` (the Report Profile path or name whose `sender`
-   identity supplies the CAN-SPAM footer). Each message needs `contactKey` (the contact's email, or
+   identity supplies the CAN-SPAM footer). Copy `icp` verbatim from the confirmed scope, including
+   when assembling persistence metadata after approval. Set `provider` to the LLM execution provider
+   and `model` to its exact model id; a research or enrichment connector is not the model provider.
+   Keep connector names in lead/contact `source`, enrichment `provider`, and connector-status fields.
+   Verify these metadata fields against the confirmed scope and current execution identity before
+   saving; example values are never defaults. Each message needs `contactKey` (the contact's email, or
    `name@domain` when it has none, matching an entry in `contacts`), `channel`, `body`, and `cta`;
    `subject`, `fitScore`, and `promptVersion` are optional. Keep the same tool-normalized contacts
    supplied to the drafter; never switch back to research contacts when assembling `save_run`.
@@ -192,7 +198,9 @@ Return a compact campaign receipt containing:
 
 ## Examples
 
-> **User:** `/intent-outreach — ICP: seed-stage developer-tool founders; domains: example.com; email; one contact`
+Usage template (replace placeholders with the user's confirmed values):
+
+`/intent-outreach — ICP: <confirmed ICP>; domains: <confirmed domains>; <channel>; <contact limit>`
 
 Call `list_connectors`, confirm scope, research the domain, pause for lead selection, enrich retained
 leads, draft from returned evidence, pause for message approval, then call `save_run`. If the connector
