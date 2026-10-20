@@ -756,3 +756,16 @@ upgraded and no case, criterion, timeout or guard is relaxed.
 33/36 correct votes on authored controls. It misses the predeclared 36/36 gate,
 so MiniMax-M3 remains the judge. This adapter diagnostic is neither behavioral
 qualification nor evidence for production model approval.
+
+
+`explicit-scope-cohort-review-2026-10-20.json` retains the serial M3 initial batch:
+five passes, four failures and one incomplete case. The campaign copies an
+unconfirmed targeting stage and records a connector as its model provider; thin-data
+execution skips lead selection. The multi-domain skill trace is clean, but its
+approval judgment is uncertain; fabrication is refused, but routing misses the
+expected skill. Baseline invalid arguments and a separate generic worker failure
+remain incomplete, without assuming an unobserved provider error category.
+PR159 clarifies persisted model/ICP metadata and replaces concrete illustrative
+targeting with placeholders. No duplicate workflow rule or weakened evaluator is
+introduced to excuse the remaining model failures. All ten cases were completed;
+none of this source's receipts can seed regression after the production update.
