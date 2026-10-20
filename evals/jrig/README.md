@@ -769,3 +769,17 @@ PR159 clarifies persisted model/ICP metadata and replaces concrete illustrative
 targeting with placeholders. No duplicate workflow rule or weakened evaluator is
 introduced to excuse the remaining model failures. All ten cases were completed;
 none of this source's receipts can seed regression after the production update.
+
+
+`m27-highspeed-judge-calibration-review-2026-10-20.json` records 36/36 correct
+MiniMax-M2.7-highspeed judgments on the same authored controls and unchanged
+threshold that M3.1-Flash-Preview failed. Shared inputs are retained in
+`judge-calibration-controls-2026-10-20.json`. This permits selecting the candidate
+for fresh case evaluations; it does not certify full-context judgment accuracy,
+regrade old failures, establish a latency comparison, or approve production use.
+`confirmed-metadata-binding-proof-2026-10-20.json` verifies the updated source
+through the actual CLI's scripted regression, failure and cancellation paths.
+Real coverage uses the current advertised `MiniMax-M3.1-Flash` execution id and
+explicit M2.7-highspeed judge, serially, with all original cases and limits.
+The relationship between the current Flash id and the earlier Preview alias is
+unknown; a naming change alone is not evidence of a model improvement.
