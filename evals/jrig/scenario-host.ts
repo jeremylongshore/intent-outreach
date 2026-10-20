@@ -89,7 +89,7 @@ export async function createScenarioHost(rawConfig: unknown, apiKey: string) {
     } });
     const resources = await loadAgentResources(root);
     const tools: HostTool[] = [
-      { name: "Agent", description: "Invoke one of the documented phase agents with only its explicit task input. Model is inherited from this evaluation. Each invocation has a fresh context and only the role's declared tools.", inputSchema: z.toJSONSchema(agentArgs, { target: "draft-7" }) },
+      { name: "Agent", description: "Invoke one of the documented phase agents with only its explicit task input. Every call requires subagent_type and prompt. Select subagent_type from the advertised enum; an optional description or a role name inside prompt does not select an agent. Model is inherited from this evaluation. Each invocation has a fresh context and only the role's declared tools.", inputSchema: z.toJSONSchema(agentArgs, { target: "draft-7" }) },
       { name: "Read", description: "Read a reviewed repository resource by exact relative file_path.", inputSchema: z.toJSONSchema(readArgs, { target: "draft-7" }) },
       { name: "AskUserQuestion", description: "Present complete questions to the scenario's authored human checkpoint. Include all draft text being reviewed in the question. Responses are fixture decisions for this isolated evaluation, never real-world approvals. Missing checkpoint replies are errors, never implicit approval.", inputSchema: z.toJSONSchema(questionArgs, { target: "draft-7" }) },
       ...rootTools.map((name) => {

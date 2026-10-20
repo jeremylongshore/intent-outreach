@@ -202,6 +202,34 @@ describe("scenario MCP host", () => {
       await rm(evidence, { recursive: true, force: true });
     }
   });
+  it.each([
+    { label: "role", args: { description: "Run outreach-researcher", prompt: "Use outreach-researcher for example.test" } },
+    { label: "prompt", args: { subagent_type: "outreach-researcher", description: "Research example.test" } },
+  ])("rejects a missing Agent $label without inferring a dispatch or dropping error evidence", async ({ args }) => {
+    const evidence = await mkdtemp(join(tmpdir(), "outreach-required-agent-"));
+    const fixture = await loopback(() => { throw new Error("invalid dispatch must not call a model"); });
+    const host = await start(evidence, fixture.baseUrl, "scope-checkpoint", scenarios["scope-checkpoint"]!.checkpoints);
+    try {
+      const agent = (await host.client.listTools()).tools.find((tool) => tool.name === "Agent");
+      expect(agent?.description).toContain("Every call requires subagent_type and prompt");
+      expect(agent?.inputSchema.required).toEqual(expect.arrayContaining(["subagent_type", "prompt"]));
+      const result = await host.call("Agent", args);
+      expect((result as { isError?: boolean }).isError).toBe(true);
+      await host.client.close();
+      const trace = await events(host.home);
+      expect(trace.some((event) => event.kind === "call_failed" && event.data.name === "Agent")).toBe(true);
+      expect(trace.some((event) => event.kind === "agent_event")).toBe(false);
+      const audit = await auditScenario(host.home);
+      expect(audit).toMatchObject({ passed: false, storedRuns: 0, behavioralVerdict: null, tier3bPassed: false });
+      expect(audit.incomplete).toEqual(expect.arrayContaining(["host_call_failed", "bundled_tool_error"]));
+      expect(fixture.requests).toHaveLength(0);
+      expect(fixture.errors).toHaveLength(0);
+    } finally {
+      await host.client.close();
+      await fixture.close();
+      await rm(evidence, { recursive: true, force: true });
+    }
+  });
   it("advertises no active profile while retaining profile rejection and no-verdict evidence", async () => {
     const evidence = await mkdtemp(join(tmpdir(), "outreach-inactive-profile-"));
     const fixture = await loopback(() => { throw new Error("no model call expected"); });
