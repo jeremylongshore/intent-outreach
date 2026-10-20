@@ -732,3 +732,11 @@ no-verdict evidence, and writes nothing. An integration test verifies that behav
 `profile-context-binding-proof-2026-10-20.json` binds the updated host to the actual
 CLI regression, failure and cancellation component checks. Earlier receipts remain
 unchanged, and the changed host hash requires a fresh behavioral cohort.
+
+`sender-persona-cohort-review-2026-10-20.json` preserves the three pre-context
+M3 trials: a scope pass, an incomplete campaign because the baseline supplied an
+inactive starter profile, and a rejection failure because the worker skipped the
+canonical Read. The campaign's actual draft is grounded and correctly persisted;
+that does not upgrade the overall incomplete receipt. The rejection's zero writes
+likewise do not erase a required-step failure. These results remain bound to their
+original host and cannot seed the new profile-context cohort.
