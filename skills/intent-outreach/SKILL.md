@@ -85,6 +85,11 @@ not select an agent; never omit `subagent_type` or substitute a general-purpose 
    Report Profile is supplied, Read and summarize it before proceeding. Only the profile fields listed
    as runtime-mapped in [references/report-profiles.md](references/report-profiles.md) are automatically
    applied; obtain explicit confirmation before treating other fields as operational instructions.
+   For a campaign that includes drafting, if any required scope field is missing, use AskUserQuestion
+   to obtain it and stop until confirmed. Never default the channel or contact limit, and never
+   dispatch research to fill the waiting time. Refusing a request to fabricate claims does not confirm
+   the legitimate campaign's scope. A research-only request needs its research scope, not a channel
+   or drafting limit; honor its explicit prohibition on enrichment, drafting, and persistence.
 3. **Research.** Dispatch `outreach-researcher` once per domain. Give each agent only the confirmed
    domain and ICP. Aggregate its returned leads, contacts, and connector status, then deduplicate by
    stable domain/email identifiers. Show the results and use AskUserQuestion to ask which leads to keep.
