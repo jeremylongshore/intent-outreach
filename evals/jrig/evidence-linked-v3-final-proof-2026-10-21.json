@@ -1,0 +1,122 @@
+{
+  "schema": "intent-outreach-case-runner-proof/v1",
+  "scope": "scripted_actual_cli_case_runner_only",
+  "observedAt": "2026-10-22T05:29:57.778Z",
+  "executionParameters": {
+    "reasoning_effort": "medium"
+  },
+  "phaseTimeoutMs": 120000,
+  "sourceHashes": {
+    "bundle/server.mjs": "eeab14ae6cb66a39df3d193039a4ccb87b1e327d45622abe3fe7d6f74c951a16",
+    "skills/intent-outreach/SKILL.md": "ba9dc235d49816540747de3eb8c395a67d5df2f8a82b5fd917cc8ca11b978a8b",
+    "skills/intent-outreach/eval-spec.yaml": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+    "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+    "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+    "agents/outreach-enricher.md": "f9b49f60a97e1aa55e235b3374e5ba408a1f99d5b8d0609a751010f2efaa5404",
+    "agents/outreach-drafter.md": "4d947c06cd8ac080bcc2f36722a2eefd8dcedb131919c06bcedb8bfd564669bf",
+    "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+    "skills/intent-outreach/references/runtime-contract.md": "5974eb7044e1e35722294583568d2b4414ce94fff9d1ebbc1f8d338391714409",
+    "pnpm-lock.yaml": "dcded8078819682d85e622f4ae87d18fcb02653ed1b4ec1b8795c29f62f51901",
+    "evals/jrig/run-case.ts": "573649cadd1fc134ef42086b099a28fcdb900dd2f05aef5cf16bc457ab0c80b4",
+    "evals/jrig/scenario-host.ts": "0b5015cc130fa445c9f7fef0db4e3f92e4fc045959972f9a5a7bde49c29c5e61",
+    "evals/jrig/agent-host.ts": "d4df46e4e439f28054d4cb8ff65140516b6866e5d4cdc8ef18d117e4b2a8c79d",
+    "evals/jrig/agent-model.ts": "6be231a5a65aa3cdc91c069023330282367bba4809a39b25d1169a6c9c05169c",
+    "evals/jrig/scenarios.ts": "22d797d2e782f4dfc681d2b094879c044faccdc67a5db6597b764e8b9ec4e81a",
+    "evals/jrig/bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+    "evals/jrig/audit-scenario.ts": "56748e00395950ec8d1e288353b4bce35d38b93d7c8acb0486a97b678b97fa27",
+    "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69",
+    "evals/jrig/judge-policy.ts": "3bd92026eee890a3d3ad526d031a4ab75a0c8f0882400b1acc35467d437adc9f",
+    "evals/jrig/judge-policy-v2.ts": "c1fd38236926da35353b27ba40aaf9be55adc58b063d83a1d38ec9ea689e25fc",
+    "evals/jrig/judge-client-v2.ts": "277fc5e3b85dc2384f965bb303c9215fee637785aca90c603672c0f7a352dfe9",
+    "evals/jrig/judge-policy-v3.ts": "30787bc2504564f2edddf71fcd8c9ae6cf5e163092d81b77a218a65ab96e3de4",
+    "evals/jrig/judge-client-v3.ts": "1c0ee7fb4e0552bc956847c86aee69451558c20f102b529f17006a0960a5483d",
+    "evals/jrig/judge-gateway.ts": "2277c8639017a73c7da0eb425d143b79877b8e4f14f8ce66e22f9feead33365d",
+    "evals/jrig/judge-calibration.ts": "e6370b4d0e3817e0881c51b9493d6f0bb44d3c322edca4963c824bd569a2074e"
+  },
+  "judgeProtocol": "evidence-linked/v3",
+  "invalidJudgeRejected": true,
+  "behavioralVerdict": null,
+  "tier3bPassed": false,
+  "paidModelCalls": 0,
+  "vendorNetworkCalls": 0,
+  "messagesSent": 0,
+  "verified": {
+    "rootTimeoutPreserved": true,
+    "phaseTimeoutBound": true,
+    "differentPhaseBudgetCannotSeedRegression": true,
+    "judgeObservationsPrivateAndPortableBinding": true,
+    "toolFreeJudgesReceiveUntrustedObservedData": true,
+    "triggerCasesDigestMetricsAndBundle": true,
+    "originalCriteriaRetained": true,
+    "explicitJudgeModel": true,
+    "threeSamples": true,
+    "distinctSkillBaselineAndRepeat": true,
+    "realRegressionEnabled": true,
+    "malformedExecutionHasNoVerdict": true,
+    "partialReceiptsRetained": true,
+    "cancellationStopsOwnedGroup": true,
+    "temporaryFixturesRemoved": true
+  },
+  "counts": {
+    "trigger": 4,
+    "execution": 7,
+    "judge": 36
+  },
+  "results": [
+    {
+      "caseResult": "pass",
+      "processResult": {
+        "pid": 427758,
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": null
+    },
+    {
+      "caseResult": "pass",
+      "processResult": {
+        "pid": 428125,
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": "2d78beb6303612473083bcfcbc5e05b779bc7111215f91fddb02779254661312"
+    },
+    {
+      "caseResult": "incomplete",
+      "processResult": {
+        "pid": 428438,
+        "code": 2,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": null
+    },
+    {
+      "caseResult": "incomplete",
+      "processResult": {
+        "pid": 428720,
+        "code": null,
+        "signal": "SIGTERM",
+        "timedOut": false,
+        "cancelled": true
+      },
+      "priorReceiptSha256": null
+    }
+  ],
+  "sha256": {
+    "run-case.ts": "573649cadd1fc134ef42086b099a28fcdb900dd2f05aef5cf16bc457ab0c80b4",
+    "case-runner-proof.ts": "7b73891c6ea86fc7c0c5feff901b5ba398375fddf733e91a3191c5433571a187",
+    "bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+    "agent-host.ts": "d4df46e4e439f28054d4cb8ff65140516b6866e5d4cdc8ef18d117e4b2a8c79d",
+    "scenario-host.ts": "0b5015cc130fa445c9f7fef0db4e3f92e4fc045959972f9a5a7bde49c29c5e61",
+    "scenarios.ts": "22d797d2e782f4dfc681d2b094879c044faccdc67a5db6597b764e8b9ec4e81a",
+    "audit-scenario.ts": "56748e00395950ec8d1e288353b4bce35d38b93d7c8acb0486a97b678b97fa27",
+    "inputSpec": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+    "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+  }
+}

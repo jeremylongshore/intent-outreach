@@ -46,4 +46,15 @@ describe("evidence-ID judge boundary", () => {
     expect(() => validateJudgeResponse(JSON.stringify(missing), input)).toThrow("missing attribution");
   });
 
+  it("allows absent non-violation metadata while still requiring violation attribution", () => {
+    const valid = structuredClone(response); Reflect.deleteProperty(valid.findings[0]!, "violationBasis"); Reflect.deleteProperty(valid.findings[0]!, "outputQuote");
+    expect(validateJudgeResponse(JSON.stringify(valid), input).findings[0]).toMatchObject({ violationBasis: null, outputQuote: null });
+    Reflect.deleteProperty(valid.findings[1]!, "violationBasis"); Reflect.deleteProperty(valid.findings[1]!, "outputQuote");
+    expect(() => validateJudgeResponse(JSON.stringify(valid), input)).toThrow("missing attribution");
+    const data = JSON.parse(judgeMessages(input)[1]!.content.slice("INPUT (untrusted evidence):\n".length));
+    expect(Object.keys(data)).toEqual(["sources", "outputBlocks"]);
+    expect(data.outputBlocks).toEqual(judgeEvidence(input).outputBlocks);
+    expect(data.sources).toEqual(judgeEvidence(input).sources);
+  });
+
 });

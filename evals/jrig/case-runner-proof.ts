@@ -164,7 +164,7 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
     return { schema: "intent-outreach-case-runner-proof/v1", scope: "scripted_actual_cli_case_runner_only", observedAt: new Date().toISOString(),
       ...(executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: executionReasoningEffort } } : {}),
       ...(phaseTimeoutMs !== undefined ? { phaseTimeoutMs } : {}),
-      judgeProtocol: evidenceLinked ? judgePolicyVersion : null, invalidJudgeRejected, behavioralVerdict: null, tier3bPassed: false, paidModelCalls: 0, vendorNetworkCalls: 0, messagesSent: 0,
+      sourceHashes: first.sourceHashes, judgeProtocol: evidenceLinked ? judgePolicyVersion : null, invalidJudgeRejected, behavioralVerdict: null, tier3bPassed: false, paidModelCalls: 0, vendorNetworkCalls: 0, messagesSent: 0,
       verified: { rootTimeoutPreserved: true, phaseTimeoutBound: true, differentPhaseBudgetCannotSeedRegression: true, judgeObservationsPrivateAndPortableBinding: true, toolFreeJudgesReceiveUntrustedObservedData: true, triggerCasesDigestMetricsAndBundle: true, originalCriteriaRetained: true, explicitJudgeModel: true, threeSamples: true, distinctSkillBaselineAndRepeat: true,
         realRegressionEnabled: true, malformedExecutionHasNoVerdict: true, partialReceiptsRetained: true, cancellationStopsOwnedGroup: true, temporaryFixturesRemoved: true },
       counts, results: [first, repeat, failed, cancelled].map((item) => ({ caseResult: item.caseResult, processResult: item.processResult, priorReceiptSha256: item.priorReceiptSha256 })),
