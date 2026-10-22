@@ -11,6 +11,10 @@ import { bindScenarioEvidence, bindTriggerEvidence } from "./bind-evidence.js";
 import { createAgentModel, reasoningEffortSchema } from "./agent-model.js";
 import { scenarios } from "./scenarios.js";
 import { phaseTimeoutMsSchema } from "./agent-host.js";
+import { startJudgeGateway, type JudgeGatewayRecord } from "./judge-gateway.js";
+import { readJudgeCalibration } from "./judge-calibration.js";
+import { judgePolicyVersion } from "./judge-policy-v2.js";
+import { judgeModel } from "./judge-client-v2.js";
 
 const hash = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 const absolute = z.string().refine((path) => isAbsolute(path) && resolve(path) === path, "normalized absolute path required");
@@ -23,6 +27,9 @@ export const caseRunConfig = z.object({
   phaseTimeoutMs: phaseTimeoutMsSchema.optional(),
   evidenceKind: z.enum(["component-test", "behavioral-evaluation"]),
   priorReceipt: absolute.optional(),
+  judgeProtocol: z.literal("evidence-linked/v2").optional(),
+  judgeCalibration: absolute.optional(),
+  judgeCalibrationSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict();
 const criterion = z.object({ id: z.string(), method: z.enum(["judge", "deterministic"]), samples: z.number().int().optional() }).passthrough();
 const testCase = z.object({ id: z.string(), trigger_expectation: z.enum(["should_trigger", "should_not_trigger"]), criteria_ids: z.array(z.string()).optional() }).passthrough();
@@ -74,6 +81,8 @@ export function regressionVotes(raw: unknown, config: z.infer<typeof caseRunConf
     executionParameters: z.object({ reasoning_effort: reasoningEffortSchema }).strict().optional(),
   }).parse(raw);
   assert.deepEqual(previous.sourceHashes, sourceHashes, "regression source mismatch");
+  assert.equal(z.record(z.string(), z.unknown()).parse(raw).judgeProtocol, config.judgeProtocol, "regression judge protocol mismatch");
+  assert.equal(z.record(z.string(), z.unknown()).parse(raw).judgeCalibrationSha256, config.judgeCalibrationSha256, "regression judge calibration mismatch");
   assert.equal(previous.phaseTimeoutMs, config.phaseTimeoutMs, "regression phase timeout mismatch");
   assert.deepEqual(previous.executionParameters,
     config.executionReasoningEffort === undefined ? undefined : { reasoning_effort: config.executionReasoningEffort },
@@ -138,10 +147,16 @@ export async function runCase(raw: unknown, apiKey: string, signal?: AbortSignal
   const yaml = require("yaml") as { parse(text: string): unknown };
   const source = await readFile(join(root, "skills/intent-outreach/eval-spec.yaml"));
   const { spec, expected } = selectCaseSpec(yaml.parse(source.toString()), config.caseId, config.model);
+  assert(config.evidenceKind !== "behavioral-evaluation" || config.judgeProtocol, "behavioral evaluation requires qualified evidence-linked judge");
+  if (config.judgeProtocol) {
+    assert(config.provider === "minimax" && config.judgeModel === judgeModel, "unsupported evidence-linked judge");
+    assert(config.judgeCalibration && config.judgeCalibrationSha256, "judge calibration required");
+    await readJudgeCalibration(config.judgeCalibration, config.judgeCalibrationSha256, root, config.evidenceKind);
+  } else assert(!config.judgeCalibration && !config.judgeCalibrationSha256, "calibration supplied without judge protocol");
   const paths = ["bundle/server.mjs", "skills/intent-outreach/SKILL.md", "skills/intent-outreach/eval-spec.yaml", "prompts/outreach.v3.md",
     "agents/outreach-researcher.md", "agents/outreach-enricher.md", "agents/outreach-drafter.md",
     "skills/intent-outreach/references/report-profiles.md", "skills/intent-outreach/references/runtime-contract.md", "pnpm-lock.yaml",
-    ...["run-case.ts", "scenario-host.ts", "agent-host.ts", "agent-model.ts", "scenarios.ts", "bind-evidence.ts", "audit-scenario.ts", "fixture-fetch.mjs"].map((path) => "evals/jrig/" + path)];
+    ...["run-case.ts", "scenario-host.ts", "agent-host.ts", "agent-model.ts", "scenarios.ts", "bind-evidence.ts", "audit-scenario.ts", "fixture-fetch.mjs", "judge-policy.ts", "judge-policy-v2.ts", "judge-client-v2.ts", "judge-gateway.ts", "judge-calibration.ts"].map((path) => "evals/jrig/" + path)];
   const sourceHashes = async () => Object.fromEntries(await Promise.all(paths.map(async (path) => [path, hash(await readFile(join(root, path)))])));
   const before = await sourceHashes();
   let regression: { criterion_id: string; verdict: "yes" | "no" | "unsure" }[] | undefined;
@@ -175,8 +190,15 @@ export async function runCase(raw: unknown, apiKey: string, signal?: AbortSignal
     ...(config.executionReasoningEffort !== undefined ? ["--execution-reasoning-effort", config.executionReasoningEffort] : []),
     ...(regression ? ["--regression-baseline", join(config.outputDir, "regression.json")] : [])];
   await write("started.json", { config, inputSpecSha256: hash(source), sourceHashes: before, yamlParserSha256: hash(await readFile(require.resolve("yaml"))), priorReceiptSha256, args });
-  const processResult = await invokeCaseProcess(config.jrigCli, args, { PATH: process.env.PATH, HOME: config.outputDir,
-    LLM_BASE_URL: config.baseUrl, LLM_API_KEY: apiKey, LLM_MODEL: config.model, JRIG_AGENT_API_KEY: apiKey }, config.outputDir, signal);
+  const gateway = config.judgeProtocol ? await startJudgeGateway({ apiKey, executionModel: config.model, upstream: config.baseUrl, spec,
+    referenceInstructions: await readFile(join(root, "skills/intent-outreach/SKILL.md"), "utf8") }) : undefined;
+  let processResult: Awaited<ReturnType<typeof invokeCaseProcess>>;
+  try {
+    processResult = await invokeCaseProcess(config.jrigCli, args, { PATH: process.env.PATH, HOME: config.outputDir,
+      LLM_BASE_URL: gateway?.baseUrl ?? config.baseUrl, LLM_API_KEY: apiKey, LLM_MODEL: config.model, JRIG_AGENT_API_KEY: apiKey }, config.outputDir, signal);
+  } finally { await gateway?.close(); }
+  const judgeEvidence = gateway?.snapshot();
+  if (judgeEvidence) await write("judge-evidence.json", judgeEvidence);
   let caseResult: "pass" | "fail" | "incomplete" = "incomplete";
   let evidence: Awaited<ReturnType<typeof bindScenarioEvidence>> | null = null;
   let trigger: Awaited<ReturnType<typeof bindTriggerEvidence>> | null = null;
@@ -187,6 +209,7 @@ export async function runCase(raw: unknown, apiKey: string, signal?: AbortSignal
     assert(!processResult.timedOut && !processResult.cancelled && processResult.signal === null, "case_process_incomplete");
     assert.deepEqual(await sourceHashes(), before, "source_changed_during_execution");
     assert.equal(hash(await readFile(config.jrigCli)), config.jrigSha256, "CLI_changed_during_execution");
+    assert(!judgeEvidence?.errors && !judgeEvidence?.records.some((record) => record.failure), "judge_gateway_incomplete");
     const stdout = join(config.outputDir, "jrig.stdout.json");
     assert((await stat(stdout)).size <= 16777216, "CLI_result_too_large");
     const rows = z.record(z.string(), z.record(z.string(), z.unknown())).parse(JSON.parse((await readFile(stdout)).toString()));
@@ -214,6 +237,17 @@ export async function runCase(raw: unknown, apiKey: string, signal?: AbortSignal
       assert(binding.judgeContext, "missing observed judge context");
       assert.deepEqual(references.find((item) => item.phase === binding.phase)?.judge_contexts, [binding.judgeContext], "portable judge context binding mismatch");
     }
+    if (judgeEvidence) {
+      for (const binding of evidence.bindings) {
+        const context = binding.judgeContext?.sha256.replace(/^sha256:/, "");
+        const records: JudgeGatewayRecord[] = judgeEvidence.records.filter((record) => record.observationSha256 === context);
+        const criteria = expected.filter((criterion) => criterion.method === "judge");
+        assert.equal(records.length, criteria.reduce((sum, criterion) => sum + criterion.samples, 0), "missing gateway judge calls");
+        for (const criterion of criteria) assert.equal(records.filter((record) => record.criterionId === criterion.id).length, criterion.samples, "gateway sample mismatch");
+      }
+      const contexts = new Set(evidence.bindings.map((binding) => binding.judgeContext?.sha256.replace(/^sha256:/, "")));
+      assert(judgeEvidence.records.every((record) => contexts.has(record.observationSha256)), "unbound judge observations");
+    }
     if (evidence.bindings.some((item) => item.status !== "completed" || item.audit.incomplete.length)) throw new Error("execution_or_host_incomplete");
     caseResult = trigger.passed && evidence.bindings.find((item) => item.phase === "skill")?.passed && judgments.every((item) => item.verdict === "yes") ? "pass" : "fail";
   } catch {
@@ -226,6 +260,8 @@ export async function runCase(raw: unknown, apiKey: string, signal?: AbortSignal
     ...(config.executionReasoningEffort !== undefined ? { executionParameters: { reasoning_effort: config.executionReasoningEffort } } : {}),
     ...(config.phaseTimeoutMs !== undefined ? { phaseTimeoutMs: config.phaseTimeoutMs } : {}),
     judgments, trigger, evidence, evidenceError, jrigResult, sourceHashes: before,
+    ...(judgeEvidence ? { judgeProtocol: judgePolicyVersion, judgeCalibrationSha256: config.judgeCalibrationSha256,
+      judgeEvidenceSha256: hash(await readFile(join(config.outputDir, "judge-evidence.json"))) } : {}),
     usageScope: "jrigResult.cost covers trigger, root execution and judgment; evidence.bindings nestedUsage is additional",
   };
   await write("receipt.json", report);

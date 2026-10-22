@@ -10,6 +10,7 @@ const responseSchema = z.object({
     finish_reason: z.enum(["stop", "tool_calls"]),
     message: z.object({
       content: z.string().nullable().optional(),
+      reasoning_content: z.string().nullable().optional(),
       tool_calls: z.array(z.object({
         id: z.string().min(1), type: z.literal("function"),
         function: z.object({ name: z.string().min(1), arguments: z.string() }),
@@ -21,7 +22,9 @@ const responseSchema = z.object({
 function message(value: AgentMessage) {
   if (value.role === "tool") return { role: "tool", tool_call_id: value.callId, content: value.content };
   if (value.role === "assistant") return {
-    role: value.role, content: value.content,
+    role: value.role, content: value.privateContinuation?.content ?? value.content,
+    ...(value.privateContinuation?.reasoningContent !== undefined
+      ? { reasoning_content: value.privateContinuation.reasoningContent } : {}),
     ...(value.calls.length ? { tool_calls: value.calls.map((call) => ({
       id: call.id, type: "function", function: { name: call.name, arguments: JSON.stringify(call.arguments) },
     })) } : {}),
@@ -45,7 +48,7 @@ async function readBounded(response: Response): Promise<unknown> {
   } finally { await reader.cancel(); }
 }
 
-/** Reasoning is not a phase answer, tool observation, or subsequent conversation turn. */
+/** Reasoning is not a phase answer or tool observation; private continuation retains it. */
 function answerText(content: string): string {
   const leading = content.trimStart();
   if (!leading.startsWith("<think>")) return content;
@@ -93,6 +96,10 @@ export function createAgentModel(config: { provider: string; model: string; base
         if ((choice.finish_reason === "tool_calls") !== (calls.length > 0)) throw new Error("inconsistent agent model finish reason");
         return {
           text: answerText(choice.message.content ?? ""),
+          ...(calls.length ? { privateContinuation: {
+            content: choice.message.content ?? "",
+            ...(choice.message.reasoning_content != null ? { reasoningContent: choice.message.reasoning_content } : {}),
+          } } : {}),
           calls: calls.map((call) => ({ id: call.id, name: call.function.name,
             arguments: z.record(z.string(), z.unknown()).parse(JSON.parse(call.function.arguments)),
           })),

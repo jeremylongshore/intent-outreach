@@ -23,15 +23,17 @@ const resources = [
 ] as const;
 const object = z.record(z.string(), z.unknown());
 const callSchema = z.object({ id: z.string().min(1).max(200), name: z.string().min(1), arguments: object }).strict();
+const continuationSchema = z.object({ content: z.string(), reasoningContent: z.string().optional() }).strict();
 const turnSchema = z.object({
   text: z.string(), calls: z.array(callSchema).max(16),
   usage: z.object({ inputTokens: z.number().int().nonnegative(), outputTokens: z.number().int().nonnegative() }).strict(),
+  privateContinuation: continuationSchema.optional(),
 }).strict();
 export type AgentTurn = z.infer<typeof turnSchema>;
 export interface HostTool { name: string; description: string; inputSchema: Record<string, unknown> }
 export type AgentMessage =
   | { role: "system" | "user"; content: string }
-  | { role: "assistant"; content: string; calls: AgentTurn["calls"] }
+  | { role: "assistant"; content: string; calls: AgentTurn["calls"]; privateContinuation?: AgentTurn["privateContinuation"] }
   | { role: "tool"; callId: string; name: string; content: string };
 export interface AgentModel {
   /** Explicit identity, recorded even for scripted component tests. */
@@ -158,7 +160,8 @@ export async function createAgentHost(options: {
           usage.inputTokens += turn.usage.inputTokens;
           usage.outputTokens += turn.usage.outputTokens;
           account(turn);
-          record(invocation, role, "model", { turn: turnIndex, ...turn });
+          const { privateContinuation, ...visibleTurn } = turn;
+          record(invocation, role, "model", { turn: turnIndex, ...visibleTurn });
           // Validate the ENTIRE turn before invoking any tool from it.
           for (const call of turn.calls) {
             if (ids.has(call.id)) throw new Error("duplicate agent tool call id");
@@ -173,7 +176,9 @@ export async function createAgentHost(options: {
             record(invocation, role, "completed", { output: turn.text });
             return turn.text;
           }
-          messages.push({ role: "assistant", content: turn.text, calls: turn.calls });
+          // Provider-required reasoning stays only in this phase's private conversation.
+          messages.push({ role: "assistant", content: turn.text, calls: turn.calls,
+            ...(privateContinuation ? { privateContinuation } : {}) });
           for (const call of turn.calls) {
             signal.throwIfAborted();
             calls++;

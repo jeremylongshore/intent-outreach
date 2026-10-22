@@ -254,7 +254,10 @@ describe("scenario MCP host", () => {
     }
   });
   it("runs real nested bundle tools, authored checkpoints and reviewed Read with fresh store isolation", async () => {
-    const phaseCompletion = (text: string, calls: { name: string; args: object }[] = []) => completion("<think>PRIVATE PHASE REASONING FIXTURE</think>\n" + text, calls);
+    const phaseCompletion = (text: string, calls: { name: string; args: object }[] = []) => {
+      const value = completion("<think>PRIVATE PHASE REASONING FIXTURE</think>\n" + text, calls);
+      return { ...value, choices: value.choices.map((choice) => ({ ...choice, message: { ...choice.message, reasoning_content: "PRIVATE SPLIT REASONING" } })) };
+    };
     const fixture = await loopback((body) => {
       expect(body.model).toBe("fixture-model");
       const messages = body.messages as { role: string; content: string; tool_call_id?: string }[];
@@ -263,6 +266,8 @@ describe("scenario MCP host", () => {
       const last = messages.at(-1)!;
       if (last.role === "tool") {
         expect(last.tool_call_id).toBe("nested-0");
+        expect(messages.at(-2)?.content).toBe("<think>PRIVATE PHASE REASONING FIXTURE</think>\n");
+        expect(messages.at(-2)).toHaveProperty("reasoning_content", "PRIVATE SPLIT REASONING");
         if (system.includes("Intent Outreach drafter")) {
           expect(JSON.parse(last.content).text).toContain("outreach");
           return phaseCompletion(JSON.stringify({ fitScore: 55, fitReason: "Thin developer-tool evidence", angles: [], messages: [draft], declines: [] }));
@@ -331,7 +336,8 @@ describe("scenario MCP host", () => {
       expect(JSON.stringify(trace)).not.toContain("fixture-only");
       expect(JSON.stringify(trace)).not.toContain("must-not-reach-bundle");
       expect(JSON.stringify(trace)).not.toContain("PRIVATE PHASE REASONING FIXTURE");
-      expect(JSON.stringify(fixture.requests)).not.toContain("PRIVATE PHASE REASONING FIXTURE");
+      expect(JSON.stringify(trace)).not.toContain("PRIVATE SPLIT REASONING");
+      expect(JSON.stringify(fixture.requests)).toContain("PRIVATE PHASE REASONING FIXTURE");
       expect(await auditScenario(first.home)).toMatchObject({ passed: true, failures: [], incomplete: [], behavioralVerdict: null, tier3bPassed: false });
       const tracePath = join(first.home, "host-events.jsonl");
       const originalTrace = await readFile(tracePath);
@@ -453,8 +459,9 @@ describe("explicit nested model transport", () => {
       expect(JSON.parse(result.stdout)).toEqual({ text: answer,
         calls: calls.map((call, i) => ({ id: `nested-${i}`, name: call.name, arguments: call.args })),
         usage: { inputTokens: 11, outputTokens: 5 },
+        ...(calls.length ? { privateContinuation: { content: text } } : {}),
       });
-      expect(result.stdout).not.toContain("PRIVATE REASONING FIXTURE");
+      if (!calls.length) expect(result.stdout).not.toContain("PRIVATE REASONING FIXTURE");
       expect(fixture.requests).toHaveLength(1);
       expect(fixture.errors).toEqual([]);
     } finally { await fixture.close(); }

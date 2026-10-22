@@ -871,3 +871,45 @@ This profile is rejected for suite qualification; no repeats or regression seeds
 are selected from it. A predeclared MiniMax-M2.7 comparison uses the identical
 frozen source, judge, original cases and limits. It is a distinct model trial,
 not a retry or regrading of these immutable failures.
+
+
+## Evidence-linked judge boundary
+
+`run-case.ts` requires a source-bound full-context calibration for behavioral
+runs. Supply `judgeProtocol: "evidence-linked/v2"`, an absolute `judgeCalibration`
+path and its `judgeCalibrationSha256`. The activation gate requires all 45 votes
+across 15 positive/negative controls to be correct, with three samples per control,
+all six original judge criteria, valid final responses and observed usage. A changed
+policy/client or skill source requires new calibration. Component fixtures cannot
+activate behavioral runs; prior receipts with different judge bindings cannot seed
+regression. Calibration permits fresh workflow evaluation only.
+
+The explicit loopback gateway preserves the original rubric, case prompts,
+observation binding, three-sample requirement and execution budgets. It segments
+the complete output into stable IDs and supplies decoded tool evidence with source
+IDs. Every output block must be assessed exactly once; invalid IDs, contradictory
+verdicts, truncated responses and provider failures produce incomplete evidence.
+Evidence IDs improve attribution, but semantic correctness still requires live
+controls and review. The legacy quote-based v1 modules retain the first diagnostic
+candidate; workflow activation uses v2 exclusively.
+
+Following [MiniMax's OpenAI-compatible API documentation](https://platform.minimax.io/docs/api-reference/text-openai-api),
+private reasoning is retained only for the same model's tool-call continuation.
+Nested phase answers and judge evidence exclude it. The root gateway restores
+private continuation to the matching conversation without publishing it in receipts.
+M3.1 ignores requested temperature zero; effective temperature is one. The candidate
+uses explicit high reasoning effort, 8,192 completion tokens and a 120-second judge
+request limit. Those parameters do not alter the original root or phase deadlines.
+The positive/negative calibration approach follows
+[Anthropic's agent-evaluation guidance](https://www.anthropic.com/research/demystifying-evals-for-ai-agents).
+
+Run the actual CLI component proof with the final `evidence-linked` argument:
+
+```bash
+pnpm exec tsx evals/jrig/case-runner-proof.ts /absolute/jrig/dist/index.js \
+  /new/private/proof.json medium 120000 evidence-linked
+```
+
+This scripted proof exercises binding, regression, cancellation, invalid judgments
+and the prohibition on promoting component calibration. It makes no paid calls and
+cannot establish behavioral acceptance.

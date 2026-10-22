@@ -89,6 +89,7 @@ describe("regression seed provenance", () => {
     { caseResult: "incomplete" }, { caseResult: "fail" }, { evidenceKind: "component-test" },
     { caseId: "prospect-and-draft" }, { inputSpecSha256: "e".repeat(64) }, { jrigSha256: "f".repeat(64) },
     { provider: "groq" }, { model: "different-executor" }, { judgeModel: "different-judge" },
+    { judgeProtocol: "evidence-linked/v2" }, { judgeCalibrationSha256: "e".repeat(64) },
     { phaseTimeoutMs: 60000 }, { executionParameters: { reasoning_effort: "low" } },
     { sourceHashes: { ...sources, "bundle/server.mjs": "e".repeat(64) } }, { sourceHashes: {} },
     { jrigSha256: undefined }, { judgments: [] },

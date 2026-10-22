@@ -45,6 +45,18 @@ describe("evaluation phase-agent host", () => {
     expect(host.snapshot().events.length).toBeGreaterThan(0);
   });
 
+  it("keeps provider continuation private to its phase and excludes it from evidence", async () => {
+    const privateContinuation = { content: "<think>PRIVATE INLINE</think>", reasoningContent: "PRIVATE SEPARATE" };
+    const f = fixture([{ ...turn([call("research_domain")], ""), privateContinuation }, turn([], "answer"), turn([], "separate answer")]);
+    const host = await f.host;
+    expect(await host.dispatch({ subagent_type: "outreach-researcher", prompt: "research" })).toBe("answer");
+    expect(f.complete.mock.calls[1]![0].messages[2]).toMatchObject({ privateContinuation });
+    await host.dispatch({ subagent_type: "outreach-enricher", prompt: "enrich" });
+    expect(JSON.stringify(f.complete.mock.calls[2]![0])).not.toContain("PRIVATE");
+    expect(JSON.stringify(host.snapshot())).not.toContain("PRIVATE");
+    expect(host.snapshot().usage).toEqual({ inputTokens: 21, outputTokens: 9 });
+  });
+
   it.each([
     ["outreach-researcher", "enrich_lead"], ["outreach-enricher", "research_domain"],
     ["outreach-drafter", "save_run"], ["outreach-drafter", "Agent"],
