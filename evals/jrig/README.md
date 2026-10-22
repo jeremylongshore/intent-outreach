@@ -876,7 +876,7 @@ not a retry or regrading of these immutable failures.
 ## Evidence-linked judge boundary
 
 `run-case.ts` requires a source-bound full-context calibration for behavioral
-runs. Supply `judgeProtocol: "evidence-linked/v2"`, an absolute `judgeCalibration`
+runs. Supply `judgeProtocol: "evidence-linked/v3"`, an absolute `judgeCalibration`
 path and its `judgeCalibrationSha256`. The activation gate requires all 45 votes
 across 15 positive/negative controls to be correct, with three samples per control,
 all six original judge criteria, valid final responses and observed usage. A changed
@@ -890,15 +890,15 @@ the complete output into stable IDs and supplies decoded tool evidence with sour
 IDs. Every output block must be assessed exactly once; invalid IDs, contradictory
 verdicts, truncated responses and provider failures produce incomplete evidence.
 Evidence IDs improve attribution, but semantic correctness still requires live
-controls and review. The legacy quote-based v1 modules retain the first diagnostic
-candidate; workflow activation uses v2 exclusively.
+controls and review. The v1/v2 modules retain the earlier diagnostic candidates; workflow activation
+uses v3 exclusively.
 
 Following [MiniMax's OpenAI-compatible API documentation](https://platform.minimax.io/docs/api-reference/text-openai-api),
 private reasoning is retained only for the same model's tool-call continuation.
 Nested phase answers and judge evidence exclude it. The root gateway restores
 private continuation to the matching conversation without publishing it in receipts.
 M3.1 ignores requested temperature zero; effective temperature is one. The candidate
-uses explicit high reasoning effort, 8,192 completion tokens and a 120-second judge
+uses explicit low reasoning effort, 8,192 completion tokens and a 120-second judge
 request limit. Those parameters do not alter the original root or phase deadlines.
 The positive/negative calibration approach follows
 [Anthropic's agent-evaluation guidance](https://www.anthropic.com/research/demystifying-evals-for-ai-agents).
@@ -930,3 +930,13 @@ judgment automatically. The earlier 10,025-ms failure is consistent with Undici'
 but the original missing error cause prevents a definite diagnosis.
 `evidence-linked-controls-manifest-2026-10-21.json` binds the revised transport's
 fresh predeclared control matrix, labels, source hashes and acceptance threshold.
+
+
+`evidence-linked-v2-transport-calibration-2026-10-21.json` preserves 42/45 correct
+votes: two long-output requests reached the original deadline, and one judgment
+falsely attributed an earlier observed draft's claims to a corrected final answer.
+V3 addresses that attribution defect with exact, short offending spans bound to
+current output blocks. Observed-action violations have separate evidence attribution;
+corrected prose cannot erase an unauthorized action. Grounding and prompt-leakage
+violations require text actually present in the final answer. Low reasoning effort
+reduces optional deliberation while retaining the same rubric, controls and limits.

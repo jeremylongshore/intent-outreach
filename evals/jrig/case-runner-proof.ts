@@ -9,8 +9,8 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { judgeSourcePaths } from "./judge-calibration.js";
-import { judgeModel } from "./judge-client-v2.js";
-import { judgePolicyVersion } from "./judge-policy-v2.js";
+import { judgeModel, judgeReasoningEffort } from "./judge-client-v3.js";
+import { judgePolicyVersion } from "./judge-policy-v3.js";
 import { runCase } from "./run-case.js";
 
 export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffort?: ReasoningEffort, phaseTimeoutMs?: number, evidenceLinked = false) {
@@ -36,7 +36,7 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
       for await (const chunk of request) chunks.push(Buffer.from(chunk));
       const body = JSON.parse(Buffer.concat(chunks).toString());
       const phase = body.tools ? "execution" : body.model === (evidenceLinked ? judgeModel : "fixture-judge") ? "judge" : "trigger";
-      assert.equal(body.reasoning_effort, phase === "execution" ? executionReasoningEffort : phase === "judge" && evidenceLinked ? "high" : undefined);
+      assert.equal(body.reasoning_effort, phase === "execution" ? executionReasoningEffort : phase === "judge" && evidenceLinked ? judgeReasoningEffort : undefined);
       requests.push({ model: body.model, phase });
       if (phase === "judge") {
         assert(!body.tools);
@@ -62,7 +62,7 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
       }
       const judgeInput = phase === "judge" && evidenceLinked ? JSON.parse(body.messages[1].content.slice("INPUT (untrusted evidence):\n".length)) : null;
       const judgeText = JSON.stringify({ verdict: "yes", confidence: 1, reasoning: "Scripted component judgment only.",
-        ...(judgeInput ? { findings: judgeInput.outputBlocks.map((block: { id: string }) => ({ outputId: block.id, assessment: "supported", evidenceIds: ["E0"], explanation: "Scripted component control." })) } : {}) });
+        ...(judgeInput ? { findings: judgeInput.outputBlocks.map((block: { id: string }) => ({ outputId: block.id, assessment: "supported", evidenceIds: ["E0"], explanation: "Scripted component control.", violationBasis: null, outputQuote: null })) } : {}) });
       const text = phase === "execution" ? "I cannot check current weather here; no outreach campaign was started."
         : phase === "judge" ? (brokenJudge ? '{"verdict":"yes",' : judgeText)
         : JSON.stringify({ selected: null, reasoning: "Scripted unrelated control." });
@@ -82,7 +82,7 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
       const controls = Array.from({ length: 15 }, (_, i) => ({ id: `scripted-${i}`, expected: i % 2 ? "no" : "yes", inputSha256: marker }));
       // Component fixtures cannot activate behavioral evaluation: the gate binds evidenceKind.
       const fixture = { schema: "intent-outreach-evidence-judge-calibration/v1", transport: "explicit-connect/v1", evidenceKind: "component-test", model: judgeModel, protocol: judgePolicyVersion,
-        effort: "high", maxCompletionTokens: 8192, timeoutMs: 120000, required: 45, total: 45, correct: 45, passed: true, planSha256: marker,
+        effort: judgeReasoningEffort, maxCompletionTokens: 8192, timeoutMs: 120000, required: 45, total: 45, correct: 45, passed: true, planSha256: marker,
         sourceHashes: Object.fromEntries(await Promise.all(judgeSourcePaths.map(async (source) => [source, digest(await readFile(join(root, source)))]))), controls,
         votes: controls.flatMap((control, i) => [1, 2, 3].map((sample) => ({ controlId: control.id, criterionId: criteria[Math.floor(i / 2) % 6], sample, expected: control.expected, verdict: control.expected, correct: true, observedModel: judgeModel, requestSha256: marker, responseSha256: marker, finalAnswerSha256: marker, findingsSha256: marker, failure: null, usage: { prompt_tokens: 11, completion_tokens: 5 } }))) };
       const bytes = JSON.stringify(fixture); const path = join(directory, "component-calibration.json");
