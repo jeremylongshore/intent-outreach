@@ -4,12 +4,12 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { judgeModel, judgeTimeoutMs, judgeTokenLimit } from "./judge-client-v2.js";
+import { judgeModel, judgeTimeoutMs, judgeTokenLimit, judgeTransport } from "./judge-client-v2.js";
 import { judgePolicyVersion } from "./judge-policy-v2.js";
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
-export const judgeSourcePaths = ["evals/jrig/judge-policy.ts", "evals/jrig/judge-policy-v2.ts", "evals/jrig/judge-client-v2.ts", "skills/intent-outreach/eval-spec.yaml", "skills/intent-outreach/SKILL.md"];
+export const judgeSourcePaths = ["package.json", "pnpm-lock.yaml", "evals/jrig/judge-policy.ts", "evals/jrig/judge-policy-v2.ts", "evals/jrig/judge-client-v2.ts", "skills/intent-outreach/eval-spec.yaml", "skills/intent-outreach/SKILL.md"];
 const schema = z.object({
-  schema: z.literal("intent-outreach-evidence-judge-calibration/v1"), evidenceKind: z.enum(["component-test", "behavioral-evaluation"]), model: z.literal(judgeModel), protocol: z.literal(judgePolicyVersion), effort: z.literal("high"),
+  schema: z.literal("intent-outreach-evidence-judge-calibration/v1"), evidenceKind: z.enum(["component-test", "behavioral-evaluation"]), transport: z.literal(judgeTransport), model: z.literal(judgeModel), protocol: z.literal(judgePolicyVersion), effort: z.literal("high"),
   maxCompletionTokens: z.literal(judgeTokenLimit), timeoutMs: z.literal(judgeTimeoutMs), required: z.literal(45), total: z.literal(45), correct: z.literal(45), passed: z.literal(true),
   sourceHashes: z.record(z.string(), digest), planSha256: digest,
   controls: z.array(z.object({ id: z.string(), expected: z.enum(["yes", "no"]), inputSha256: digest }).passthrough()).length(15),

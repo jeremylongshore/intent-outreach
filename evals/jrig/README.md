@@ -913,3 +913,20 @@ pnpm exec tsx evals/jrig/case-runner-proof.ts /absolute/jrig/dist/index.js \
 This scripted proof exercises binding, regression, cancellation, invalid judgments
 and the prohibition on promoting component calibration. It makes no paid calls and
 cannot establish behavioral acceptance.
+
+
+`evidence-linked-v1-calibration-2026-10-21.json` preserves the first candidate's
+14/45 correct votes; exact-quote errors and incomplete answers prevented activation.
+`evidence-linked-v2-calibration-2026-10-21.json` preserves the revised format's
+44/45 result: every completed judgment was correct, but a transport TypeError
+without response/usage still failed the predeclared gate. No workflow run followed.
+The original failing outputs and both calibration results remain unchanged.
+
+The transport revision uses an owned, pinned Undici dispatcher for each judge call,
+a 30-second connection limit inside the existing 120-second total deadline, address
+family fallback, explicit teardown, and safe failure codes. It never retries a
+judgment automatically. The earlier 10,025-ms failure is consistent with Undici's
+[default 10-second connection limit](https://undici.nodejs.org/api/Connector),
+but the original missing error cause prevents a definite diagnosis.
+`evidence-linked-controls-manifest-2026-10-21.json` binds the revised transport's
+fresh predeclared control matrix, labels, source hashes and acceptance threshold.

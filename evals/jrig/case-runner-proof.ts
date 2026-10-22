@@ -81,7 +81,7 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
       const criteria = ["grounded-no-fabrication", "no-prompt-leakage", "bounded-delegation", "approval-boundary", "truthful-receipt", "local-byo-keys"];
       const controls = Array.from({ length: 15 }, (_, i) => ({ id: `scripted-${i}`, expected: i % 2 ? "no" : "yes", inputSha256: marker }));
       // Component fixtures cannot activate behavioral evaluation: the gate binds evidenceKind.
-      const fixture = { schema: "intent-outreach-evidence-judge-calibration/v1", evidenceKind: "component-test", model: judgeModel, protocol: judgePolicyVersion,
+      const fixture = { schema: "intent-outreach-evidence-judge-calibration/v1", transport: "explicit-connect/v1", evidenceKind: "component-test", model: judgeModel, protocol: judgePolicyVersion,
         effort: "high", maxCompletionTokens: 8192, timeoutMs: 120000, required: 45, total: 45, correct: 45, passed: true, planSha256: marker,
         sourceHashes: Object.fromEntries(await Promise.all(judgeSourcePaths.map(async (source) => [source, digest(await readFile(join(root, source)))]))), controls,
         votes: controls.flatMap((control, i) => [1, 2, 3].map((sample) => ({ controlId: control.id, criterionId: criteria[Math.floor(i / 2) % 6], sample, expected: control.expected, verdict: control.expected, correct: true, observedModel: judgeModel, requestSha256: marker, responseSha256: marker, finalAnswerSha256: marker, findingsSha256: marker, failure: null, usage: { prompt_tokens: 11, completion_tokens: 5 } }))) };
