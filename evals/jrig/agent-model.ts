@@ -45,6 +45,21 @@ async function readBounded(response: Response): Promise<unknown> {
   } finally { await reader.cancel(); }
 }
 
+/** Reasoning is not a phase answer, tool observation, or subsequent conversation turn. */
+function answerText(content: string): string {
+  const leading = content.trimStart();
+  if (!leading.startsWith("<think>")) return content;
+  const end = leading.indexOf("</think>");
+  if (end < 0 || /<\/?think>/.test(leading.slice("<think>".length, end))) {
+    throw new Error("incomplete or nested agent reasoning");
+  }
+  const answer = leading.slice(end + "</think>".length).trimStart();
+  if (answer.startsWith("<think>") || answer.startsWith("</think>")) {
+    throw new Error("ambiguous agent reasoning boundary");
+  }
+  return answer;
+}
+
 export function createAgentModel(config: { provider: string; model: string; baseUrl: string; apiKey: string; reasoningEffort?: ReasoningEffort }): AgentModel {
   const reasoningEffort = reasoningEffortSchema.optional().parse(config.reasoningEffort);
   const url = new URL(config.baseUrl);
@@ -77,7 +92,7 @@ export function createAgentModel(config: { provider: string; model: string; base
         const calls = choice.message.tool_calls ?? [];
         if ((choice.finish_reason === "tool_calls") !== (calls.length > 0)) throw new Error("inconsistent agent model finish reason");
         return {
-          text: choice.message.content ?? "",
+          text: answerText(choice.message.content ?? ""),
           calls: calls.map((call) => ({ id: call.id, name: call.function.name,
             arguments: z.record(z.string(), z.unknown()).parse(JSON.parse(call.function.arguments)),
           })),

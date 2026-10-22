@@ -5,7 +5,7 @@ The current skill delegates to three phase agents and pauses for human decisions
 A completion that describes those steps, or a run that exercises only preflight,
 cannot establish a Tier 3B pass.
 
-## Current decision — 2026-10-20
+## Current decision — 2026-10-21
 
 **Qualification rejected; PR #114 remains draft and `io-k3l` remains open.**
 [The seven-layer decision](qualification-decision-2026-10-20.json) records two
@@ -31,11 +31,40 @@ The paired model observations do not establish statistical superiority.
 
 Authored judge calibration did not establish full-context reliability: reviewers
 found missed grounding/instruction-reproduction defects and negative votes without
-corresponding trace evidence. `io-k3l.15` tracks that audit. Original votes remain
+corresponding trace evidence. `io-k3l.15` records that audit. Original votes remain
 unchanged, and manual review cannot override a failing score into acceptance.
 No production model is approved and no outreach was sent. The integrated source
-passes 1,633 tests, both TypeScript checks and the pinned CLI component proof;
+passes 1,641 tests, both TypeScript checks and the pinned CLI component proof;
 those checks are distinct from the rejected behavioral qualification.
+
+### Full-context judge audit
+
+[The 33-vote diagnostic](full-context-judge-audit-2026-10-21.json) compares the
+original research-only observations, observations with only nested reasoning
+removed, and an observation-free ablation. It also probes the original invented
+sender-experience and instruction-quotation failures. Every new adapter verdict
+matches valid final JSON; there are no provider errors. This does not establish
+how the original raw responses parsed, since those per-sample responses were not
+retained.
+
+The nested transport forwarded leading `<think>` blocks into root conversations
+and judge observations: 26 Agent results across 11 M2.7 execution traces. It now
+removes one balanced leading block and rejects malformed boundaries. Answer text,
+tool calls and token accounting remain intact. Tests exercise the actual host,
+bundled tools, exact saved copy and private trace; the
+[pinned CLI proof](reasoning-boundary-binding-proof-2026-10-21.json) also passes.
+
+The judge still accepts invented sender experience in two of three new votes.
+The quotation case flips from three original yes votes to three diagnostic no
+votes. Nine positive research-only votes with reasoning removed do not establish
+reliability or prove that reasoning alone caused the old errors. Dropping tool
+observations removes legitimate evidence, so the ablation's predeclared labels
+and overall 26/33 agreement are not a calibrated accuracy score.
+
+`io-k3l.16` requires full-context positive and negative controls before another
+judge configuration can authorize fresh workflow qualification. These diagnostic
+votes never replace original receipts or seed regression. The spec, criteria,
+deadlines, canonical drafting prompt and pinned CLI remain unchanged.
 
 ## Offline connection proof
 

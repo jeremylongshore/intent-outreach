@@ -254,6 +254,7 @@ describe("scenario MCP host", () => {
     }
   });
   it("runs real nested bundle tools, authored checkpoints and reviewed Read with fresh store isolation", async () => {
+    const phaseCompletion = (text: string, calls: { name: string; args: object }[] = []) => completion("<think>PRIVATE PHASE REASONING FIXTURE</think>\n" + text, calls);
     const fixture = await loopback((body) => {
       expect(body.model).toBe("fixture-model");
       const messages = body.messages as { role: string; content: string; tool_call_id?: string }[];
@@ -264,21 +265,21 @@ describe("scenario MCP host", () => {
         expect(last.tool_call_id).toBe("nested-0");
         if (system.includes("Intent Outreach drafter")) {
           expect(JSON.parse(last.content).text).toContain("outreach");
-          return completion(JSON.stringify({ fitScore: 55, fitReason: "Thin developer-tool evidence", angles: [], messages: [draft], declines: [] }));
+          return phaseCompletion(JSON.stringify({ fitScore: 55, fitReason: "Thin developer-tool evidence", angles: [], messages: [draft], declines: [] }));
         }
-        return completion(JSON.parse(last.content).content[0].text);
+        return phaseCompletion(JSON.parse(last.content).content[0].text);
       }
       expect(messages).toHaveLength(2);
       if (system.includes("Intent Outreach researcher")) {
         expect(tools).toEqual(["list_connectors", "research_domain"]);
-        return completion("", [{ name: "research_domain", args: { domain: "example.test", icp: "Developer tools" } }]);
+        return phaseCompletion("", [{ name: "research_domain", args: { domain: "example.test", icp: "Developer tools" } }]);
       }
       if (system.includes("Intent Outreach enricher")) {
         expect(tools).toEqual(["enrich_lead"]);
-        return completion("", [{ name: "enrich_lead", args: { domain: "example.test", companyName: "Example Fixture Labs", contacts: [{ name: "Riley Example" }] } }]);
+        return phaseCompletion("", [{ name: "enrich_lead", args: { domain: "example.test", companyName: "Example Fixture Labs", contacts: [{ name: "Riley Example" }] } }]);
       }
       expect(tools).toEqual(["Read"]);
-      return completion("", [{ name: "Read", args: { file_path: "prompts/outreach.v3.md" } }]);
+      return phaseCompletion("", [{ name: "Read", args: { file_path: "prompts/outreach.v3.md" } }]);
     });
     const evidence = await mkdtemp(join(tmpdir(), "jrig-scenario-test-"));
     let first: Awaited<ReturnType<typeof start>> | undefined;
@@ -329,6 +330,8 @@ describe("scenario MCP host", () => {
       expect((await stat(join(first.home, "host-events.jsonl"))).mode & 0o777).toBe(0o600);
       expect(JSON.stringify(trace)).not.toContain("fixture-only");
       expect(JSON.stringify(trace)).not.toContain("must-not-reach-bundle");
+      expect(JSON.stringify(trace)).not.toContain("PRIVATE PHASE REASONING FIXTURE");
+      expect(JSON.stringify(fixture.requests)).not.toContain("PRIVATE PHASE REASONING FIXTURE");
       expect(await auditScenario(first.home)).toMatchObject({ passed: true, failures: [], incomplete: [], behavioralVerdict: null, tier3bPassed: false });
       const tracePath = join(first.home, "host-events.jsonl");
       const originalTrace = await readFile(tracePath);
@@ -435,6 +438,46 @@ describe("independent scenario evidence gate", () => {
 });
 
 describe("explicit nested model transport", () => {
+  it.each([
+    { text: "  <think>PRIVATE REASONING FIXTURE</think>\nExact phase answer", answer: "Exact phase answer", calls: [] },
+    { text: "<think>PRIVATE REASONING FIXTURE</think>", answer: "", calls: [{ name: "research_domain", args: { domain: "example.test" } }] },
+    { text: "Literal <think>example</think> in an answer", answer: "Literal <think>example</think> in an answer", calls: [] },
+    { text: "  Exact whitespace retained\n", answer: "  Exact whitespace retained\n", calls: [] },
+  ])("keeps only answer content while preserving tool calls and usage", async ({ text, answer, calls }) => {
+    const fixture = await loopback(() => completion(text, calls));
+    try {
+      const result = await promisify(execFile)(process.execPath, ["--import", "tsx", "--input-type=module", "-e",
+        'const { createAgentModel } = await import(process.argv[2]); const model = createAgentModel(JSON.parse(process.argv[1])); console.log(JSON.stringify(await model.complete({ messages: [{ role: "user", content: "test" }], tools: [], signal: AbortSignal.timeout(3000) })));',
+        JSON.stringify({ provider: "scripted", model: "fixture-model", baseUrl: fixture.baseUrl, apiKey: "fixture-only" }), join(root, "evals/jrig/agent-model.ts")],
+      { timeout: 20000, env: { PATH: process.env.PATH } });
+      expect(JSON.parse(result.stdout)).toEqual({ text: answer,
+        calls: calls.map((call, i) => ({ id: `nested-${i}`, name: call.name, arguments: call.args })),
+        usage: { inputTokens: 11, outputTokens: 5 },
+      });
+      expect(result.stdout).not.toContain("PRIVATE REASONING FIXTURE");
+      expect(fixture.requests).toHaveLength(1);
+      expect(fixture.errors).toEqual([]);
+    } finally { await fixture.close(); }
+  });
+
+  it.each([
+    "<think>unterminated",
+    "<think><think>nested</think></think>answer",
+    "<think>closed</think></think>answer",
+    "<think>closed</think><think>second</think>answer",
+  ])("rejects malformed reasoning without exposing it or retrying", async (text) => {
+    const fixture = await loopback(() => completion(text));
+    try {
+      const result = await promisify(execFile)(process.execPath, ["--import", "tsx", "--input-type=module", "-e",
+        'const { createAgentModel } = await import(process.argv[2]); const model = createAgentModel(JSON.parse(process.argv[1])); try { await model.complete({ messages: [{ role: "user", content: "test" }], tools: [], signal: AbortSignal.timeout(3000) }); console.log("unexpected success"); } catch (error) { console.log(error.message); }',
+        JSON.stringify({ provider: "scripted", model: "fixture-model", baseUrl: fixture.baseUrl, apiKey: "fixture-only" }), join(root, "evals/jrig/agent-model.ts")],
+      { timeout: 20000, env: { PATH: process.env.PATH } });
+      expect(result.stdout.trim()).toBe("agent model transport or response failed");
+      expect(fixture.requests).toHaveLength(1);
+      expect(fixture.errors).toEqual([]);
+    } finally { await fixture.close(); }
+  });
+
   it.each([undefined, "none", "low", "medium", "high", "max"] as const)("preserves explicit reasoning effort %s across nested turns", async (reasoningEffort) => {
     const fixture = await loopback(() => completion("actual fixture response"));
     try {
