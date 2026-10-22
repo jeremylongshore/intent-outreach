@@ -875,6 +875,12 @@ not a retry or regrading of these immutable failures.
 
 ## Evidence-linked judge boundary
 
+The current v3 candidate passed **45/45** predeclared full-context votes with no
+provider failures. See `evidence-linked-v3-calibration-2026-10-21.json` and
+`evidence-linked-judge-selection-2026-10-21.json`. Both original failure outputs
+were rejected in all three samples; the corrected introduction passed all three.
+This qualifies the judge for fresh workflow testing, not suite acceptance.
+
 `run-case.ts` requires a source-bound full-context calibration for behavioral
 runs. Supply `judgeProtocol: "evidence-linked/v3"`, an absolute `judgeCalibration`
 path and its `judgeCalibrationSha256`. The activation gate requires all 45 votes
@@ -949,3 +955,15 @@ v3 format permits omitted non-violation metadata while requiring attribution for
 all violations, and places the complete current output after the unchanged sources.
 The fresh plan is bound in `evidence-linked-v3-controls-manifest-2026-10-21.json`.
 None of these parser revisions retroactively changes an earlier vote.
+
+
+`evidence-linked-v3-workflow-probe-2026-10-21.json` records a fresh original
+thin-data case after the 45/45 gate. The skill again invented sender experience;
+independent review and two valid grounding votes reject it. A third native response
+also proposed no but included an unrecognized annotation and was withheld as invalid.
+All three baseline grounding votes reject its answer. Both executions finish but
+fail independent checkpoint/order checks, and neither stores a run. The overall
+case stays incomplete because one of 36 judgments is invalid. This confirms that
+the observed fabrication cannot become an accepted pass; it does not establish
+full workflow qualification. Execution repair and remaining full-suite checks stay
+in `io-k3l.17`; the original receipt cannot seed regression.
