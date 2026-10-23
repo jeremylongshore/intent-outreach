@@ -875,7 +875,7 @@ not a retry or regrading of these immutable failures.
 
 ## Evidence-linked judge boundary
 
-V7 is rejected after 45/63 correct votes; v8 is a distinct M3 judge trial. Historical v4 passed
+All updated-source candidates are rejected; no current judge is qualified. Historical v4 passed
 45/45 controls and six unobserved-action holdouts, but its later original-case
 cohort exposed omitted final drafts that the judge accepted. That result does not
 qualify the current source or establish workflow acceptance. All prior votes and
@@ -1019,8 +1019,7 @@ the 21 controls, labels, original rubric, samples or execution deadlines.
 votes. Strict parsing caught malformed verdicts and fields copied from findings
 into completion records; no responses were repaired. V8 changes only the judge
 model to MiniMax-M3 with default thinking and explicit `reasoning_split: true`,
-keeping the v7 rubric, parser, controls and limits. It remains an unqualified
-candidate until the full source-bound gate passes.
+keeping the v7 rubric, parser, controls and limits. It was rejected after the full source-bound gate failed.
 
 `grounded-review-v9-rejected-calibration-2026-10-22.json` retains 56/63 correct
 votes from a uniform six-field finding experiment. One additional `R0` finding
@@ -1030,3 +1029,11 @@ fields, quotation attribution failures and incorrect requirement references. Non
 was repaired or counted as a valid judgment. This candidate does not activate the
 workflow runner. The final local suite passes 1,760 tests across 69 files, both
 TypeScript checks and scoped lint; those results do not override calibration.
+
+`grounded-review-v8-rejected-calibration-2026-10-22.json` retains 52/63 correct
+votes from MiniMax-M3 with default thinking: ten request timeouts and one malformed
+response remain invalid. `grounded-review-judge-candidate-comparison-2026-10-22.json`
+compares v5–v9 using identical control inputs and labels. No candidate is selected;
+no fresh workflow run was admitted from these rejected calibrations. Follow-up
+io-k3l.20 owns judge reliability. io-k3l.21 tracks waiting/unrelated-request scope
+violations, and io-k3l.22 tracks internal contact keys presented as email addresses.
