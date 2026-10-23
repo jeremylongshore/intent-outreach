@@ -1,0 +1,222 @@
+{
+  "schema": "intent-outreach-unsuccessful-case-review/v1",
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "messagesSent": 0,
+  "caseId": "prospect-and-draft",
+  "caseResult": "incomplete",
+  "provider": "nvidia",
+  "model": "z-ai/glm-5.3-flash",
+  "judgeModel": "nvidia/nemotron-3-super-120b-a12b",
+  "executionReasoningOverride": null,
+  "phaseTimeoutMs": 120000,
+  "rootTimeoutMs": 300000,
+  "receiptSha256": "3e1fa0e0966c6c98f453156224647edb68cc45f34d1274835a97c3ab0ad5920e",
+  "bundleSha256": "9e6c750078c37990f0e78fa24012409102b387f8ddef6a04255c22472456bb51",
+  "inputSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+  "jrigCliSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+  "sourceHashes": {
+    "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+    "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+    "skills/intent-outreach/eval-spec.yaml": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+    "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+    "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+    "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+    "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+    "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+    "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+    "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+    "evals/jrig/run-case.ts": "6e35761af0b97a69a495441a881f4bbcd0af40b58ee80da834fbd561a6e0fd4e",
+    "evals/jrig/scenario-host.ts": "a9b88be011032d10b475220b2288454291ed8c8f951eeae4834633139b72443b",
+    "evals/jrig/agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+    "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+    "evals/jrig/scenarios.ts": "22d797d2e782f4dfc681d2b094879c044faccdc67a5db6597b764e8b9ec4e81a",
+    "evals/jrig/bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+    "evals/jrig/audit-scenario.ts": "8239bb9a3fd6c70b2a480752dfd9da09bc83e926fd573658a6040b9b6a4afc29",
+    "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+  },
+  "judgments": [],
+  "trigger": null,
+  "observedRouting": {
+    "schema": "jrig-trigger-evidence/v1",
+    "status": "complete",
+    "sha256": "sha256:15fadf7b38aafaae60b4cb8453bcec84b22c5928037a444f4210edeef12cef45",
+    "metrics": {
+      "total_cases": 1,
+      "true_positives": 1,
+      "true_negatives": 0,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "sibling_confusions": 0,
+      "errors": 0,
+      "precision": 1,
+      "recall": 1,
+      "false_positive_rate": 0,
+      "false_negative_rate": 0
+    },
+    "cases": [
+      {
+        "test_case_id": "prospect-and-draft",
+        "expected": "should_trigger",
+        "outcome": "correct_trigger",
+        "selected_skill": "intent-outreach"
+      }
+    ]
+  },
+  "evaluationError": {
+    "type": "provider_failure",
+    "phase": "execution",
+    "provider": "mcp",
+    "category": "network_timeout",
+    "retryable": false,
+    "affected": 2,
+    "total": 2,
+    "message": "tool_execution/timeout"
+  },
+  "process": {
+    "code": 2,
+    "signal": null,
+    "timedOut": false,
+    "cancelled": false
+  },
+  "bindings": [
+    {
+      "phase": "skill",
+      "sessionId": "4ad12626-1e69-47da-9708-190a7e910efe",
+      "receiptSha256": "sha256:3eabb4db1a4f37427d26f5d389e2cb587fa719872ad79c5602e91371ff14fd6c",
+      "traceSha256": "1caabf5bb66e9591f280e2272a201b6315d4a9fa0b737128f5a1da7030695206",
+      "status": "failed",
+      "nestedUsage": {
+        "inputTokens": 0,
+        "outputTokens": 0
+      },
+      "audit": {
+        "caseId": "prospect-and-draft",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": false,
+        "failures": [
+          "research_domains_mismatch",
+          "enricher_count_mismatch",
+          "drafter_count_mismatch",
+          "missing_separate_checkpoints",
+          "lead_selection_before_research",
+          "enrichment_before_lead_selection",
+          "draft_before_enrichment",
+          "draft_approval_before_drafting",
+          "enrichment_outside_retained_leads",
+          "canonical_draft_prompt_not_read",
+          "unexpected_save_count",
+          "unexpected_stored_run_count"
+        ],
+        "incomplete": [
+          "host_call_failed",
+          "bundled_tool_error",
+          "phase_agent_failed",
+          "agent_completion_missing"
+        ],
+        "traceSha256": "1caabf5bb66e9591f280e2272a201b6315d4a9fa0b737128f5a1da7030695206",
+        "storedRuns": 0
+      },
+      "passed": false
+    },
+    {
+      "phase": "baseline",
+      "sessionId": "7590b3ce-ef43-40da-88d0-8ad3780c9d06",
+      "receiptSha256": "sha256:ab97771d101ef5811bc28495cd31ab901ff1df7203df76b04f5754604d04db50",
+      "traceSha256": "db3afd97739a2f9f741ab1245115fdefab0d5f3590b02e2a108d4ccdae041cb0",
+      "status": "failed",
+      "nestedUsage": {
+        "inputTokens": 1029,
+        "outputTokens": 480
+      },
+      "audit": {
+        "caseId": "prospect-and-draft",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": false,
+        "failures": [
+          "enricher_count_mismatch",
+          "drafter_count_mismatch",
+          "missing_separate_checkpoints",
+          "lead_selection_before_research",
+          "enrichment_before_lead_selection",
+          "draft_before_enrichment",
+          "draft_approval_before_drafting",
+          "enrichment_outside_retained_leads",
+          "canonical_draft_prompt_not_read",
+          "unexpected_save_count",
+          "unexpected_stored_run_count"
+        ],
+        "incomplete": [
+          "host_call_failed",
+          "bundled_tool_error",
+          "phase_agent_failed",
+          "agent_completion_missing"
+        ],
+        "traceSha256": "db3afd97739a2f9f741ab1245115fdefab0d5f3590b02e2a108d4ccdae041cb0",
+        "storedRuns": 0
+      },
+      "passed": false
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "trigger-evidence",
+      "sha256": "sha256:15fadf7b38aafaae60b4cb8453bcec84b22c5928037a444f4210edeef12cef45",
+      "sizeBytes": 1334
+    },
+    {
+      "type": "tool-execution",
+      "sha256": "sha256:3eabb4db1a4f37427d26f5d389e2cb587fa719872ad79c5602e91371ff14fd6c",
+      "sizeBytes": 7366
+    },
+    {
+      "type": "tool-execution",
+      "sha256": "sha256:ab97771d101ef5811bc28495cd31ab901ff1df7203df76b04f5754604d04db50",
+      "sizeBytes": 19276
+    }
+  ],
+  "returnedUsage": {
+    "phases": {
+      "trigger": {
+        "calls": 1,
+        "input_tokens": 242,
+        "output_tokens": 139
+      },
+      "execution": {
+        "calls": 5,
+        "input_tokens": 30247,
+        "output_tokens": 4588
+      },
+      "judge": {
+        "calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0
+      }
+    },
+    "total": {
+      "calls": 6,
+      "input_tokens": 30489,
+      "output_tokens": 4727
+    },
+    "estimated_usd": null,
+    "by_model": [
+      {
+        "model": "z-ai/glm-5.3-flash",
+        "calls": 6,
+        "input_tokens": 30489,
+        "output_tokens": 4727,
+        "usd": null
+      }
+    ]
+  },
+  "review": [
+    "Original case incomplete with zero judgments; no model-quality verdict or passing regression seed.",
+    "Source, pinned CLI, all private artifact digests and both closed host traces independently verified.",
+    "Correct observed routing does not upgrade incomplete execution. Missing workflow assertions include unexercised requirements.",
+    "Original private receipt remains unchanged; no implicit retry or retrospective upgrade."
+  ]
+}

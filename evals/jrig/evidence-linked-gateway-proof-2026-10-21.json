@@ -1,0 +1,95 @@
+{
+  "schema": "intent-outreach-case-runner-proof/v1",
+  "scope": "scripted_actual_cli_case_runner_only",
+  "observedAt": "2026-10-22T05:01:05.106Z",
+  "executionParameters": {
+    "reasoning_effort": "medium"
+  },
+  "phaseTimeoutMs": 120000,
+  "judgeProtocol": "evidence-linked/v2",
+  "invalidJudgeRejected": true,
+  "behavioralVerdict": null,
+  "tier3bPassed": false,
+  "paidModelCalls": 0,
+  "vendorNetworkCalls": 0,
+  "messagesSent": 0,
+  "verified": {
+    "rootTimeoutPreserved": true,
+    "phaseTimeoutBound": true,
+    "differentPhaseBudgetCannotSeedRegression": true,
+    "judgeObservationsPrivateAndPortableBinding": true,
+    "toolFreeJudgesReceiveUntrustedObservedData": true,
+    "triggerCasesDigestMetricsAndBundle": true,
+    "originalCriteriaRetained": true,
+    "explicitJudgeModel": true,
+    "threeSamples": true,
+    "distinctSkillBaselineAndRepeat": true,
+    "realRegressionEnabled": true,
+    "malformedExecutionHasNoVerdict": true,
+    "partialReceiptsRetained": true,
+    "cancellationStopsOwnedGroup": true,
+    "temporaryFixturesRemoved": true
+  },
+  "counts": {
+    "trigger": 4,
+    "execution": 7,
+    "judge": 36
+  },
+  "results": [
+    {
+      "caseResult": "pass",
+      "processResult": {
+        "pid": 319402,
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": null
+    },
+    {
+      "caseResult": "pass",
+      "processResult": {
+        "pid": 320324,
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": "2f2144a6676db8d4c620db1409def0b0f157ec502d0bb7ec8e4fc77fc57dfcf5"
+    },
+    {
+      "caseResult": "incomplete",
+      "processResult": {
+        "pid": 322607,
+        "code": 2,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": null
+    },
+    {
+      "caseResult": "incomplete",
+      "processResult": {
+        "pid": 324411,
+        "code": null,
+        "signal": "SIGTERM",
+        "timedOut": false,
+        "cancelled": true
+      },
+      "priorReceiptSha256": null
+    }
+  ],
+  "sha256": {
+    "run-case.ts": "8bc6e7da6fbe496864249e1a1b0fd797e5acdcccac4c18756e87d9c98cb016d8",
+    "case-runner-proof.ts": "24cf79d9afefb591f0e3cb4667da42d60a56062451442fe76408a5d51ef556d4",
+    "bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+    "agent-host.ts": "d4df46e4e439f28054d4cb8ff65140516b6866e5d4cdc8ef18d117e4b2a8c79d",
+    "scenario-host.ts": "0b5015cc130fa445c9f7fef0db4e3f92e4fc045959972f9a5a7bde49c29c5e61",
+    "scenarios.ts": "22d797d2e782f4dfc681d2b094879c044faccdc67a5db6597b764e8b9ec4e81a",
+    "audit-scenario.ts": "56748e00395950ec8d1e288353b4bce35d38b93d7c8acb0486a97b678b97fa27",
+    "inputSpec": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+    "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+  }
+}

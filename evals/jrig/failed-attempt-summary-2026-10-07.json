@@ -1,0 +1,464 @@
+{
+  "schema": "intent-outreach-failed-attempt-summary/v1",
+  "scope": "Selected unsuccessful observed workflow and research attempts; not suite acceptance",
+  "tier3bPassed": false,
+  "productionModelApproval": false,
+  "privacy": "Selected metadata from original private receipts; prompts, final outputs, raw tool data, credentials and local paths omitted. Originals retained unchanged.",
+  "runs": [
+    {
+      "caseId": "prospect-and-draft",
+      "evidenceKind": "behavioral-evaluation",
+      "caseResult": "incomplete",
+      "tier3bPassed": false,
+      "inputSpecSha256": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "judgeModel": "openai/gpt-oss-20b",
+      "priorReceiptSha256": null,
+      "sourceHashes": {
+        "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+        "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+        "skills/intent-outreach/eval-spec.yaml": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+        "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+        "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+        "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+        "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+        "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+        "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+        "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+        "evals/jrig/run-case.ts": "5a6448215610d4fc8cbdc5507e169cc0735d689f0db554f151945088f9073243",
+        "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
+        "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+        "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
+        "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+        "evals/jrig/bind-evidence.ts": "2be4e1f0fc51bcf5de74c2c9fe23d00d65fa80904983fb20e7d81d0d3c96bb9a",
+        "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",
+        "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+      },
+      "attemptId": "2026-10-07-prospect-nvidia-nemotron3-super-r3-observed",
+      "privateReceiptSha256": "fd48ef08290f2799bc4b756bd5f0a9051e0dba4b97e6045763fa3de25ef172f3",
+      "configurationSha256": "bd8ab40ae78f7a4fb1375d4308e0a9d607838e92fb68af175938459cdfb26403",
+      "jrigCliSha256": "57f7117bd5fcc8bde500c9f1af696d25e9ea20d4385df662b52bcfb00d59cbcc",
+      "processResult": {
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "evaluationError": null,
+      "evidenceError": "incomplete_or_unverifiable_evaluation; inspect private CLI, bundle and host receipts",
+      "judgmentsRecordedInCaseReceipt": 0,
+      "bindings": [],
+      "separateCorrectedAuditorDiagnostic": {
+        "sha256": "d643ae0c42a82a876154862e41a5b9fb0c2b84b755617fea5bbcd8bd3f664286",
+        "auditorSha256": "e69a6a70ca3712699eb2a2eacf89ed0f93f7c7e1500613438dacc55ac847976b",
+        "scope": "corrected_auditor_diagnostic_only",
+        "audits": [
+          {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "saved_draft_not_shown_exactly"
+            ],
+            "incomplete": [],
+            "traceSha256": "5f735ea5be981ebaf8fdb85d448f185f6f4b30fa92f5563af7310459c1da5f53",
+            "storedRuns": 1
+          },
+          {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "research_before_preflight",
+              "enrichment_before_lead_selection",
+              "unexpected_save_count",
+              "saved_draft_not_shown_exactly",
+              "saved_message_count_mismatch",
+              "store_differs_from_approved_draft"
+            ],
+            "incomplete": [
+              "host_call_failed",
+              "bundled_tool_error",
+              "unparseable_drafter_evidence",
+              "malformed_save_arguments"
+            ],
+            "traceSha256": "06d491ffd3ec407aa6768dc8f91e61f220ce3d706e4065372f1c32cb2a86bb6b",
+            "storedRuns": 1
+          }
+        ]
+      },
+      "reportingLimitation": "Original case receipt lost its bindings and judgment extraction when the auditor threw. Seven skill criterion results remain in the private database; the separate corrected audit is diagnostic evidence, not a rewritten case receipt."
+    },
+    {
+      "caseId": "prospect-and-draft",
+      "evidenceKind": "behavioral-evaluation",
+      "caseResult": "incomplete",
+      "tier3bPassed": false,
+      "inputSpecSha256": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+      "provider": "nvidia",
+      "model": "moonshotai/kimi-k3",
+      "judgeModel": "nvidia/nemotron-3-super-120b-a12b",
+      "priorReceiptSha256": null,
+      "sourceHashes": {
+        "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+        "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+        "skills/intent-outreach/eval-spec.yaml": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+        "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+        "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+        "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+        "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+        "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+        "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+        "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+        "evals/jrig/run-case.ts": "5a6448215610d4fc8cbdc5507e169cc0735d689f0db554f151945088f9073243",
+        "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
+        "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+        "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
+        "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+        "evals/jrig/bind-evidence.ts": "2be4e1f0fc51bcf5de74c2c9fe23d00d65fa80904983fb20e7d81d0d3c96bb9a",
+        "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",
+        "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+      },
+      "attemptId": "2026-10-07-prospect-nvidia-kimi-k3-r1-observed",
+      "privateReceiptSha256": "fbe301a4e9b2b29c04e53fbc6eaf4c6825c9c6a1223981cd34740bfa51a3c276",
+      "configurationSha256": "5ba41bbf87af1e4100661c0a158241514d362243ae4edb6fb1dce9b80fb7e423",
+      "jrigCliSha256": "57f7117bd5fcc8bde500c9f1af696d25e9ea20d4385df662b52bcfb00d59cbcc",
+      "processResult": {
+        "code": 2,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "evaluationError": {
+        "type": "provider_failure",
+        "phase": "execution",
+        "provider": "mcp",
+        "category": "schema_violation",
+        "retryable": false,
+        "affected": 2,
+        "total": 2,
+        "message": "[redacted]"
+      },
+      "evidenceError": "incomplete_or_unverifiable_evaluation; inspect private CLI, bundle and host receipts",
+      "judgmentsRecordedInCaseReceipt": 0,
+      "bindings": [
+        {
+          "phase": "skill",
+          "status": "failed",
+          "passed": false,
+          "receiptSha256": "sha256:7a5086c03892c177c1798dd00556b72ba4ffec0ce23861901dfb34b719c70af0",
+          "traceSha256": "57f633444e751a8426377051d09e7d7531ababad519ce791caf37596e0f43cbd",
+          "nestedUsage": {
+            "inputTokens": 831,
+            "outputTokens": 161
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "research_domains_mismatch",
+              "enricher_count_mismatch",
+              "drafter_count_mismatch",
+              "missing_separate_checkpoints",
+              "lead_selection_before_research",
+              "enrichment_before_lead_selection",
+              "draft_before_enrichment",
+              "draft_approval_before_drafting",
+              "enrichment_outside_retained_leads",
+              "canonical_draft_prompt_not_read",
+              "unexpected_save_count",
+              "unexpected_stored_run_count"
+            ],
+            "incomplete": [],
+            "traceSha256": "57f633444e751a8426377051d09e7d7531ababad519ce791caf37596e0f43cbd",
+            "storedRuns": 0
+          },
+          "judgeContext": null
+        },
+        {
+          "phase": "baseline",
+          "status": "failed",
+          "passed": false,
+          "receiptSha256": "sha256:bcf3415ce7e6e06c1140b10944e70dbef0743c95c9d7186145bae57d9f0982ee",
+          "traceSha256": "2a43fee6688354f52268c61961216675fa7d6f3cc7eb40fe63ee276a1b973416",
+          "nestedUsage": {
+            "inputTokens": 2015,
+            "outputTokens": 206
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "enricher_count_mismatch",
+              "drafter_count_mismatch",
+              "missing_separate_checkpoints",
+              "lead_selection_before_research",
+              "enrichment_before_lead_selection",
+              "draft_before_enrichment",
+              "draft_approval_before_drafting",
+              "enrichment_outside_retained_leads",
+              "canonical_draft_prompt_not_read",
+              "unexpected_save_count",
+              "unexpected_stored_run_count"
+            ],
+            "incomplete": [],
+            "traceSha256": "2a43fee6688354f52268c61961216675fa7d6f3cc7eb40fe63ee276a1b973416",
+            "storedRuns": 0
+          },
+          "judgeContext": null
+        }
+      ]
+    },
+    {
+      "caseId": "prospect-and-draft",
+      "evidenceKind": "behavioral-evaluation",
+      "caseResult": "incomplete",
+      "tier3bPassed": false,
+      "inputSpecSha256": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3",
+      "judgeModel": "nvidia/nemotron-3-super-120b-a12b",
+      "priorReceiptSha256": null,
+      "sourceHashes": {
+        "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+        "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+        "skills/intent-outreach/eval-spec.yaml": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+        "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+        "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+        "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+        "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+        "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+        "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+        "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+        "evals/jrig/run-case.ts": "5a6448215610d4fc8cbdc5507e169cc0735d689f0db554f151945088f9073243",
+        "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
+        "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+        "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
+        "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+        "evals/jrig/bind-evidence.ts": "2be4e1f0fc51bcf5de74c2c9fe23d00d65fa80904983fb20e7d81d0d3c96bb9a",
+        "evals/jrig/audit-scenario.ts": "e69a6a70ca3712699eb2a2eacf89ed0f93f7c7e1500613438dacc55ac847976b",
+        "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+      },
+      "attemptId": "2026-10-07-prospect-nvidia-glm53-r1-observed",
+      "privateReceiptSha256": "c386fbb2095ddcb6f3129f90e70e230865c7cb99537abe84f144e8f57d650f5e",
+      "configurationSha256": "691a6a943c93a6e8e3becc84ff1cddb39fec4e511a1161892fb11c3a605c2065",
+      "jrigCliSha256": "ba201d9df1ed0c9ffb7e20df76daa9fba5e6024c93ae4191b0ff88365042f988",
+      "processResult": {
+        "code": 2,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "evaluationError": {
+        "type": "provider_failure",
+        "phase": "execution",
+        "provider": "mcp",
+        "category": "network_timeout",
+        "retryable": false,
+        "affected": 2,
+        "total": 2,
+        "message": "tool_execution/timeout"
+      },
+      "evidenceError": "incomplete_or_unverifiable_evaluation; inspect private CLI, bundle and host receipts",
+      "judgmentsRecordedInCaseReceipt": 0,
+      "bindings": [
+        {
+          "phase": "skill",
+          "status": "failed",
+          "passed": false,
+          "receiptSha256": "sha256:ad66242595c46ed68c477955276ffd15b7e0a382278dc4bac3b07fe65e105951",
+          "traceSha256": "acf763d66321771f072f93441fe7968c66c066c169e7ef0bf6b803e30ea17f57",
+          "nestedUsage": {
+            "inputTokens": 6477,
+            "outputTokens": 1339
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "drafter_count_mismatch",
+              "missing_separate_checkpoints",
+              "draft_approval_before_drafting",
+              "unexpected_save_count",
+              "unexpected_stored_run_count"
+            ],
+            "incomplete": [
+              "host_call_failed",
+              "bundled_tool_error",
+              "phase_agent_failed",
+              "agent_completion_missing"
+            ],
+            "traceSha256": "acf763d66321771f072f93441fe7968c66c066c169e7ef0bf6b803e30ea17f57",
+            "storedRuns": 0
+          },
+          "judgeContext": null
+        },
+        {
+          "phase": "baseline",
+          "status": "failed",
+          "passed": false,
+          "receiptSha256": "sha256:f1d573193e7c6c3831af016266de162cdea15f332d1c710a022c02532a7f69bc",
+          "traceSha256": "0fa17f8aac721a6e616c02201dbce1a0789d4fd0490b27566c1fdadbd666d100",
+          "nestedUsage": {
+            "inputTokens": 6076,
+            "outputTokens": 1294
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "research_domains_mismatch",
+              "researcher_count_mismatch",
+              "drafter_count_mismatch",
+              "missing_separate_checkpoints",
+              "lead_selection_before_research",
+              "enrichment_before_lead_selection",
+              "draft_approval_before_drafting",
+              "canonical_draft_prompt_not_read",
+              "unexpected_save_count",
+              "unexpected_stored_run_count"
+            ],
+            "incomplete": [
+              "host_call_failed",
+              "bundled_tool_error",
+              "phase_agent_failed",
+              "agent_completion_missing"
+            ],
+            "traceSha256": "0fa17f8aac721a6e616c02201dbce1a0789d4fd0490b27566c1fdadbd666d100",
+            "storedRuns": 0
+          },
+          "judgeContext": null
+        }
+      ]
+    },
+    {
+      "caseId": "build-lead-list",
+      "evidenceKind": "behavioral-evaluation",
+      "caseResult": "incomplete",
+      "tier3bPassed": false,
+      "inputSpecSha256": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+      "provider": "nvidia",
+      "model": "openai/gpt-oss-20b",
+      "judgeModel": "nvidia/nemotron-3-super-120b-a12b",
+      "priorReceiptSha256": null,
+      "sourceHashes": {
+        "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+        "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+        "skills/intent-outreach/eval-spec.yaml": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+        "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+        "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+        "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+        "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+        "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+        "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+        "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+        "evals/jrig/run-case.ts": "5a6448215610d4fc8cbdc5507e169cc0735d689f0db554f151945088f9073243",
+        "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
+        "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+        "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
+        "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+        "evals/jrig/bind-evidence.ts": "2be4e1f0fc51bcf5de74c2c9fe23d00d65fa80904983fb20e7d81d0d3c96bb9a",
+        "evals/jrig/audit-scenario.ts": "e69a6a70ca3712699eb2a2eacf89ed0f93f7c7e1500613438dacc55ac847976b",
+        "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+      },
+      "attemptId": "2026-10-07-research-nvidia-oss20b-r1-observed",
+      "privateReceiptSha256": "7b059dce3555cd649b981c5f0a6312702b76eb42e11960fa4d268dbbfbeb1511",
+      "configurationSha256": "912e0445cb31cc760bf1ea4515559a36e51a8e677a97aa090fea020f07728b1a",
+      "jrigCliSha256": "ba201d9df1ed0c9ffb7e20df76daa9fba5e6024c93ae4191b0ff88365042f988",
+      "processResult": {
+        "code": 2,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "evaluationError": {
+        "type": "provider_failure",
+        "phase": "execution",
+        "provider": "mcp",
+        "category": "schema_violation",
+        "retryable": false,
+        "affected": 1,
+        "total": 2,
+        "message": "tool_execution/invalid_tool_call"
+      },
+      "evidenceError": "incomplete_or_unverifiable_evaluation; inspect private CLI, bundle and host receipts",
+      "judgmentsRecordedInCaseReceipt": 0,
+      "bindings": [
+        {
+          "phase": "skill",
+          "status": "failed",
+          "passed": false,
+          "receiptSha256": "sha256:b37dfff3d7a7f54dd1c6fc53b63b6ffd92ed44c73e1e8837515360fa2a6191c0",
+          "traceSha256": "535d5efe5fbfb986c7b1f87f3b768e5e1517f6eb39cf1745eaf3278f6ddc2066",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "audit": {
+            "caseId": "build-lead-list",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "research_before_preflight",
+              "research_domains_mismatch",
+              "researcher_count_mismatch"
+            ],
+            "incomplete": [],
+            "traceSha256": "535d5efe5fbfb986c7b1f87f3b768e5e1517f6eb39cf1745eaf3278f6ddc2066",
+            "storedRuns": 0
+          },
+          "judgeContext": null
+        },
+        {
+          "phase": "baseline",
+          "status": "completed",
+          "passed": false,
+          "receiptSha256": "sha256:13f5d272ed6c815183aac9879adec9a1b1d84a9a17deb343148658ee461d2cca",
+          "traceSha256": "7be72ed059ba93ad81901cc0426e783bd205d3551e81b60f80ef181d6dec90f6",
+          "nestedUsage": {
+            "inputTokens": 4868,
+            "outputTokens": 361
+          },
+          "audit": {
+            "caseId": "build-lead-list",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "research_before_preflight"
+            ],
+            "incomplete": [],
+            "traceSha256": "7be72ed059ba93ad81901cc0426e783bd205d3551e81b60f80ef181d6dec90f6",
+            "storedRuns": 0
+          },
+          "judgeContext": {
+            "test_case_id": "build-lead-list",
+            "session_id": "1cabe5ae-0def-4b76-bf07-60d12835a218",
+            "sha256": "sha256:96a52fc82dcd857e05e7012fcd1a6c3a25113173fea094a6304e8dac76fa527e",
+            "size_bytes": 1718
+          }
+        }
+      ]
+    }
+  ]
+}

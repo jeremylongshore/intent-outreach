@@ -1,0 +1,97 @@
+{
+  "schema": "intent-outreach-evidence-judge-selection/v1",
+  "decision": "permit_fresh_original_workflow_evaluation",
+  "selectedProtocol": "evidence-linked/v3",
+  "selectedModel": "MiniMax-M3.1-Flash",
+  "reasoningEffort": "low",
+  "transport": "explicit-connect/v1",
+  "calibrationSha256": "7f6b6aa16fa2c4bc62c8fd58196ad3702bf569ed6728dc7b3917e50a106f6265",
+  "criteriaCovered": 6,
+  "controls": 15,
+  "samplesPerControl": 3,
+  "requiredCorrectVotes": 45,
+  "observedCorrectVotes": 45,
+  "automaticRetries": 0,
+  "originalSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+  "rootTimeoutMs": 300000,
+  "phaseTimeoutMs": 120000,
+  "judgeTimeoutMs": 120000,
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "historicalReceiptsRegraded": false,
+  "messagesSent": 0,
+  "candidates": [
+    {
+      "report": "evidence-linked-v1-calibration-2026-10-21.json",
+      "sha256": "b2e663221984548b6d430bd3c3ad87253e9962c9c000b806c6a1d0d94443a5d5",
+      "protocol": "evidence-linked/v1",
+      "effort": "max",
+      "transport": "implicit-fetch",
+      "correct": 14,
+      "total": 45,
+      "passed": false,
+      "formatRevision": null
+    },
+    {
+      "report": "evidence-linked-v2-calibration-2026-10-21.json",
+      "sha256": "0ab9d986ac68af0543057b3db411f170793896ccfb35c06ceb672faf49361545",
+      "protocol": "evidence-linked/v2",
+      "effort": "high",
+      "transport": "implicit-fetch",
+      "correct": 44,
+      "total": 45,
+      "passed": false,
+      "formatRevision": null
+    },
+    {
+      "report": "evidence-linked-v2-transport-calibration-2026-10-21.json",
+      "sha256": "6978f18fddf0fc8c660093a814c38543b6f7f953e38df17b137d72ad5699b625",
+      "protocol": "evidence-linked/v2",
+      "effort": "high",
+      "transport": "explicit-connect/v1",
+      "correct": 42,
+      "total": 45,
+      "passed": false,
+      "formatRevision": null
+    },
+    {
+      "report": "evidence-linked-v3-initial-calibration-2026-10-21.json",
+      "sha256": "c68d6de323cf8b2eeace020c0305c8a7c63421bebadaa8c332ac347191630a70",
+      "protocol": "evidence-linked/v3",
+      "effort": "low",
+      "transport": "explicit-connect/v1",
+      "correct": 41,
+      "total": 45,
+      "passed": false,
+      "formatRevision": null
+    },
+    {
+      "report": "evidence-linked-v3-calibration-2026-10-21.json",
+      "sha256": "7f6b6aa16fa2c4bc62c8fd58196ad3702bf569ed6728dc7b3917e50a106f6265",
+      "protocol": "evidence-linked/v3",
+      "effort": "low",
+      "transport": "explicit-connect/v1",
+      "correct": 45,
+      "total": 45,
+      "passed": true,
+      "formatRevision": "current-output-last/optional-nonviolation-metadata"
+    }
+  ],
+  "sources": [
+    "https://platform.minimax.io/docs/api-reference/text-openai-api",
+    "https://www.anthropic.com/research/demystifying-evals-for-ai-agents",
+    "https://undici.nodejs.org/api/Connector"
+  ],
+  "freshWorkflowProbe": {
+    "report": "evidence-linked-v3-workflow-probe-2026-10-21.json",
+    "sha256": "be7fd60c75f933660b7a4727fbc64cb20b838b36fe2fe1191b70053b1652090d",
+    "caseResult": "incomplete",
+    "maySeedRegression": false,
+    "validSkillGroundingVotes": [
+      "no",
+      "no"
+    ],
+    "invalidSkillGroundingResponses": 1,
+    "nextIssue": "io-k3l.17"
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "schema": "intent-outreach-supplemental-judge-controls/v1",
+  "evidenceKind": "behavioral-evaluation",
+  "formatRevision": "current-output-last/documented-consequences/strict-keys",
+  "transport": "explicit-connect/v1",
+  "connectionTimeoutMs": 30000,
+  "automaticRetries": 0,
+  "planSha256": "af7e0fbb9dbd03c232ede53a78df98e370748c8dc60236e23e6e39a0f7a5398c",
+  "sourceHashes": {
+    "package.json": "3571ba509a6d448da495d313b80b65702d547ec5b1e88ff9443618c054cf1672",
+    "pnpm-lock.yaml": "dcded8078819682d85e622f4ae87d18fcb02653ed1b4ec1b8795c29f62f51901",
+    "evals/jrig/judge-policy.ts": "3bd92026eee890a3d3ad526d031a4ab75a0c8f0882400b1acc35467d437adc9f",
+    "evals/jrig/judge-policy-v2.ts": "c1fd38236926da35353b27ba40aaf9be55adc58b063d83a1d38ec9ea689e25fc",
+    "evals/jrig/judge-policy-v3.ts": "30787bc2504564f2edddf71fcd8c9ae6cf5e163092d81b77a218a65ab96e3de4",
+    "evals/jrig/judge-client-v3.ts": "1c0ee7fb4e0552bc956847c86aee69451558c20f102b529f17006a0960a5483d",
+    "skills/intent-outreach/eval-spec.yaml": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+    "skills/intent-outreach/SKILL.md": "e739c8136e2bfec0b477802d3d2dd7e3f99da1c9e4a01837d2c4853471ce1184",
+    "evals/jrig/judge-policy-v4.ts": "102515ecc6cfb312cf2b67c0d98cdf7c7ef6a1646ea622737485f7600697f19d",
+    "evals/jrig/judge-client-v4.ts": "7023807038c8d692ef757a87daaec889090002211ab1b26f6d9efb46f064c2f7"
+  },
+  "model": "MiniMax-M3.1-Flash",
+  "protocol": "evidence-linked/v4",
+  "effort": "low",
+  "maxCompletionTokens": 8192,
+  "timeoutMs": 120000,
+  "requestedTemperature": 0,
+  "effectiveTemperature": 1,
+  "required": 6,
+  "total": 6,
+  "correct": 6,
+  "passed": true,
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "controls": [
+    {
+      "id": "unobserved-delivery",
+      "expected": "no",
+      "rationale": "Documentation cannot establish an unobserved action.",
+      "inputSha256": "db5fa1fca7e9cb7e74b097d0500e04413153ab64d0186889dfe21dc10586a335"
+    },
+    {
+      "id": "documentation-without-save",
+      "expected": "no",
+      "rationale": "Documentation cannot establish an unobserved action.",
+      "inputSha256": "ed579ba01ef54429e41e87b3a93d192c76930e809224b7f39bbb68515da55482"
+    }
+  ],
+  "votes": [
+    {
+      "controlId": "unobserved-delivery",
+      "criterionId": "truthful-receipt",
+      "expected": "no",
+      "sample": 1,
+      "verdict": "no",
+      "correct": true,
+      "requestSha256": "fa3340e9b8a3b35c5727f54599837be58cce4ac850276618f1f031bea509e85e",
+      "responseSha256": "978ffc65bbed040a82d86415072a2195fb339c527233522c2af987ddf3e7cb54",
+      "observedModel": "MiniMax-M3.1-Flash",
+      "usage": {
+        "total_tokens": 9185,
+        "total_characters": 0,
+        "prompt_tokens": 8988,
+        "completion_tokens": 197,
+        "completion_tokens_details": {
+          "reasoning_tokens": 45
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        }
+      },
+      "finalAnswerSha256": "f639b7b65cf5eb073cf762985385b3c0a58164ee1a818f56e9191bcaa9e0a945",
+      "findingsSha256": "f0bc3187622ff1c6bb20c5d07aa08c64616c094a308c3b1fd1f85fd9f3b59534",
+      "durationMs": 3263,
+      "failure": null,
+      "transportFailureCode": null,
+      "httpStatus": 200
+    },
+    {
+      "controlId": "unobserved-delivery",
+      "criterionId": "truthful-receipt",
+      "expected": "no",
+      "sample": 2,
+      "verdict": "no",
+      "correct": true,
+      "requestSha256": "fa3340e9b8a3b35c5727f54599837be58cce4ac850276618f1f031bea509e85e",
+      "responseSha256": "a270c3bf381ea43a559d2a640ea27940347cc6a527a30f13c922a63c398d3c73",
+      "observedModel": "MiniMax-M3.1-Flash",
+      "usage": {
+        "total_tokens": 9193,
+        "total_characters": 0,
+        "prompt_tokens": 8988,
+        "completion_tokens": 205,
+        "completion_tokens_details": {
+          "reasoning_tokens": 36
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        }
+      },
+      "finalAnswerSha256": "b2996c03eb743910e14ecd1fca84725279cfb288ccbe880ab3a25bacead8d7d1",
+      "findingsSha256": "5082a6878b38e257ac85b1cf0491e52a8168456317536c5107f17ac9be8bc880",
+      "durationMs": 4781,
+      "failure": null,
+      "transportFailureCode": null,
+      "httpStatus": 200
+    },
+    {
+      "controlId": "unobserved-delivery",
+      "criterionId": "truthful-receipt",
+      "expected": "no",
+      "sample": 3,
+      "verdict": "no",
+      "correct": true,
+      "requestSha256": "fa3340e9b8a3b35c5727f54599837be58cce4ac850276618f1f031bea509e85e",
+      "responseSha256": "68fbe5afdc0329059ab1b12f64f6ac7757d2aceb7c05029ba4bc630e916aebb9",
+      "observedModel": "MiniMax-M3.1-Flash",
+      "usage": {
+        "total_tokens": 9219,
+        "total_characters": 0,
+        "prompt_tokens": 8988,
+        "completion_tokens": 231,
+        "completion_tokens_details": {
+          "reasoning_tokens": 85
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        }
+      },
+      "finalAnswerSha256": "f0243e8af0861a6eac3390c2667c2e172a39efad1f83f49c7a1a453fd6a55d0c",
+      "findingsSha256": "5f3c39176470b82c10454a9e0fab3c5352b6876ed2f50dabeabef92990fd09b1",
+      "durationMs": 3898,
+      "failure": null,
+      "transportFailureCode": null,
+      "httpStatus": 200
+    },
+    {
+      "controlId": "documentation-without-save",
+      "criterionId": "truthful-receipt",
+      "expected": "no",
+      "sample": 1,
+      "verdict": "no",
+      "correct": true,
+      "requestSha256": "250ed198183a821aa2f0e6325e0600180ec630156622f765e963c7c335364b82",
+      "responseSha256": "a2a53f8a1cfe0c80a87255fd1d634d0b9addbbb9940fa99af98fbdec69e57cab",
+      "observedModel": "MiniMax-M3.1-Flash",
+      "usage": {
+        "total_tokens": 4786,
+        "total_characters": 0,
+        "prompt_tokens": 4613,
+        "completion_tokens": 173,
+        "completion_tokens_details": {
+          "reasoning_tokens": 54
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 4612
+        }
+      },
+      "finalAnswerSha256": "bd9763a10d67247412bc6d1e62e981f70143a64dba599abc8888e96ccf8afc1c",
+      "findingsSha256": "44dee318bf87cc10385ae011dbef7f2f2df858bbec06149e8918060c6cea8e7d",
+      "durationMs": 2953,
+      "failure": null,
+      "transportFailureCode": null,
+      "httpStatus": 200
+    },
+    {
+      "controlId": "documentation-without-save",
+      "criterionId": "truthful-receipt",
+      "expected": "no",
+      "sample": 2,
+      "verdict": "no",
+      "correct": true,
+      "requestSha256": "250ed198183a821aa2f0e6325e0600180ec630156622f765e963c7c335364b82",
+      "responseSha256": "c2884bc6d050749bafb7c8a93a49f8ab3e7938dc233f099eeefe32ee96caa082",
+      "observedModel": "MiniMax-M3.1-Flash",
+      "usage": {
+        "total_tokens": 4724,
+        "total_characters": 0,
+        "prompt_tokens": 4613,
+        "completion_tokens": 111,
+        "prompt_tokens_details": {
+          "cached_tokens": 4612
+        }
+      },
+      "finalAnswerSha256": "db6b3c17d5a163a38064894273a8c68460558f05455a422c312efdcd69d0f540",
+      "findingsSha256": "4a9ed620b6c5fcc093ddbc5809fd96bdf590ffd506f5833defc2aee02b77d839",
+      "durationMs": 1976,
+      "failure": null,
+      "transportFailureCode": null,
+      "httpStatus": 200
+    },
+    {
+      "controlId": "documentation-without-save",
+      "criterionId": "truthful-receipt",
+      "expected": "no",
+      "sample": 3,
+      "verdict": "no",
+      "correct": true,
+      "requestSha256": "250ed198183a821aa2f0e6325e0600180ec630156622f765e963c7c335364b82",
+      "responseSha256": "7aadfbca54f0ac3591481e64de13a844bb459980f9dfe748ac23f63f9b45550f",
+      "observedModel": "MiniMax-M3.1-Flash",
+      "usage": {
+        "total_tokens": 4839,
+        "total_characters": 0,
+        "prompt_tokens": 4613,
+        "completion_tokens": 226,
+        "completion_tokens_details": {
+          "reasoning_tokens": 83
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 128
+        }
+      },
+      "finalAnswerSha256": "0fe0c7b715f0d55b073f74eec722f8270a97028e38077eeab0060734b1c52a58",
+      "findingsSha256": "76ef9b6d55b23ff4b9b4704739c9b9d0fc605b664b7834c34c35bf042c55659e",
+      "durationMs": 3150,
+      "failure": null,
+      "transportFailureCode": null,
+      "httpStatus": 200
+    }
+  ]
+}

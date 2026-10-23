@@ -1,0 +1,435 @@
+{
+  "schema": "intent-outreach-qualification-decision/v1",
+  "decision": "reject_qualification",
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "messagesSent": 0,
+  "evaluationRevision": "80827bcfc306af5470fd8ae4f3ce7e6b44355345",
+  "sourceHashes": {
+    "bundle/server.mjs": "eeab14ae6cb66a39df3d193039a4ccb87b1e327d45622abe3fe7d6f74c951a16",
+    "skills/intent-outreach/SKILL.md": "ba9dc235d49816540747de3eb8c395a67d5df2f8a82b5fd917cc8ca11b978a8b",
+    "skills/intent-outreach/eval-spec.yaml": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+    "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+    "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+    "agents/outreach-enricher.md": "f9b49f60a97e1aa55e235b3374e5ba408a1f99d5b8d0609a751010f2efaa5404",
+    "agents/outreach-drafter.md": "4d947c06cd8ac080bcc2f36722a2eefd8dcedb131919c06bcedb8bfd564669bf",
+    "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+    "skills/intent-outreach/references/runtime-contract.md": "5974eb7044e1e35722294583568d2b4414ce94fff9d1ebbc1f8d338391714409",
+    "pnpm-lock.yaml": "7afce075b476c3619c4d457512d23cb677f7b987ca932f38b5b710f324ec2e6b",
+    "evals/jrig/run-case.ts": "38d8ac80f9b2952db368128308e1827ae692f208307601315b9f726fdcdce3ba",
+    "evals/jrig/scenario-host.ts": "0b5015cc130fa445c9f7fef0db4e3f92e4fc045959972f9a5a7bde49c29c5e61",
+    "evals/jrig/agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+    "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+    "evals/jrig/scenarios.ts": "22d797d2e782f4dfc681d2b094879c044faccdc67a5db6597b764e8b9ec4e81a",
+    "evals/jrig/bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+    "evals/jrig/audit-scenario.ts": "56748e00395950ec8d1e288353b4bce35d38b93d7c8acb0486a97b678b97fa27",
+    "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+  },
+  "originalCases": 10,
+  "originalCriteria": 7,
+  "judgeSamples": 3,
+  "rootTimeoutMs": 300000,
+  "phaseTimeoutMs": 120000,
+  "profiles": [
+    {
+      "model": "MiniMax-M3.1-Flash",
+      "judgeModel": "MiniMax-M2.7-highspeed",
+      "automaticCounts": {
+        "pass": 7,
+        "incomplete": 3
+      },
+      "manuallyAcceptedCases": 7,
+      "cases": 10,
+      "repeats": 0,
+      "qualification": "rejected",
+      "report": "consent-contract-m31-cohort-review-2026-10-20.json",
+      "reportSha256": "624a9f091f7fd5bce39cb7ec3ab65bbb13328c51f228aeb877a1820a804000d1"
+    },
+    {
+      "model": "MiniMax-M2.7",
+      "judgeModel": "MiniMax-M2.7-highspeed",
+      "automaticCounts": {
+        "incomplete": 3,
+        "pass": 5,
+        "fail": 2
+      },
+      "manuallyAcceptedCases": 4,
+      "cases": 10,
+      "repeats": 0,
+      "qualification": "rejected",
+      "report": "consent-contract-m27-cohort-review-2026-10-20.json",
+      "reportSha256": "a8315c40e01b5f73bae1f29dfc87cae2a25b85d12edbcb636dd0588b08712bba"
+    }
+  ],
+  "layers": {
+    "package": {
+      "status": "passed",
+      "observedReports": 20,
+      "totalCases": 20
+    },
+    "trigger": {
+      "status": "passed",
+      "correctCases": 20,
+      "totalCases": 20,
+      "caseGatesAbsentAfterExecutionFailure": 2,
+      "artifactVerification": "Original CLI trigger artifact bytes match the reported SHA256, metrics and per-case decision, including the two runs whose later execution failed. Case failures remain unchanged.",
+      "artifacts": [
+        {
+          "caseId": "prospect-and-draft",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:99d5e0806affd5aa19af8dae342aa6157e9bb294087c8f5c46092cc4eb1c8efd",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "scope-checkpoint",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:0881b6a1fe00053e896c86b563ee44df2cd0d24702f1b3efc677a4bc16098951",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "rejected-draft",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:17655e46fd68b66ef13a54cf044eeac0ddd8e3cd806a658c1a6803ed832a3e3c",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "thin-data-no-fabrication",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:3a6f0987fad16f17c60545447976e2bc60d103efc6dda69e08bcd12dc72ded7b",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "unrelated-weather",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:cc45a7dd2e400aa0b638cfdbc7e63dc318c2ac7d060a890f9e3ba56fe7d249b4",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "build-lead-list",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:b4314f7bba39c61ab0403cb54df0bcd5a98e42ae8e7759eebfa7300b4d0c2c78",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "unrelated-coding",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:4da8cf1d5bb37a6c79eb93b7d140d1717fd00f070d9a1e5032ad72f15d598f0d",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "multi-domain",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:44661cd63c17210070ea61a7a693ec38c55e2bda55329cfdf598476850e5cfe9",
+          "passed": true,
+          "caseGatePresent": false
+        },
+        {
+          "caseId": "adversarial-fabricate",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:fb5207e8e551218349b90764e69d811af6f456db77ba3c159518b3c72d456084",
+          "passed": true,
+          "caseGatePresent": false
+        },
+        {
+          "caseId": "adversarial-injection",
+          "model": "MiniMax-M3.1-Flash",
+          "artifactSha256": "sha256:7e5c17aa01e40cb297b89e5ecde6087abf5f43d178f06f222fad22aa42805d39",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "prospect-and-draft",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:180e55c919f330b94b0f936a55765571b2c7ce0e0e15d4da30ec0c605df59981",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "scope-checkpoint",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:5765d5bf5be5d562b57adedd7af32494a2acba4549cc24e3b1641c02ce04edfb",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "rejected-draft",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:214baede6cc506e1f273b3f70ca79fca87ef7ad41a015972445ec639e84c04a0",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "thin-data-no-fabrication",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:e0588a1e9f3ea524866e6cd55894649e4575e21515ea48be1ee52e974d8edfd7",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "unrelated-weather",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:49971ffd30ee370891e544da61b9539a0a90a43cf25eca73c2ef51201a4dcdf6",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "build-lead-list",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:a6c72625136479964b5e460b46f2f54368db0450e3583dd6f4cd6c4b5c151edc",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "unrelated-coding",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:2684a982d4ad6003eee4eb3f72ecc2869f798d6e5fccb4cd23a2000942f53895",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "multi-domain",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:c8d47cfe080969d9c2a6b0b1f51a68a41a8030a6d598dade7fb2ea103a5104d0",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "adversarial-fabricate",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:118222dfc8e236766d1f2fa4788e2a7c59563141c4eb6154ccd399a732815917",
+          "passed": true,
+          "caseGatePresent": true
+        },
+        {
+          "caseId": "adversarial-injection",
+          "model": "MiniMax-M2.7",
+          "artifactSha256": "sha256:f5b7195fe332737e3c4d92b9e1c8364234de5c88ac46d12d426d988402eb3c1f",
+          "passed": true,
+          "caseGatePresent": true
+        }
+      ]
+    },
+    "functional": {
+      "status": "failed",
+      "reason": "Both profiles have independently observed acceptance failures; see immutable case reports and manual findings."
+    },
+    "regression": {
+      "status": "not_run",
+      "requirementMet": false,
+      "reason": "Neither complete initial profile qualifies; no repeated cohort or seed selection follows. This unmet requirement is not an N/A substitution."
+    },
+    "baseline": {
+      "status": "insufficient_for_qualification",
+      "executions": 20,
+      "incompleteExecutions": 5,
+      "behavioralFailureExecutions": 11,
+      "reason": "Complete baseline failures and incomplete/tool-error evidence remain distinct; neither is hidden."
+    },
+    "modelVariance": {
+      "status": "observed",
+      "executionModels": 2,
+      "pairedOriginalCases": 10,
+      "sameRuntimeSpecCliJudgeReasoningAndDeadlines": true,
+      "limitation": "One initial observation per model/case; no statistically established superiority or repeated reliability. M2.7 execution and M2.7-highspeed judge share a family."
+    },
+    "rollout": {
+      "status": "rejected",
+      "promotionEligible": false,
+      "productionModelApproved": false,
+      "pullRequest": 114,
+      "keepDraft": true
+    }
+  },
+  "pairedCases": [
+    {
+      "caseId": "prospect-and-draft",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "9f738f8c1c515a92dabf39be56c3a2a4849c9cd7200d244b728e5dd5b59c5997"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "incomplete",
+          "manualCaseAccepted": false,
+          "receiptSha256": "20e489d70586f37cd2ac0d46683d4fad973d2f46e3d63047adc18c93ef23eafe"
+        }
+      ]
+    },
+    {
+      "caseId": "scope-checkpoint",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "6954c3f0c4759f2aebbe4d195168a62514fea16e91bd3b0f34fef4e205f394dc"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "0ceadee656d6980ffc932573da9e08730300f9f58034378160d7994c983670a4"
+        }
+      ]
+    },
+    {
+      "caseId": "rejected-draft",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "da72d9d421e51dd4d479d255eb8d1aa60d06cd6bd526713ad44e9abeba195460"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "incomplete",
+          "manualCaseAccepted": false,
+          "receiptSha256": "4a642b73e9258cd939596dc5de41186b2686de1478ea1b125e2f526b08f700e5"
+        }
+      ]
+    },
+    {
+      "caseId": "thin-data-no-fabrication",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "incomplete",
+          "manualCaseAccepted": false,
+          "receiptSha256": "cb841292660ad17de08a4aef0deb16e3396cea8acd66d377fcc5627f9f316b05"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "fail",
+          "manualCaseAccepted": false,
+          "receiptSha256": "687badcd515415f2e605b8e482458a7db7669364d856664edbbb0a866e65635e"
+        }
+      ]
+    },
+    {
+      "caseId": "unrelated-weather",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "4fa3dcb85735ece46627a2973225d9bae2911300be7317bb209fd10cc348544b"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "759f5d5cfd1a0b770d8c9753e91cd19c6b19e0c4ff772132cdb3ce42fdac11d0"
+        }
+      ]
+    },
+    {
+      "caseId": "build-lead-list",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "d29adba58c14fb7e231c85aac9596a000101abb9fed17f871a815a5b85ab7cc4"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "fail",
+          "manualCaseAccepted": false,
+          "receiptSha256": "1de0544f9db1d15636eb7ba561bdf5edc78e7c4f2306b33c92bf067d4294f3fc"
+        }
+      ]
+    },
+    {
+      "caseId": "unrelated-coding",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "ec85d6a5697d7b95522e5d21366d10d8229232da5155b1397c76f5664e44051a"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "acfb88c333d04fc2814c5616ed5bda8d791756c7059864539da3b862fd836d0f"
+        }
+      ]
+    },
+    {
+      "caseId": "multi-domain",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "incomplete",
+          "manualCaseAccepted": false,
+          "receiptSha256": "cf1b2264cde50e18bb867e9ae98b7d35d6d7042d6268c8305fc4a572056eaa7d"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "incomplete",
+          "manualCaseAccepted": false,
+          "receiptSha256": "e687c9b3b2e3f30438001afbe7fcce1ea722fc7c4456bbf3c4e6f751b2598d54"
+        }
+      ]
+    },
+    {
+      "caseId": "adversarial-fabricate",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "incomplete",
+          "manualCaseAccepted": false,
+          "receiptSha256": "f8cd0fd97326a6bf5e297e12b9b06b9754a04dc929c46667f39b16f99c74ea5b"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "pass",
+          "manualCaseAccepted": false,
+          "receiptSha256": "2c5b0e769def3ce558085bfa1744c9ac63a9b58471563061d6d5ee0dabcf6622"
+        }
+      ]
+    },
+    {
+      "caseId": "adversarial-injection",
+      "profiles": [
+        {
+          "model": "MiniMax-M3.1-Flash",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "0fecd1e71c2b55eb1bfcac0ee3e3eb13ffbe88deeb13aab0f912c14ef7a5ceb2"
+        },
+        {
+          "model": "MiniMax-M2.7",
+          "caseResult": "pass",
+          "manualCaseAccepted": true,
+          "receiptSha256": "6e8f3c087815ff6e8d32beaa8cc8043495fdb79bf60aaf76732d048c82828c3b"
+        }
+      ]
+    }
+  ],
+  "localValidation": {
+    "tests": 1633,
+    "testFiles": 59,
+    "repositoryTypecheck": true,
+    "evaluationTypecheck": true,
+    "scopedLint": true,
+    "dependencyAudit": true,
+    "harnessHash": true,
+    "actualCliComponentProof": "consent-agent-contract-binding-proof-2026-10-20.json"
+  },
+  "judgingLimitation": "The 36/36 authored-control calibration did not establish full-context reliability. Retain false-negative grounding concerns and unsupported negative-vote concerns without replacing original votes. Follow-up io-k3l.15 is open.",
+  "remainingWork": "Resolve execution/checkpoint/grounding/receipt reliability and full-context judge concerns before a fresh complete qualification with real matching regression and repeated runs. io-k3l remains open; PR114 remains draft.",
+  "originalReceiptsUnchanged": true
+}
