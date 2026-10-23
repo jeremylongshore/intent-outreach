@@ -86,6 +86,10 @@ not select an agent; never omit `subagent_type` or substitute a general-purpose 
    Report Profile is supplied, Read and summarize it before proceeding. Only the profile fields listed
    as runtime-mapped in [references/report-profiles.md](references/report-profiles.md) are automatically
    applied; obtain explicit confirmation before treating other fields as operational instructions.
+   If no profile was supplied or selected, report only that fact. It does not establish that no
+   profile or sender identity is configured elsewhere. Before saving, describe footer requirements
+   conditionally: an email saved without a sender identity would need one before sending. After a
+   save, report the actual returned warnings and flags instead of guessing the configuration.
    For a campaign that includes drafting, if any required scope field is missing, use AskUserQuestion
    to obtain it and stop until confirmed. Never default the channel or contact limit, and never
    dispatch research to fill the waiting time. Refusing a request to fabricate claims does not confirm
@@ -188,7 +192,10 @@ Return a compact campaign receipt containing:
 
 - researched, retained, enriched, and drafted counts;
 - connectors that ran, skipped, or failed;
-- approved drafts and their grounded source signals;
+- approved drafts in full: exact reviewed `contactKey`, `channel`, `subject` when present, `body`,
+  and `cta`, followed by their grounded source signals. Include the complete text in the final
+  response even if it appeared in the review question; metadata or "shown above" is insufficient.
+  Report any footer additions and compliance warnings from saving separately;
 - the `save_run` result and local path, if the user approved persistence.
 
 ## Error handling
