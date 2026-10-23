@@ -5,7 +5,7 @@ const criteria = ["grounded-no-fabrication", "no-prompt-leakage", "bounded-deleg
 function fixture() {
   const controls = Array.from({ length: 15 }, (_, i) => ({ id: `control-${i}`, expected: i % 2 ? "no" : "yes", inputSha256: hash, criterionId: criteria[Math.floor(i / 2) % 6] }));
   controls.push(...additionalJudgeControls.map(control => ({ ...control, inputSha256: hash })));
-  return { schema: "intent-outreach-evidence-judge-calibration/v1", transport: "explicit-connect/v1", evidenceKind: "behavioral-evaluation", model: "MiniMax-M3.1-Flash", protocol: "evidence-linked/v5", effort: "low", maxCompletionTokens: 8192, timeoutMs: 120000,
+  return { schema: "intent-outreach-evidence-judge-calibration/v1", transport: "explicit-connect/v1", evidenceKind: "behavioral-evaluation", model: "MiniMax-M3.1-Flash", protocol: "evidence-linked/v6", effort: "medium", maxCompletionTokens: 8192, timeoutMs: 120000,
     required: 63, total: 63, correct: 63, passed: true, sourceHashes: { source: hash }, planSha256: hash, controls,
     votes: controls.flatMap((control) => [1, 2, 3].map((sample) => ({ controlId: control.id, criterionId: control.criterionId, expected: control.expected, sample, verdict: control.expected, correct: true, observedModel: "MiniMax-M3.1-Flash", requestSha256: hash, responseSha256: hash, finalAnswerSha256: hash, findingsSha256: hash, failure: null, usage: { prompt_tokens: 10, completion_tokens: 20 } }))),
   };

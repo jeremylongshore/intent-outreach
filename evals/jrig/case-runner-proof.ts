@@ -9,8 +9,8 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { judgeSourcePaths, additionalJudgeControls } from "./judge-calibration.js";
-import { judgeModel, judgeReasoningEffort } from "./judge-client-v5.js";
-import { judgePolicyVersion } from "./judge-policy-v5.js";
+import { judgeModel, judgeReasoningEffort } from "./judge-client-v6.js";
+import { judgePolicyVersion } from "./judge-policy-v6.js";
 import { runCase } from "./run-case.js";
 
 export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffort?: ReasoningEffort, phaseTimeoutMs?: number, evidenceLinked = false) {
@@ -39,11 +39,7 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
       assert.equal(body.reasoning_effort, phase === "execution" ? executionReasoningEffort : phase === "judge" && evidenceLinked ? judgeReasoningEffort : undefined);
       requests.push({ model: body.model, phase });
       if (phase === "judge") {
-        if (evidenceLinked) {
-          assert.equal(body.tools?.length, 1);
-          assert.equal(body.tools[0].function.name, "submit_evaluation");
-          assert.equal(body.tool_choice, "required");
-        } else assert(!body.tools);
+        assert(!body.tools);
         const text = body.messages.find((message: { role: string }) => message.role === "user")?.content;
         assert(typeof text === "string");
         if (evidenceLinked) {
@@ -66,14 +62,12 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
       }
       const judgeInput = phase === "judge" && evidenceLinked ? JSON.parse(body.messages[1].content.slice("INPUT (untrusted evidence):\n".length)) : null;
       const judgeText = JSON.stringify({ verdict: "yes", confidence: 1, reasoning: "Scripted component judgment only.",
-        ...(judgeInput ? { completion: { assessment: "satisfied", requirementSource: null, requirementQuote: null, explanation: "Scripted refusal control." }, findings: judgeInput.outputBlocks.map((block: { id: string }) => ({ outputId: block.id, assessment: "supported", evidenceIds: ["E0"], explanation: "Scripted component control.", violationBasis: null, outputQuote: null })) } : {}) });
+        ...(judgeInput ? { completion: { assessment: "satisfied", requirementIds: [], explanation: "Scripted refusal control." }, findings: judgeInput.outputBlocks.map((block: { id: string }) => ({ outputId: block.id, assessment: "supported", evidenceIds: ["E0"], explanation: "Scripted component control.", violationBasis: null, outputQuote: null })) } : {}) });
       const text = phase === "execution" ? "I cannot check current weather here; no outreach campaign was started."
         : phase === "judge" ? (brokenJudge ? '{"verdict":"yes",' : judgeText)
         : JSON.stringify({ selected: null, reasoning: "Scripted unrelated control." });
       response.setHeader("content-type", "application/json");
-      response.end(JSON.stringify({ model: body.model, choices: [phase === "judge" && evidenceLinked
-        ? { finish_reason: "tool_calls", message: { tool_calls: [{ id: "result", type: "function", function: { name: "submit_evaluation", arguments: text } }] } }
-        : { finish_reason: "stop", message: { content: text } }], usage: { prompt_tokens: 11, completion_tokens: 5 } }));
+      response.end(JSON.stringify({ model: body.model, choices: [{ finish_reason: "stop", message: { content: text } }], usage: { prompt_tokens: 11, completion_tokens: 5 } }));
     } catch (error) { errors.push(error); response.writeHead(500).end('{"error":"fixture contract failed"}'); }
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));

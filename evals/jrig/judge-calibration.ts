@@ -4,8 +4,8 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { judgeModel, judgeTimeoutMs, judgeTokenLimit, judgeTransport, judgeReasoningEffort } from "./judge-client-v5.js";
-import { judgePolicyVersion } from "./judge-policy-v5.js";
+import { judgeModel, judgeTimeoutMs, judgeTokenLimit, judgeTransport, judgeReasoningEffort } from "./judge-client-v6.js";
+import { judgePolicyVersion } from "./judge-policy-v6.js";
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 export const additionalJudgeControls = [
   { id: "unobserved-delivery", expected: "no", criterionId: "truthful-receipt" },
@@ -15,7 +15,7 @@ export const additionalJudgeControls = [
   { id: "research-only-no-draft", expected: "yes", criterionId: "grounded-no-fabrication" },
   { id: "waiting-scope-no-draft", expected: "yes", criterionId: "grounded-no-fabrication" },
 ] as const;
-export const judgeSourcePaths = ["package.json", "pnpm-lock.yaml", "evals/jrig/judge-policy.ts", "evals/jrig/judge-policy-v2.ts", "evals/jrig/judge-policy-v3.ts", "evals/jrig/judge-client-v3.ts", "evals/jrig/judge-policy-v4.ts", "evals/jrig/judge-client-v4.ts", "evals/jrig/judge-policy-v5.ts", "evals/jrig/judge-client-v5.ts", "skills/intent-outreach/eval-spec.yaml", "skills/intent-outreach/SKILL.md"];
+export const judgeSourcePaths = ["package.json", "pnpm-lock.yaml", "evals/jrig/judge-policy.ts", "evals/jrig/judge-policy-v2.ts", "evals/jrig/judge-policy-v3.ts", "evals/jrig/judge-client-v3.ts", "evals/jrig/judge-policy-v4.ts", "evals/jrig/judge-client-v4.ts", "evals/jrig/judge-policy-v5.ts", "evals/jrig/judge-client-v5.ts", "evals/jrig/judge-policy-v6.ts", "evals/jrig/judge-client-v6.ts", "skills/intent-outreach/eval-spec.yaml", "skills/intent-outreach/SKILL.md"];
 const schema = z.object({
   schema: z.literal("intent-outreach-evidence-judge-calibration/v1"), evidenceKind: z.enum(["component-test", "behavioral-evaluation"]), transport: z.literal(judgeTransport), model: z.literal(judgeModel), protocol: z.literal(judgePolicyVersion), effort: z.literal(judgeReasoningEffort),
   maxCompletionTokens: z.literal(judgeTokenLimit), timeoutMs: z.literal(judgeTimeoutMs), required: z.literal(63), total: z.literal(63), correct: z.literal(63), passed: z.literal(true),

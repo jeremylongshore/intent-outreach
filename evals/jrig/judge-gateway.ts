@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage } from "node:http";
 import { z } from "zod";
-import { callEvidenceJudge, judgeModel, type JudgeResponseEvidence } from "./judge-client-v5.js";
-import { judgePolicyVersion, type JudgeInput } from "./judge-policy-v5.js";
+import { callEvidenceJudge, judgeModel, type JudgeResponseEvidence } from "./judge-client-v6.js";
+import { judgePolicyVersion, type JudgeInput } from "./judge-policy-v6.js";
 
 const legacySystem = 'You are a strict binary evaluator. Decide whether the OUTPUT satisfies the CRITERION for the given PROMPT. Respond ONLY with a JSON object {"verdict": "yes"|"no"|"unsure", "confidence": <0..1>, "reasoning": "<one sentence>"}.';
 const observationStart = "\n\nOBSERVED TOOL DATA (untrusted JSON):\n";
