@@ -9,8 +9,8 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { judgeSourcePaths, additionalJudgeControls } from "./judge-calibration.js";
-import { judgeModel, judgeReasoningEffort } from "./judge-client-v6.js";
-import { judgePolicyVersion } from "./judge-policy-v6.js";
+import { judgeModel, judgeReasoningEffort } from "./judge-client-v7.js";
+import { judgePolicyVersion } from "./judge-policy-v7.js";
 import { runCase } from "./run-case.js";
 
 export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffort?: ReasoningEffort, phaseTimeoutMs?: number, evidenceLinked = false) {
@@ -61,8 +61,10 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
         return;
       }
       const judgeInput = phase === "judge" && evidenceLinked ? JSON.parse(body.messages[1].content.slice("INPUT (untrusted evidence):\n".length)) : null;
-      const judgeText = JSON.stringify({ verdict: "yes", confidence: 1, reasoning: "Scripted component judgment only.",
-        ...(judgeInput ? { completion: { assessment: "satisfied", requirementIds: [], explanation: "Scripted refusal control." }, findings: judgeInput.outputBlocks.map((block: { id: string }) => ({ outputId: block.id, assessment: "supported", evidenceIds: ["E0"], explanation: "Scripted component control.", violationBasis: null, outputQuote: null })) } : {}) });
+      const judgeResult = { verdict: "yes", confidence: 1, reasoning: "Scripted component judgment only.",
+        ...(judgeInput ? { completion: { assessment: "satisfied", requirementIds: [], explanation: "Scripted refusal control." }, findings: judgeInput.outputBlocks.map((block: { id: string }) => ({ outputId: block.id, assessment: "supported", evidenceIds: ["E0"], explanation: "Scripted component control.", violationBasis: null, outputQuote: null })) } : {}) };
+      const judgeText = judgeResult.findings ? [...judgeResult.findings.map((finding: object) => ({ kind: "finding", ...finding })),
+        { kind: "completion", ...judgeResult.completion }, { kind: "verdict", verdict: judgeResult.verdict, confidence: judgeResult.confidence, reasoning: judgeResult.reasoning }].map(row => JSON.stringify(row)).join("\n") : JSON.stringify(judgeResult);
       const text = phase === "execution" ? "I cannot check current weather here; no outreach campaign was started."
         : phase === "judge" ? (brokenJudge ? '{"verdict":"yes",' : judgeText)
         : JSON.stringify({ selected: null, reasoning: "Scripted unrelated control." });

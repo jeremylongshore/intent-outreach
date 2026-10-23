@@ -875,21 +875,29 @@ not a retry or regrading of these immutable failures.
 
 ## Evidence-linked judge boundary
 
-The current v4 candidate passed **45/45** predeclared full-context votes and six
-additional negative controls for unobserved saves and sends. See
-`grounded-review-v4-calibration-2026-10-22.json` and
-`grounded-review-v4-holdout-2026-10-22.json`. Both original failure outputs
-were rejected in all three samples; the corrected introduction passed all three.
-This qualifies the judge for fresh workflow testing, not suite acceptance.
+The active v7 candidate is undergoing fresh calibration. Historical v4 passed
+45/45 controls and six unobserved-action holdouts, but its later original-case
+cohort exposed omitted final drafts that the judge accepted. That result does not
+qualify the current source or establish workflow acceptance. All prior votes and
+receipts remain immutable.
 
 `run-case.ts` requires a source-bound full-context calibration for behavioral
-runs. Supply `judgeProtocol: "evidence-linked/v4"`, an absolute `judgeCalibration`
-path and its `judgeCalibrationSha256`. The activation gate requires all 45 votes
-across 15 positive/negative controls to be correct, with three samples per control,
-all six original judge criteria, valid final responses and observed usage. A changed
-policy/client or skill source requires new calibration. Component fixtures cannot
-activate behavioral runs; prior receipts with different judge bindings cannot seed
-regression. Calibration permits fresh workflow evaluation only.
+runs. Supply `judgeProtocol: "evidence-linked/v7"`, an absolute `judgeCalibration`
+path and its `judgeCalibrationSha256`. The activation gate requires all 63 votes
+across 21 positive/negative controls to be correct, with three samples per control,
+all six original judge criteria, valid final responses and observed usage. Required
+controls cover omitted/present drafts, research-only and waiting cases, and
+unobserved saves/sends. A changed policy/client or skill source requires new
+calibration. Component fixtures cannot activate behavioral runs; prior receipts
+with different judge bindings cannot seed regression. Calibration permits fresh
+workflow evaluation only.
+
+V7 uses strict JSON Lines: findings, one completion record, then one verdict.
+Every record must parse without repair before conversion to the CLI's JSON object.
+The original grounding question's required-draft check applies to the final output;
+an earlier observed draft does not satisfy it. Other criteria cannot acquire new
+completion requirements from the case prompt. Raw final-answer bytes and the
+validated normalized answer are separately hashed; provider reasoning is excluded.
 
 The explicit loopback gateway preserves the original rubric, case prompts,
 observation binding, three-sample requirement and execution budgets. It segments
@@ -897,15 +905,15 @@ the complete output into stable IDs and supplies decoded tool evidence with sour
 IDs. Every output block must be assessed exactly once; invalid IDs, contradictory
 verdicts, truncated responses and provider failures produce incomplete evidence.
 Evidence IDs improve attribution, but semantic correctness still requires live
-controls and review. The v1/v2/v3 modules retain the earlier candidates; workflow activation
-uses v4 exclusively.
+controls and review. Earlier versioned modules retain the rejected and historical candidates; workflow
+activation uses v7 exclusively.
 
 Following [MiniMax's OpenAI-compatible API documentation](https://platform.minimax.io/docs/api-reference/text-openai-api),
 private reasoning is retained only for the same model's tool-call continuation.
 Nested phase answers and judge evidence exclude it. The root gateway restores
 private continuation to the matching conversation without publishing it in receipts.
 M3.1 ignores requested temperature zero; effective temperature is one. The candidate
-uses explicit low reasoning effort, 8,192 completion tokens and a 120-second judge
+uses explicit medium reasoning effort, 8,192 completion tokens and a 120-second judge
 request limit. Those parameters do not alter the original root or phase deadlines.
 The positive/negative calibration approach follows
 [Anthropic's agent-evaluation guidance](https://www.anthropic.com/research/demystifying-evals-for-ai-agents).
@@ -991,3 +999,18 @@ unrequested approve/reject/underwrite calls remain rejected. Unrelated cases sti
 permit no campaign tools. `grounded-review-v4-readonly-audit-proof-2026-10-22.json`
 binds the corrected audit to the actual CLI component proof. No historical receipt
 is regraded, and neither this repair nor judge calibration qualifies a model.
+
+
+`grounded-review-v4-high-cohort-review-2026-10-22.json` preserves all ten original
+cases: three passes, one failure and six incomplete results. Independent final-output
+review found omitted draft text and unsupported configuration claims. Production
+PR162 requires full final drafts and scoped configuration statements; its passing
+unit tests do not establish behavioral qualification. No repeats or regression seeds
+were selected from that rejected cohort.
+
+`grounded-review-v5-rejected-calibration-2026-10-22.json` retains 8/63 correct votes
+from the native function-output experiment. No output function was executed.
+`grounded-review-v6-rejected-calibration-2026-10-22.json` retains 53/63: omission
+checks worked, but added requirements outside the criterion rejected valid answers,
+and malformed output remained invalid. V7 addresses those causes without changing
+the 21 controls, labels, original rubric, samples or execution deadlines.
