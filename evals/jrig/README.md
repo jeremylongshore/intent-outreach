@@ -875,7 +875,7 @@ not a retry or regrading of these immutable failures.
 
 ## Evidence-linked judge boundary
 
-The active v7 candidate is undergoing fresh calibration. Historical v4 passed
+V7 is rejected after 45/63 correct votes; v8 is a distinct M3 judge trial. Historical v4 passed
 45/45 controls and six unobserved-action holdouts, but its later original-case
 cohort exposed omitted final drafts that the judge accepted. That result does not
 qualify the current source or establish workflow acceptance. All prior votes and
@@ -1014,3 +1014,10 @@ from the native function-output experiment. No output function was executed.
 checks worked, but added requirements outside the criterion rejected valid answers,
 and malformed output remained invalid. V7 addresses those causes without changing
 the 21 controls, labels, original rubric, samples or execution deadlines.
+
+`grounded-review-v7-rejected-calibration-2026-10-22.json` retains 45/63 correct
+votes. Strict parsing caught malformed verdicts and fields copied from findings
+into completion records; no responses were repaired. V8 changes only the judge
+model to MiniMax-M3 with default thinking and explicit `reasoning_split: true`,
+keeping the v7 rubric, parser, controls and limits. It remains an unqualified
+candidate until the full source-bound gate passes.
