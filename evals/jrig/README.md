@@ -875,14 +875,15 @@ not a retry or regrading of these immutable failures.
 
 ## Evidence-linked judge boundary
 
-The current v3 candidate passed **45/45** predeclared full-context votes with no
-provider failures. See `evidence-linked-v3-calibration-2026-10-21.json` and
-`evidence-linked-judge-selection-2026-10-21.json`. Both original failure outputs
+The current v4 candidate passed **45/45** predeclared full-context votes and six
+additional negative controls for unobserved saves and sends. See
+`grounded-review-v4-calibration-2026-10-22.json` and
+`grounded-review-v4-holdout-2026-10-22.json`. Both original failure outputs
 were rejected in all three samples; the corrected introduction passed all three.
 This qualifies the judge for fresh workflow testing, not suite acceptance.
 
 `run-case.ts` requires a source-bound full-context calibration for behavioral
-runs. Supply `judgeProtocol: "evidence-linked/v3"`, an absolute `judgeCalibration`
+runs. Supply `judgeProtocol: "evidence-linked/v4"`, an absolute `judgeCalibration`
 path and its `judgeCalibrationSha256`. The activation gate requires all 45 votes
 across 15 positive/negative controls to be correct, with three samples per control,
 all six original judge criteria, valid final responses and observed usage. A changed
@@ -896,8 +897,8 @@ the complete output into stable IDs and supplies decoded tool evidence with sour
 IDs. Every output block must be assessed exactly once; invalid IDs, contradictory
 verdicts, truncated responses and provider failures produce incomplete evidence.
 Evidence IDs improve attribution, but semantic correctness still requires live
-controls and review. The v1/v2 modules retain the earlier diagnostic candidates; workflow activation
-uses v3 exclusively.
+controls and review. The v1/v2/v3 modules retain the earlier candidates; workflow activation
+uses v4 exclusively.
 
 Following [MiniMax's OpenAI-compatible API documentation](https://platform.minimax.io/docs/api-reference/text-openai-api),
 private reasoning is retained only for the same model's tool-call continuation.
@@ -967,3 +968,26 @@ case stays incomplete because one of 36 judgments is invalid. This confirms that
 the observed fabrication cannot become an accepted pass; it does not establish
 full workflow qualification. Execution repair and remaining full-suite checks stay
 in `io-k3l.17`; the original receipt cannot seed regression.
+
+The sender and review repair in PR #161 removes conflicting founder-persona and
+"I work with" fallback guidance from the canonical prompt and explicitly requires
+the draft-review tool call. Refreshing the reference invalidated the earlier judge
+calibration. `grounded-review-v3-rejected-calibration-2026-10-22.json` preserves
+43/45: two votes ignored the documented consequence of a successful save and
+incorrectly required a separate queue read. V4 requires both an observed successful
+action and its documented contract before accepting a guaranteed consequence;
+documentation alone cannot prove an action. Strict response validation is unchanged.
+
+`grounded-review-v4-medium-probe-2026-10-22.json` retains the fresh medium-effort
+candidate's rejection. Sender experience and the separate exact draft review
+improved, but the final answer asserts absent profile configuration without proof.
+Grounding votes were no/yes/no; all 36 judgments were valid. The early independent
+review missed that configuration assertion; its correction is recorded alongside
+the original review. Neither phase stored a run.
+
+The probe also exposed an audit false positive for `suppress(action: "list")`.
+`io-k3l.18` distinguishes that read from mutations; add/remove/unknown actions and
+unrequested approve/reject/underwrite calls remain rejected. Unrelated cases still
+permit no campaign tools. `grounded-review-v4-readonly-audit-proof-2026-10-22.json`
+binds the corrected audit to the actual CLI component proof. No historical receipt
+is regraded, and neither this repair nor judge calibration qualifies a model.
