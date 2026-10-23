@@ -13,8 +13,8 @@ import { scenarios } from "./scenarios.js";
 import { phaseTimeoutMsSchema } from "./agent-host.js";
 import { startJudgeGateway, type JudgeGatewayRecord } from "./judge-gateway.js";
 import { readJudgeCalibration } from "./judge-calibration.js";
-import { judgePolicyVersion } from "./judge-policy-v3.js";
-import { judgeModel } from "./judge-client-v3.js";
+import { judgePolicyVersion } from "./judge-policy-v4.js";
+import { judgeModel } from "./judge-client-v4.js";
 
 const hash = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 const absolute = z.string().refine((path) => isAbsolute(path) && resolve(path) === path, "normalized absolute path required");
@@ -156,7 +156,7 @@ export async function runCase(raw: unknown, apiKey: string, signal?: AbortSignal
   const paths = ["bundle/server.mjs", "skills/intent-outreach/SKILL.md", "skills/intent-outreach/eval-spec.yaml", "prompts/outreach.v3.md",
     "agents/outreach-researcher.md", "agents/outreach-enricher.md", "agents/outreach-drafter.md",
     "skills/intent-outreach/references/report-profiles.md", "skills/intent-outreach/references/runtime-contract.md", "pnpm-lock.yaml",
-    ...["run-case.ts", "scenario-host.ts", "agent-host.ts", "agent-model.ts", "scenarios.ts", "bind-evidence.ts", "audit-scenario.ts", "fixture-fetch.mjs", "judge-policy.ts", "judge-policy-v2.ts", "judge-client-v2.ts", "judge-policy-v3.ts", "judge-client-v3.ts", "judge-gateway.ts", "judge-calibration.ts"].map((path) => "evals/jrig/" + path)];
+    ...["run-case.ts", "scenario-host.ts", "agent-host.ts", "agent-model.ts", "scenarios.ts", "bind-evidence.ts", "audit-scenario.ts", "fixture-fetch.mjs", "judge-policy.ts", "judge-policy-v2.ts", "judge-client-v2.ts", "judge-policy-v3.ts", "judge-client-v3.ts", "judge-policy-v4.ts", "judge-client-v4.ts", "judge-gateway.ts", "judge-calibration.ts"].map((path) => "evals/jrig/" + path)];
   const sourceHashes = async () => Object.fromEntries(await Promise.all(paths.map(async (path) => [path, hash(await readFile(join(root, path)))])));
   const before = await sourceHashes();
   let regression: { criterion_id: string; verdict: "yes" | "no" | "unsure" }[] | undefined;

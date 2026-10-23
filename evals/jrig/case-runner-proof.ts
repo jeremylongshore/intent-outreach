@@ -9,8 +9,8 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { judgeSourcePaths } from "./judge-calibration.js";
-import { judgeModel, judgeReasoningEffort } from "./judge-client-v3.js";
-import { judgePolicyVersion } from "./judge-policy-v3.js";
+import { judgeModel, judgeReasoningEffort } from "./judge-client-v4.js";
+import { judgePolicyVersion } from "./judge-policy-v4.js";
 import { runCase } from "./run-case.js";
 
 export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffort?: ReasoningEffort, phaseTimeoutMs?: number, evidenceLinked = false) {

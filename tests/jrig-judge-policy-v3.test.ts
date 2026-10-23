@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { judgeEvidence, judgeMessages, validateJudgeResponse, type JudgeInput } from "../evals/jrig/judge-policy-v3.js";
+import * as v4 from "../evals/jrig/judge-policy-v4.js";
+import * as v3 from "../evals/jrig/judge-policy-v3.js";
+import type { JudgeInput } from "../evals/jrig/judge-policy-v3.js";
 const input: JudgeInput = { criterionId: "grounded-no-fabrication", criterion: "Only evidence-backed facts", question: "Reject unsupported claims", prompt: "Research only",
   output: "Riley is a founder.\n\nI have helped ten founders.", observations: JSON.stringify({ calls: [{ id: "call", tool: "Agent", arguments: {}, status: "completed", result: JSON.stringify({ content: [{ text: JSON.stringify({ output: '<think>PRIVATE THOUGHT</think>{"name":"Riley","title":"Founder"}' }) }] }) }] }), referenceInstructions: "Do not invent experience." };
 const response = { verdict: "no", confidence: 1, reasoning: "Sender experience unsupported", findings: [
   { outputId: "O0", assessment: "supported", evidenceIds: ["E4"], explanation: "Observed title", violationBasis: null, outputQuote: null },
   { outputId: "O1", assessment: "violation", evidenceIds: [], explanation: "No sender experience supplied", violationBasis: "output", outputQuote: "I have helped ten founders." },
 ] };
-describe("evidence-ID judge boundary", () => {
+describe.each([v3, v4])("evidence-ID judge boundary ($judgePolicyVersion)", ({ judgeEvidence, judgeMessages, validateJudgeResponse }) => {
   it("renders all calls and final answers while excluding private reasoning", () => {
     const evidence = judgeEvidence(input); expect(evidence.outputBlocks).toHaveLength(2);
     expect(evidence.sources.map((source) => source.id)).toEqual(["E0", "E1", "E2", "E3", "E4"]);
@@ -20,6 +22,8 @@ describe("evidence-ID judge boundary", () => {
   });
   it.each([
     { ...response, verdict: "yes" },
+    { ...response, evidenceIdsNote: "" },
+    { ...response, findings: [{ ...response.findings[0], evidenceIdsNote: "" }, response.findings[1]] },
     { ...response, findings: [response.findings[0]] },
     { ...response, findings: [response.findings[0], response.findings[0]] },
     { ...response, findings: [{ ...response.findings[0], evidenceIds: ["E999"] }, response.findings[1]] },
