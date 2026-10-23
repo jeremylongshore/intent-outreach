@@ -1021,3 +1021,12 @@ into completion records; no responses were repaired. V8 changes only the judge
 model to MiniMax-M3 with default thinking and explicit `reasoning_split: true`,
 keeping the v7 rubric, parser, controls and limits. It remains an unqualified
 candidate until the full source-bound gate passes.
+
+`grounded-review-v9-rejected-calibration-2026-10-22.json` retains 56/63 correct
+votes from a uniform six-field finding experiment. One additional `R0` finding
+represents the original required-draft question; the converter keeps the existing
+claim and completion validators. Seven invalid responses include omitted required
+fields, quotation attribution failures and incorrect requirement references. None
+was repaired or counted as a valid judgment. This candidate does not activate the
+workflow runner. The final local suite passes 1,760 tests across 69 files, both
+TypeScript checks and scoped lint; those results do not override calibration.
