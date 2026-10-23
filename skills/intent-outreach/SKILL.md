@@ -109,7 +109,11 @@ not select an agent; never omit `subagent_type` or substitute a general-purpose 
    enrichments, channel, limit, and applicable style override. Require every claim to be supported by
    the supplied data. In the dispatch, require only one JSON object containing `fitScore`, `fitReason`,
    `angles`, `messages`, and `declines`, even for one contact. Do not request a flat message object or
-   prose around the result. Ask the user to approve, edit, reject, or stop. In the approval question itself,
+   prose around the result. After the worker returns, call `AskUserQuestion` for a separate draft review:
+   ask the user to approve saving, edit, reject, or stop. Showing a draft in the final response alone
+   does not perform this checkpoint. If the reply gives no decision, show the draft and wait without
+   saving; a prior scope or lead-selection reply never substitutes for this review.
+   In the approval question itself,
    include each draft's exact `contactKey`, `channel`, `subject` when present, full `body`, and `cta`.
    Never substitute a summary, excerpt, or "the draft above" for that text: the user must be able to
    review the complete message at the point of approval. Preserve the returned strings verbatim;
