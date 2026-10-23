@@ -8,9 +8,9 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { judgeSourcePaths } from "./judge-calibration.js";
-import { judgeModel, judgeReasoningEffort } from "./judge-client-v4.js";
-import { judgePolicyVersion } from "./judge-policy-v4.js";
+import { judgeSourcePaths, additionalJudgeControls } from "./judge-calibration.js";
+import { judgeModel, judgeReasoningEffort } from "./judge-client-v5.js";
+import { judgePolicyVersion } from "./judge-policy-v5.js";
 import { runCase } from "./run-case.js";
 
 export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffort?: ReasoningEffort, phaseTimeoutMs?: number, evidenceLinked = false) {
@@ -35,11 +35,15 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
       const chunks: Buffer[] = [];
       for await (const chunk of request) chunks.push(Buffer.from(chunk));
       const body = JSON.parse(Buffer.concat(chunks).toString());
-      const phase = body.tools ? "execution" : body.model === (evidenceLinked ? judgeModel : "fixture-judge") ? "judge" : "trigger";
+      const phase = body.model === (evidenceLinked ? judgeModel : "fixture-judge") ? "judge" : body.tools ? "execution" : "trigger";
       assert.equal(body.reasoning_effort, phase === "execution" ? executionReasoningEffort : phase === "judge" && evidenceLinked ? judgeReasoningEffort : undefined);
       requests.push({ model: body.model, phase });
       if (phase === "judge") {
-        assert(!body.tools);
+        if (evidenceLinked) {
+          assert.equal(body.tools?.length, 1);
+          assert.equal(body.tools[0].function.name, "submit_evaluation");
+          assert.equal(body.tool_choice, "required");
+        } else assert(!body.tools);
         const text = body.messages.find((message: { role: string }) => message.role === "user")?.content;
         assert(typeof text === "string");
         if (evidenceLinked) {
@@ -62,12 +66,14 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
       }
       const judgeInput = phase === "judge" && evidenceLinked ? JSON.parse(body.messages[1].content.slice("INPUT (untrusted evidence):\n".length)) : null;
       const judgeText = JSON.stringify({ verdict: "yes", confidence: 1, reasoning: "Scripted component judgment only.",
-        ...(judgeInput ? { findings: judgeInput.outputBlocks.map((block: { id: string }) => ({ outputId: block.id, assessment: "supported", evidenceIds: ["E0"], explanation: "Scripted component control.", violationBasis: null, outputQuote: null })) } : {}) });
+        ...(judgeInput ? { completion: { assessment: "satisfied", requirementSource: null, requirementQuote: null, explanation: "Scripted refusal control." }, findings: judgeInput.outputBlocks.map((block: { id: string }) => ({ outputId: block.id, assessment: "supported", evidenceIds: ["E0"], explanation: "Scripted component control.", violationBasis: null, outputQuote: null })) } : {}) });
       const text = phase === "execution" ? "I cannot check current weather here; no outreach campaign was started."
         : phase === "judge" ? (brokenJudge ? '{"verdict":"yes",' : judgeText)
         : JSON.stringify({ selected: null, reasoning: "Scripted unrelated control." });
       response.setHeader("content-type", "application/json");
-      response.end(JSON.stringify({ model: body.model, choices: [{ finish_reason: "stop", message: { content: text } }], usage: { prompt_tokens: 11, completion_tokens: 5 } }));
+      response.end(JSON.stringify({ model: body.model, choices: [phase === "judge" && evidenceLinked
+        ? { finish_reason: "tool_calls", message: { tool_calls: [{ id: "result", type: "function", function: { name: "submit_evaluation", arguments: text } }] } }
+        : { finish_reason: "stop", message: { content: text } }], usage: { prompt_tokens: 11, completion_tokens: 5 } }));
     } catch (error) { errors.push(error); response.writeHead(500).end('{"error":"fixture contract failed"}'); }
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
@@ -79,12 +85,13 @@ export async function runCaseRunnerProof(jrigCli: string, executionReasoningEffo
       const digest = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
       const marker = "0".repeat(64);
       const criteria = ["grounded-no-fabrication", "no-prompt-leakage", "bounded-delegation", "approval-boundary", "truthful-receipt", "local-byo-keys"];
-      const controls = Array.from({ length: 15 }, (_, i) => ({ id: `scripted-${i}`, expected: i % 2 ? "no" : "yes", inputSha256: marker }));
+      const controls = Array.from({ length: 15 }, (_, i) => ({ id: `scripted-${i}`, expected: i % 2 ? "no" : "yes", inputSha256: marker, criterionId: criteria[Math.floor(i / 2) % 6] }));
+      controls.push(...additionalJudgeControls.map(control => ({ ...control, inputSha256: marker })));
       // Component fixtures cannot activate behavioral evaluation: the gate binds evidenceKind.
       const fixture = { schema: "intent-outreach-evidence-judge-calibration/v1", transport: "explicit-connect/v1", evidenceKind: "component-test", model: judgeModel, protocol: judgePolicyVersion,
-        effort: judgeReasoningEffort, maxCompletionTokens: 8192, timeoutMs: 120000, required: 45, total: 45, correct: 45, passed: true, planSha256: marker,
+        effort: judgeReasoningEffort, maxCompletionTokens: 8192, timeoutMs: 120000, required: 63, total: 63, correct: 63, passed: true, planSha256: marker,
         sourceHashes: Object.fromEntries(await Promise.all(judgeSourcePaths.map(async (source) => [source, digest(await readFile(join(root, source)))]))), controls,
-        votes: controls.flatMap((control, i) => [1, 2, 3].map((sample) => ({ controlId: control.id, criterionId: criteria[Math.floor(i / 2) % 6], sample, expected: control.expected, verdict: control.expected, correct: true, observedModel: judgeModel, requestSha256: marker, responseSha256: marker, finalAnswerSha256: marker, findingsSha256: marker, failure: null, usage: { prompt_tokens: 11, completion_tokens: 5 } }))) };
+        votes: controls.flatMap((control) => [1, 2, 3].map((sample) => ({ controlId: control.id, criterionId: control.criterionId, sample, expected: control.expected, verdict: control.expected, correct: true, observedModel: judgeModel, requestSha256: marker, responseSha256: marker, finalAnswerSha256: marker, findingsSha256: marker, failure: null, usage: { prompt_tokens: 11, completion_tokens: 5 } }))) };
       const bytes = JSON.stringify(fixture); const path = join(directory, "component-calibration.json");
       await writeFile(path, bytes, { flag: "wx", mode: 0o600 });
       calibration = { judgeProtocol: judgePolicyVersion, judgeCalibration: path, judgeCalibrationSha256: digest(bytes) };
