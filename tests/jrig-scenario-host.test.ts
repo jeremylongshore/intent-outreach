@@ -300,6 +300,8 @@ describe("scenario MCP host", () => {
       expect(names).not.toContain("send");
       const connectors = plain(await first.call("list_connectors"));
       expect(connectors.filter((item: { configured: boolean }) => item.configured).map((item: { name: string }) => item.name)).toEqual(["hunter"]);
+      // The native suppression list lookup is a read, not a suppression mutation.
+      expect(plain(await first.call("suppress", { action: "list" }))).toEqual([]);
       const research = JSON.parse(plain(await first.call("Agent", { subagent_type: "outreach-researcher", prompt: "example.test; developer tools", description: "Research one domain" })).output);
       expect(research.leads[0].companyName).toBe("Example Fixture Labs");
       const keep = plain(await first.call("AskUserQuestion", { questions: [{ header: "Leads", question: "Keep Example Fixture Labs at example.test?" }, { header: "Scope", question: "Which domains may proceed to enrichment?" }] }));
@@ -341,6 +343,19 @@ describe("scenario MCP host", () => {
       expect(await auditScenario(first.home)).toMatchObject({ passed: true, failures: [], incomplete: [], behavioralVerdict: null, tier3bPassed: false });
       const tracePath = join(first.home, "host-events.jsonl");
       const originalTrace = await readFile(tracePath);
+      for (const action of ["add", "remove", "unknown", undefined]) {
+        const changed = structuredClone(trace);
+        changed.find((event) => event.kind === "call_started" && event.data.name === "suppress").data.arguments = { action };
+        await writeFile(tracePath, changed.map((event) => JSON.stringify(event)).join("\n") + "\n");
+        expect((await auditScenario(first.home)).failures).toContain("unrequested_side_effect_or_calculation");
+      }
+      for (const name of ["approve", "reject", "underwrite"]) {
+        const changed = structuredClone(trace);
+        changed.find((event) => event.kind === "call_started" && event.data.name === "suppress").data.name = name;
+        await writeFile(tracePath, changed.map((event) => JSON.stringify(event)).join("\n") + "\n");
+        expect((await auditScenario(first.home)).failures).toContain("unrequested_side_effect_or_calculation");
+      }
+      await writeFile(tracePath, originalTrace);
       // Reproduce the observed agent format without copying private model output.
       const section = (payload: unknown) => `**fitScore: 55** — fixture rationale
 
@@ -422,6 +437,25 @@ ${JSON.stringify(payload, null, 2)}
 });
 
 describe("independent scenario evidence gate", () => {
+  it("still rejects a read-only campaign lookup for an unrelated request", async () => {
+    const evidence = await mkdtemp(join(tmpdir(), "jrig-unrelated-read-"));
+    const fixture = await loopback(() => completion("unused"));
+    let host: Awaited<ReturnType<typeof start>> | undefined;
+    try {
+      host = await start(evidence, fixture.baseUrl, "unrelated-weather", []);
+      expect(plain(await host.call("suppress", { action: "list" }))).toEqual([]);
+      await host.client.close();
+      const audit = await auditScenario(host.home);
+      expect(audit.failures).toContain("unrelated_request_used_campaign_host");
+      expect(audit.failures).not.toContain("unrequested_side_effect_or_calculation");
+      expect(audit).toMatchObject({ passed: false, storedRuns: 0 });
+      expect(fixture.requests).toHaveLength(0);
+    } finally {
+      await host?.client.close();
+      await fixture.close();
+      await rm(evidence, { recursive: true, force: true });
+    }
+  });
   it("detects actual premature persistence instead of relying on a model completion claim", async () => {
     const evidence = await mkdtemp(join(tmpdir(), "jrig-premature-save-"));
     const fixture = await loopback(() => completion("unused"));

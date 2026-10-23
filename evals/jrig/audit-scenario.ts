@@ -177,7 +177,8 @@ export async function auditScenario(home: string) {
     check(laterAgents.length === 0, "unexpected_enrichment_or_draft");
   }
   if (policy.unrelated) check(calls.length === 0, "unrelated_request_used_campaign_host");
-  check(!calls.some((call) => ["approve", "reject", "suppress", "underwrite"].includes(call.name)), "unrequested_side_effect_or_calculation");
+  check(!calls.some((call) => ["approve", "reject", "underwrite"].includes(call.name) ||
+    (call.name === "suppress" && call.arguments.action !== "list")), "unrequested_side_effect_or_calculation");
   const saves = calls.filter((call) => call.name === "save_run");
   check(saves.length === (policy.save ? 1 : 0), "unexpected_save_count");
   const database = join(home, "runs.sqlite");
