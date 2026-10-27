@@ -44,7 +44,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.78",
     "@intent-outreach/deal-math": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "ai": "^7.0.137",
     "zod": "^4.6.5"
   },
