@@ -1,0 +1,117 @@
+{
+  "schema": "intent-outreach-observed-unsuccessful-case/v1",
+  "scope": "immutable_failed_execution_metadata_only",
+  "caseId": "prospect-and-draft",
+  "caseResult": "incomplete",
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "messagesSent": 0,
+  "provider": "nvidia",
+  "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "judgeModel": "nvidia/nemotron-3-super-120b-a12b",
+  "reasoningMode": "endpoint_default_no_override",
+  "receiptSha256": "04df417e4cd3fcc499dc8fcd1302d97c9036c40c7442e72dfdeb474d388a9c1e",
+  "inputSpecSha256": "64e39e67cde64ece9e5d468809481af2cb6be06610d3d4f89f36a86a1aa426b9",
+  "jrigCliSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+  "sourceHashes": {
+    "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+    "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+    "skills/intent-outreach/eval-spec.yaml": "64e39e67cde64ece9e5d468809481af2cb6be06610d3d4f89f36a86a1aa426b9",
+    "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+    "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+    "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+    "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+    "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+    "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+    "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+    "evals/jrig/run-case.ts": "9d0e7c7162c2cb64d50dd86814fd2545e5b7a41b1729858964bb467921661cbc",
+    "evals/jrig/scenario-host.ts": "af1767b4f259f1c4c46458e4fc76dedd971d7a7d9958d5277648a9466f8c0fbb",
+    "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+    "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+    "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+    "evals/jrig/bind-evidence.ts": "580383d2e734c977f85c1df72a92676cc2b393c285078e84f8147bf17e190a42",
+    "evals/jrig/audit-scenario.ts": "19defe777d7289406ef5f91db7029beb31a4cab57fedbd99f067fa0a46e2ecd5",
+    "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+  },
+  "judgments": [],
+  "evaluationError": {
+    "type": "provider_failure",
+    "phase": "execution",
+    "provider": "mcp",
+    "category": "network_timeout",
+    "retryable": false,
+    "affected": 1,
+    "total": 2,
+    "message": "tool_execution/timeout"
+  },
+  "configuredRootTimeoutMs": 300000,
+  "configuredPhaseTimeoutMs": 60000,
+  "bindings": [
+    {
+      "phase": "skill",
+      "sessionId": "80a843e9-5e55-4d90-af83-e94ffaa81e73",
+      "receiptSha256": "sha256:0b56f7dd5653c895ac84b252f3a5dc54415b9fd349608e28825395b78d180018",
+      "traceSha256": "7602471b51e7f36ba93d9db979fad8e83ad63b63ce25721a2b7c73f8b212bf2c",
+      "status": "failed",
+      "nestedUsage": {
+        "inputTokens": 18234,
+        "outputTokens": 3267
+      },
+      "audit": {
+        "caseId": "prospect-and-draft",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": false,
+        "failures": [
+          "drafter_count_mismatch",
+          "missing_separate_checkpoints",
+          "draft_approval_before_drafting",
+          "unexpected_save_count",
+          "unexpected_stored_run_count"
+        ],
+        "incomplete": [
+          "host_call_failed",
+          "bundled_tool_error",
+          "phase_agent_failed",
+          "agent_completion_missing"
+        ],
+        "traceSha256": "7602471b51e7f36ba93d9db979fad8e83ad63b63ce25721a2b7c73f8b212bf2c",
+        "storedRuns": 0
+      },
+      "passed": false
+    },
+    {
+      "phase": "baseline",
+      "sessionId": "10f48c58-0757-4b27-8496-4c5416a80aa0",
+      "receiptSha256": "sha256:478eafc0fb2a60c89e1693cd5a1ab104b84e5b450eaab66ddefefb595b582c94",
+      "traceSha256": "ebbfc14685dfba544e8c5ea54668d65148e42b3d021570a23325c26703534e46",
+      "status": "completed",
+      "nestedUsage": {
+        "inputTokens": 9259,
+        "outputTokens": 2375
+      },
+      "audit": {
+        "caseId": "prospect-and-draft",
+        "scope": "structural_host_and_store_assertions_only",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "passed": false,
+        "failures": [
+          "research_before_preflight",
+          "drafter_count_mismatch",
+          "enrichment_before_lead_selection",
+          "saved_draft_not_shown_exactly"
+        ],
+        "incomplete": [
+          "unparseable_drafter_evidence"
+        ],
+        "traceSha256": "ebbfc14685dfba544e8c5ea54668d65148e42b3d021570a23325c26703534e46",
+        "storedRuns": 1
+      },
+      "passed": false
+    }
+  ],
+  "originalReceiptRewritten": false,
+  "remaining": "No passing case. Retain all timeout/phase failures and evaluate any explicit alternative budget separately under the unchanged root cap and behavioral rules."
+}

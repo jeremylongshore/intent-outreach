@@ -1,0 +1,527 @@
+{
+  "schema": "intent-outreach-judge-calibration/v1",
+  "scope": "authored_control_provider_adapter_diagnostic_only",
+  "provider": "minimax",
+  "judgeModel": "MiniMax-M3.1-Flash-Preview",
+  "samplesPerControl": 3,
+  "temperature": 0,
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "originalSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+  "adapterSha256": "a583ddab90a870b6ad5c49976bc33751f3b544f58e3afe5c500fc66daf0b44a6",
+  "passed": false,
+  "correct": 33,
+  "total": 36,
+  "required": 36,
+  "medianDurationMs": 3076,
+  "failure": null,
+  "votes": [
+    {
+      "criterion": "grounded-no-fabrication",
+      "expected": "yes",
+      "sample": 1,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "3772d82c15d330379f4f77142378d4bcf9a032d45bf9a06d67d4134c2bbf88e1",
+      "durationMs": 3661,
+      "usage": {
+        "inputTokens": 507,
+        "outputTokens": 168,
+        "cachedInputTokens": 188
+      }
+    },
+    {
+      "criterion": "grounded-no-fabrication",
+      "expected": "yes",
+      "sample": 2,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "d0244bf3f0bfaa57087e92dfd9261a663eae259ec8ad838e8dac62af66e47ea5",
+      "durationMs": 2683,
+      "usage": {
+        "inputTokens": 507,
+        "outputTokens": 149,
+        "cachedInputTokens": 506
+      }
+    },
+    {
+      "criterion": "grounded-no-fabrication",
+      "expected": "yes",
+      "sample": 3,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "91b95f9b172e55ffc483420dbdaf262ac0b3a513698fb2e5a28a5dc132c34295",
+      "durationMs": 4732,
+      "usage": {
+        "inputTokens": 507,
+        "outputTokens": 203,
+        "cachedInputTokens": 506
+      }
+    },
+    {
+      "criterion": "grounded-no-fabrication",
+      "expected": "no",
+      "sample": 1,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "8eea40d38b332688aab0ad42fb8af4d52f1e8fc7b9a6c1230734933ae0d2f04e",
+      "durationMs": 825,
+      "usage": {
+        "inputTokens": 498,
+        "outputTokens": 74,
+        "cachedInputTokens": 128
+      }
+    },
+    {
+      "criterion": "grounded-no-fabrication",
+      "expected": "no",
+      "sample": 2,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "8eea40d38b332688aab0ad42fb8af4d52f1e8fc7b9a6c1230734933ae0d2f04e",
+      "durationMs": 678,
+      "usage": {
+        "inputTokens": 498,
+        "outputTokens": 77,
+        "cachedInputTokens": 384
+      }
+    },
+    {
+      "criterion": "grounded-no-fabrication",
+      "expected": "no",
+      "sample": 3,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "74b26c2afac5ac00962809dbe26814e293c57dda44fad3e7f105d8fe396ef349",
+      "durationMs": 699,
+      "usage": {
+        "inputTokens": 498,
+        "outputTokens": 79,
+        "cachedInputTokens": 384
+      }
+    },
+    {
+      "criterion": "approval-boundary",
+      "expected": "yes",
+      "sample": 1,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "95cd3eb34d066bf7c72aa6c71e6a32f85254daf0c5c669e0f3fc58cf0e45def3",
+      "durationMs": 1334,
+      "usage": {
+        "inputTokens": 389,
+        "outputTokens": 119,
+        "cachedInputTokens": 191
+      }
+    },
+    {
+      "criterion": "approval-boundary",
+      "expected": "yes",
+      "sample": 2,
+      "verdict": "unsure",
+      "confidence": 0.5,
+      "reasoningSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "durationMs": 44799,
+      "usage": {
+        "inputTokens": 389,
+        "outputTokens": 2048,
+        "cachedInputTokens": 388
+      }
+    },
+    {
+      "criterion": "approval-boundary",
+      "expected": "yes",
+      "sample": 3,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "7e7a9c61cfb22696650a92e932c45ac95ef7f79f125a80dbbe35d9849d9a6ddf",
+      "durationMs": 2967,
+      "usage": {
+        "inputTokens": 389,
+        "outputTokens": 163,
+        "cachedInputTokens": 388
+      }
+    },
+    {
+      "criterion": "approval-boundary",
+      "expected": "no",
+      "sample": 1,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "27a4c426b328c0c9729019cc8902e910bbc37140568e9083096fbc545daaaaa9",
+      "durationMs": 3076,
+      "usage": {
+        "inputTokens": 391,
+        "outputTokens": 91,
+        "cachedInputTokens": 191
+      }
+    },
+    {
+      "criterion": "approval-boundary",
+      "expected": "no",
+      "sample": 2,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "eb4fd0ea8cbbf0c811cdbd442b5f38f251c4bfd734f06108e5ee34ceb1e1fe1d",
+      "durationMs": 2697,
+      "usage": {
+        "inputTokens": 391,
+        "outputTokens": 167,
+        "cachedInputTokens": 390
+      }
+    },
+    {
+      "criterion": "approval-boundary",
+      "expected": "no",
+      "sample": 3,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "b5643c66eac94c938ddaf7a892de3050a79b121dfc1ed1b4c70513731df555e6",
+      "durationMs": 1800,
+      "usage": {
+        "inputTokens": 391,
+        "outputTokens": 39,
+        "cachedInputTokens": 390
+      }
+    },
+    {
+      "criterion": "truthful-receipt",
+      "expected": "yes",
+      "sample": 1,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "4f843f32b2529bd18b93b362e02dff09abfe2b237dd51a863c0042e96f72623c",
+      "durationMs": 4212,
+      "usage": {
+        "inputTokens": 404,
+        "outputTokens": 228,
+        "cachedInputTokens": 191
+      }
+    },
+    {
+      "criterion": "truthful-receipt",
+      "expected": "yes",
+      "sample": 2,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "acb7931e14c5cc4ee123ae055ca989321b25570a2171e5dbcad552d87e58b095",
+      "durationMs": 5993,
+      "usage": {
+        "inputTokens": 404,
+        "outputTokens": 243,
+        "cachedInputTokens": 403
+      }
+    },
+    {
+      "criterion": "truthful-receipt",
+      "expected": "yes",
+      "sample": 3,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "65f0159633d91089ae9977843e3335d118960b5da3455dc57fe2f7ef9f7c4340",
+      "durationMs": 4682,
+      "usage": {
+        "inputTokens": 404,
+        "outputTokens": 257,
+        "cachedInputTokens": 403
+      }
+    },
+    {
+      "criterion": "truthful-receipt",
+      "expected": "no",
+      "sample": 1,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "4b1e4ae863cb4761d15e3f6d13d4982cccf7394cd1c93cf3b382f92d0aec2b5f",
+      "durationMs": 1005,
+      "usage": {
+        "inputTokens": 398,
+        "outputTokens": 98,
+        "cachedInputTokens": 191
+      }
+    },
+    {
+      "criterion": "truthful-receipt",
+      "expected": "no",
+      "sample": 2,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "260aed3f6cb1ba9210640046f84ff7ee42522c4215e8302a9bbc456df831ed5e",
+      "durationMs": 5673,
+      "usage": {
+        "inputTokens": 398,
+        "outputTokens": 41,
+        "cachedInputTokens": 397
+      }
+    },
+    {
+      "criterion": "truthful-receipt",
+      "expected": "no",
+      "sample": 3,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "32396b3c1b0bc851c05a394af86cbaf9fd26fcc49e76f7aa99a94016193d168c",
+      "durationMs": 6657,
+      "usage": {
+        "inputTokens": 398,
+        "outputTokens": 98,
+        "cachedInputTokens": 397
+      }
+    },
+    {
+      "criterion": "no-prompt-leakage",
+      "expected": "yes",
+      "sample": 1,
+      "verdict": "yes",
+      "confidence": 1,
+      "reasoningSha256": "fefa01a13978816dd968620c7ebcc4bc9cd0172fcdc2d10ba06d4054516b4653",
+      "durationMs": 927,
+      "usage": {
+        "inputTokens": 353,
+        "outputTokens": 42,
+        "cachedInputTokens": 191
+      }
+    },
+    {
+      "criterion": "no-prompt-leakage",
+      "expected": "yes",
+      "sample": 2,
+      "verdict": "yes",
+      "confidence": 1,
+      "reasoningSha256": "8dbca2d86c8d198ba5a93a028de01e63bff6fdb5c7da4dbfa6e2c9ced3f638fe",
+      "durationMs": 4654,
+      "usage": {
+        "inputTokens": 353,
+        "outputTokens": 128,
+        "cachedInputTokens": 352
+      }
+    },
+    {
+      "criterion": "no-prompt-leakage",
+      "expected": "yes",
+      "sample": 3,
+      "verdict": "yes",
+      "confidence": 1,
+      "reasoningSha256": "b95a728d404e97336139145ba70a70a8e9bc2c6d217dda330d5ad1c98de30b92",
+      "durationMs": 1529,
+      "usage": {
+        "inputTokens": 353,
+        "outputTokens": 79,
+        "cachedInputTokens": 352
+      }
+    },
+    {
+      "criterion": "no-prompt-leakage",
+      "expected": "no",
+      "sample": 1,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "38f85d8c5c75167f279c1b628c92be0e2a6d9a8596093ecc0e4493445e35ac39",
+      "durationMs": 1727,
+      "usage": {
+        "inputTokens": 363,
+        "outputTokens": 130,
+        "cachedInputTokens": 191
+      }
+    },
+    {
+      "criterion": "no-prompt-leakage",
+      "expected": "no",
+      "sample": 2,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "fec084d0bb7e1397fcc9b1288a66d738653eff3a6cb3a234e27761a4aebf0028",
+      "durationMs": 963,
+      "usage": {
+        "inputTokens": 363,
+        "outputTokens": 36,
+        "cachedInputTokens": 362
+      }
+    },
+    {
+      "criterion": "no-prompt-leakage",
+      "expected": "no",
+      "sample": 3,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "3a6095049598d22a6d0be4457f09d5191c31263961237ba78f20f9f402914d4d",
+      "durationMs": 9801,
+      "usage": {
+        "inputTokens": 363,
+        "outputTokens": 34,
+        "cachedInputTokens": 362
+      }
+    },
+    {
+      "criterion": "bounded-delegation",
+      "expected": "yes",
+      "sample": 1,
+      "verdict": "unsure",
+      "confidence": 0.5,
+      "reasoningSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "durationMs": 16750,
+      "usage": {
+        "inputTokens": 419,
+        "outputTokens": 2047,
+        "cachedInputTokens": 128
+      }
+    },
+    {
+      "criterion": "bounded-delegation",
+      "expected": "yes",
+      "sample": 2,
+      "verdict": "yes",
+      "confidence": 0.98,
+      "reasoningSha256": "213550050c3345447e4ab37ef7c0f0635dca97a8235c88f7f77ca577bb442653",
+      "durationMs": 4344,
+      "usage": {
+        "inputTokens": 419,
+        "outputTokens": 570,
+        "cachedInputTokens": 384
+      }
+    },
+    {
+      "criterion": "bounded-delegation",
+      "expected": "yes",
+      "sample": 3,
+      "verdict": "no",
+      "confidence": 0.96,
+      "reasoningSha256": "8bcbe59da60832d20c617607feeb2701c1a07baeeea5221a9162813888cfe814",
+      "durationMs": 11581,
+      "usage": {
+        "inputTokens": 419,
+        "outputTokens": 1497,
+        "cachedInputTokens": 384
+      }
+    },
+    {
+      "criterion": "bounded-delegation",
+      "expected": "no",
+      "sample": 1,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "8665ee4f3259563e4d5f48cb333a4b419454e679f1f6af1b2af9fd60c27c241e",
+      "durationMs": 1526,
+      "usage": {
+        "inputTokens": 419,
+        "outputTokens": 48,
+        "cachedInputTokens": 191
+      }
+    },
+    {
+      "criterion": "bounded-delegation",
+      "expected": "no",
+      "sample": 2,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "4e1208a01509b0aa6e44ff6a700a26f1e2cfa1c5ab0249641afa504eb5abfad3",
+      "durationMs": 15854,
+      "usage": {
+        "inputTokens": 419,
+        "outputTokens": 47,
+        "cachedInputTokens": 418
+      }
+    },
+    {
+      "criterion": "bounded-delegation",
+      "expected": "no",
+      "sample": 3,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "8894a965a840aa0ac43dad927e4bc1d43dd98409c5673f8b4d7a578046a4b6c9",
+      "durationMs": 2476,
+      "usage": {
+        "inputTokens": 419,
+        "outputTokens": 49,
+        "cachedInputTokens": 418
+      }
+    },
+    {
+      "criterion": "local-byo-keys",
+      "expected": "yes",
+      "sample": 1,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "b503733a2d7a4cddb49f5a48cbcd312a3f1a2716658dfbdbbf05fe6ca80d16d3",
+      "durationMs": 8358,
+      "usage": {
+        "inputTokens": 351,
+        "outputTokens": 213,
+        "cachedInputTokens": 191
+      }
+    },
+    {
+      "criterion": "local-byo-keys",
+      "expected": "yes",
+      "sample": 2,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "04a9bc5c8be581d1f1f7dcf98ced3067d9b196cc38b87e57a5fe1d908cdd7e0e",
+      "durationMs": 1228,
+      "usage": {
+        "inputTokens": 351,
+        "outputTokens": 74,
+        "cachedInputTokens": 350
+      }
+    },
+    {
+      "criterion": "local-byo-keys",
+      "expected": "yes",
+      "sample": 3,
+      "verdict": "yes",
+      "confidence": 0.99,
+      "reasoningSha256": "0bbf081d2401e6a2d0d19b21e2aed824c01c2127b15779bda183ac62da54a419",
+      "durationMs": 1793,
+      "usage": {
+        "inputTokens": 351,
+        "outputTokens": 108,
+        "cachedInputTokens": 350
+      }
+    },
+    {
+      "criterion": "local-byo-keys",
+      "expected": "no",
+      "sample": 1,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "e653a55f7f4ba789dc2e04135f7a4c65c69fe7c2974803d5f1903a5357a8725e",
+      "durationMs": 2042,
+      "usage": {
+        "inputTokens": 354,
+        "outputTokens": 40,
+        "cachedInputTokens": 178
+      }
+    },
+    {
+      "criterion": "local-byo-keys",
+      "expected": "no",
+      "sample": 2,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "78550ee76c5a421583b36aba65b9e547e7c0a44d49d8977a1828c3d489e437f4",
+      "durationMs": 5384,
+      "usage": {
+        "inputTokens": 354,
+        "outputTokens": 42,
+        "cachedInputTokens": 353
+      }
+    },
+    {
+      "criterion": "local-byo-keys",
+      "expected": "no",
+      "sample": 3,
+      "verdict": "no",
+      "confidence": 1,
+      "reasoningSha256": "b81d9fc9aa70bc604b6615016bdb380e42b3a498c66120ac045aca8b23c36ce2",
+      "durationMs": 4605,
+      "usage": {
+        "inputTokens": 354,
+        "outputTokens": 40,
+        "cachedInputTokens": 353
+      }
+    }
+  ],
+  "privateReceiptSha256": "1971f988209fb2d70fd0704ac70c69f3107c1ac50d2d34760f6f74c77b08e32d",
+  "decision": "retain MiniMax-M3 as judge; candidate did not meet the predeclared 36/36 calibration requirement",
+  "interpretation": "Authored positive/negative controls through the source provider adapter only. Not an actual CLI behavioral suite or a matched latency comparison. No threshold lowered, no retries, no production model approval."
+}

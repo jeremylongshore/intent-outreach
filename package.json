@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Intent Outreach \u2014 a model-agnostic, Claude-Code-native SDR orchestrator (research \u2192 enrich \u2192 outreach). Local-only, BYO keys, zero Google dependency.",
+  "description": "Intent Outreach — a model-agnostic, Claude-Code-native SDR orchestrator (research → enrich → outreach). Local-only, BYO keys, zero Google dependency.",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Jeremy Longshore <jeremy@intentsolutions.io> (https://intentsolutions.io)",
   "homepage": "https://github.com/jeremylongshore/intent-outreach",
@@ -58,6 +58,7 @@
     "json-schema-to-typescript": "16.0.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
+    "undici": "7.30.0",
     "vitest": "^5.0.0"
   },
   "optionalDependencies": {

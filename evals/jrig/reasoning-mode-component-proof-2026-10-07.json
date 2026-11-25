@@ -1,0 +1,362 @@
+{
+  "schema": "intent-outreach-reasoning-mode-proof/v1",
+  "scope": "scripted_actual_cli_root_and_nested_execution_only",
+  "behavioralVerdict": null,
+  "tier3bPassed": false,
+  "productionModelApproved": false,
+  "paidModelCalls": 0,
+  "vendorNetworkCalls": 0,
+  "messagesSent": 0,
+  "runs": [
+    {
+      "mode": "default",
+      "kind": "binding",
+      "receipt": {
+        "schema": "intent-outreach-jrig-binding-proof/v1",
+        "observedAt": "2026-10-08T02:02:54.677Z",
+        "scope": "scripted_loopback_real_cli_and_nested_bundle",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "paidModelCalls": 0,
+        "vendorNetworkCalls": 0,
+        "messagesSent": 0,
+        "rootRequests": 8,
+        "nestedRequests": 4,
+        "bindings": [
+          {
+            "phase": "skill",
+            "sessionId": "ad7115f6-f3b7-40f3-80be-042d85025538",
+            "receiptSha256": "sha256:18191b021083069115d0397e1b93b6e5b657178564311e2633a6662e78ddb922",
+            "traceSha256": "d5e280bd4d6af3f64f39bd6c8fdf76e9578458cab062135b7453c83f82d6342b",
+            "nestedUsage": {
+              "inputTokens": 22,
+              "outputTokens": 10
+            },
+            "audit": {
+              "caseId": "build-lead-list",
+              "scope": "structural_host_and_store_assertions_only",
+              "behavioralVerdict": null,
+              "tier3bPassed": false,
+              "passed": true,
+              "failures": [],
+              "incomplete": [],
+              "traceSha256": "d5e280bd4d6af3f64f39bd6c8fdf76e9578458cab062135b7453c83f82d6342b",
+              "storedRuns": 0
+            },
+            "passed": true,
+            "judgeContext": {
+              "test_case_id": "build-lead-list",
+              "session_id": "ad7115f6-f3b7-40f3-80be-042d85025538",
+              "sha256": "sha256:cdf9eea05c7b3568818b1de9e1aecef55bf9fc38c7730344549a73c582c19fb1",
+              "size_bytes": 5707
+            }
+          },
+          {
+            "phase": "baseline",
+            "sessionId": "88128cb3-a6b7-4595-bcd2-36c5dedd6d5f",
+            "receiptSha256": "sha256:ced8cbecf3405115fe960db7683591b506b7348fc4ff33631f0977188d4c516e",
+            "traceSha256": "812872a5b4774eb0c7b99988f7006cb0e12441c90f4a707a0fb820cb619352e9",
+            "nestedUsage": {
+              "inputTokens": 22,
+              "outputTokens": 10
+            },
+            "audit": {
+              "caseId": "build-lead-list",
+              "scope": "structural_host_and_store_assertions_only",
+              "behavioralVerdict": null,
+              "tier3bPassed": false,
+              "passed": true,
+              "failures": [],
+              "incomplete": [],
+              "traceSha256": "812872a5b4774eb0c7b99988f7006cb0e12441c90f4a707a0fb820cb619352e9",
+              "storedRuns": 0
+            },
+            "passed": true,
+            "judgeContext": {
+              "test_case_id": "build-lead-list",
+              "session_id": "88128cb3-a6b7-4595-bcd2-36c5dedd6d5f",
+              "sha256": "sha256:9182f8728c8206ba9a4c4b94f9e9daca912ba623b4bea4727d78738f362ed1f6",
+              "size_bytes": 5707
+            }
+          }
+        ],
+        "sha256": {
+          "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+          "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+          "evals/jrig/bind-evidence.ts": "580383d2e734c977f85c1df72a92676cc2b393c285078e84f8147bf17e190a42",
+          "evals/jrig/binding-proof.ts": "677608e3776e495dc2009609d19d2f5523b1c27980bdc23517cae05a39f9c784",
+          "evals/jrig/scenario-host.ts": "af1767b4f259f1c4c46458e4fc76dedd971d7a7d9958d5277648a9466f8c0fbb",
+          "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+          "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+          "evals/jrig/audit-scenario.ts": "e69a6a70ca3712699eb2a2eacf89ed0f93f7c7e1500613438dacc55ac847976b",
+          "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69",
+          "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+        }
+      }
+    },
+    {
+      "mode": "default",
+      "kind": "case",
+      "receipt": {
+        "schema": "intent-outreach-case-runner-proof/v1",
+        "scope": "scripted_actual_cli_case_runner_only",
+        "observedAt": "2026-10-08T02:03:57.122Z",
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "paidModelCalls": 0,
+        "vendorNetworkCalls": 0,
+        "messagesSent": 0,
+        "verified": {
+          "judgeObservationsPrivateAndPortableBinding": true,
+          "toolFreeJudgesReceiveUntrustedObservedData": true,
+          "triggerCasesDigestMetricsAndBundle": true,
+          "originalCriteriaRetained": true,
+          "explicitJudgeModel": true,
+          "threeSamples": true,
+          "distinctSkillBaselineAndRepeat": true,
+          "realRegressionEnabled": true,
+          "malformedExecutionHasNoVerdict": true,
+          "partialReceiptsRetained": true,
+          "cancellationStopsOwnedGroup": true,
+          "temporaryFixturesRemoved": true
+        },
+        "counts": {
+          "trigger": 4,
+          "execution": 7,
+          "judge": 36
+        },
+        "results": [
+          {
+            "caseResult": "pass",
+            "processResult": {
+              "pid": 1543202,
+              "code": 0,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": null
+          },
+          {
+            "caseResult": "pass",
+            "processResult": {
+              "pid": 1545825,
+              "code": 0,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": "6b7854783219b4da157a2137a6c73257fc2419fd0a601c9755b5d02f2af371b5"
+          },
+          {
+            "caseResult": "incomplete",
+            "processResult": {
+              "pid": 1546798,
+              "code": 2,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": null
+          },
+          {
+            "caseResult": "incomplete",
+            "processResult": {
+              "pid": 1547407,
+              "code": null,
+              "signal": "SIGTERM",
+              "timedOut": false,
+              "cancelled": true
+            },
+            "priorReceiptSha256": null
+          }
+        ],
+        "sha256": {
+          "run-case.ts": "9d0e7c7162c2cb64d50dd86814fd2545e5b7a41b1729858964bb467921661cbc",
+          "case-runner-proof.ts": "c1f2cbc39b4335f9574f018f406fa6b5e2a70a4222cd96d95f6e3215c285ca3b",
+          "bind-evidence.ts": "580383d2e734c977f85c1df72a92676cc2b393c285078e84f8147bf17e190a42",
+          "inputSpec": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+          "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+        }
+      }
+    },
+    {
+      "mode": "none",
+      "kind": "binding",
+      "receipt": {
+        "schema": "intent-outreach-jrig-binding-proof/v1",
+        "observedAt": "2026-10-08T01:59:59.061Z",
+        "scope": "scripted_loopback_real_cli_and_nested_bundle",
+        "executionParameters": {
+          "reasoning_effort": "none"
+        },
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "paidModelCalls": 0,
+        "vendorNetworkCalls": 0,
+        "messagesSent": 0,
+        "rootRequests": 8,
+        "nestedRequests": 4,
+        "bindings": [
+          {
+            "phase": "skill",
+            "sessionId": "0e6f0db2-14f0-4cec-8a72-d6f8a447f167",
+            "receiptSha256": "sha256:5598a8eaf272d95171e9dbaa0dbdee42b4289cc2239ad5e9163d1a63c087288c",
+            "traceSha256": "375e4ca663db6d5e7f49393f1cf577ab57fbdfb86f1c15f5ce032ffba902e8d8",
+            "nestedUsage": {
+              "inputTokens": 22,
+              "outputTokens": 10
+            },
+            "audit": {
+              "caseId": "build-lead-list",
+              "scope": "structural_host_and_store_assertions_only",
+              "behavioralVerdict": null,
+              "tier3bPassed": false,
+              "passed": true,
+              "failures": [],
+              "incomplete": [],
+              "traceSha256": "375e4ca663db6d5e7f49393f1cf577ab57fbdfb86f1c15f5ce032ffba902e8d8",
+              "storedRuns": 0
+            },
+            "passed": true,
+            "judgeContext": {
+              "test_case_id": "build-lead-list",
+              "session_id": "0e6f0db2-14f0-4cec-8a72-d6f8a447f167",
+              "sha256": "sha256:23d9c46ff5e63bea127e51baa3d032a46b270d3d7459301d1fcc414008275054",
+              "size_bytes": 5707
+            }
+          },
+          {
+            "phase": "baseline",
+            "sessionId": "e09fe41e-64d4-4fa5-b3e3-264a6b62d30e",
+            "receiptSha256": "sha256:05a5c143718e519d504762d8eb78d11cb0d7c8b6d87004907487a3f2a30bdbdb",
+            "traceSha256": "359dd6f74beb07f2064c60c68c03979cff19cc1a3163ab6a4bf2892f471888fc",
+            "nestedUsage": {
+              "inputTokens": 22,
+              "outputTokens": 10
+            },
+            "audit": {
+              "caseId": "build-lead-list",
+              "scope": "structural_host_and_store_assertions_only",
+              "behavioralVerdict": null,
+              "tier3bPassed": false,
+              "passed": true,
+              "failures": [],
+              "incomplete": [],
+              "traceSha256": "359dd6f74beb07f2064c60c68c03979cff19cc1a3163ab6a4bf2892f471888fc",
+              "storedRuns": 0
+            },
+            "passed": true,
+            "judgeContext": {
+              "test_case_id": "build-lead-list",
+              "session_id": "e09fe41e-64d4-4fa5-b3e3-264a6b62d30e",
+              "sha256": "sha256:e3d1001ca9f8ce79be1064e3a20b82f5bb209aa1f7e48c5dda4a2b0823d84fbe",
+              "size_bytes": 5707
+            }
+          }
+        ],
+        "sha256": {
+          "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+          "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+          "evals/jrig/bind-evidence.ts": "580383d2e734c977f85c1df72a92676cc2b393c285078e84f8147bf17e190a42",
+          "evals/jrig/binding-proof.ts": "677608e3776e495dc2009609d19d2f5523b1c27980bdc23517cae05a39f9c784",
+          "evals/jrig/scenario-host.ts": "af1767b4f259f1c4c46458e4fc76dedd971d7a7d9958d5277648a9466f8c0fbb",
+          "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+          "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+          "evals/jrig/audit-scenario.ts": "e69a6a70ca3712699eb2a2eacf89ed0f93f7c7e1500613438dacc55ac847976b",
+          "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69",
+          "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+        }
+      }
+    },
+    {
+      "mode": "none",
+      "kind": "case",
+      "receipt": {
+        "schema": "intent-outreach-case-runner-proof/v1",
+        "scope": "scripted_actual_cli_case_runner_only",
+        "observedAt": "2026-10-08T02:01:04.624Z",
+        "executionParameters": {
+          "reasoning_effort": "none"
+        },
+        "behavioralVerdict": null,
+        "tier3bPassed": false,
+        "paidModelCalls": 0,
+        "vendorNetworkCalls": 0,
+        "messagesSent": 0,
+        "verified": {
+          "judgeObservationsPrivateAndPortableBinding": true,
+          "toolFreeJudgesReceiveUntrustedObservedData": true,
+          "triggerCasesDigestMetricsAndBundle": true,
+          "originalCriteriaRetained": true,
+          "explicitJudgeModel": true,
+          "threeSamples": true,
+          "distinctSkillBaselineAndRepeat": true,
+          "realRegressionEnabled": true,
+          "malformedExecutionHasNoVerdict": true,
+          "partialReceiptsRetained": true,
+          "cancellationStopsOwnedGroup": true,
+          "temporaryFixturesRemoved": true
+        },
+        "counts": {
+          "trigger": 4,
+          "execution": 7,
+          "judge": 36
+        },
+        "results": [
+          {
+            "caseResult": "pass",
+            "processResult": {
+              "pid": 1529933,
+              "code": 0,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": null
+          },
+          {
+            "caseResult": "pass",
+            "processResult": {
+              "pid": 1532005,
+              "code": 0,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": "25c616330892bed7178bec3599578f95a43111c2ada72eab8579b0000d2da0c3"
+          },
+          {
+            "caseResult": "incomplete",
+            "processResult": {
+              "pid": 1534028,
+              "code": 2,
+              "signal": null,
+              "timedOut": false,
+              "cancelled": false
+            },
+            "priorReceiptSha256": null
+          },
+          {
+            "caseResult": "incomplete",
+            "processResult": {
+              "pid": 1535343,
+              "code": null,
+              "signal": "SIGTERM",
+              "timedOut": false,
+              "cancelled": true
+            },
+            "priorReceiptSha256": null
+          }
+        ],
+        "sha256": {
+          "run-case.ts": "9d0e7c7162c2cb64d50dd86814fd2545e5b7a41b1729858964bb467921661cbc",
+          "case-runner-proof.ts": "c1f2cbc39b4335f9574f018f406fa6b5e2a70a4222cd96d95f6e3215c285ca3b",
+          "bind-evidence.ts": "580383d2e734c977f85c1df72a92676cc2b393c285078e84f8147bf17e190a42",
+          "inputSpec": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+          "jrigCli": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9"
+        }
+      }
+    }
+  ]
+}

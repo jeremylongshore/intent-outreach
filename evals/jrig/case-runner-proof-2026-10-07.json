@@ -1,0 +1,82 @@
+{
+  "schema": "intent-outreach-case-runner-proof/v1",
+  "scope": "scripted_actual_cli_case_runner_only",
+  "observedAt": "2026-10-08T01:07:07.536Z",
+  "behavioralVerdict": null,
+  "tier3bPassed": false,
+  "paidModelCalls": 0,
+  "vendorNetworkCalls": 0,
+  "messagesSent": 0,
+  "verified": {
+    "judgeObservationsPrivateAndPortableBinding": true,
+    "toolFreeJudgesReceiveUntrustedObservedData": true,
+    "triggerCasesDigestMetricsAndBundle": true,
+    "originalCriteriaRetained": true,
+    "explicitJudgeModel": true,
+    "threeSamples": true,
+    "distinctSkillBaselineAndRepeat": true,
+    "realRegressionEnabled": true,
+    "malformedExecutionHasNoVerdict": true,
+    "partialReceiptsRetained": true,
+    "cancellationStopsOwnedGroup": true,
+    "temporaryFixturesRemoved": true
+  },
+  "counts": {
+    "trigger": 4,
+    "execution": 7,
+    "judge": 36
+  },
+  "results": [
+    {
+      "caseResult": "pass",
+      "processResult": {
+        "pid": 1332848,
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": null
+    },
+    {
+      "caseResult": "pass",
+      "processResult": {
+        "pid": 1333603,
+        "code": 0,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": "0a4c937ac162f924448d30cd2185742b6cd03641caea1d237ab769324440846d"
+    },
+    {
+      "caseResult": "incomplete",
+      "processResult": {
+        "pid": 1334556,
+        "code": 2,
+        "signal": null,
+        "timedOut": false,
+        "cancelled": false
+      },
+      "priorReceiptSha256": null
+    },
+    {
+      "caseResult": "incomplete",
+      "processResult": {
+        "pid": 1336112,
+        "code": null,
+        "signal": "SIGTERM",
+        "timedOut": false,
+        "cancelled": true
+      },
+      "priorReceiptSha256": null
+    }
+  ],
+  "sha256": {
+    "run-case.ts": "5a6448215610d4fc8cbdc5507e169cc0735d689f0db554f151945088f9073243",
+    "case-runner-proof.ts": "06f9721166070f0c5839e6403a8d4e07fc846c415c593e87176181d52c22db3d",
+    "bind-evidence.ts": "2be4e1f0fc51bcf5de74c2c9fe23d00d65fa80904983fb20e7d81d0d3c96bb9a",
+    "inputSpec": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+    "jrigCli": "57f7117bd5fcc8bde500c9f1af696d25e9ea20d4385df662b52bcfb00d59cbcc"
+  }
+}

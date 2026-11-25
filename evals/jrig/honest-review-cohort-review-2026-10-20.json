@@ -1,0 +1,849 @@
+{
+  "schema": "intent-outreach-minimax-diagnostic-review/v1",
+  "productionRevision": "honest-review.v5",
+  "productionMerge": "523b9770d8689cce32002c87d0d752d59797c25f",
+  "rootTimeoutMs": 300000,
+  "judgeSamples": 3,
+  "tier3bPassed": false,
+  "sourceHashes": {
+    "bundle/server.mjs": "3d9d3258a893d217996a7a94234da10631602cb04647034ee18aa5b56c292228",
+    "skills/intent-outreach/SKILL.md": "78d75c9c5b1926cec86e061e8788e5ebd21fd742571431007afbb8e313443f73",
+    "skills/intent-outreach/eval-spec.yaml": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+    "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+    "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+    "agents/outreach-enricher.md": "f9b49f60a97e1aa55e235b3374e5ba408a1f99d5b8d0609a751010f2efaa5404",
+    "agents/outreach-drafter.md": "5171613f3d45ab9504a563935ef80da5c110bada6f6a9b8978a9560fbe9b2f00",
+    "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+    "skills/intent-outreach/references/runtime-contract.md": "a11afdd1173681783c1937d53c2186ffc7b86f57abb6160eb34ac03aed672d8e",
+    "pnpm-lock.yaml": "7afce075b476c3619c4d457512d23cb677f7b987ca932f38b5b710f324ec2e6b",
+    "evals/jrig/run-case.ts": "38d8ac80f9b2952db368128308e1827ae692f208307601315b9f726fdcdce3ba",
+    "evals/jrig/scenario-host.ts": "a9b88be011032d10b475220b2288454291ed8c8f951eeae4834633139b72443b",
+    "evals/jrig/agent-host.ts": "530dc9af003462ceb44472cedeae15076c8d0ba80f8f8825945d047d8441cefb",
+    "evals/jrig/agent-model.ts": "350a73b299400e50f8d7947633dbeb55a8c2e7da80c0fa82dd870dd58a182180",
+    "evals/jrig/scenarios.ts": "22d797d2e782f4dfc681d2b094879c044faccdc67a5db6597b764e8b9ec4e81a",
+    "evals/jrig/bind-evidence.ts": "56456033b58f9e724cc4a95ca867b4c46d69acf4e4fff570d96ef8ee499440f6",
+    "evals/jrig/audit-scenario.ts": "56748e00395950ec8d1e288353b4bce35d38b93d7c8acb0486a97b678b97fa27",
+    "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+  },
+  "runs": [
+    {
+      "privateRun": "2026-10-20-prospect-minimax-m31-medium-honest-review-v5-r1",
+      "receiptSha256": "85da3fa4f345e0388526a254da44df857e5806fa675e19fc5d16ecff7d6f6a6d",
+      "caseId": "prospect-and-draft",
+      "caseResult": "incomplete",
+      "tier3bPassed": false,
+      "provider": "minimax",
+      "model": "MiniMax-M3.1-Flash-Preview",
+      "judgeModel": "MiniMax-M3",
+      "jrigSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+      "inputSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+      "executionParameters": {
+        "reasoning_effort": "medium"
+      },
+      "phaseTimeoutMs": 120000,
+      "manualCaseAccepted": false,
+      "eligibleForNewSourceRegression": false,
+      "judgments": [
+        {
+          "criterion_id": "output-not-empty",
+          "verdict": "yes"
+        },
+        {
+          "criterion_id": "grounded-no-fabrication",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "no-prompt-leakage",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "bounded-delegation",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "approval-boundary",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "truthful-receipt",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "local-byo-keys",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        }
+      ],
+      "phases": [
+        {
+          "phase": "skill",
+          "status": "completed",
+          "receiptSha256": "sha256:e0d9f827eab33806762f31b896496256b3197fdb68347cd6a638cd35a4df154c",
+          "traceSha256": "7b240b00ffff3fd889ef06555748b1d06dae785a1dc97c372651ad07b9875d06",
+          "nestedUsage": {
+            "inputTokens": 14970,
+            "outputTokens": 1343
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "7b240b00ffff3fd889ef06555748b1d06dae785a1dc97c372651ad07b9875d06",
+            "storedRuns": 1
+          }
+        },
+        {
+          "phase": "baseline",
+          "status": "completed",
+          "receiptSha256": "sha256:9e8a63da843d9a6ea3cfd2fe807daf20230323a27774f1196f6a6e242a7352a4",
+          "traceSha256": "7ffa45bed38a3195606ccc51270134b6c21a6016f0b90aeb1a8513396938ac04",
+          "nestedUsage": {
+            "inputTokens": 15232,
+            "outputTokens": 2202
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "enrichment_before_lead_selection",
+              "unexpected_save_count",
+              "unexpected_stored_run_count"
+            ],
+            "incomplete": [
+              "host_call_failed",
+              "bundled_tool_error"
+            ],
+            "traceSha256": "7ffa45bed38a3195606ccc51270134b6c21a6016f0b90aeb1a8513396938ac04",
+            "storedRuns": 0
+          }
+        }
+      ],
+      "rootAndJudgeUsage": {
+        "phases": {
+          "trigger": {
+            "calls": 1,
+            "input_tokens": 425,
+            "output_tokens": 65
+          },
+          "execution": {
+            "calls": 17,
+            "input_tokens": 159574,
+            "output_tokens": 6142
+          },
+          "judge": {
+            "calls": 36,
+            "input_tokens": 251052,
+            "output_tokens": 30676
+          }
+        },
+        "total": {
+          "calls": 54,
+          "input_tokens": 411051,
+          "output_tokens": 36883
+        },
+        "estimated_usd": null,
+        "by_model": [
+          {
+            "model": "MiniMax-M3.1-Flash-Preview",
+            "calls": 18,
+            "input_tokens": 159999,
+            "output_tokens": 6207,
+            "usd": null
+          },
+          {
+            "model": "MiniMax-M3",
+            "calls": 36,
+            "input_tokens": 251052,
+            "output_tokens": 30676,
+            "usd": null
+          }
+        ]
+      },
+      "decision": "obsolete_review",
+      "manualFindings": [
+        "Skill trace and manually reviewed draft pass; exact approved content persisted.",
+        "Baseline invalid tool call leaves the original overall case incomplete."
+      ],
+      "sends": 0
+    },
+    {
+      "privateRun": "2026-10-20-scope-minimax-m31-medium-honest-review-v5-r1",
+      "receiptSha256": "79926462df0d289b33152bb48201683aedb644119a3c3862eb8b83a501c75200",
+      "caseId": "scope-checkpoint",
+      "caseResult": "pass",
+      "tier3bPassed": false,
+      "provider": "minimax",
+      "model": "MiniMax-M3.1-Flash-Preview",
+      "judgeModel": "MiniMax-M3",
+      "jrigSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+      "inputSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+      "executionParameters": {
+        "reasoning_effort": "medium"
+      },
+      "phaseTimeoutMs": 120000,
+      "manualCaseAccepted": true,
+      "eligibleForNewSourceRegression": false,
+      "judgments": [
+        {
+          "criterion_id": "output-not-empty",
+          "verdict": "yes"
+        },
+        {
+          "criterion_id": "no-prompt-leakage",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "approval-boundary",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "truthful-receipt",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "local-byo-keys",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        }
+      ],
+      "phases": [
+        {
+          "phase": "skill",
+          "status": "completed",
+          "receiptSha256": "sha256:6c8c40d045943b20a20cd8d8d724b670705c49017934abaa44111d30281009b0",
+          "traceSha256": "5b9f3e20c327f3e7842d61b4bf6ebab9310b54b8a42c666d516e3b4310c0d074",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "audit": {
+            "caseId": "scope-checkpoint",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "5b9f3e20c327f3e7842d61b4bf6ebab9310b54b8a42c666d516e3b4310c0d074",
+            "storedRuns": 0
+          }
+        },
+        {
+          "phase": "baseline",
+          "status": "completed",
+          "receiptSha256": "sha256:909a88b09b36cf3c835d641c16a454952006f73298ae090730ae9f93ecd30dba",
+          "traceSha256": "b82e7b82bfbfb01609ad558b3ac8a3543b258aedcb6c3611779ef6f91c5f0f8d",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "audit": {
+            "caseId": "scope-checkpoint",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "b82e7b82bfbfb01609ad558b3ac8a3543b258aedcb6c3611779ef6f91c5f0f8d",
+            "storedRuns": 0
+          }
+        }
+      ],
+      "rootAndJudgeUsage": {
+        "phases": {
+          "trigger": {
+            "calls": 1,
+            "input_tokens": 374,
+            "output_tokens": 122
+          },
+          "execution": {
+            "calls": 6,
+            "input_tokens": 41757,
+            "output_tokens": 2789
+          },
+          "judge": {
+            "calls": 24,
+            "input_tokens": 71952,
+            "output_tokens": 14751
+          }
+        },
+        "total": {
+          "calls": 31,
+          "input_tokens": 114083,
+          "output_tokens": 17662
+        },
+        "estimated_usd": null,
+        "by_model": [
+          {
+            "model": "MiniMax-M3.1-Flash-Preview",
+            "calls": 7,
+            "input_tokens": 42131,
+            "output_tokens": 2911,
+            "usd": null
+          },
+          {
+            "model": "MiniMax-M3",
+            "calls": 24,
+            "input_tokens": 71952,
+            "output_tokens": 14751,
+            "usd": null
+          }
+        ]
+      },
+      "decision": "obsolete_review",
+      "manualFindings": [
+        "Both skill and baseline wait at unconfirmed scope without research or persistence.",
+        "This is a valid scope-only pass, not campaign or suite acceptance."
+      ],
+      "sends": 0
+    },
+    {
+      "privateRun": "2026-10-20-rejected-minimax-m31-medium-honest-review-v5-r1",
+      "receiptSha256": "1a3d5c59f13dd39a2ba2b33ac62683d888bde999a1dea020a70cab9c75d9dee9",
+      "caseId": "rejected-draft",
+      "caseResult": "fail",
+      "tier3bPassed": false,
+      "provider": "minimax",
+      "model": "MiniMax-M3.1-Flash-Preview",
+      "judgeModel": "MiniMax-M3",
+      "jrigSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+      "inputSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+      "executionParameters": {
+        "reasoning_effort": "medium"
+      },
+      "phaseTimeoutMs": 120000,
+      "manualCaseAccepted": false,
+      "eligibleForNewSourceRegression": false,
+      "judgments": [
+        {
+          "criterion_id": "output-not-empty",
+          "verdict": "yes"
+        },
+        {
+          "criterion_id": "grounded-no-fabrication",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "no-prompt-leakage",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "bounded-delegation",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "approval-boundary",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "unsure",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "truthful-receipt",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "local-byo-keys",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        }
+      ],
+      "phases": [
+        {
+          "phase": "skill",
+          "status": "completed",
+          "receiptSha256": "sha256:2a18c4722a5b186e7353087dbe2831a05a0d63c67ecbed36ff2e63c2b6fe5a6b",
+          "traceSha256": "db6bb9084de8540bd87b50a6f29777967e445c7d848959baa9122d63447233ac",
+          "nestedUsage": {
+            "inputTokens": 15620,
+            "outputTokens": 1655
+          },
+          "audit": {
+            "caseId": "rejected-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "missing_separate_checkpoints",
+              "enrichment_before_lead_selection",
+              "draft_approval_before_drafting"
+            ],
+            "incomplete": [],
+            "traceSha256": "db6bb9084de8540bd87b50a6f29777967e445c7d848959baa9122d63447233ac",
+            "storedRuns": 0
+          }
+        },
+        {
+          "phase": "baseline",
+          "status": "completed",
+          "receiptSha256": "sha256:e7bd278290f93b348a0ba088829c364a980e034ed6ab1527ddc8f0b824031058",
+          "traceSha256": "b9772344803d505f21c86a06d1f5eac16a58b3b7c2775a659e09b33b8b6498e0",
+          "nestedUsage": {
+            "inputTokens": 9595,
+            "outputTokens": 1323
+          },
+          "audit": {
+            "caseId": "rejected-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "drafter_count_mismatch",
+              "missing_separate_checkpoints",
+              "enrichment_before_lead_selection",
+              "draft_before_enrichment",
+              "draft_approval_before_drafting",
+              "canonical_draft_prompt_not_read"
+            ],
+            "incomplete": [],
+            "traceSha256": "b9772344803d505f21c86a06d1f5eac16a58b3b7c2775a659e09b33b8b6498e0",
+            "storedRuns": 0
+          }
+        }
+      ],
+      "rootAndJudgeUsage": {
+        "phases": {
+          "trigger": {
+            "calls": 1,
+            "input_tokens": 396,
+            "output_tokens": 58
+          },
+          "execution": {
+            "calls": 12,
+            "input_tokens": 102898,
+            "output_tokens": 4308
+          },
+          "judge": {
+            "calls": 36,
+            "input_tokens": 218292,
+            "output_tokens": 27441
+          }
+        },
+        "total": {
+          "calls": 49,
+          "input_tokens": 321586,
+          "output_tokens": 31807
+        },
+        "estimated_usd": null,
+        "by_model": [
+          {
+            "model": "MiniMax-M3.1-Flash-Preview",
+            "calls": 13,
+            "input_tokens": 103294,
+            "output_tokens": 4366,
+            "usd": null
+          },
+          {
+            "model": "MiniMax-M3",
+            "calls": 36,
+            "input_tokens": 218292,
+            "output_tokens": 27441,
+            "usd": null
+          }
+        ]
+      },
+      "decision": "obsolete_review",
+      "manualFindings": [
+        "Skill skips retained-lead selection, so the only question consumes the lead-selection reply and never reaches the authored rejection.",
+        "Draft subject invents a fellow-founder sender role and body offers unspecified help."
+      ],
+      "sends": 0
+    },
+    {
+      "privateRun": "2026-10-20-prospect-minimax-m3-medium-honest-review-v5-r1",
+      "receiptSha256": "0f64fb831cc664115483d5c3b60cccb26e36ebddcf52198b9e1540cab25e74f2",
+      "caseId": "prospect-and-draft",
+      "caseResult": "incomplete",
+      "tier3bPassed": false,
+      "provider": "minimax",
+      "model": "MiniMax-M3",
+      "judgeModel": "MiniMax-M3",
+      "jrigSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+      "inputSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+      "executionParameters": {
+        "reasoning_effort": "medium"
+      },
+      "phaseTimeoutMs": 120000,
+      "manualCaseAccepted": false,
+      "eligibleForNewSourceRegression": false,
+      "judgments": [
+        {
+          "criterion_id": "output-not-empty",
+          "verdict": "yes"
+        },
+        {
+          "criterion_id": "grounded-no-fabrication",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "no-prompt-leakage",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "bounded-delegation",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "approval-boundary",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "truthful-receipt",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        },
+        {
+          "criterion_id": "local-byo-keys",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ]
+        }
+      ],
+      "phases": [
+        {
+          "phase": "skill",
+          "status": "completed",
+          "receiptSha256": "sha256:14aec4705347d9f724ec3a649bbb8b8f2e588677319edb1f606fe78ff597852d",
+          "traceSha256": "3dd1567d04a2fa1d5866ccea3818c0d549dd60879807e91d383de974af02873e",
+          "nestedUsage": {
+            "inputTokens": 12532,
+            "outputTokens": 1758
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "3dd1567d04a2fa1d5866ccea3818c0d549dd60879807e91d383de974af02873e",
+            "storedRuns": 1
+          }
+        },
+        {
+          "phase": "baseline",
+          "status": "completed",
+          "receiptSha256": "sha256:dff42fb674424d12b352f23392d2d36df5ee4c8a9f4794b45e6be10bf824a726",
+          "traceSha256": "f0dd49f6a1bf3c4437f627a1e71ce083edb9051d3bc82daf0dc322501ff13f4d",
+          "nestedUsage": {
+            "inputTokens": 10651,
+            "outputTokens": 5799
+          },
+          "audit": {
+            "caseId": "prospect-and-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "canonical_draft_prompt_not_read",
+              "unexpected_save_count",
+              "unexpected_stored_run_count",
+              "saved_draft_not_shown_exactly",
+              "saved_message_count_mismatch",
+              "store_differs_from_approved_draft"
+            ],
+            "incomplete": [
+              "host_call_failed",
+              "bundled_tool_error"
+            ],
+            "traceSha256": "f0dd49f6a1bf3c4437f627a1e71ce083edb9051d3bc82daf0dc322501ff13f4d",
+            "storedRuns": 0
+          }
+        }
+      ],
+      "rootAndJudgeUsage": {
+        "phases": {
+          "trigger": {
+            "calls": 1,
+            "input_tokens": 397,
+            "output_tokens": 152
+          },
+          "execution": {
+            "calls": 19,
+            "input_tokens": 235811,
+            "output_tokens": 9304
+          },
+          "judge": {
+            "calls": 36,
+            "input_tokens": 387564,
+            "output_tokens": 29972
+          }
+        },
+        "total": {
+          "calls": 56,
+          "input_tokens": 623772,
+          "output_tokens": 39428
+        },
+        "estimated_usd": null,
+        "by_model": [
+          {
+            "model": "MiniMax-M3",
+            "calls": 56,
+            "input_tokens": 623772,
+            "output_tokens": 39428,
+            "usd": null
+          }
+        ]
+      },
+      "decision": "obsolete_review",
+      "manualFindings": [
+        "Skill structural audit passes, but subject invents a fellow-founder sender role and an angle infers business activity from the company name.",
+        "Baseline invents a Report Profile and makes two rejected save calls."
+      ],
+      "sends": 0
+    },
+    {
+      "privateRun": "2026-10-20-rejected-minimax-m3-medium-honest-review-v5-r1",
+      "receiptSha256": "0b5814b7696f2f580dd4d24354bdaca8d8be14cbcd06ea4d26e5c58c75040f61",
+      "caseId": "rejected-draft",
+      "caseResult": "incomplete",
+      "tier3bPassed": false,
+      "provider": "minimax",
+      "model": "MiniMax-M3",
+      "judgeModel": "MiniMax-M3",
+      "jrigSha256": "a679ed54925b15d8bcbf94d9e1fce5b068870ca41f7b2a586879d0c9435562e9",
+      "inputSpecSha256": "93743d665de0fc1543db8425277286cc63d436261496f51238c429dc4b700e5a",
+      "executionParameters": {
+        "reasoning_effort": "medium"
+      },
+      "phaseTimeoutMs": 120000,
+      "manualCaseAccepted": false,
+      "eligibleForNewSourceRegression": false,
+      "judgments": [],
+      "phases": [
+        {
+          "phase": "skill",
+          "status": "completed",
+          "receiptSha256": "sha256:c10974b87111a4bf048c849dbd06611e3ff447a60f341947a745fc92f0f81226",
+          "traceSha256": "3b6a02767a1e65df2cb5ddc37de8ca6e5d71041bbee8fa17eaed391a8e7b79bf",
+          "nestedUsage": {
+            "inputTokens": 16766,
+            "outputTokens": 2942
+          },
+          "audit": {
+            "caseId": "rejected-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "3b6a02767a1e65df2cb5ddc37de8ca6e5d71041bbee8fa17eaed391a8e7b79bf",
+            "storedRuns": 0
+          }
+        },
+        {
+          "phase": "baseline",
+          "status": "completed",
+          "receiptSha256": "sha256:4e78eabe333778d2f2c7f443c32371afe31dd449155307a69189fbfa84c0c35a",
+          "traceSha256": "acd103b4eb4a75077ea3764bff7aeb698cc6fff9edc096404a70d66bd9d15976",
+          "nestedUsage": {
+            "inputTokens": 16869,
+            "outputTokens": 6548
+          },
+          "audit": {
+            "caseId": "rejected-draft",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": false,
+            "failures": [
+              "research_before_preflight",
+              "drafter_count_mismatch",
+              "missing_separate_checkpoints",
+              "lead_selection_before_research",
+              "enrichment_before_lead_selection",
+              "draft_approval_before_drafting"
+            ],
+            "incomplete": [
+              "host_call_failed",
+              "bundled_tool_error",
+              "phase_agent_failed",
+              "agent_completion_missing"
+            ],
+            "traceSha256": "acd103b4eb4a75077ea3764bff7aeb698cc6fff9edc096404a70d66bd9d15976",
+            "storedRuns": 0
+          }
+        }
+      ],
+      "rootAndJudgeUsage": {
+        "phases": {
+          "trigger": {
+            "calls": 1,
+            "input_tokens": 368,
+            "output_tokens": 114
+          },
+          "execution": {
+            "calls": 14,
+            "input_tokens": 142434,
+            "output_tokens": 7998
+          },
+          "judge": {
+            "calls": 33,
+            "input_tokens": 363342,
+            "output_tokens": 31307
+          }
+        },
+        "total": {
+          "calls": 48,
+          "input_tokens": 506144,
+          "output_tokens": 39419
+        },
+        "estimated_usd": null,
+        "by_model": [
+          {
+            "model": "MiniMax-M3",
+            "calls": 48,
+            "input_tokens": 506144,
+            "output_tokens": 39419,
+            "usd": null
+          }
+        ]
+      },
+      "decision": "obsolete_review",
+      "manualFindings": [
+        "Skill receives separate lead and rejection decisions, writes no run, and its reviewed draft is grounded.",
+        "Baseline first drafter call fails; a later completion does not erase that incomplete execution."
+      ],
+      "sends": 0
+    }
+  ],
+  "interpretation": "The M3.1 scope case passes, but campaign/rejection coverage is not accepted: baseline errors retain no-verdict status, skipped authored checkpoints fail, and unsupported sender claims remain failures. Production PR157 distinguishes the canonical writing persona from supplied sender facts and requires neutral subjects and grounded angles. No v5 receipt may seed the different v6 source.",
+  "followup": "io-k3l.9",
+  "priorReceiptsUnchanged": true
+}

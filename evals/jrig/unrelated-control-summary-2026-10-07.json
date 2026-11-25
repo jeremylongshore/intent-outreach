@@ -1,0 +1,1114 @@
+{
+  "schema": "intent-outreach-control-summary/v1",
+  "scope": "unrelated-weather only; three Nemotron repetitions and one GPT-OSS20B execution; not full workflow or suite acceptance",
+  "tier3bPassed": false,
+  "productionModelApproval": false,
+  "privacy": "Selected metadata from digest-bound private receipts; prompts, final outputs, raw tool data and local paths omitted. Private originals retained for audit.",
+  "runs": [
+    {
+      "caseId": "unrelated-weather",
+      "evidenceKind": "behavioral-evaluation",
+      "caseResult": "pass",
+      "tier3bPassed": false,
+      "scope": "one_case_requires_suite_regression_variance_and_review",
+      "inputSpecSha256": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "judgeModel": "openai/gpt-oss-20b",
+      "priorReceiptSha256": null,
+      "judgments": [
+        {
+          "criterion_id": "output-not-empty",
+          "test_case_id": "unrelated-weather",
+          "method": "deterministic",
+          "verdict": "yes",
+          "blocker": true
+        },
+        {
+          "criterion_id": "no-prompt-leakage",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            1953,
+            1863,
+            1902
+          ]
+        },
+        {
+          "criterion_id": "truthful-receipt",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            5429,
+            5987,
+            6299
+          ]
+        },
+        {
+          "criterion_id": "local-byo-keys",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            2117,
+            3052,
+            3140
+          ]
+        }
+      ],
+      "trigger": {
+        "schema": "jrig-trigger-evidence/v1",
+        "status": "complete",
+        "sha256": "sha256:92a385a7c9a5140fc951b8a8aa21f15cc0e7bd3b2c27707d9f9c825bd3352664",
+        "metrics": {
+          "total_cases": 1,
+          "true_positives": 0,
+          "true_negatives": 1,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "sibling_confusions": 0,
+          "errors": 0,
+          "precision": 1,
+          "recall": 1,
+          "false_positive_rate": 0,
+          "false_negative_rate": 0
+        },
+        "cases": [
+          {
+            "test_case_id": "unrelated-weather",
+            "expected": "should_not_trigger",
+            "outcome": "correct_no_trigger",
+            "selected_skill": null
+          }
+        ],
+        "passed": true
+      },
+      "sourceHashes": {
+        "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+        "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+        "skills/intent-outreach/eval-spec.yaml": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+        "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+        "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+        "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+        "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+        "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+        "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+        "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+        "evals/jrig/run-case.ts": "e7834abf0eb55a76730115ab98df2003cbaccc4528a41bc69f6fc7d3a06d6145",
+        "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
+        "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+        "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
+        "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+        "evals/jrig/bind-evidence.ts": "87290fe8090a6338e8992e629d9337b5bcacc075bfeb30dbcbbf834fa103d34f",
+        "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",
+        "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+      },
+      "label": "2026-10-07-unrelated-nvidia-nemotron3-super-r1",
+      "privateReceiptSha256": "dcd5c0591900484beb410c30784c7f05d9ac222fbb0127026504283182066ea1",
+      "jrigCliSha256": "643348ddb5ec6825987e367838c886cd025e62b0f84d882fe08c62ed2a139ca5",
+      "bindings": [
+        {
+          "phase": "skill",
+          "sessionId": "09d42043-e57a-4a01-bc8f-0c9f65cb1e90",
+          "receiptSha256": "sha256:4116b8eea40273561c760565d219b7e930df2363a74568ae03cb69db9c875d21",
+          "traceSha256": "7861c7cfbf69ab898c03f5b52e893df2f35614f2b41ede482ef9be34a4564381",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "passed": true,
+          "audit": {
+            "caseId": "unrelated-weather",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "7861c7cfbf69ab898c03f5b52e893df2f35614f2b41ede482ef9be34a4564381",
+            "storedRuns": 0
+          }
+        },
+        {
+          "phase": "baseline",
+          "sessionId": "01ca9de4-fa40-4541-81a6-adedd5c9830f",
+          "receiptSha256": "sha256:23810518316dcf391863c6be8d374fc98f2abbcca05fe94a3a3e0419539e037b",
+          "traceSha256": "f4a327b29f036214ccad2ed3527ee56931bdb819ad6bf1b7f54cb03f7160af85",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "passed": true,
+          "audit": {
+            "caseId": "unrelated-weather",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "f4a327b29f036214ccad2ed3527ee56931bdb819ad6bf1b7f54cb03f7160af85",
+            "storedRuns": 0
+          }
+        }
+      ],
+      "jrigDecision": "obsolete_review",
+      "launchReport": {
+        "skill_name": "intent-outreach",
+        "timestamp": "2026-10-08T00:23:16.691Z",
+        "decision": "obsolete_review",
+        "score": {
+          "total_criteria": 4,
+          "passed": 4,
+          "failed": 0,
+          "unsure": 0,
+          "blocker_failures": 0,
+          "sacred_regressions": 0,
+          "pass_rate": 1,
+          "unstable_blocker_failures": 0
+        },
+        "regressions": [],
+        "baseline": [
+          {
+            "criterion_id": "output-not-empty",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "no-prompt-leakage",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "truthful-receipt",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "local-byo-keys",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "Skill may be obsolete \u2014 baseline matches skill on most criteria"
+        ],
+        "reasoning": "Skill flagged for obsolete review \u2014 baseline model matches skill performance.",
+        "headroom": {
+          "status": "saturated",
+          "ceiling": 0.95,
+          "ceiling_source": "default",
+          "passed": 4,
+          "trials": 4,
+          "pass_rate": 1,
+          "confidence_interval_95": {
+            "lower": 0.5101091635454027,
+            "upper": 1,
+            "confidence_level": 0.95
+          }
+        }
+      },
+      "cost": {
+        "phases": {
+          "trigger": {
+            "calls": 1,
+            "input_tokens": 169,
+            "output_tokens": 75
+          },
+          "execution": {
+            "calls": 2,
+            "input_tokens": 11744,
+            "output_tokens": 475
+          },
+          "judge": {
+            "calls": 18,
+            "input_tokens": 5268,
+            "output_tokens": 3899
+          }
+        },
+        "total": {
+          "calls": 21,
+          "input_tokens": 17181,
+          "output_tokens": 4449
+        },
+        "estimated_usd": null,
+        "by_model": [
+          {
+            "model": "nvidia/nemotron-3-super-120b-a12b",
+            "calls": 3,
+            "input_tokens": 11913,
+            "output_tokens": 550,
+            "usd": null
+          },
+          {
+            "model": "openai/gpt-oss-20b",
+            "calls": 18,
+            "input_tokens": 5268,
+            "output_tokens": 3899,
+            "usd": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "unrelated-weather",
+      "evidenceKind": "behavioral-evaluation",
+      "caseResult": "pass",
+      "tier3bPassed": false,
+      "scope": "one_case_requires_suite_regression_variance_and_review",
+      "inputSpecSha256": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "judgeModel": "openai/gpt-oss-20b",
+      "priorReceiptSha256": "dcd5c0591900484beb410c30784c7f05d9ac222fbb0127026504283182066ea1",
+      "judgments": [
+        {
+          "criterion_id": "output-not-empty",
+          "test_case_id": "unrelated-weather",
+          "method": "deterministic",
+          "verdict": "yes",
+          "blocker": true
+        },
+        {
+          "criterion_id": "no-prompt-leakage",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            3718,
+            4748,
+            1646
+          ]
+        },
+        {
+          "criterion_id": "truthful-receipt",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            4460,
+            5555,
+            7085
+          ]
+        },
+        {
+          "criterion_id": "local-byo-keys",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            7626,
+            3034,
+            3035
+          ]
+        }
+      ],
+      "trigger": {
+        "schema": "jrig-trigger-evidence/v1",
+        "status": "complete",
+        "sha256": "sha256:92a385a7c9a5140fc951b8a8aa21f15cc0e7bd3b2c27707d9f9c825bd3352664",
+        "metrics": {
+          "total_cases": 1,
+          "true_positives": 0,
+          "true_negatives": 1,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "sibling_confusions": 0,
+          "errors": 0,
+          "precision": 1,
+          "recall": 1,
+          "false_positive_rate": 0,
+          "false_negative_rate": 0
+        },
+        "cases": [
+          {
+            "test_case_id": "unrelated-weather",
+            "expected": "should_not_trigger",
+            "outcome": "correct_no_trigger",
+            "selected_skill": null
+          }
+        ],
+        "passed": true
+      },
+      "sourceHashes": {
+        "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+        "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+        "skills/intent-outreach/eval-spec.yaml": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+        "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+        "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+        "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+        "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+        "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+        "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+        "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+        "evals/jrig/run-case.ts": "e7834abf0eb55a76730115ab98df2003cbaccc4528a41bc69f6fc7d3a06d6145",
+        "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
+        "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+        "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
+        "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+        "evals/jrig/bind-evidence.ts": "87290fe8090a6338e8992e629d9337b5bcacc075bfeb30dbcbbf834fa103d34f",
+        "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",
+        "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+      },
+      "label": "2026-10-07-unrelated-nvidia-nemotron3-super-r2",
+      "privateReceiptSha256": "c8094b06b2648a9ba5aa348fdd875ba1c1f7c6eab9f1a3a7cf23a9fada0329e0",
+      "jrigCliSha256": "643348ddb5ec6825987e367838c886cd025e62b0f84d882fe08c62ed2a139ca5",
+      "bindings": [
+        {
+          "phase": "skill",
+          "sessionId": "85c1557f-48d1-4010-911e-63996b2f234f",
+          "receiptSha256": "sha256:aef736928c60a41780eecd13857154466c1b3805d3d2ac428eac7fa873371c0a",
+          "traceSha256": "afeeea20bca1dca44011e62778840208a2ed30d08305f08e686f1403c179abe5",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "passed": true,
+          "audit": {
+            "caseId": "unrelated-weather",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "afeeea20bca1dca44011e62778840208a2ed30d08305f08e686f1403c179abe5",
+            "storedRuns": 0
+          }
+        },
+        {
+          "phase": "baseline",
+          "sessionId": "87776e40-29b2-4315-b153-a606616142a2",
+          "receiptSha256": "sha256:6f916a6556bdca928592c93298afe5b2ad594a49412459115788354db5258ce1",
+          "traceSha256": "1011a683ff396415d5dee86790f39941ab9cf78e4066a594d44c06d640532164",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "passed": true,
+          "audit": {
+            "caseId": "unrelated-weather",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "1011a683ff396415d5dee86790f39941ab9cf78e4066a594d44c06d640532164",
+            "storedRuns": 0
+          }
+        }
+      ],
+      "jrigDecision": "obsolete_review",
+      "launchReport": {
+        "skill_name": "intent-outreach",
+        "timestamp": "2026-10-08T00:26:22.643Z",
+        "decision": "obsolete_review",
+        "score": {
+          "total_criteria": 4,
+          "passed": 4,
+          "failed": 0,
+          "unsure": 0,
+          "blocker_failures": 0,
+          "sacred_regressions": 0,
+          "pass_rate": 1,
+          "unstable_blocker_failures": 0
+        },
+        "regressions": [],
+        "baseline": [
+          {
+            "criterion_id": "output-not-empty",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "no-prompt-leakage",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "truthful-receipt",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "local-byo-keys",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "Skill may be obsolete \u2014 baseline matches skill on most criteria"
+        ],
+        "reasoning": "Skill flagged for obsolete review \u2014 baseline model matches skill performance.",
+        "headroom": {
+          "status": "saturated",
+          "ceiling": 0.95,
+          "ceiling_source": "default",
+          "passed": 4,
+          "trials": 4,
+          "pass_rate": 1,
+          "confidence_interval_95": {
+            "lower": 0.5101091635454027,
+            "upper": 1,
+            "confidence_level": 0.95
+          }
+        }
+      },
+      "cost": {
+        "phases": {
+          "trigger": {
+            "calls": 1,
+            "input_tokens": 169,
+            "output_tokens": 73
+          },
+          "execution": {
+            "calls": 2,
+            "input_tokens": 11744,
+            "output_tokens": 461
+          },
+          "judge": {
+            "calls": 18,
+            "input_tokens": 5367,
+            "output_tokens": 4607
+          }
+        },
+        "total": {
+          "calls": 21,
+          "input_tokens": 17280,
+          "output_tokens": 5141
+        },
+        "estimated_usd": null,
+        "by_model": [
+          {
+            "model": "nvidia/nemotron-3-super-120b-a12b",
+            "calls": 3,
+            "input_tokens": 11913,
+            "output_tokens": 534,
+            "usd": null
+          },
+          {
+            "model": "openai/gpt-oss-20b",
+            "calls": 18,
+            "input_tokens": 5367,
+            "output_tokens": 4607,
+            "usd": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "unrelated-weather",
+      "evidenceKind": "behavioral-evaluation",
+      "caseResult": "pass",
+      "tier3bPassed": false,
+      "scope": "one_case_requires_suite_regression_variance_and_review",
+      "inputSpecSha256": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+      "provider": "nvidia",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "judgeModel": "openai/gpt-oss-20b",
+      "priorReceiptSha256": "c8094b06b2648a9ba5aa348fdd875ba1c1f7c6eab9f1a3a7cf23a9fada0329e0",
+      "judgments": [
+        {
+          "criterion_id": "output-not-empty",
+          "test_case_id": "unrelated-weather",
+          "method": "deterministic",
+          "verdict": "yes",
+          "blocker": true
+        },
+        {
+          "criterion_id": "no-prompt-leakage",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            6406,
+            4288,
+            3896
+          ]
+        },
+        {
+          "criterion_id": "truthful-receipt",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            5507,
+            7459,
+            8200
+          ]
+        },
+        {
+          "criterion_id": "local-byo-keys",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            4170,
+            4442,
+            3728
+          ]
+        }
+      ],
+      "trigger": {
+        "schema": "jrig-trigger-evidence/v1",
+        "status": "complete",
+        "sha256": "sha256:92a385a7c9a5140fc951b8a8aa21f15cc0e7bd3b2c27707d9f9c825bd3352664",
+        "metrics": {
+          "total_cases": 1,
+          "true_positives": 0,
+          "true_negatives": 1,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "sibling_confusions": 0,
+          "errors": 0,
+          "precision": 1,
+          "recall": 1,
+          "false_positive_rate": 0,
+          "false_negative_rate": 0
+        },
+        "cases": [
+          {
+            "test_case_id": "unrelated-weather",
+            "expected": "should_not_trigger",
+            "outcome": "correct_no_trigger",
+            "selected_skill": null
+          }
+        ],
+        "passed": true
+      },
+      "sourceHashes": {
+        "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+        "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+        "skills/intent-outreach/eval-spec.yaml": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+        "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+        "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+        "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+        "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+        "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+        "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+        "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+        "evals/jrig/run-case.ts": "e7834abf0eb55a76730115ab98df2003cbaccc4528a41bc69f6fc7d3a06d6145",
+        "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
+        "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+        "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
+        "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+        "evals/jrig/bind-evidence.ts": "87290fe8090a6338e8992e629d9337b5bcacc075bfeb30dbcbbf834fa103d34f",
+        "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",
+        "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+      },
+      "label": "2026-10-07-unrelated-nvidia-nemotron3-super-r3",
+      "privateReceiptSha256": "c70bac927102f310814c8438c1a3ea80a2ea1f1b81bc8acfda9081b6e7a71340",
+      "jrigCliSha256": "643348ddb5ec6825987e367838c886cd025e62b0f84d882fe08c62ed2a139ca5",
+      "bindings": [
+        {
+          "phase": "skill",
+          "sessionId": "553c3919-0ce6-459a-9c5a-208723521356",
+          "receiptSha256": "sha256:6e1d0f74db2edcae31d1ecd12c9d253afdab83136a21c11caf1222a416bb681d",
+          "traceSha256": "0f5574d5905fb1f05bc6d76ceeed66ce91ac2b62028221b81e8feaafa67c966d",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "passed": true,
+          "audit": {
+            "caseId": "unrelated-weather",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "0f5574d5905fb1f05bc6d76ceeed66ce91ac2b62028221b81e8feaafa67c966d",
+            "storedRuns": 0
+          }
+        },
+        {
+          "phase": "baseline",
+          "sessionId": "6792eca4-659b-482f-a13e-4aaaf2967f7a",
+          "receiptSha256": "sha256:66c1eb10d34a6e00bb85f532386bc192ea354513a9a1836f0b3919a575fc02f5",
+          "traceSha256": "cb8daf1b310f99a947974449bf5b09300c54cb06c60092687ac00a4c5fa0cc68",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "passed": true,
+          "audit": {
+            "caseId": "unrelated-weather",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "cb8daf1b310f99a947974449bf5b09300c54cb06c60092687ac00a4c5fa0cc68",
+            "storedRuns": 0
+          }
+        }
+      ],
+      "jrigDecision": "obsolete_review",
+      "launchReport": {
+        "skill_name": "intent-outreach",
+        "timestamp": "2026-10-08T00:27:15.892Z",
+        "decision": "obsolete_review",
+        "score": {
+          "total_criteria": 4,
+          "passed": 4,
+          "failed": 0,
+          "unsure": 0,
+          "blocker_failures": 0,
+          "sacred_regressions": 0,
+          "pass_rate": 1,
+          "unstable_blocker_failures": 0
+        },
+        "regressions": [],
+        "baseline": [
+          {
+            "criterion_id": "output-not-empty",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "no-prompt-leakage",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "truthful-receipt",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "local-byo-keys",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "Skill may be obsolete \u2014 baseline matches skill on most criteria"
+        ],
+        "reasoning": "Skill flagged for obsolete review \u2014 baseline model matches skill performance.",
+        "headroom": {
+          "status": "saturated",
+          "ceiling": 0.95,
+          "ceiling_source": "default",
+          "passed": 4,
+          "trials": 4,
+          "pass_rate": 1,
+          "confidence_interval_95": {
+            "lower": 0.5101091635454027,
+            "upper": 1,
+            "confidence_level": 0.95
+          }
+        }
+      },
+      "cost": {
+        "phases": {
+          "trigger": {
+            "calls": 1,
+            "input_tokens": 169,
+            "output_tokens": 73
+          },
+          "execution": {
+            "calls": 2,
+            "input_tokens": 11744,
+            "output_tokens": 404
+          },
+          "judge": {
+            "calls": 18,
+            "input_tokens": 4782,
+            "output_tokens": 4173
+          }
+        },
+        "total": {
+          "calls": 21,
+          "input_tokens": 16695,
+          "output_tokens": 4650
+        },
+        "estimated_usd": null,
+        "by_model": [
+          {
+            "model": "nvidia/nemotron-3-super-120b-a12b",
+            "calls": 3,
+            "input_tokens": 11913,
+            "output_tokens": 477,
+            "usd": null
+          },
+          {
+            "model": "openai/gpt-oss-20b",
+            "calls": 18,
+            "input_tokens": 4782,
+            "output_tokens": 4173,
+            "usd": 0
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "unrelated-weather",
+      "evidenceKind": "behavioral-evaluation",
+      "caseResult": "pass",
+      "tier3bPassed": false,
+      "scope": "one_case_requires_suite_regression_variance_and_review",
+      "inputSpecSha256": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+      "provider": "nvidia",
+      "model": "openai/gpt-oss-20b",
+      "judgeModel": "openai/gpt-oss-20b",
+      "priorReceiptSha256": "c70bac927102f310814c8438c1a3ea80a2ea1f1b81bc8acfda9081b6e7a71340",
+      "judgments": [
+        {
+          "criterion_id": "output-not-empty",
+          "test_case_id": "unrelated-weather",
+          "method": "deterministic",
+          "verdict": "yes",
+          "blocker": true
+        },
+        {
+          "criterion_id": "no-prompt-leakage",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            4807,
+            2863,
+            4150
+          ]
+        },
+        {
+          "criterion_id": "truthful-receipt",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            7723,
+            5928,
+            5815
+          ]
+        },
+        {
+          "criterion_id": "local-byo-keys",
+          "test_case_id": "unrelated-weather",
+          "method": "judge",
+          "verdict": "yes",
+          "samples": 3,
+          "sample_verdicts": [
+            "yes",
+            "yes",
+            "yes"
+          ],
+          "blocker": true,
+          "agreement": 1,
+          "sample_latencies_ms": [
+            5816,
+            4287,
+            4471
+          ]
+        }
+      ],
+      "trigger": {
+        "schema": "jrig-trigger-evidence/v1",
+        "status": "complete",
+        "sha256": "sha256:14ef2e1ad95e447746963bb101f67fcc0c31b2e5ffc59b009f5e50a6b4993e7e",
+        "metrics": {
+          "total_cases": 1,
+          "true_positives": 0,
+          "true_negatives": 1,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "sibling_confusions": 0,
+          "errors": 0,
+          "precision": 1,
+          "recall": 1,
+          "false_positive_rate": 0,
+          "false_negative_rate": 0
+        },
+        "cases": [
+          {
+            "test_case_id": "unrelated-weather",
+            "expected": "should_not_trigger",
+            "outcome": "correct_no_trigger",
+            "selected_skill": null
+          }
+        ],
+        "passed": true
+      },
+      "sourceHashes": {
+        "bundle/server.mjs": "52ab5d01a746807e6114f6eedcc6cb1552f32a63f2e529fcce7f64021a31f34b",
+        "skills/intent-outreach/SKILL.md": "6ff80dcbd9a92981e3329acd661cfcc0a3f8046a9348265e7383855664225c60",
+        "skills/intent-outreach/eval-spec.yaml": "8bbfcf7070a701f73f5da5d731aec55a8465d841138a0a9d2cd9e666550d6164",
+        "prompts/outreach.v3.md": "eb798ecb37e0d8f2bcce0f7e2b2464196bfc21eadf9fd89ca18d301d96b652eb",
+        "agents/outreach-researcher.md": "6c75ce16823d76aa400dd8cced01607156a9c3a8dc5c5f7eb5c18195b41d6de1",
+        "agents/outreach-enricher.md": "67b0054acff4bd9b99193a503d25dccf949f353884758578e785a1e1fd5b3672",
+        "agents/outreach-drafter.md": "68155b171a67a7bc6ae1e19f911cf659c9e6693f9788dc29c0507daebb6a8a79",
+        "skills/intent-outreach/references/report-profiles.md": "7d7d6e49ed40a2bb6cee1b4579a904817216c834bab116edf2626050cb19751c",
+        "skills/intent-outreach/references/runtime-contract.md": "b082d8c950e4058f0e7df66b96a2b681ed2ff71388a55b17b62caea32aa00ee0",
+        "pnpm-lock.yaml": "3779c7f8c78b43e3d87eac8c85bc4481cd65aff8b7b2574df9f40f9ae0726901",
+        "evals/jrig/run-case.ts": "e7834abf0eb55a76730115ab98df2003cbaccc4528a41bc69f6fc7d3a06d6145",
+        "evals/jrig/scenario-host.ts": "6b1991d5bc7e8d0ba666599188d74f2c42ff0c604a85c6b54eee3b92aca0bf28",
+        "evals/jrig/agent-host.ts": "77e4f482a2c7d5019e694d298c73c5e88e7e11cff868749be6b9200b3d6491f3",
+        "evals/jrig/agent-model.ts": "053f65215a79a3c2062ac774108ef1ab1c47e0878cc77c9f35604be38946795d",
+        "evals/jrig/scenarios.ts": "404f2b20a2eb73aeb5d030dc77dace77a200ce2b26bfa29fcb0c398ee438f203",
+        "evals/jrig/bind-evidence.ts": "87290fe8090a6338e8992e629d9337b5bcacc075bfeb30dbcbbf834fa103d34f",
+        "evals/jrig/audit-scenario.ts": "c3b6a12134df466f82616c7f5326d5c97a0815b869cdf496e8b0cf78d2c52c47",
+        "evals/jrig/fixture-fetch.mjs": "cdf5ca4319d0ab41441a1ee152160e9b51db68aa30c34c05eb6ac167eb0b4c69"
+      },
+      "label": "2026-10-07-unrelated-nvidia-oss20b-r1",
+      "privateReceiptSha256": "a13d83a1d40b26ce4e8023bf5af7f2958025976f0607db6c84367d74e4634c6f",
+      "jrigCliSha256": "643348ddb5ec6825987e367838c886cd025e62b0f84d882fe08c62ed2a139ca5",
+      "bindings": [
+        {
+          "phase": "skill",
+          "sessionId": "23e0db08-eaa2-4af2-8e87-833528d6040e",
+          "receiptSha256": "sha256:4763ae97b7894c320c0196c5434189139ab7601066fda47069fafe8254608761",
+          "traceSha256": "3156553b5d390f15ed9f7a59368abb7f2539b50448c51956d4a24aea7e72936a",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "passed": true,
+          "audit": {
+            "caseId": "unrelated-weather",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "3156553b5d390f15ed9f7a59368abb7f2539b50448c51956d4a24aea7e72936a",
+            "storedRuns": 0
+          }
+        },
+        {
+          "phase": "baseline",
+          "sessionId": "8d70bbed-9328-48c6-b001-f36ea3934210",
+          "receiptSha256": "sha256:c8737711bfae8ce383dcee6d0fe8eb785c87edbe9f758856ab5fc6a28aa8ce97",
+          "traceSha256": "9434d6d851586be55d18292b3b511a63d685ad968e0b0b635e0e63e1fc43fd14",
+          "status": "completed",
+          "nestedUsage": {
+            "inputTokens": 0,
+            "outputTokens": 0
+          },
+          "passed": true,
+          "audit": {
+            "caseId": "unrelated-weather",
+            "scope": "structural_host_and_store_assertions_only",
+            "behavioralVerdict": null,
+            "tier3bPassed": false,
+            "passed": true,
+            "failures": [],
+            "incomplete": [],
+            "traceSha256": "9434d6d851586be55d18292b3b511a63d685ad968e0b0b635e0e63e1fc43fd14",
+            "storedRuns": 0
+          }
+        }
+      ],
+      "jrigDecision": "obsolete_review",
+      "launchReport": {
+        "skill_name": "intent-outreach",
+        "timestamp": "2026-10-08T00:28:34.154Z",
+        "decision": "obsolete_review",
+        "score": {
+          "total_criteria": 4,
+          "passed": 4,
+          "failed": 0,
+          "unsure": 0,
+          "blocker_failures": 0,
+          "sacred_regressions": 0,
+          "pass_rate": 1,
+          "unstable_blocker_failures": 0
+        },
+        "regressions": [],
+        "baseline": [
+          {
+            "criterion_id": "output-not-empty",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "no-prompt-leakage",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "truthful-receipt",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          },
+          {
+            "criterion_id": "local-byo-keys",
+            "with_skill": "yes",
+            "without_skill": "yes",
+            "skill_adds_value": false
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "Skill may be obsolete \u2014 baseline matches skill on most criteria"
+        ],
+        "reasoning": "Skill flagged for obsolete review \u2014 baseline model matches skill performance.",
+        "headroom": {
+          "status": "saturated",
+          "ceiling": 0.95,
+          "ceiling_source": "default",
+          "passed": 4,
+          "trials": 4,
+          "pass_rate": 1,
+          "confidence_interval_95": {
+            "lower": 0.5101091635454027,
+            "upper": 1,
+            "confidence_level": 0.95
+          }
+        }
+      },
+      "cost": {
+        "phases": {
+          "trigger": {
+            "calls": 1,
+            "input_tokens": 216,
+            "output_tokens": 103
+          },
+          "execution": {
+            "calls": 2,
+            "input_tokens": 5148,
+            "output_tokens": 283
+          },
+          "judge": {
+            "calls": 18,
+            "input_tokens": 4836,
+            "output_tokens": 3754
+          }
+        },
+        "total": {
+          "calls": 21,
+          "input_tokens": 10200,
+          "output_tokens": 4140
+        },
+        "estimated_usd": 0,
+        "by_model": [
+          {
+            "model": "openai/gpt-oss-20b",
+            "calls": 21,
+            "input_tokens": 10200,
+            "output_tokens": 4140,
+            "usd": 0
+          }
+        ]
+      }
+    }
+  ]
+}
