@@ -109,7 +109,7 @@ describe("checkMonitor", () => {
     const outage = await check(opts);
     expect(outage.events).toEqual([]);
     expect(outage.failedConnectors[0]?.name).toBe("stub-gis");
-    expect((await readSnapshot(path))?.parcels["12033:10"]?.ownerName).toBe("ANN"); // not wiped
+    expect((await readSnapshot(path, Date.parse(T)))?.parcels["12033:10"]?.ownerName).toBe("ANN"); // not wiped
 
     reply = model("zed", 100_000_00);
     const sold = await check(opts);

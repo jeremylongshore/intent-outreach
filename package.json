@@ -42,29 +42,30 @@
     "contracts:check": "tsx scripts/export-contracts.ts --check"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.78",
+    "@ai-sdk/anthropic": "^4.0.108",
     "@intent-outreach/deal-math": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.32.1",
-    "ai": "^7.0.137",
-    "zod": "^4.6.5"
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "ai": "^7.0.181",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
-    "@stryker-mutator/core": "^10.0.0",
-    "@stryker-mutator/vitest-runner": "^10.0.0",
-    "@types/node": "^26.6.5",
-    "@vitest/coverage-v8": "^5.0.3",
+    "@biomejs/biome": "^2.6.9",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
+    "@types/node": "^26.6.7",
+    "@vitest/coverage-v8": "^5.1.1",
     "esbuild": "^0.28.2",
     "json-schema-to-typescript": "16.0.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "undici": "7.30.0",
-    "vitest": "^5.0.0"
+    "undici": "7.30.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
   },
   "optionalDependencies": {
-    "@ai-sdk/openai": "^4.0.91",
-    "@ai-sdk/openai-compatible": "^3.0.67",
-    "@ai-sdk/xai": "^5.0.20"
+    "@ai-sdk/openai": "^4.0.123",
+    "@ai-sdk/openai-compatible": "^3.0.94",
+    "@ai-sdk/xai": "^5.0.50"
   },
   "engines": {
     "node": ">=22.16.0"
