@@ -4,3 +4,8 @@ packages:
 # esbuild is the only dependency whose install script is required.
 onlyBuiltDependencies:
   - esbuild
+
+# Security floors for transitive deps whose parents have not yet raised their own
+# ranges (GHSA-27r3-jxmh-p828 via @modelcontextprotocol/sdk > express).
+overrides:
+  body-parser@>=2.0.0 <2.4.0: ^2.4.0
